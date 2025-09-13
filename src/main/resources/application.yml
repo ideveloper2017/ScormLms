@@ -12,7 +12,10 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.http.client.HttpClientAutoConfiguration
 app:
   jwt:
     secret: your-256-bit-secret-key-here-1234567890
@@ -20,3 +23,4 @@ app:
 
 server:
   port: 8080
+

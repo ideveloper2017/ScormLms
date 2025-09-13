@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import uz.scorm.lms.app.common.ApiResponse
 import uz.scorm.lms.app.security.JwtService
 import uz.scorm.lms.app.v1.auth.service.RefreshTokenService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
@@ -18,6 +19,15 @@ import uz.scorm.lms.app.v1.twofactor.service.TwoFactorService
 import uz.scorm.lms.app.v1.security.service.LoginAttemptService
 import java.time.Duration
 
+
+data class LoginRequest(val username: String = "", val password: String = "", val otpCode: String? = null)
+data class TokenResponse(
+    val username: String,
+    val roles: List<String>,
+    val permissions: List<String>,
+    val accessToken: String,
+    val refreshToken: String
+)
 @RestController
 @RequestMapping("/auth")
 class AuthController(
@@ -29,14 +39,7 @@ class AuthController(
     private val twoFactorService: TwoFactorService,
     private val loginAttemptService: LoginAttemptService
 ) {
-    data class LoginRequest(val username: String = "", val password: String = "", val otpCode: String? = null)
-    data class TokenResponse(
-        val username: String,
-        val roles: List<String>,
-        val permissions: List<String>,
-        val accessToken: String,
-        val refreshToken: String
-    )
+
     data class RefreshRequest(val refreshToken: String)
     data class ErrorResponse(val message: String, val retryAfterSeconds: Long? = null)
 
@@ -93,13 +96,13 @@ class AuthController(
         val permissions = authorities.filterNot { it.startsWith("ROLE_") }
         val token = jwtService.generateToken(principal)
         val refresh = refreshTokenService.create(userEntity)
-        return ResponseEntity.ok(TokenResponse(
+        return ResponseEntity.ok(ApiResponse.success(TokenResponse(
             username = principal.username,
             roles = roles,
             permissions = permissions,
             accessToken = token,
             refreshToken = refresh.token
-        ))
+        )))
     }
 
     @PostMapping("/refresh")

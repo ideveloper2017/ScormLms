@@ -13,14 +13,19 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import org.springframework.web.filter.CorsFilter
 import uz.scorm.lms.app.security.JwtAuthFilter
 import uz.scorm.lms.app.security.CustomUserDetailsService
+import uz.scorm.lms.app.security.JwtAuthEntryPoint
 import uz.scorm.lms.app.v1.audit.filter.AuditLoggingFilter
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 class SecurityConfig(
+    private val jwtAuthenticationEntryPoint: JwtAuthEntryPoint,
     private val jwtAuthFilter: JwtAuthFilter,
     private val customUserDetailsService: CustomUserDetailsService,
     private val auditLoggingFilter: AuditLoggingFilter
@@ -44,7 +49,9 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
+            .cors { }
             .csrf { it.disable() }
+            .exceptionHandling { it.authenticationEntryPoint(jwtAuthenticationEntryPoint) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
                 it.requestMatchers(
@@ -65,5 +72,21 @@ class SecurityConfig(
             .addFilterAfter(auditLoggingFilter, UsernamePasswordAuthenticationFilter::class.java)
 
         return http.build()
+    }
+
+    @Bean
+    fun corsFilter(): CorsFilter {
+        val source = UrlBasedCorsConfigurationSource()
+        val config = CorsConfiguration()
+        config.allowCredentials = true
+        config.allowedOrigins = listOf("http://localhost:5173", "http://localhost:8080")
+        config.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        config.allowedHeaders = listOf("*")
+        config.allowCredentials = true
+        config.addAllowedHeader("*")
+        config.addExposedHeader("Authorization")
+        config.addAllowedMethod("*")
+        source.registerCorsConfiguration("/**", config)
+        return CorsFilter(source)
     }
 }
