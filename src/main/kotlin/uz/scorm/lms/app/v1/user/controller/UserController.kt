@@ -3,13 +3,16 @@ package uz.scorm.lms.app.v1.user.controller
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
+import uz.scorm.lms.app.v1.user.dto.UserDto
+import uz.scorm.lms.app.v1.user.mapper.UserMapper
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.service.UserService
 
 @RestController
 @RequestMapping("/users")
 class UserController(
-    private val userService: UserService
+    private val userService: UserService,
+    private val userMapper: UserMapper,
 ) {
     data class RegisterRequest(
         val username: String,
@@ -32,7 +35,7 @@ class UserController(
     fun assignRole(
         @PathVariable username: String,
         @PathVariable roleCode: String
-    ): ResponseEntity<User> {
+    ): ResponseEntity<UserDto> {
         val user = userService.assignRole(username, roleCode)
         return ResponseEntity.ok(user)
     }
@@ -43,7 +46,7 @@ class UserController(
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{username}")
-    fun get(@PathVariable username: String): ResponseEntity<User> =
+    fun get(@PathVariable username: String): ResponseEntity<UserDto> =
         ResponseEntity.ok(userService.getByUsername(username))
 
     @PreAuthorize("hasRole('ADMIN')")

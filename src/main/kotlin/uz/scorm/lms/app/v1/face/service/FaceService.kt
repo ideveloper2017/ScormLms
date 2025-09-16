@@ -1,5 +1,6 @@
 package uz.scorm.lms.app.v1.face.service
 
+import org.bytedeco.javacpp.BytePointer
 import org.springframework.core.io.ClassPathResource
 import org.springframework.stereotype.Service
 import org.bytedeco.opencv.global.opencv_core.*
@@ -21,7 +22,7 @@ class FaceService {
 
     private fun loadCascade(): CascadeClassifier? {
         return try {
-            val res = ClassPathResource("opencv/haarcascade_frontalface_default.xml")
+            val res = ClassPathResource("/models/haarcascade_frontalface_default.xml")
             if (!res.exists()) return null
             val tmp = File.createTempFile("haarcascade_frontalface_default", ".xml")
             res.inputStream.use { input ->
@@ -35,8 +36,7 @@ class FaceService {
 
     fun generateTemplate(imageBytes: ByteArray): String {
         val face = extractAlignedFace(imageBytes) ?: return ""
-        // Flatten and L2 normalize as a simple embedding
-        val data = FloatArray((face.arraySize().toInt()))
+        val data = FloatArray(face.arraySize().toInt())
         face.convertTo(face, CV_32F)
         (face.createBuffer() as java.nio.FloatBuffer).get(data)
         // L2 normalize
@@ -44,7 +44,6 @@ class FaceService {
         for (f in data) norm += (f * f)
         norm = Math.sqrt(norm)
         val normalized = if (norm > 0) data.map { (it / norm).toFloat() } else data.asList()
-        // Base64 encode bytes of floats
         val bb = java.nio.ByteBuffer.allocate(normalized.size * 4)
         normalized.forEach { bb.putFloat(it) }
         return Base64.getEncoder().encodeToString(bb.array())
@@ -104,36 +103,35 @@ class FaceService {
     }
 
     private fun extractAlignedFace(imageBytes: ByteArray): Mat? {
-        val buf = MatOfByte(*imageBytes)
-        val img = imdecode(buf, IMREAD_COLOR) ?: return null
+//        val matOfByte = Mat(1, imageBytes.size, CV_8U)
+//        matOfByte.data().put(imageBytes.get(0))
+
+        // Rasmni dekodlash
+        val img = imdecode(Mat(BytePointer(imageBytes.toString())), IMREAD_COLOR)
         val gray = Mat()
-//        org.bytedeco.opencv.global.opencv_imgproc.cvtColor(img, gray, COLOR_BGR2GRAY)
-        org.bytedeco.opencv.global.opencv_imgproc.equalizeHist(gray, gray)
+        cvtColor(img, gray, COLOR_BGR2GRAY)
+        equalizeHist(gray, gray)
 
-        var faceRoi: Rect? = null
-        val detector = cascade
-        if (detector != null) {
-            val faces = org.bytedeco.opencv.opencv_core.RectVector()
-            detector.detectMultiScale(gray, faces)
-            if (faces.size() > 0L) {
+        val faces = org.bytedeco.opencv.opencv_core.RectVector()
+        cascade?.detectMultiScale(gray, faces)
 
-                var maxArea = 0
-                var idx = 0L
-                for (i in 0 until faces.size()) {
-                    val r = faces[i]
-                    val area = r.width() * r.height()
-                    if (area > maxArea) {
-                        maxArea = area
-                        idx = i
-                    }
+        val faceRoi = if (faces.size() > 0) {
+            var maxArea = 0.0
+            var maxRect: Rect? = null
+            for (i in 0 until faces.size()) {
+                val r = faces[i]
+                val area = r.width() * r.height()
+                if (area > maxArea) {
+                    maxArea = area.toDouble()
+                    maxRect = r
                 }
-                val r = faces[idx]
-                faceRoi = Rect(r.x(), r.y(), r.width(), r.height())
             }
-        }
+            maxRect
+        } else null
+
         val faceMat = if (faceRoi != null) Mat(gray, faceRoi) else centerCrop(gray)
         val resized = Mat()
-        org.bytedeco.opencv.global.opencv_imgproc.resize(faceMat, resized, targetSize)
+        resize(faceMat, resized, targetSize)
         return resized
     }
 

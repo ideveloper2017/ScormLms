@@ -1,20 +1,29 @@
 package uz.scorm.lms.app.v1.user.model
 
 import jakarta.persistence.*
+import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.role.model.Role
+import java.io.Serializable
 import java.time.Instant
 
 @Entity
 @Table(name = "users")
 class User(
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null,
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true, nullable = false)
     var username: String = "",
+
+    @Column(unique = true, nullable = true)  // Make sure this is nullable
+    var phone: String = "",
 
     @Column(nullable = false)
     var password: String = "",
+
+    @Column(name = "first_name")
+    var firstName: String? = null,
+
+    @Column(name = "last_name")
+    var lastName: String? = null,
 
     @Column(nullable = false)
     var enabled: Boolean = true,
@@ -23,8 +32,11 @@ class User(
     @Column(unique = true)
     var hemisId: String? = null,
 
-    var fullName: String? = null,
+    @Column(unique = true)
     var email: String? = null,
+
+    @Column(name = "photo")
+    var photo: String? = null,
 
     // Email verification
     @Column(nullable = false)
@@ -54,4 +66,9 @@ class User(
         inverseJoinColumns = [JoinColumn(name = "role_id")]
     )
     var roles: MutableSet<Role> = mutableSetOf()
-)
+): BaseEntity(), Serializable {
+
+    fun getFullName(): String {
+        return listOfNotNull(firstName, lastName).joinToString(" ").ifEmpty { username }
+    }
+}

@@ -61,6 +61,7 @@ class SecurityConfig(
                     "/swagger-ui.html",
                     "/public/**",
                     "/auth/**",
+                    "/auth/face/**",
                     "/auth/hemis/**",
                     "/auth/email/**",
                     "/users/register"

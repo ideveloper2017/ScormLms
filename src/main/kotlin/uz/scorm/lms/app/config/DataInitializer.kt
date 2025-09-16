@@ -42,28 +42,33 @@ class DataInitializer(
         // Default admin user
         if (!userRepository.existsByUsername("admin")) {
             val u = userService.register("admin", "admin", listOf("ROLE_ADMIN"))
-            u.fullName = "Administrator"
-            u.email = "admin@scromlms.local"
-            u.emailVerified = true
+            u.firstName = "Admin"
+            u.lastName = "User"
+            u.phone = "+1234567890"  // Make sure to set a valid phone number
+            u.email = "admin@example.com"
+            u.enabled = true
             userRepository.save(u)
         }
 
-        // Default instructor user
+// For instructor user
         if (!userRepository.existsByUsername("instructor")) {
-            val u = userService.register("instructor", "instructor", listOf("ROLE_INSTRUCTOR"))
-            u.fullName = "Default Instructor"
-            u.email = "instructor@scromlms.local"
-            u.emailVerified = true
+            val u = userService.register("instructor", "instructor123", listOf("ROLE_INSTRUCTOR"))
+            u.firstName = "Instructor"
+            u.lastName = "User"
+            u.phone = "+1234567891"  // Make sure to set a valid phone number
+            u.email = "instructor@example.com"
+            u.enabled = true
             userRepository.save(u)
         }
 
-        // Default student user
+// For student user
         if (!userRepository.existsByUsername("student")) {
-            val u = userService.register("student", "student", listOf("ROLE_STUDENT"))
-            u.fullName = "Default Student"
-            u.email = "student@scromlms.local"
-            // Studentni email tasdiqlash oqimi uchun istasangiz false qoldirish mumkin
-            u.emailVerified = true
+            val u = userService.register("student", "student123", listOf("ROLE_STUDENT"))
+            u.firstName = "Student"
+            u.lastName = "User"
+            u.phone = "+1234567892"  // Make sure to set a valid phone number
+            u.email = "student@example.com"
+            u.enabled = true
             userRepository.save(u)
         }
     }
