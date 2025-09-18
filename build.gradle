@@ -1,11 +1,11 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.9.25'
-    id 'org.jetbrains.kotlin.plugin.spring' version '1.9.25'
+    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
+    id 'org.jetbrains.kotlin.plugin.spring' version '2.2.0'
     id 'war'
     id 'org.springframework.boot' version '3.5.5'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'gg.jte.gradle' version '3.1.16'
-    id 'org.jetbrains.kotlin.plugin.jpa' version '1.9.25'
+    id 'org.jetbrains.kotlin.plugin.jpa' version '2.2.0'
 }
 
 group = 'uz.scorm.lms.app'
@@ -14,7 +14,7 @@ description = 'ScromLmsProjects'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(24)
     }
 }
 
@@ -95,14 +95,14 @@ tasks.named('test') {
 compileKotlin {
     kotlinOptions {
         freeCompilerArgs = ['-Xjsr305=strict']
-        jvmTarget = '17'
+        jvmTarget = '24'
     }
 }
 
 compileTestKotlin {
     kotlinOptions {
         freeCompilerArgs = ['-Xjsr305=strict']
-        jvmTarget = '17'
+        jvmTarget = '24'
     }
 }
 
