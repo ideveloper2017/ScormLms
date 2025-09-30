@@ -68,12 +68,18 @@ class SecurityConfig(
                 ).permitAll()
                 it.anyRequest().authenticated()
             }
+            .oauth2Login { oauth2 ->
+                oauth2
+                    .loginPage("/auth/hemis/login")
+                    .defaultSuccessUrl("/auth/hemis/success", true)
+            }
             .authenticationProvider(authenticationProvider(passwordEncoder()))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterAfter(auditLoggingFilter, UsernamePasswordAuthenticationFilter::class.java)
 
         return http.build()
     }
+
 
     @Bean
     fun corsFilter(): CorsFilter {
