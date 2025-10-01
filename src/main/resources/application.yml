@@ -15,7 +15,23 @@ spring:
     active: postgresql-dev
   main:
     allow-bean-definition-overriding: false
-
+  security:
+    oauth2:
+      client:
+        registration:
+          hemis:
+            client-id: 6
+            client-secret: KMmTXNV7rLtE73aaGvK4vlJbKgwFGXz3aPrqNFmm
+            redirect-uri: "{baseUrl}/login/oauth2/hemis"
+            authorization-grant-type: authorization_code
+            scope: profile,email
+            client-name: HEMIS
+        provider:
+          hemis:
+            authorization-uri: https://hemis.namdtu.uz/oauth/authorize
+            token-uri: https://hemis.namdtu.uz/oauth/access-token
+            user-info-uri: https://hemis.namdtu.uz/oauth/api/user?fields=id,uuid,type,name,login,picture,email,university_id,phone
+            user-name-attribute: id
 jmx:
     enabled: true
 
