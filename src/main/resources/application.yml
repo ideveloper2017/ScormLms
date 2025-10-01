@@ -19,31 +19,19 @@ spring:
     oauth2:
       client:
         registration:
-          google:
-            client-id: 595235750635-5lanp0ta71i123c22nehl1f5st30f48f.apps.googleusercontent.com
-            client-secret: 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
-            scope:
-              - email
-              - profile
+          hemis:
+            client-id: 6
+            client-secret: KMmTXNV7rLtE73aaGvK4vlJbKgwFGXz3aPrqNFmm
+            redirect-uri: "{baseUrl}/login/oauth2/hemis"
+            authorization-grant-type: authorization_code
+            scope: profile,email
+            client-name: HEMIS
         provider:
-          google:
-            issuer-uri: https://accounts.google.com
-#    oauth2:
-#      client:
-#        registration:
-#          hemis:
-#            client-id: 6
-#            client-secret: KMmTXNV7rLtE73aaGvK4vlJbKgwFGXz3aPrqNFmm
-#            redirect-uri: "{baseUrl}/login/oauth2/hemis"
-#            authorization-grant-type: authorization_code
-#            scope: profile,email
-#            client-name: HEMIS
-#        provider:
-#          hemis:
-#            authorization-uri: https://hemis.namdtu.uz/oauth/authorize
-#            token-uri: https://hemis.namdtu.uz/oauth/access-token
-#            user-info-uri: https://hemis.namdtu.uz/oauth/api/user?fields=id,uuid,type,name,login,picture,email,university_id,phone
-#            user-name-attribute: id
+          hemis:
+            authorization-uri: https://hemis.namdtu.uz/oauth/authorize
+            token-uri: https://hemis.namdtu.uz/oauth/access-token
+            user-info-uri: https://hemis.namdtu.uz/oauth/api/user?fields=id,uuid,type,name,login,picture,email,university_id,phone
+            user-name-attribute: id
 jmx:
     enabled: true
 
