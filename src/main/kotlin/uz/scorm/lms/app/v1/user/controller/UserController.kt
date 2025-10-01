@@ -9,7 +9,7 @@ import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.service.UserService
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/v1/users")
 class UserController(
     private val userService: UserService,
     private val userMapper: UserMapper,

@@ -7,7 +7,7 @@ import uz.scorm.lms.app.v1.permission.model.Permission
 import uz.scorm.lms.app.v1.permission.service.PermissionService
 
 @RestController
-@RequestMapping("/permissions")
+@RequestMapping("/api/v1/permissions")
 class PermissionController(
     private val permissionService: PermissionService
 ) {

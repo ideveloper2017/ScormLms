@@ -11,6 +11,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
@@ -55,23 +59,29 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
                 it.requestMatchers(
+                    "/",
+                    "/login",
                     "/actuator/**",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/public/**",
-                    "/auth/**",
-                    "/auth/face/**",
-                    "/auth/hemis/**",
-                    "/auth/email/**",
-                    "/users/register"
+                    "/api/auth/**",
+                    "/api/auth/face/**",
+                    "/api/auth/hemis/**",
+                    "/api/auth/email/**",
+                    "/api/users/register"
                 ).permitAll()
                 it.anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->
                 oauth2
-                    .loginPage("/auth/hemis/login")
-                    .defaultSuccessUrl("/auth/hemis/success", true)
+
+                    .loginPage("/login")
+                    .userInfoEndpoint { userInfo ->
+                        userInfo.userService(oAuth2UserService())
+                    }
+                    .defaultSuccessUrl("/hemis/success", true)
             }
             .authenticationProvider(authenticationProvider(passwordEncoder()))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
@@ -80,6 +90,20 @@ class SecurityConfig(
         return http.build()
     }
 
+
+    @Bean
+    fun oAuth2UserService(): OAuth2UserService<OAuth2UserRequest, OAuth2User> {
+        return OAuth2UserService { userRequest ->
+            val delegate = DefaultOAuth2UserService()
+            val oAuth2User = delegate.loadUser(userRequest)
+
+            // HEMISdan kelgan user data
+            val attributes = oAuth2User.attributes
+            println("HEMIS OAuth2 User: $attributes")
+
+            oAuth2User
+        }
+    }
 
     @Bean
     fun corsFilter(): CorsFilter {

@@ -8,7 +8,7 @@ import uz.scorm.lms.app.v1.twofactor.service.TwoFactorService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 
 @RestController
-@RequestMapping("/auth/2fa")
+@RequestMapping("/api/v1/auth/2fa")
 class TwoFactorController(
     private val twoFactorService: TwoFactorService,
     private val userRepository: UserRepository

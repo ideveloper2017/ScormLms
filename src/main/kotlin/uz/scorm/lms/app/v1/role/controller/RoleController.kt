@@ -7,7 +7,7 @@ import uz.scorm.lms.app.v1.role.model.Role
 import uz.scorm.lms.app.v1.role.service.RoleService
 
 @RestController
-@RequestMapping("/roles")
+@RequestMapping("/api/v1/roles")
 class RoleController(
     private val roleService: RoleService
 ) {

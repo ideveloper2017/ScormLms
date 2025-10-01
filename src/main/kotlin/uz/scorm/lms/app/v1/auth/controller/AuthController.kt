@@ -1,5 +1,8 @@
 package uz.scorm.lms.app.v1.auth.controller
 
+import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.SignatureAlgorithm
+import io.jsonwebtoken.security.Keys
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -11,8 +14,10 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -43,7 +48,7 @@ data class TokenResponse(
     val expiresIn: Long
 )
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v1/auth")
 class AuthController(
     private val authenticationManager: AuthenticationManager,
     private val jwtService: JwtService,
@@ -68,10 +73,12 @@ class AuthController(
             val seconds = (remaining?.seconds ?: 0)
             return ResponseEntity.status(429) // Too Many Requests
                 .header("Retry-After", seconds.toString())
-                .body(ErrorResponse(
-                    message = "Login qilish bo'yicha urinishlar soni ko'payib ketdi. Iltimos, keyinroq qayta urinib ko'ring.",
-                    retryAfterSeconds = seconds
-                ))
+                .body(
+                    ErrorResponse(
+                        message = "Login qilish bo'yicha urinishlar soni ko'payib ketdi. Iltimos, keyinroq qayta urinib ko'ring.",
+                        retryAfterSeconds = seconds
+                    )
+                )
         }
         val authToken = UsernamePasswordAuthenticationToken(body.username, body.password)
         val authentication: Authentication = try {
@@ -79,18 +86,22 @@ class AuthController(
         } catch (ex: Exception) {
             // record failed attempt and return 401
             loginAttemptService.onFailure(body.username, clientIp)
-            return ResponseEntity.status(401).body(ErrorResponse(
-                message = "Login yoki parol noto'g'ri"
-            ))
+            return ResponseEntity.status(401).body(
+                ErrorResponse(
+                    message = "Login yoki parol noto'g'ri"
+                )
+            )
         }
         val principal = authentication.principal as UserDetails
         // Enforce email verification and 2FA if enabled
         val userEntity = userRepository.findByUsername(principal.username)
             ?: throw IllegalStateException("User not found: ${'$'}{principal.username}")
         if (userEntity.email != null && !userEntity.emailVerified) {
-            return ResponseEntity.status(403).body(ErrorResponse(
-                message = "Email tasdiqlanmagan. Iltimos, email manzilingizni tasdiqlang."
-            ))
+            return ResponseEntity.status(403).body(
+                ErrorResponse(
+                    message = "Email tasdiqlanmagan. Iltimos, email manzilingizni tasdiqlang."
+                )
+            )
         }
 
 //
@@ -115,12 +126,14 @@ class AuthController(
         val refresh = refreshTokenService.create(userEntity)
         val userDto = userMapper.toDto(userEntity);
         return ResponseEntity.ok(
-            CommonApiResponse.success(TokenResponse(
-                user = userDto,
-                accessToken = token,
-                refreshToken = refresh.token,
-                expiresIn = jwtService.getExpirationInSeconds(token)
-            ))
+            CommonApiResponse.success(
+                TokenResponse(
+                    user = userDto,
+                    accessToken = token,
+                    refreshToken = refresh.token,
+                    expiresIn = jwtService.getExpirationInSeconds(token)
+                )
+            )
         )
     }
 
@@ -159,8 +172,8 @@ class AuthController(
             }
 
             // Get username from token
-            val username = jwtService.getUsernameFromToken(token) ?:
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            val username =
+                jwtService.getUsernameFromToken(token) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(CommonApiResponse.error(message = "Invalid token"))
 
             // Verify token is not expired
@@ -191,13 +204,15 @@ class AuthController(
                     // Continue even if revocation fails
                 }
 
-                ResponseEntity.ok(CommonApiResponse.success(
-                    JwtResponse(
-                        accessToken = newAccessToken,
-                        refreshToken = newRefreshToken,
-                        expiresIn = jwtService.getExpirationInSeconds(newAccessToken)
+                ResponseEntity.ok(
+                    CommonApiResponse.success(
+                        JwtResponse(
+                            accessToken = newAccessToken,
+                            refreshToken = newRefreshToken,
+                            expiresIn = jwtService.getExpirationInSeconds(newAccessToken)
+                        )
                     )
-                ))
+                )
             } catch (e: Exception) {
                 logger.error("Failed to generate new tokens: ${e.message}", e)
                 ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -244,5 +259,34 @@ class AuthController(
     fun logout(@RequestBody body: RefreshRequest): ResponseEntity<Void> {
         refreshTokenService.revoke(body.refreshToken)
         return ResponseEntity.noContent().build()
+    }
+
+    @GetMapping("/auth/hemis/success")
+    fun success(@AuthenticationPrincipal principal: OAuth2User): Map<String, Any> {
+        val userId = principal.getAttribute<String>("id") ?: "unknown"
+        val fullname = principal.getAttribute<String>("fullname") ?: "N/A"
+        val role = principal.getAttribute<String>("role") ?: "guest"
+
+        val claims = mapOf(
+            "fullname" to fullname,
+            "role" to role
+        )
+
+
+        val token = Jwts.builder()
+            .setSubject(userId)
+            .setClaims(claims)
+            .signWith(Keys.secretKeyFor(SignatureAlgorithm.HS256))
+            .compact()
+
+
+        return mapOf(
+            "jwt" to token,
+            "user" to mapOf(
+                "id" to userId,
+                "fullname" to principal.getAttribute<String>("fullname"),
+                "role" to role
+            )
+        )
     }
 }
