@@ -1,0 +1,225 @@
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { listStudents, graduateStudent, archiveStudent, reinstateStudent, promoteStudent, editStudent, createStudent } from '@/lib/student-api';
+import { StudentDto } from '@/types/student.types';
+import { Loader2, ArrowUpCircle, GraduationCap, Archive, UserCheck, Ban, Edit, Upload, UserPlus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+export function StudentManagement() {
+  const [students, setStudents] = useState<StudentDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    studentIdNumber: '',
+    email: '',
+    groupName: '',
+    faculty: '',
+    educationPath: '',
+    course: '1',
+    semester: '1',
+    language: 'uz'
+  });
+  
+  const { toast } = useToast();
+
+  const loadStudents = async () => {
+    setIsLoading(true);
+    try {
+      const data = await listStudents();
+      setStudents(data);
+    } catch (e) {
+      toast({ title: "Xatolik", description: "Talabalarni yuklab bo'lmadi", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStudents();
+  }, []);
+
+  const resetForm = () => {
+    setFormData({
+        firstName: '',
+        lastName: '',
+        studentIdNumber: '',
+        email: '',
+        groupName: '',
+        faculty: '',
+        educationPath: '',
+        course: '1',
+        semester: '1',
+        language: 'uz'
+    });
+  };
+
+  const handleSave = async () => {
+    try {
+        const payload: StudentDto = {
+            fullName: `${formData.firstName} ${formData.lastName}`,
+            firstName: formData.firstName,
+            thirdName: formData.lastName,
+            studentIdNumber: formData.studentIdNumber,
+            email: formData.email,
+            group: { name: formData.groupName, educationLang: { code: formData.language } },
+            level: { code: formData.course },
+            semester: { code: formData.semester },
+            faculty: { name: formData.faculty },
+            specialty: { name: formData.educationPath }
+        };
+
+        if (editingStudent?.username) {
+            await editStudent(editingStudent.username, payload);
+            toast({ title: "Muvaffaqiyatli", description: "Talaba ma'lumotlari yangilandi" });
+        } else {
+            await createStudent(payload);
+            toast({ title: "Muvaffaqiyatli", description: "Yangi talaba qo'shildi" });
+        }
+        
+        setEditingStudent(null);
+        setIsAdding(false);
+        resetForm();
+        loadStudents();
+    } catch (e) {
+        toast({ title: "Xatolik", description: "Amalni bajarib bo'lmadi", variant: "destructive" });
+    }
+  };
+
+  const handleEditClick = (s: StudentDto) => {
+    setEditingStudent(s);
+    setFormData({
+        firstName: s.firstName || '',
+        lastName: s.thirdName || '',
+        studentIdNumber: s.studentIdNumber || '',
+        email: s.email || '',
+        groupName: s.group?.name || '',
+        faculty: s.faculty?.name || '',
+        educationPath: s.specialty?.name || '',
+        course: s.level?.code || '1',
+        semester: s.semester?.code || '1',
+        language: s.group?.educationLang?.code || 'uz'
+    });
+  };
+
+  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Talabalar Boshqaruvi</h1>
+        <div className="flex gap-2">
+            <Button variant="outline" className="gap-2"><Upload className="h-4 w-4"/> Excel Import</Button>
+            <Button className="gap-2" onClick={() => { resetForm(); setIsAdding(true); }}><UserPlus className="h-4 w-4"/> Yangi Talaba</Button>
+        </div>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Barcha Talabalar</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ism</TableHead>
+                <TableHead>ID / JSHSHIR</TableHead>
+                <TableHead>Guruh</TableHead>
+                <TableHead>Kurs/Semestr</TableHead>
+                <TableHead>Holat</TableHead>
+                <TableHead className="text-right">Amallar</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {students.map(s => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-medium">{s.fullName}</TableCell>
+                  <TableCell>{s.studentIdNumber}</TableCell>
+                  <TableCell>{s.group?.name}</TableCell>
+                  <TableCell>{s.level?.code}/{s.semester?.code}</TableCell>
+                  <TableCell><Badge variant="secondary">{s.studentStatus?.code}</Badge></TableCell>
+                  <TableCell className="text-right space-x-1">
+                    <Button size="sm" variant="ghost" onClick={() => handleEditClick(s)} title="Tahrirlash"><Edit className="h-4 w-4"/></Button>
+                    <Button size="sm" variant="ghost" onClick={() => s.username && promoteStudent(s.username).then(() => loadStudents())} title="Kursdan o'tkazish"><ArrowUpCircle className="h-4 w-4"/></Button>
+                    <Button size="sm" variant="ghost" onClick={() => s.username && graduateStudent(s.username).then(() => loadStudents())} title="Bitiruvchi"><GraduationCap className="h-4 w-4"/></Button>
+                    <Button size="sm" variant="ghost" onClick={() => s.username && archiveStudent(s.username).then(() => loadStudents())} title="Arxivlash"><Archive className="h-4 w-4"/></Button>
+                    <Button size="sm" variant="ghost" onClick={() => s.username && reinstateStudent(s.username).then(() => loadStudents())} title="Qayta tiklash"><UserCheck className="h-4 w-4"/></Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isAdding || !!editingStudent} onOpenChange={(o) => !o && (setIsAdding(false), setEditingStudent(null))}>
+        <DialogContent className="max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>{editingStudent ? "Talabani tahrirlash" : "Yangi talaba qo'shish"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4">
+                <div className="space-y-2">
+                    <Label>Ism</Label>
+                    <Input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} placeholder="Ism"/>
+                </div>
+                <div className="space-y-2">
+                    <Label>Familiya</Label>
+                    <Input value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} placeholder="Familiya"/>
+                </div>
+                <div className="space-y-2">
+                    <Label>JSHSHIR / ID</Label>
+                    <Input value={formData.studentIdNumber} onChange={e => setFormData({...formData, studentIdNumber: e.target.value})} placeholder="JSHSHIR"/>
+                </div>
+                <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email"/>
+                </div>
+                <div className="space-y-2">
+                    <Label>Fakultet</Label>
+                    <Input value={formData.faculty} onChange={e => setFormData({...formData, faculty: e.target.value})} placeholder="Fakultet"/>
+                </div>
+                <div className="space-y-2">
+                    <Label>Yo'nalish</Label>
+                    <Input value={formData.educationPath} onChange={e => setFormData({...formData, educationPath: e.target.value})} placeholder="Ta'lim yo'nalishi"/>
+                </div>
+                <div className="space-y-2">
+                    <Label>Guruh</Label>
+                    <Input value={formData.groupName} onChange={e => setFormData({...formData, groupName: e.target.value})} placeholder="Guruh nomi"/>
+                </div>
+                <div className="space-y-2">
+                    <Label>Ta'lim tili</Label>
+                    <Select value={formData.language} onValueChange={v => setFormData({...formData, language: v})}>
+                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="uz">O'zbek</SelectItem>
+                            <SelectItem value="ru">Rus</SelectItem>
+                            <SelectItem value="en">Ingliz</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label>Kurs</Label>
+                    <Input type="number" value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} min="1" max="6"/>
+                </div>
+                <div className="space-y-2">
+                    <Label>Semestr</Label>
+                    <Input type="number" value={formData.semester} onChange={e => setFormData({...formData, semester: e.target.value})} min="1" max="12"/>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => (setIsAdding(false), setEditingStudent(null))}>Bekor qilish</Button>
+                <Button onClick={handleSave}>Saqlash</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
