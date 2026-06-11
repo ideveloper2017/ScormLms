@@ -42,4 +42,8 @@ class AuditService(
             userAgent = ua
         )
     }
+
+    fun findAll(): List<AuditLog> {
+        return auditLogRepository.findAll().sortedByDescending { it.timestamp }
+    }
 }

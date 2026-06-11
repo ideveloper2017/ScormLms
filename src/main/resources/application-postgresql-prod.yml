@@ -1,13 +1,46 @@
-#logging:
-#  level:
-#    ROOT: INFO
-#    org.hibernate.SQL: INFO
-#    uz.idev.app: INFO
-management:
-  health:
-    elasticsearch:
-      enabled: false
+# ===================================================================
+# Production profil sozlamalari (postgresql-prod)
+# Umumiy sozlamalar application.yml da; bu fayl faqat prod uchun
+# farq qiladigan qiymatlarni o'z ichiga oladi.
+# Maxfiy qiymatlar env variable orqali beriladi:
+#   DB_URL, DB_USERNAME, DB_PASSWORD, JWT_SECRET,
+#   HEMIS_CLIENT_ID, HEMIS_CLIENT_SECRET, CORS_ALLOWED_ORIGINS
+# ===================================================================
+
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    org.hibernate.SQL: WARN
+    com.zaxxer.hikari: WARN
+    uz.scorm.lms: INFO
+  file:
+    name: ${LOG_FILE:./logs/scorm-lms.log}
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 30
+      total-size-cap: 1GB
+
+server:
+  # So'rovlar tugashini kutib, keyin to'xtaydi (deploy paytida so'rov uzilmaydi)
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: always
+    include-binding-errors: never
+  tomcat:
+    max-http-form-post-size: 20MB
+    threads:
+      max: 200
+      min-spare: 10
+
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
   devtools:
     restart:
       enabled: false
@@ -15,26 +48,64 @@ spring:
       enabled: false
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/offpos
-    username: postgres
-    password: postgres
-#    hikari:
-#      poolName: Hikari
-#      auto-commit: false
-#      data-source-properties:
-#        cachePrepStmts: true
-#        prepStmtCacheSize: 250
-#        prepStmtCacheSqlLimit: 2048
-#        useServerPrepStmts: true
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/scorm_lms}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      poolName: Hikari
+      auto-commit: false
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: 30000      # 30s — connection olish uchun maksimal kutish
+      idle-timeout: 600000           # 10 min — bo'sh connection yopilishi
+      max-lifetime: 1800000          # 30 min — connection maksimal umri
+      leak-detection-threshold: 60000 # 60s dan uzoq qaytarilmagan connection log'ga yoziladi
+      validation-timeout: 5000
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+        reWriteBatchedInserts: true
+
   jpa:
-    elasticsearch:
-      url: http://localhost:9200
     hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+      # TODO: Flyway kiritilgach 'validate' ga o'tkazilsin
+      ddl-auto: create-drop
+    show-sql: false
     open-in-view: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+      location: ${FILE_UPLOAD_DIR:./uploads}
+
+# Actuator: faqat kerakli endpointlar ochiladi (health/info permitAll,
+# qolganlari SecurityConfig bo'yicha autentifikatsiya talab qiladi)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true   # /actuator/health/liveness va /readiness (k8s/docker uchun)
+  health:
+    elasticsearch:
+      enabled: false
+  info:
+    build:
+      enabled: true
+    java:
+      enabled: true
+
+# Swagger prod'da default o'chiq; vaqtincha yoqish uchun SWAGGER_ENABLED=true
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}

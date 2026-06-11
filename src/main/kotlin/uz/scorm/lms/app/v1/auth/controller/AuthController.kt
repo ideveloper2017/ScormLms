@@ -1,8 +1,5 @@
 package uz.scorm.lms.app.v1.auth.controller
 
-import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.SignatureAlgorithm
-import io.jsonwebtoken.security.Keys
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -24,8 +21,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import uz.idev.app.security.CurrentUser
-import uz.idev.app.v1.auth.dto.JwtResponse
+import uz.scorm.lms.app.security.CurrentUser
+import uz.scorm.lms.app.v1.auth.dto.JwtResponse
 import uz.scorm.lms.app.common.ApiResponse as CommonApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 import uz.scorm.lms.app.security.JwtService
@@ -250,9 +247,8 @@ class AuthController(
             )
         ]
     )
-    fun getCurrentUser(@CurrentUser user: User): ResponseEntity<CommonApiResponse<Pair<UserDto.Companion, User>>?> {
-        val userDto = UserDto.to(user)
-        return ResponseEntity.ok(CommonApiResponse.success(userDto))
+    fun getCurrentUser(@CurrentUser user: User): ResponseEntity<CommonApiResponse<UserDto>> {
+        return ResponseEntity.ok(CommonApiResponse.success(userMapper.toDto(user)))
     }
 
     @PostMapping("/logout")
@@ -261,30 +257,25 @@ class AuthController(
         return ResponseEntity.noContent().build()
     }
 
-    @GetMapping("/auth/hemis/success")
+    @GetMapping("/hemis/success")
     fun success(@AuthenticationPrincipal principal: OAuth2User): Map<String, Any> {
         val userId = principal.getAttribute<String>("id") ?: "unknown"
         val fullname = principal.getAttribute<String>("fullname") ?: "N/A"
         val role = principal.getAttribute<String>("role") ?: "guest"
 
-        val claims = mapOf(
-            "fullname" to fullname,
-            "role" to role
+        val token = jwtService.generateTokenForClaims(
+            subject = userId,
+            claims = mapOf(
+                "fullname" to fullname,
+                "role" to role
+            )
         )
-
-
-        val token = Jwts.builder()
-            .setSubject(userId)
-            .setClaims(claims)
-            .signWith(Keys.secretKeyFor(SignatureAlgorithm.HS256))
-            .compact()
-
 
         return mapOf(
             "jwt" to token,
             "user" to mapOf(
                 "id" to userId,
-                "fullname" to principal.getAttribute<String>("fullname"),
+                "fullname" to fullname,
                 "role" to role
             )
         )

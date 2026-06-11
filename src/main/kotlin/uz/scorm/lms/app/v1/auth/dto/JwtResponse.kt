@@ -1,4 +1,4 @@
-package uz.idev.app.v1.auth.dto
+package uz.scorm.lms.app.v1.auth.dto
 
 data class JwtResponse(
     val accessToken: String,

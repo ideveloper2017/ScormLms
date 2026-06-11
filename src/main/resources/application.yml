@@ -15,98 +15,86 @@ spring:
     active: postgresql-dev
   main:
     allow-bean-definition-overriding: false
-  security:
-    oauth2:
-      client:
-        registration:
-          hemis:
-            client-id: 6
-            client-secret: KMmTXNV7rLtE73aaGvK4vlJbKgwFGXz3aPrqNFmm
-            redirect-uri: "{baseUrl}/login/oauth2/hemis"
-            authorization-grant-type: authorization_code
-            scope: profile,email
-            client-name: HEMIS
-        provider:
-          hemis:
-            authorization-uri: https://hemis.namdtu.uz/oauth/authorize
-            token-uri: https://hemis.namdtu.uz/oauth/access-token
-            user-info-uri: https://hemis.namdtu.uz/oauth/api/user?fields=id,uuid,type,name,login,picture,email,university_id,phone
-            user-name-attribute: id
-jmx:
+  jmx:
     enabled: true
-
-data:
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred
   jpa:
-    repositories:
-      bootstrap-mode: deferred
-      jpa:
-        open-in-view: false
-        properties:
-          hibernate.jdbc.time_zone: UTC
-          hibernate.id.new_generator_mappings: true
-          hibernate.connection.provider_disables_autocommit: true
-          hibernate.cache.use_second_level_cache: false
-          hibernate.cache.use_query_cache: false
-          hibernate.generate_statistics: false
-          # modify batch size as necessary
-          hibernate.jdbc.batch_size: 25
-          hibernate.order_inserts: true
-          hibernate.order_updates: true
-          hibernate.query.fail_on_pagination_over_collection_fetch: true
-          hibernate.query.in_clause_parameter_padding: true
-        hibernate:
-          ddl-auto: none
-          naming:
-            physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
-            implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
-# JWT Configuration
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      hibernate.id.new_generator_mappings: true
+      hibernate.connection.provider_disables_autocommit: true
+      hibernate.cache.use_second_level_cache: false
+      hibernate.cache.use_query_cache: false
+      hibernate.generate_statistics: false
+      # modify batch size as necessary
+      hibernate.jdbc.batch_size: 25
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
+      hibernate.query.fail_on_pagination_over_collection_fetch: true
+      hibernate.query.in_clause_parameter_padding: true
+#  security:
+#    oauth2:
+#      client:
+#        registration:
+#          hemis:
+#            client-id: ${HEMIS_CLIENT_ID:}
+#            client-secret: ${HEMIS_CLIENT_SECRET:}
+#            redirect-uri: "{baseUrl}/login/oauth2/hemis"
+#            authorization-grant-type: authorization_code
+#            scope: profile,email
+#            client-name: HEMIS
+#        provider:
+#          hemis:
+#            authorization-uri: https://hemis.namdtu.uz/oauth/authorize
+#            token-uri: https://hemis.namdtu.uz/oauth/access-token
+#            user-info-uri: https://hemis.namdtu.uz/oauth/api/user?fields=id,uuid,type,name,login,picture,email,university_id,phone
+#            user-name-attribute: id
+
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
-#    url: /v3/api-docs
-    operationsSorter: method
-    tagsSorter: alpha
+    # Petstore demo'siga tushib qolmaslik uchun: query-config o'chiq,
+    # default (petstore) URL bloklangan — har doim shu loyiha API'si ochiladi
+    disable-swagger-default-url: true
+    operations-sorter: method
+    tags-sorter: alpha
     doc-expansion: none
-    display-query-params: true
     filter: true
     persist-authorization: true
     display-request-duration: true
-    default-model-expand-depth: 5
-    default-model-rendering: model
     display-operation-id: true
-    show-extensions: true
-    show-common-extensions: true
-    query-config-enabled: true
     default-models-expand-depth: 1
     deep-linking: true
-    supported-submit-methods: [ get, put, post, delete, patch, options, head]
     try-it-out-enabled: true
-    with-credentials: true
-    oauth2-redirect-url: ${server.servlet.context-path}/swagger-ui/oauth2-redirect.html
 
   default-produces-media-type: application/json
   default-consumes-media-type: application/json
   model-and-view-allowed: false
-  disable-swagger-default-url: false
 
 
 app:
   cors:
-    allowedOrigins: http://localhost:5173,http://localhost:4173/
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4173,http://localhost:8080}
   jwt:
-    secret: 3zTvzr3p67VC61kmV54rIYu1545x4r4B70aRw4p3r6a8THa2yn2g4ZgPLv04y3fI
+    # HS512 uchun kamida 64 baytlik secret talab qilinadi.
+    # Prod muhitda JWT_SECRET env variable orqali beriladi; default faqat lokal dev uchun.
+    secret: ${JWT_SECRET:dev-only-secret-do-not-use-in-production-0123456789abcdefghijklmnop}
     expiration: 86400000 # 24 hours in milliseconds
     refresh-expiration: 2592000000 # 30 days in milliseconds
     header: Authorization
     token-prefix: "Bearer "
     token-type: Bearer
 
-
   upload:
     dir: ./uploads
-
 
 
 # File Storage Configuration
@@ -114,12 +102,3 @@ file:
   upload-dir: ./uploads
   max-file-size: 10MB
   allowed-extensions: jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx
-
-# Security Configuration
-security:
-  jwt:
-    header: Authorization
-    prefix: Bearer
-    secret: 3zTvzr3p67VC61kmV54rIYu1545x4r4B70aRw4p3r6a8THa2yn2g4ZgPLv04y3fI
-    expiration: 86400000 # 24 hours in milliseconds
-

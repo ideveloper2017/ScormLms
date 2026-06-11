@@ -22,7 +22,7 @@ class FaceService {
 
     private fun loadCascade(): CascadeClassifier? {
         return try {
-            val res = ClassPathResource("/models/haarcascade_frontalface_default.xml")
+            val res = ClassPathResource("/model/haarcascade_frontalface_default.xml")
             if (!res.exists()) return null
             val tmp = File.createTempFile("haarcascade_frontalface_default", ".xml")
             res.inputStream.use { input ->

@@ -1,9 +1,9 @@
 package uz.scorm.lms.app.v1.user.service
 
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import uz.scorm.lms.app.v1.auth.repository.RefreshTokenRepository
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import uz.scorm.lms.app.v1.role.service.RoleService
@@ -15,7 +15,8 @@ class UserService(
     private val userRepository: UserRepository,
     private val roleService: RoleService,
     private val passwordEncoder: PasswordEncoder,
-    private val userMapper: UserMapper
+    private val userMapper: UserMapper,
+    private val refreshTokenRepository: RefreshTokenRepository
 ) {
     fun register(username: String, rawPassword: String, roles: List<String> = listOf("STUDENT")): User {
         if (userRepository.existsByUsername(username)) {
@@ -50,9 +51,12 @@ class UserService(
         return userMapper.toDto(user)
     }
 
+    @Transactional
     fun deleteByUsername(username: String) {
         val user = userRepository.findByUsername(username)
             ?: throw NoSuchElementException("User not found: $username")
+        // refresh_tokens jadvalidagi FK bog'lanishlar avval tozalanadi
+        refreshTokenRepository.deleteByUser(user)
         userRepository.delete(user)
     }
 }

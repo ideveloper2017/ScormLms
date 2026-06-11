@@ -13,22 +13,22 @@ class PermissionController(
 ) {
     data class CreatePermissionRequest(val code: String, val name: String)
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @PostMapping
     fun createPermission(@RequestBody req: CreatePermissionRequest): ResponseEntity<Permission> {
         return ResponseEntity.ok(permissionService.create(req.code, req.name))
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @GetMapping
     fun list(): ResponseEntity<List<Permission>> = ResponseEntity.ok(permissionService.list())
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @GetMapping("/{code}")
     fun get(@PathVariable code: String): ResponseEntity<Permission> =
         ResponseEntity.ok(permissionService.getByCode(code))
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @DeleteMapping("/{code}")
     fun delete(@PathVariable code: String): ResponseEntity<Void> {
         permissionService.deleteByCode(code)

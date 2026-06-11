@@ -107,6 +107,17 @@ class JwtService(
             .compact()
     }
 
+    fun generateTokenForClaims(subject: String, claims: Map<String, Any?>): String {
+        val now = Date()
+        return Jwts.builder()
+            .setClaims(claims.toMutableMap())
+            .setSubject(subject)
+            .setIssuedAt(now)
+            .setExpiration(Date(now.time + accessTokenExpirationInMs))
+            .signWith(key, SignatureAlgorithm.HS512)
+            .compact()
+    }
+
     fun extractUsername(token: String): String? = extractAllClaims(token).subject
 
     fun extractRoles(token: String): List<String> =

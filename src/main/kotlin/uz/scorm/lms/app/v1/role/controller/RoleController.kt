@@ -13,13 +13,13 @@ class RoleController(
 ) {
     data class CreateRoleRequest(val code: String, val name: String)
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @PostMapping
     fun createRole(@RequestBody req: CreateRoleRequest): ResponseEntity<Role> {
         return ResponseEntity.ok(roleService.create(req.code, req.name))
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @PostMapping("/{roleCode}/permissions/{permissionCode}")
     fun addPermission(
         @PathVariable roleCode: String,
@@ -28,16 +28,16 @@ class RoleController(
         return ResponseEntity.ok(roleService.addPermissionToRole(roleCode, permissionCode))
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @GetMapping
     fun list(): ResponseEntity<List<Role>> = ResponseEntity.ok(roleService.list())
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @GetMapping("/{roleCode}")
     fun get(@PathVariable roleCode: String): ResponseEntity<Role> =
         ResponseEntity.ok(roleService.getByCode(roleCode))
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGE')")
     @DeleteMapping("/{roleCode}")
     fun delete(@PathVariable roleCode: String): ResponseEntity<Void> {
         roleService.deleteByCode(roleCode)
