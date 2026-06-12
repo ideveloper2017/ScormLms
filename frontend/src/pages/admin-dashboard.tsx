@@ -1,24 +1,12 @@
 import { useState } from 'react';
-import { 
-  Users, 
-  BookOpen, 
-  GraduationCap, 
-  TrendingUp,
-  Shield,
-  Monitor,
-  Activity,
-  AlertTriangle,
-  Settings,
-  Plus,
-  Eye,
-  BarChart3,
-  Clock,
-  Award,
-  CheckCircle,
-  UserCheck,
-  Database,
-  Server
+import { useNavigate } from 'react-router-dom';
+import {
+  Users, BookOpen, GraduationCap,
+  Shield, Monitor, Activity, AlertTriangle, Settings,
+  Plus, BarChart3, Award, CheckCircle,
+  Database, Server, FileText, UserCheck,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
@@ -148,8 +136,47 @@ const systemAlerts = [
   },
 ];
 
+// ─── Role meta ────────────────────────────────────────────────────────────────
+const ROLE_CONFIG: Record<string, {
+  title: string;
+  description: string;
+  showUsers: boolean;
+  showSystem: boolean;
+  showSecurity: boolean;
+  showUptimeCard: boolean;
+}> = {
+  SUPER_ADMIN: {
+    title: 'Super Admin Dashboard',
+    description: 'Tizim boshqaruvi, foydalanuvchilar va xavfsizlik',
+    showUsers: true, showSystem: true, showSecurity: true, showUptimeCard: true,
+  },
+  ADMIN: {
+    title: 'Admin Dashboard',
+    description: "Foydalanuvchilar va ta'lim jarayonini boshqarish",
+    showUsers: true, showSystem: false, showSecurity: false, showUptimeCard: false,
+  },
+  METODIST: {
+    title: 'Metodist Dashboard',
+    description: "O'quv dasturi va talabalar monitoringi",
+    showUsers: false, showSystem: false, showSecurity: false, showUptimeCard: false,
+  },
+};
+
+const DEFAULT_CONFIG = ROLE_CONFIG['ADMIN'];
+
 export function AdminDashboard() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState('overview');
+
+  // Derive role
+  const rawRole = user?.role?.name || user?.roles?.[0]?.name || '';
+  const normRole = rawRole.replace(/^ROLE_/i, '').toUpperCase();
+  const cfg = ROLE_CONFIG[normRole] ?? DEFAULT_CONFIG;
+
+  const isSuperAdmin = normRole === 'SUPER_ADMIN';
+  const isAdmin      = normRole === 'ADMIN';
+  const isMetodist   = normRole === 'METODIST';
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -177,46 +204,56 @@ export function AdminDashboard() {
     }
   };
 
+  const tabCount = 2 + (cfg.showUsers ? 1 : 0) + (cfg.showSystem ? 1 : 0) + (cfg.showSecurity ? 1 : 0);
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Administrator Dashboard</h1>
-          <p className="text-muted-foreground">
-            Tizim boshqaruvi va monitoring
-          </p>
+          <h1 className="text-3xl font-bold">{cfg.title}</h1>
+          <p className="text-muted-foreground">{cfg.description}</p>
         </div>
-        
+
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2">
-            <Settings className="h-4 w-4" />
-            Sozlamalar
-          </Button>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Yangi Foydalanuvchi
-          </Button>
+          {isSuperAdmin && (
+            <Button variant="outline" className="gap-2" onClick={() => navigate('/settings')}>
+              <Settings className="h-4 w-4" />
+              Sozlamalar
+            </Button>
+          )}
+          {(isSuperAdmin || isAdmin) && (
+            <Button className="gap-2" onClick={() => navigate('/management')}>
+              <Plus className="h-4 w-4" />
+              Yangi Foydalanuvchi
+            </Button>
+          )}
+          {isMetodist && (
+            <Button className="gap-2" onClick={() => navigate('/courses')}>
+              <BookOpen className="h-4 w-4" />
+              Yangi Kurs
+            </Button>
+          )}
         </div>
       </div>
 
       {/* System Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Jami Foydalanuvchilar
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{systemStats.totalUsers.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground">
-              {systemStats.activeUsers} faol
-            </div>
-          </CardContent>
-        </Card>
-        
+        {cfg.showUsers && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Jami Foydalanuvchilar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{systemStats.totalUsers.toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">{systemStats.activeUsers} faol</div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -226,12 +263,10 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{systemStats.totalCourses}</div>
-            <div className="text-xs text-muted-foreground">
-              {systemStats.activeCourses} faol
-            </div>
+            <div className="text-xs text-muted-foreground">{systemStats.activeCourses} faol</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -244,28 +279,48 @@ export function AdminDashboard() {
             <div className="text-xs text-muted-foreground">98% uyg'un</div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Server className="h-4 w-4" />
-              Tizim Holati
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{systemStats.systemUptime}%</div>
-            <div className="text-xs text-muted-foreground">Uptime</div>
-          </CardContent>
-        </Card>
+
+        {!cfg.showUsers && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <GraduationCap className="h-4 w-4" />
+                Imtihonlar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{systemStats.totalExams}</div>
+              <div className="text-xs text-muted-foreground">Jami</div>
+            </CardContent>
+          </Card>
+        )}
+
+        {cfg.showUptimeCard && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Server className="h-4 w-4" />
+                Tizim Holati
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{systemStats.systemUptime}%</div>
+              <div className="text-xs text-muted-foreground">Uptime</div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList
+          className="grid w-full"
+          style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(0, 1fr))` }}
+        >
           <TabsTrigger value="overview">Umumiy</TabsTrigger>
-          <TabsTrigger value="users">Foydalanuvchilar</TabsTrigger>
-          <TabsTrigger value="system">Tizim</TabsTrigger>
+          {cfg.showUsers && <TabsTrigger value="users">Foydalanuvchilar</TabsTrigger>}
+          {cfg.showSystem && <TabsTrigger value="system">Tizim</TabsTrigger>}
           <TabsTrigger value="analytics">Tahlil</TabsTrigger>
-          <TabsTrigger value="security">Xavfsizlik</TabsTrigger>
+          {cfg.showSecurity && <TabsTrigger value="security">Xavfsizlik</TabsTrigger>}
         </TabsList>
 
         {/* Overview Tab */}
@@ -369,8 +424,8 @@ export function AdminDashboard() {
           </Card>
         </TabsContent>
 
-        {/* Users Tab */}
-        <TabsContent value="users" className="space-y-6">
+        {/* Users Tab — admin + super_admin */}
+        {cfg.showUsers && <TabsContent value="users" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card>
               <CardHeader>
@@ -436,10 +491,10 @@ export function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </TabsContent>}
 
-        {/* System Tab */}
-        <TabsContent value="system" className="space-y-6">
+        {/* System Tab — super_admin only */}
+        {cfg.showSystem && <TabsContent value="system" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -495,7 +550,7 @@ export function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </TabsContent>}
 
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">
@@ -588,8 +643,8 @@ export function AdminDashboard() {
           </div>
         </TabsContent>
 
-        {/* Security Tab */}
-        <TabsContent value="security" className="space-y-6">
+        {/* Security Tab — super_admin only */}
+        {cfg.showSecurity && <TabsContent value="security" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -655,7 +710,7 @@ export function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </TabsContent>}
       </Tabs>
     </div>
   );

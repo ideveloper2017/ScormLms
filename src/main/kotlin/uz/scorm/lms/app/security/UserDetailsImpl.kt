@@ -15,10 +15,9 @@ class UserDetailsImpl(user: User) : UserDetails {
     private val authorities: MutableCollection<GrantedAuthority>
 
     init {
-        val role = user.role
-        authorities = if (role != null) {
-            val permissions = role.permissions.map { SimpleGrantedAuthority(it.name) }
-            (listOf(SimpleGrantedAuthority(role.code)) + permissions).toMutableList()
+        val roleName = user.role?.name
+        authorities = if (roleName != null) {
+            mutableListOf(SimpleGrantedAuthority("ROLE_${roleName.uppercase()}"))
         } else {
             mutableListOf()
         }

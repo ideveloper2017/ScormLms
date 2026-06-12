@@ -19,18 +19,14 @@ class CustomUserDetailsService(
         val u = userRepository.findByUsername(username)
             ?: throw UsernameNotFoundException("User not found: $username")
 
-        val role = u.role
-        val roleAuthorities: List<GrantedAuthority> = listOfNotNull(role)
-            .map { if (it.code.startsWith("ROLE_")) it.code else "ROLE_${it.code}" }
-            .map { SimpleGrantedAuthority(it) }
-
-        val permAuthorities: List<GrantedAuthority> = listOfNotNull(role)
-            .flatMap { it.permissions }
-            .map { it.code }
-            .distinct()
-            .map { SimpleGrantedAuthority(it) }
-
         val isEnabled = u.status == UserStatus.ACTIVE
-        return User(u.username, u.password, isEnabled, true, true, true, roleAuthorities + permAuthorities)
+        return User(u.username, u.password, isEnabled, true, true, true, permissionsForRole(u.role?.name))
+    }
+
+    private fun permissionsForRole(roleName: String?): List<GrantedAuthority> {
+        if (roleName == null) return emptyList()
+        val roleAuthority = SimpleGrantedAuthority("ROLE_${roleName.uppercase()}")
+        return listOf(roleAuthority) +
+            RolePermissions.forRole(roleName).map { SimpleGrantedAuthority(it) }
     }
 }

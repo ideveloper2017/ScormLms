@@ -43,7 +43,8 @@ class AuditService(
         )
     }
 
-    fun findAll(): List<AuditLog> {
-        return auditLogRepository.findAll().sortedByDescending { it.timestamp }
-    }
+    fun findAll(): List<AuditLog> = auditLogRepository.findTop200ByOrderByTimestampDesc()
+
+    fun findByUsername(username: String): List<AuditLog> =
+        auditLogRepository.findByUsernameOrderByTimestampDesc(username)
 }

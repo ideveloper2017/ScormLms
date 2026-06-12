@@ -14,8 +14,13 @@ class EmailService {
 
     fun expiration(hours: Long = 24): Instant = Instant.now().plus(hours, ChronoUnit.HOURS)
 
-    // Stub: replace with real email sender (SMTP/SES/etc.)
     fun sendVerificationEmail(email: String, token: String) {
-        log.info("[EmailService] Sending verification email to {} with token {}", email, token)
+        log.info("[EMAIL] Verification → {} | token={}", email, token)
+    }
+
+    fun sendPasswordResetEmail(email: String, token: String) {
+        // TODO: real SMTP/SES integratsiyasiga almashtiring
+        log.info("[EMAIL] Password reset → {} | token={}", email, token)
+        log.info("[EMAIL] Reset link: /reset-password?token={}", token)
     }
 }

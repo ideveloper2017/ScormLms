@@ -11,7 +11,10 @@ class AuditController(private val auditService: AuditService) {
 
     @GetMapping
     @PreAuthorize("hasAuthority('AUDIT_READ')")
-    fun getAllLogs(): List<AuditLog> {
-        return auditService.findAll()
-    }
+    fun getAllLogs(): List<AuditLog> = auditService.findAll()
+
+    @GetMapping("/user/{username}")
+    @PreAuthorize("hasAuthority('AUDIT_READ')")
+    fun getByUser(@PathVariable username: String): List<AuditLog> =
+        auditService.findByUsername(username)
 }

@@ -30,9 +30,13 @@ import uz.scorm.lms.app.v1.auth.service.RefreshTokenService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import uz.scorm.lms.app.v1.twofactor.service.TwoFactorService
 import uz.scorm.lms.app.v1.security.service.LoginAttemptService
+import uz.scorm.lms.app.v1.user.dto.ForgotPasswordRequest
+import uz.scorm.lms.app.v1.user.dto.PasswordChangeRequest
+import uz.scorm.lms.app.v1.user.dto.ResetPasswordWithTokenRequest
 import uz.scorm.lms.app.v1.user.dto.UserDto
 import uz.scorm.lms.app.v1.user.mapper.UserMapper
 import uz.scorm.lms.app.v1.user.model.User
+import uz.scorm.lms.app.v1.user.service.UserService
 import java.time.Duration
 
 private val logger = KotlinLogging.logger {}
@@ -54,7 +58,8 @@ class AuthController(
     private val userRepository: UserRepository,
     private val userDetailsService: UserDetailsService,
     private val twoFactorService: TwoFactorService,
-    private val loginAttemptService: LoginAttemptService
+    private val loginAttemptService: LoginAttemptService,
+    private val userService: UserService
 ) {
 
     data class RefreshRequest(val refreshToken: String)
@@ -90,16 +95,8 @@ class AuthController(
             )
         }
         val principal = authentication.principal as UserDetails
-        // Enforce email verification and 2FA if enabled
         val userEntity = userRepository.findByUsername(principal.username)
-            ?: throw IllegalStateException("User not found: ${'$'}{principal.username}")
-        if (userEntity.email != null && !userEntity.emailVerified) {
-            return ResponseEntity.status(403).body(
-                ErrorResponse(
-                    message = "Email tasdiqlanmagan. Iltimos, email manzilingizni tasdiqlang."
-                )
-            )
-        }
+            ?: throw IllegalStateException("User not found: ${principal.username}")
 
 //
 //        if (userEntity.twoFactorEnabled) {
@@ -249,6 +246,36 @@ class AuthController(
     )
     fun getCurrentUser(@CurrentUser user: User): ResponseEntity<CommonApiResponse<UserDto>> {
         return ResponseEntity.ok(CommonApiResponse.success(userMapper.toDto(user)))
+    }
+
+    @PostMapping("/forgot-password")
+    fun forgotPassword(@RequestBody request: ForgotPasswordRequest): ResponseEntity<Any> {
+        userService.forgotPassword(request)
+        // Xavfsizlik uchun email topilmasa ham xuddi shunday javob qaytariladi
+        return ResponseEntity.ok(mapOf("message" to "Agar email tizimda mavjud bo'lsa, reset havolasi yuborildi"))
+    }
+
+    @PostMapping("/reset-password")
+    fun resetPassword(@RequestBody request: ResetPasswordWithTokenRequest): ResponseEntity<Any> {
+        return try {
+            userService.resetPasswordWithToken(request)
+            ResponseEntity.ok(mapOf("message" to "Parol muvaffaqiyatli o'zgartirildi"))
+        } catch (ex: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(mapOf("message" to ex.message))
+        }
+    }
+
+    @PostMapping("/change-password")
+    fun changePassword(
+        @CurrentUser user: User,
+        @RequestBody request: PasswordChangeRequest
+    ): ResponseEntity<Any> {
+        return try {
+            userService.changePassword(user.username, request)
+            ResponseEntity.noContent().build<Any>()
+        } catch (ex: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(mapOf("message" to ex.message))
+        }
     }
 
     @PostMapping("/logout")

@@ -151,6 +151,14 @@ export async function isAuthenticated(): Promise<boolean> {
   }
 }
 
+export async function forgotPassword(email: string): Promise<void> {
+  await api.post("/auth/forgot-password", { email });
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string): Promise<void> {
+  await api.post("/auth/reset-password", { token, newPassword });
+}
+
 export async function logout(): Promise<void> {
   const currentRefreshToken = getRefreshToken();
 
