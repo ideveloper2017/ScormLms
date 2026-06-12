@@ -67,17 +67,17 @@ class StudentService(
 
     @Transactional
     fun createStudent(dto: StudentDto): StudentDto {
-        val username = dto.username ?: "std_${dto.studentIdNumber}"
-        val user = userService.register(username, "std123", listOf("ROLE_STUDENT"))
-        
+        val username = "std_${dto.studentIdNumber}"
+        val user = userService.register(username, "std123", "ROLE_STUDENT")
+
         user.firstName = dto.firstName
         user.lastName = dto.thirdName
-        user.email = dto.email ?: "$username@std.uz"
+        user.email = "$username@std.uz"
         
         val profile = StudentProfile(
             user = user,
             jshshir = dto.studentIdNumber ?: "",
-            faculty = dto.faculty?.name,
+            faculty = dto.department?.name,
             educationPath = dto.specialty?.name,
             groupName = dto.group?.name,
             course = dto.level?.code?.toIntOrNull() ?: 1,
@@ -97,7 +97,7 @@ class StudentService(
         student.user.lastName = dto.thirdName ?: student.user.lastName
         student.jshshir = dto.studentIdNumber ?: student.jshshir
         student.groupName = dto.group?.name ?: student.groupName
-        student.faculty = dto.faculty?.name ?: student.faculty
+        student.faculty = dto.department?.name ?: student.faculty
         student.educationPath = dto.specialty?.name ?: student.educationPath
         student.language = dto.group?.educationLang?.code ?: student.language
         
@@ -109,7 +109,6 @@ class StudentService(
         
         return StudentDto(
             id = student.id,
-            username = student.user.username,
             fullName = fullName,
             firstName = student.user.firstName,
             thirdName = student.user.lastName,
@@ -118,7 +117,7 @@ class StudentService(
             level = uz.scorm.lms.app.v1.student.dto.CodeNameDto(code = student.course.toString()),
             semester = uz.scorm.lms.app.v1.student.dto.SemesterDto(code = student.semester.toString()),
             studentStatus = uz.scorm.lms.app.v1.student.dto.CodeNameDto(code = student.status.name),
-            faculty = uz.scorm.lms.app.v1.student.dto.DepartmentDto(name = student.faculty),
+            department = uz.scorm.lms.app.v1.student.dto.DepartmentDto(name = student.faculty),
             specialty = uz.scorm.lms.app.v1.student.dto.SpecialtyDto(name = student.educationPath)
         )
     }

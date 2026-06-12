@@ -58,7 +58,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const savedUser = localStorage.getItem("user");
-        const currentUser = savedUser ? (JSON.parse(savedUser) as User) : await getCurrentUser();
+        const rawUser = savedUser ? (JSON.parse(savedUser) as User) : await getCurrentUser();
+        const currentUser = normalizeUser(rawUser);
 
         if (!isMounted) return;
 
@@ -76,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
 
     return () => {
       isMounted = false;
@@ -97,9 +98,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
       }
 
-      setUser(payload.user);
+      const normalizedUser = normalizeUser(payload.user);
+      setUser(normalizedUser);
       setIsAuthenticated(true);
-      setPendingUser(isStudent(payload.user) ? payload.user : null);
+      setPendingUser(isStudent(normalizedUser) ? normalizedUser : null);
 
       if (!localStorage.getItem("faceRecognitionCompleted")) {
         localStorage.setItem("faceRecognitionCompleted", "false");
@@ -125,8 +127,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthenticated(authStatus);
 
       if (authStatus && !user) {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
+        const rawUser = await getCurrentUser();
+        setUser(normalizeUser(rawUser));
       }
 
       return authStatus;
@@ -141,8 +143,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const completedUser = userData ?? pendingUser ?? user;
 
     if (completedUser) {
-      setUser(completedUser);
-      localStorage.setItem("user", JSON.stringify(completedUser));
+      const normalized = normalizeUser(completedUser);
+      setUser(normalized);
+      localStorage.setItem("user", JSON.stringify(normalized));
     }
 
     setPendingUser(null);
@@ -184,6 +187,15 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+function normalizeUser(raw: User): User {
+  const roles = raw.roles?.length
+    ? raw.roles
+    : raw.role
+    ? [raw.role]
+    : [];
+  return { ...raw, roles };
+}
 
 function isStudent(user: User): boolean {
   return user.roles.some((role) => {

@@ -72,7 +72,7 @@ spring:
   jpa:
     hibernate:
       # TODO: Flyway kiritilgach 'validate' ga o'tkazilsin
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: false
     open-in-view: false
 

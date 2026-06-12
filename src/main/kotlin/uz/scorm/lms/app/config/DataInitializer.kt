@@ -92,26 +92,24 @@ class DataInitializer(
             }
         }
 
-        val u = userService.register("admin", password, listOf("ROLE_SUPER_ADMIN"))
+        val u = userService.register("admin", password, "ROLE_SUPER_ADMIN")
         u.firstName = "Super"
         u.lastName = "Admin"
         u.phone = "+1234567890"
         u.email = "admin@example.com"
         u.emailVerified = true
-        u.enabled = true
         userRepository.save(u)
         logger.info { "Super Admin user yaratildi" }
     }
 
     private fun seedDemoUser(username: String, password: String, role: String, firstName: String, phone: String) {
         if (userRepository.existsByUsername(username)) return
-        val u = userService.register(username, password, listOf(role))
+        val u = userService.register(username, password, role)
         u.firstName = firstName
         u.lastName = "User"
         u.phone = phone
         u.email = "$username@example.com"
         u.emailVerified = true
-        u.enabled = true
         userRepository.save(u)
         logger.info { "Demo user yaratildi: $username" }
     }

@@ -1,15 +1,18 @@
 export interface User {
   id?: number | null;
   username: string;
+  fullName?: string | null;
   email?: string | null;
   firstName?: string;
   lastName?: string;
   phone?: string | null;
   photo?: string;
   enabled?: boolean;
-  emailVerified: boolean;
-  twoFactorEnabled: boolean;
+  emailVerified?: boolean;
+  twoFactorEnabled?: boolean;
+  role?: Role | null;
   roles: Role[];
+  status?: string;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -13,62 +13,54 @@ class User(
     @Column(unique = true, nullable = false)
     var username: String = "",
 
-    @Column(unique = true, nullable = true)  // Make sure this is nullable
-    var phone: String = "",
+    @Column(unique = true)
+    var email: String? = null,
 
-    @Column(nullable = false)
+    @Column(unique = true)
+    var phone: String? = null,
+
+    @Column(name = "password", nullable = false)
     var password: String = "",
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id")
+    var role: Role? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'ACTIVE'")
+    var status: UserStatus = UserStatus.ACTIVE,
+
+    // Extra fields kept for existing integrations
     @Column(name = "first_name")
     var firstName: String? = null,
 
     @Column(name = "last_name")
     var lastName: String? = null,
 
-    @Column(nullable = false)
-    var enabled: Boolean = true,
-
-    // HEMIS integration fields
-    @Column(unique = true)
-    var hemisId: String? = null,
-
-    @Column(unique = true)
-    var email: String? = null,
-
     @Column(name = "photo")
     var photo: String? = null,
 
-    // Email verification
+    @Column(unique = true)
+    var hemisId: String? = null,
+
     @Column(nullable = false)
     var emailVerified: Boolean = false,
+
     var emailVerificationToken: String? = null,
     var emailVerificationExpiresAt: Instant? = null,
 
-    // Face ID fields (simplified placeholders)
     @Lob
-    var faceTemplate: String? = null, // e.g., base64 embedding or vendor-provided template
+    var faceTemplate: String? = null,
 
     @Column(nullable = false)
     var faceVerified: Boolean = false,
 
     var lastFaceVerifiedAt: Instant? = null,
 
-    // Two-Factor Authentication (TOTP)
     @Column
     var twoFactorEnabled: Boolean = false,
+
     @Lob
     var twoFactorSecret: String? = null,
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "user_roles",
-        joinColumns = [JoinColumn(name = "user_id")],
-        inverseJoinColumns = [JoinColumn(name = "role_id")]
-    )
-    var roles: MutableSet<Role> = mutableSetOf()
-): BaseEntity(), Serializable {
-
-    fun getFullName(): String {
-        return listOfNotNull(firstName, lastName).joinToString(" ").ifEmpty { username }
-    }
-}
+) : BaseEntity(), Serializable

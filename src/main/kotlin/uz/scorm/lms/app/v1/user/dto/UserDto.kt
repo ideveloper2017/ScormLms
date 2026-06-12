@@ -1,42 +1,34 @@
 package uz.scorm.lms.app.v1.user.dto
 
 import uz.scorm.lms.app.v1.role.dto.RoleDto
-import uz.scorm.lms.app.v1.role.model.Role
-import uz.scorm.lms.app.v1.user.model.User
+import uz.scorm.lms.app.v1.user.model.UserStatus
+import java.time.Instant
 
 data class UserDto(
     val id: Long? = null,
+    val fullName: String? = null,
     val username: String,
-    val phone: String?,
-    val firstName: String?,
-    val lastName: String?,
-    val photo: String?,
-    var enabled: Boolean,
-    val email: String?,
-    val emailVerified: Boolean,
-    val twoFactorEnabled: Boolean,
-    val roles: MutableSet<Role> = mutableSetOf()
+    val email: String? = null,
+    val phone: String? = null,
+    val role: RoleDto? = null,
+    val status: UserStatus = UserStatus.ACTIVE,
+    val createdAt: Instant? = null,
+    val updatedAt: Instant? = null
+)
 
+data class UserCreateRequest(
+    val fullName: String? = null,
+    val username: String,
+    val email: String? = null,
+    val phone: String? = null,
+    val password: String,
+    val roleCode: String
+)
 
-){
-    companion object {
-        fun fromUser(user: User?): UserDto? {
-            return user?.let {
-                UserDto(
-                    id = it.id,
-                    username = it.username,
-                    phone = it.phone,
-                    photo=it.photo,
-                    email = it.email,
-                    firstName = it.firstName,
-                    lastName = it.lastName,
-                    enabled = it.enabled,
-                    emailVerified = it.emailVerified,
-                    twoFactorEnabled = it.twoFactorEnabled,
-                    roles = it.roles.map { it } as MutableSet<Role>
-                )
-            }
-        }
-    }
-}
-
+data class UserUpdateRequest(
+    val fullName: String? = null,
+    val email: String? = null,
+    val phone: String? = null,
+    val roleCode: String? = null,
+    val status: UserStatus? = null
+)

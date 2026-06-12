@@ -42,20 +42,6 @@ class CurrentUserArgumentResolver(
 
         return when (val principal = authentication.principal) {
             is User -> principal
-            is UserDetailsImpl -> {
-                // Get user from request cache if available
-                val userId = principal.getId()
-                val requestKey = "current_user_$userId"
-
-                (webRequest.getAttribute(requestKey, NativeWebRequest.SCOPE_REQUEST) as? User)?.let {
-                    return it
-                }
-
-                // Otherwise get the user from UserDetailsImpl
-                val user = principal.getUser()
-                webRequest.setAttribute(requestKey, user, NativeWebRequest.SCOPE_REQUEST)
-                user
-            }
             is UserDetails -> {
                 val requestKey = "current_user_${principal.username}"
 
