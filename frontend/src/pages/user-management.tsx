@@ -33,6 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Role } from '@/types/auth.types';
+import { AcademicSelect } from '@/components/admin/academic-select';
 import {
   AuditLogEntry, UserCreateRequest, UserRecord, UserUpdateRequest,
   assignRoleToUser, changeUserStatus, createUser, deleteUser,
@@ -834,16 +835,16 @@ export function UserManagement() {
               <Input placeholder="12345678901234" value={form.jshshir ?? ''} onChange={(e) => setForm({ ...form, jshshir: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Guruh</Label>
-              <Input placeholder="CS-22-01" value={form.groupName ?? ''} onChange={(e) => setForm({ ...form, groupName: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
               <Label>Fakultet</Label>
-              <Input placeholder="Kompyuter Fanlari" value={form.faculty ?? ''} onChange={(e) => setForm({ ...form, faculty: e.target.value })} />
+              <AcademicSelect kind="faculty" value={form.faculty ?? ''} onChange={(v) => setForm({ ...form, faculty: v })} />
             </div>
             <div className="space-y-1.5">
               <Label>Yo'nalish</Label>
-              <Input placeholder="Dasturiy injiniring" value={form.direction ?? ''} onChange={(e) => setForm({ ...form, direction: e.target.value })} />
+              <AcademicSelect kind="program" value={form.direction ?? ''} onChange={(v) => setForm({ ...form, direction: v })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Guruh</Label>
+              <AcademicSelect kind="group" value={form.groupName ?? ''} onChange={(v) => setForm({ ...form, groupName: v })} />
             </div>
           </div>
 

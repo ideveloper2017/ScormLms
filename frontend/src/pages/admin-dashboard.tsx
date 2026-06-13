@@ -4,7 +4,7 @@ import {
   Users, BookOpen, GraduationCap,
   Shield, Monitor, Activity, AlertTriangle, Settings,
   Plus, BarChart3, Award, CheckCircle,
-  Database, Server, FileText, UserCheck,
+  Database, Server, FileText, UserCheck, UserCog, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
@@ -26,12 +26,18 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 const systemStats = {
   totalUsers: 2869,
   activeUsers: 2756,
+  totalStudents: 2812,
+  totalTeachers: 45,
   totalCourses: 156,
   activeCourses: 142,
   totalExams: 89,
+  activeExams: 23,
   scormPackages: 234,
   systemUptime: 99.8,
   serverLoad: 67,
+  contentCompletion: 78,
+  avgAchievement: 82,
+  passRate: 91,
 };
 
 const recentActivities = [
@@ -217,19 +223,19 @@ export function AdminDashboard() {
 
         <div className="flex items-center gap-2">
           {isSuperAdmin && (
-            <Button variant="outline" className="gap-2" onClick={() => navigate('/settings')}>
+            <Button variant="outline" className="gap-2" onClick={() => navigate('/admin/settings')}>
               <Settings className="h-4 w-4" />
               Sozlamalar
             </Button>
           )}
           {(isSuperAdmin || isAdmin) && (
-            <Button className="gap-2" onClick={() => navigate('/management')}>
+            <Button className="gap-2" onClick={() => navigate('/admin/users')}>
               <Plus className="h-4 w-4" />
               Yangi Foydalanuvchi
             </Button>
           )}
           {isMetodist && (
-            <Button className="gap-2" onClick={() => navigate('/courses')}>
+            <Button className="gap-2" onClick={() => navigate('/admin/courses')}>
               <BookOpen className="h-4 w-4" />
               Yangi Kurs
             </Button>
@@ -237,70 +243,142 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* System Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {cfg.showUsers && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Jami Foydalanuvchilar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemStats.totalUsers.toLocaleString()}</div>
-              <div className="text-xs text-muted-foreground">{systemStats.activeUsers} faol</div>
-            </CardContent>
-          </Card>
-        )}
-
+      {/* Asosiy metrikalar — 4 ta karta */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Kurslar
+              <GraduationCap className="h-4 w-4 text-blue-500" />
+              Jami Talabalar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.totalCourses}</div>
-            <div className="text-xs text-muted-foreground">{systemStats.activeCourses} faol</div>
+            <div className="text-2xl font-bold">{systemStats.totalStudents.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+              <TrendingUp className="h-3 w-3 text-green-500" />
+              <span className="text-green-600">+2.4%</span> o'tgan oydan
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              SCORM Paketlar
+              <UserCog className="h-4 w-4 text-purple-500" />
+              Jami O'qituvchilar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.scormPackages}</div>
-            <div className="text-xs text-muted-foreground">98% uyg'un</div>
+            <div className="text-2xl font-bold">{systemStats.totalTeachers}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {systemStats.totalUsers - systemStats.totalStudents - systemStats.totalTeachers} xodim
+            </div>
           </CardContent>
         </Card>
 
-        {!cfg.showUsers && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <GraduationCap className="h-4 w-4" />
-                Imtihonlar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemStats.totalExams}</div>
-              <div className="text-xs text-muted-foreground">Jami</div>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-green-500" />
+              Faol Kurslar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{systemStats.activeCourses}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Jami {systemStats.totalCourses} ta kursdan
+            </div>
+          </CardContent>
+        </Card>
 
-        {cfg.showUptimeCard && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <FileText className="h-4 w-4 text-orange-500" />
+              Faol Testlar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{systemStats.activeExams}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Jami {systemStats.totalExams} ta imtihondan
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Kontent va o'zlashtirish ko'rsatkichlari */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-blue-500" />
+              Kontent To'ldirilganlik Darajasi
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-end justify-between">
+              <span className="text-3xl font-bold">{systemStats.contentCompletion}%</span>
+              <span className="text-xs text-muted-foreground">o'rtacha</span>
+            </div>
+            <Progress value={systemStats.contentCompletion} className="h-2" />
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div>
+                <div className="font-semibold text-green-600">92%</div>
+                <div className="text-muted-foreground">Yakunlagan</div>
+              </div>
+              <div>
+                <div className="font-semibold text-blue-600">78%</div>
+                <div className="text-muted-foreground">Jarayonda</div>
+              </div>
+              <div>
+                <div className="font-semibold text-gray-400">8%</div>
+                <div className="text-muted-foreground">Boshlamagan</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Award className="h-4 w-4 text-yellow-500" />
+              O'zlashtirish Ko'rsatkichlari
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-end justify-between">
+              <span className="text-3xl font-bold">{systemStats.avgAchievement}%</span>
+              <span className="text-xs text-muted-foreground">o'rtacha ball</span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span>O'tish darajasi</span>
+                <span className="font-semibold text-green-600">{systemStats.passRate}%</span>
+              </div>
+              <Progress value={systemStats.passRate} className="h-1.5" />
+              <div className="flex justify-between text-xs">
+                <span>A'lo (90-100)</span>
+                <span className="font-semibold">24%</span>
+              </div>
+              <Progress value={24} className="h-1.5" />
+              <div className="flex justify-between text-xs">
+                <span>Yaxshi (75-89)</span>
+                <span className="font-semibold">38%</span>
+              </div>
+              <Progress value={38} className="h-1.5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* System Status Cards — super admin uchun */}
+      {cfg.showUptimeCard && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Server className="h-4 w-4" />
-                Tizim Holati
+                <Server className="h-4 w-4" /> Tizim Holati
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -308,8 +386,31 @@ export function AdminDashboard() {
               <div className="text-xs text-muted-foreground">Uptime</div>
             </CardContent>
           </Card>
-        )}
-      </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Shield className="h-4 w-4" /> SCORM Paketlar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{systemStats.scormPackages}</div>
+              <div className="text-xs text-muted-foreground">98% uyg'un</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Users className="h-4 w-4" /> Jami Foydalanuvchilar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{systemStats.totalUsers.toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">{systemStats.activeUsers} faol</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
         <TabsList

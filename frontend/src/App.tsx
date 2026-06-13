@@ -34,8 +34,43 @@ import { StudentCabinet } from "@/pages/student-cabinet";
 import { StudentManagement } from "@/pages/student-management";
 import { TeachingManagement } from "@/pages/teaching-management";
 import { UserManagement } from "@/pages/user-management";
+import { Groups } from "@/pages/groups";
+import { Subjects } from "@/pages/subjects";
+import { TeacherManagement } from "@/pages/teacher-management";
+import { AcademicStructure } from "@/pages/academic-structure";
 import { CoursePlayer } from "@/components/scorm/course-player";
 import { ProctoringSession } from "@/components/proctoring/proctoring-session";
+
+// Admin pages
+import { AdminRoles } from "@/pages/admin/roles";
+import { AdminStudyPlans } from "@/pages/admin/study-plans";
+import { AdminCalendar } from "@/pages/admin/calendar";
+import { AdminIntegrations } from "@/pages/admin/integrations";
+import { AdminAuditLogs } from "@/pages/admin/audit-logs";
+
+// Student pages
+import { StudentSchedule } from "@/pages/student/schedule";
+import { StudentAssignments } from "@/pages/student/assignments";
+import { StudentTests } from "@/pages/student/tests";
+import { StudentGrades } from "@/pages/student/grades";
+import { StudentAttendance } from "@/pages/student/attendance";
+import { StudentNotifications } from "@/pages/student/notifications";
+
+// Teacher pages
+import { TeacherDashboard } from "@/pages/teacher/dashboard";
+import { TeacherCourses } from "@/pages/teacher/courses";
+import { TeacherCourseCreate } from "@/pages/teacher/course-create";
+import { TeacherCourseDetail } from "@/pages/teacher/course-detail";
+import { TeacherAssignments } from "@/pages/teacher/assignments";
+import { TeacherSubmissions } from "@/pages/teacher/submissions";
+import { TeacherTests } from "@/pages/teacher/tests";
+import { TeacherQuestions } from "@/pages/teacher/questions";
+import { TeacherGradebook } from "@/pages/teacher/gradebook";
+import { TeacherStudents } from "@/pages/teacher/students";
+import { TeacherAttendance } from "@/pages/teacher/attendance";
+import { TeacherAnnouncements } from "@/pages/teacher/announcements";
+import { TeacherContent } from "@/pages/teacher/content";
+import { TeacherProfile } from "@/pages/teacher/profile";
 
 // ─── Role constants (match backend role names, normalizeRole strips ROLE_ prefix) ──────
 // Backend returns role.name = "super_admin" | "admin" | "metodist" | "teacher" |
@@ -113,6 +148,43 @@ function App() {
         <Route path="/student-dashboard" element={<P roles={[R_STU]}><StudentDashboard /></P>} />
         <Route path="/cabinet"           element={<P roles={[R_STU]}><StudentCabinet /></P>} />
 
+        {/* ── /teacher/* ───────────────────────────────────────────────────── */}
+        <Route path="/teacher/dashboard"              element={<P roles={TEACHER_ROLES}><TeacherDashboard /></P>} />
+        <Route path="/teacher/courses"                element={<P roles={TEACHER_ROLES}><TeacherCourses /></P>} />
+        <Route path="/teacher/courses/create"         element={<P roles={TEACHER_ROLES}><TeacherCourseCreate /></P>} />
+        <Route path="/teacher/courses/:id"            element={<P roles={TEACHER_ROLES}><TeacherCourseDetail /></P>} />
+        <Route path="/teacher/courses/:id/modules"    element={<P roles={TEACHER_ROLES}><TeacherCourseDetail defaultTab="modules" /></P>} />
+        <Route path="/teacher/courses/:id/lessons"    element={<P roles={TEACHER_ROLES}><TeacherCourseDetail defaultTab="lessons" /></P>} />
+        <Route path="/teacher/courses/:id/contents"   element={<P roles={TEACHER_ROLES}><TeacherCourseDetail defaultTab="contents" /></P>} />
+        <Route path="/teacher/assignments"            element={<P roles={TEACHER_ROLES}><TeacherAssignments /></P>} />
+        <Route path="/teacher/assignments/create"     element={<P roles={TEACHER_ROLES}><TeacherAssignments openCreate /></P>} />
+        <Route path="/teacher/assignments/:id/submissions" element={<P roles={TEACHER_ROLES}><TeacherSubmissions /></P>} />
+        <Route path="/teacher/tests"                  element={<P roles={TEACHER_ROLES}><TeacherTests /></P>} />
+        <Route path="/teacher/tests/create"           element={<P roles={TEACHER_ROLES}><TeacherTests openCreate /></P>} />
+        <Route path="/teacher/questions"              element={<P roles={TEACHER_ROLES}><TeacherQuestions /></P>} />
+        <Route path="/teacher/gradebook"              element={<P roles={TEACHER_ROLES}><TeacherGradebook /></P>} />
+        <Route path="/teacher/students"               element={<P roles={TEACHER_ROLES}><TeacherStudents /></P>} />
+        <Route path="/teacher/attendance"             element={<P roles={TEACHER_ROLES}><TeacherAttendance /></P>} />
+        <Route path="/teacher/messages"               element={<P roles={TEACHER_ROLES}><Communication /></P>} />
+        <Route path="/teacher/announcements"          element={<P roles={TEACHER_ROLES}><TeacherAnnouncements /></P>} />
+        <Route path="/teacher/content"                element={<P roles={TEACHER_ROLES}><TeacherContent /></P>} />
+        <Route path="/teacher/reports"                element={<P roles={TEACHER_ROLES}><Reports /></P>} />
+        <Route path="/teacher/profile"                element={<P roles={TEACHER_ROLES}><TeacherProfile /></P>} />
+
+        {/* ── /student/* ───────────────────────────────────────────────────── */}
+        <Route path="/student/dashboard"     element={<P roles={[R_STU]}><StudentDashboard /></P>} />
+        <Route path="/student/courses"       element={<P roles={[R_STU]}><Courses /></P>} />
+        <Route path="/student/schedule"      element={<P roles={[R_STU]}><StudentSchedule /></P>} />
+        <Route path="/student/assignments"   element={<P roles={[R_STU]}><StudentAssignments /></P>} />
+        <Route path="/student/tests"         element={<P roles={[R_STU]}><StudentTests /></P>} />
+        <Route path="/student/exams"         element={<P roles={[R_STU]}><Exams /></P>} />
+        <Route path="/student/grades"        element={<P roles={[R_STU]}><StudentGrades /></P>} />
+        <Route path="/student/attendance"    element={<P roles={[R_STU]}><StudentAttendance /></P>} />
+        <Route path="/student/messages"      element={<P roles={[R_STU]}><Communication /></P>} />
+        <Route path="/student/notifications" element={<P roles={[R_STU]}><StudentNotifications /></P>} />
+        <Route path="/student/calendar"      element={<P roles={[R_STU]}><AdminCalendar /></P>} />
+        <Route path="/student/profile"       element={<P roles={[R_STU]}><StudentCabinet /></P>} />
+
         {/* ── All learning participants (staff + students) ─────────────────── */}
         <Route path="/courses"       element={<P roles={CONTENT_ROLES}><Courses /></P>} />
         <Route path="/resources"     element={<P roles={CONTENT_ROLES}><Resources /></P>} />
@@ -127,6 +199,12 @@ function App() {
         <Route path="/teaching"    element={<P roles={TEACHER_ROLES}><TeachingManagement /></P>} />
         <Route path="/students-management" element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
 
+        {/* ── Akademik tuzilma (Stage 3) ───────────────────────────────────── */}
+        <Route path="/academic"            element={<P roles={STAFF_ROLES}><AcademicStructure /></P>} />
+        <Route path="/groups"              element={<P roles={STAFF_ROLES}><Groups /></P>} />
+        <Route path="/subjects"            element={<P roles={STAFF_ROLES}><Subjects /></P>} />
+        <Route path="/teachers-management" element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
+
         {/* ── Proctor ──────────────────────────────────────────────────────── */}
         <Route path="/exam/:id/proctoring" element={<P roles={[R_STU, R_PROC]}><ProctoringSession /></P>} />
 
@@ -134,6 +212,25 @@ function App() {
         <Route path="/management" element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
         <Route path="/statistics" element={<P roles={[...ADMIN_ROLES, R_MON, R_MET]}><Statistics /></P>} />
         <Route path="/settings"   element={<P roles={ADMIN_ROLES}><Settings /></P>} />
+
+        {/* ── /admin/* ─────────────────────────────────────────────────────── */}
+        <Route path="/admin/dashboard"    element={<P roles={STAFF_ROLES}><AdminDashboard /></P>} />
+        <Route path="/admin/users"        element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
+        <Route path="/admin/students"     element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
+        <Route path="/admin/teachers"     element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
+        <Route path="/admin/roles"        element={<P roles={ADMIN_ROLES}><AdminRoles /></P>} />
+        <Route path="/admin/faculties"    element={<P roles={STAFF_ROLES}><AcademicStructure defaultTab="faculties" /></P>} />
+        <Route path="/admin/departments"  element={<P roles={STAFF_ROLES}><AcademicStructure defaultTab="departments" /></P>} />
+        <Route path="/admin/programs"     element={<P roles={STAFF_ROLES}><AcademicStructure defaultTab="programs" /></P>} />
+        <Route path="/admin/groups"       element={<P roles={STAFF_ROLES}><Groups /></P>} />
+        <Route path="/admin/subjects"     element={<P roles={STAFF_ROLES}><Subjects /></P>} />
+        <Route path="/admin/study-plans"  element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
+        <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><Courses /></P>} />
+        <Route path="/admin/calendar"     element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
+        <Route path="/admin/reports"      element={<P roles={REPORTING_ROLES}><Reports /></P>} />
+        <Route path="/admin/integrations" element={<P roles={ADMIN_ROLES}><AdminIntegrations /></P>} />
+        <Route path="/admin/audit-logs"   element={<P roles={ADMIN_ROLES}><AdminAuditLogs /></P>} />
+        <Route path="/admin/settings"     element={<P roles={ADMIN_ROLES}><Settings /></P>} />
 
         {/* ── Wildcard: show role-appropriate dashboard ────────────────────── */}
         <Route
