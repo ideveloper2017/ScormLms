@@ -224,7 +224,7 @@ export function StudentGrades() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
                   <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(v: number) => [`${v}%`, "Ball"]} />
+                  <Tooltip formatter={(v: any) => [`${v}%`, "Ball"]} />
                   <Bar dataKey="ball" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

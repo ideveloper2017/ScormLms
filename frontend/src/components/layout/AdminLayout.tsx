@@ -24,9 +24,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="overflow-hidden">
-        {/* ── Header ───────────────────────────────────────────────── */}
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
+      <SidebarInset className="h-svh overflow-hidden">
+        {/* ── Header (skrol qilinganda yuqorida qotib turadi) ──────── */}
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
 

@@ -234,6 +234,15 @@ function App() {
 
         {/* ── Wildcard: show role-appropriate dashboard ────────────────────── */}
         <Route
+          path="/students-management"
+          element={
+            <ProtectedPage allowedRoles={["ROLE_ADMIN", "ROLE_METODIST"]}>
+              <StudentManagement />
+            </ProtectedPage>
+          }
+        />
+
+        <Route
           path="*"
           element={
             <AuthGuard>
@@ -260,7 +269,6 @@ function P({ roles, children }: { roles: string[]; children: ReactNode }) {
 }
 
 // ─── Dashboard routing by role ──────────────────────────────────────────────────────
-
 function getDashboardComponent(user: ReturnType<typeof useAuth>["user"]) {
   if (isStudent(user))                return <StudentDashboard />;
   if (hasRole(user, R_TEACH))         return <InstructorDashboard />;
@@ -288,6 +296,22 @@ function hasRole(user: ReturnType<typeof useAuth>["user"], roleToMatch: string):
 
 function norm(role: string): string {
   return role.replace(/^ROLE_/i, "").toUpperCase();
+}
+
+function ProtectedPage({
+  allowedRoles,
+  children,
+}: {
+  allowedRoles: string[];
+  children: ReactNode;
+}) {
+  return (
+    <AuthGuard>
+      <DashboardLayout>
+        <RoleGuard allowedRoles={allowedRoles}>{children}</RoleGuard>
+      </DashboardLayout>
+    </AuthGuard>
+  );
 }
 
 export default App;

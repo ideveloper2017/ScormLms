@@ -13,6 +13,16 @@ dist-ssr
 *.local
 .env
 
+# Local Development Files - CORS workaround
+*.local.*
+postgresql-data.local.js
+
+# API Files - Development only
+src/lib/api.ts
+src/lib/api-service.ts
+src/lib/mock-auth.local.ts
+src/lib/database.mock.ts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -23,3 +33,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+vite.config.ts

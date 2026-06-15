@@ -24,7 +24,7 @@ export function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
   const { user } = useAuth();
 
   return (
-    <header className="bg-background border-b border-border px-4 py-3 flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
