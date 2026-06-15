@@ -34,14 +34,8 @@ import { Button } from '@/components/ui/button.tsx';
 import { Input } from '@/components/ui/input.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table.tsx';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable } from '@/components/ui/data-table';
 import {
   Select,
   SelectContent,
@@ -210,6 +204,42 @@ const subjects = [
   { id: 7, name: 'Machine Learning', credits: 12, level: 3, active: false },
 ];
 
+const subjectColumns: ColumnDef<(typeof subjects)[0]>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Fan nomi',
+    cell: ({ getValue }) => <span className="font-medium">{getValue<string>()}</span>,
+  },
+  {
+    accessorKey: 'credits',
+    header: 'Kreditlar',
+    cell: ({ getValue }) => <Badge variant="secondary">{getValue<number>()} kredit</Badge>,
+  },
+  {
+    accessorKey: 'level',
+    header: 'Daraja',
+    cell: ({ getValue }) => <Badge variant="outline">Daraja {getValue<number>()}</Badge>,
+  },
+  {
+    accessorKey: 'active',
+    header: 'Holat',
+    cell: ({ getValue }) => getValue<boolean>()
+      ? <Badge className="bg-green-100 text-green-800">Faol</Badge>
+      : <Badge className="bg-gray-100 text-gray-800">Nofaol</Badge>,
+  },
+  {
+    id: 'actions',
+    header: () => <div className="text-right">Amallar</div>,
+    enableSorting: false,
+    cell: () => (
+      <div className="flex items-center gap-1 justify-end">
+        <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon"><Settings className="h-4 w-4" /></Button>
+      </div>
+    ),
+  },
+];
+
 export function TeachingManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -244,6 +274,86 @@ export function TeachingManagement() {
       return <Badge className="bg-yellow-100 text-yellow-800">Jarayonda</Badge>;
     }
   };
+
+  const transferColumns: ColumnDef<(typeof students)[0]>[] = [
+    {
+      accessorKey: 'name',
+      header: 'Talaba',
+      cell: ({ row: { original: s } }) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={s.avatar} alt={s.name} />
+            <AvatarFallback>{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium">{s.name}</div>
+            <div className="text-sm text-muted-foreground">GPA: {s.gpa}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'currentCourse',
+      header: 'Joriy Kurs',
+      cell: ({ row: { original: s } }) => (
+        <div>
+          <div className="font-medium">{s.currentCourse}</div>
+          <div className="text-sm text-muted-foreground">Daraja {s.currentLevel}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'credits',
+      header: 'Kreditlar',
+      cell: ({ getValue }) => <span className="font-medium">{getValue<number>()}</span>,
+    },
+    {
+      accessorKey: 'completionRate',
+      header: "O'zlashtirish",
+      cell: ({ getValue }) => {
+        const v = getValue<number>();
+        return (
+          <div className="space-y-1 min-w-[100px]">
+            <div className="text-sm">{v}%</div>
+            <Progress value={v} className="h-2" />
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'nextCourse',
+      header: 'Keyingi Kurs',
+      cell: ({ getValue }) => {
+        const v = getValue<string | null>();
+        return v ? <span className="text-sm">{v}</span> : <span className="text-muted-foreground">-</span>;
+      },
+    },
+    {
+      accessorKey: 'status',
+      header: 'Holat',
+      cell: ({ row }) => getTransferStatus(row.original),
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">Amallar</div>,
+      enableSorting: false,
+      cell: ({ row: { original: s } }) => (
+        <div className="flex items-center gap-1 justify-end">
+          {s.canTransfer && (
+            <Button variant="outline" size="sm" className="gap-1">
+              <ArrowRight className="h-3 w-3" />O'tkazish
+            </Button>
+          )}
+          {s.status === 'retake' && (
+            <Button variant="outline" size="sm" className="gap-1">
+              <RefreshCw className="h-3 w-3" />Qayta
+            </Button>
+          )}
+          <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="p-6 space-y-6">
@@ -438,89 +548,11 @@ export function TeachingManagement() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Talaba</TableHead>
-                    <TableHead>Joriy Kurs</TableHead>
-                    <TableHead>Kreditlar</TableHead>
-                    <TableHead>O'zlashtirish</TableHead>
-                    <TableHead>Keyingi Kurs</TableHead>
-                    <TableHead>Holat</TableHead>
-                    <TableHead className="text-right">Amallar</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={student.avatar} alt={student.name} />
-                            <AvatarFallback>
-                              {student.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">{student.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              GPA: {student.gpa}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{student.currentCourse}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Daraja {student.currentLevel}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{student.credits}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span>{student.completionRate}%</span>
-                          </div>
-                          <Progress value={student.completionRate} className="h-2" />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {student.nextCourse ? (
-                          <div className="text-sm">{student.nextCourse}</div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {getTransferStatus(student)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          {student.canTransfer && (
-                            <Button variant="outline" size="sm" className="gap-1">
-                              <ArrowRight className="h-3 w-3" />
-                              O'tkazish
-                            </Button>
-                          )}
-                          {student.status === 'retake' && (
-                            <Button variant="outline" size="sm" className="gap-1">
-                              <RefreshCw className="h-3 w-3" />
-                              Qayta
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={transferColumns}
+                data={filteredStudents}
+                emptyText="Talaba topilmadi"
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -674,50 +706,16 @@ export function TeachingManagement() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fan nomi</TableHead>
-                    <TableHead>Kreditlar</TableHead>
-                    <TableHead>Daraja</TableHead>
-                    <TableHead>Holat</TableHead>
-                    <TableHead className="text-right">Amallar</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {subjects.map((subject) => (
-                    <TableRow key={subject.id}>
-                      <TableCell className="font-medium">{subject.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{subject.credits} kredit</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">Daraja {subject.level}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {subject.active ? (
-                          <Badge className="bg-green-100 text-green-800">Faol</Badge>
-                        ) : (
-                          <Badge className="bg-gray-100 text-gray-800">Nofaol</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={subjectColumns}
+                data={subjects}
+                searchPlaceholder="Fan nomini qidirish..."
+                emptyText="Fan topilmadi"
+              />
             </CardContent>
           </Card>
         </TabsContent>
+
 
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">

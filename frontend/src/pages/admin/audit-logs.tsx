@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/query-keys";
+import { ColumnDef } from "@tanstack/react-table";
 import { ScrollText, Search, RefreshCw, AlertTriangle, Filter } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listAuditLogs, type AuditLogEntry } from "@/lib/rbac-api";
 
@@ -21,29 +24,83 @@ const METHOD_CLS: Record<string, string> = {
   DELETE: "bg-red-100    text-red-800    dark:bg-red-900/30    dark:text-red-300",
 };
 
+const columns: ColumnDef<AuditLogEntry>[] = [
+  {
+    accessorKey: "username",
+    header: "Foydalanuvchi",
+    cell: ({ getValue }) => {
+      const val = getValue<string | null>();
+      return val
+        ? <span className="font-medium text-sm">{val}</span>
+        : <span className="text-muted-foreground text-sm">System</span>;
+    },
+  },
+  {
+    accessorKey: "action",
+    header: "Harakat",
+    cell: ({ getValue }) => (
+      <Badge variant="outline" className="text-xs font-mono">{getValue<string>()}</Badge>
+    ),
+  },
+  {
+    id: "methodUrl",
+    header: "Metod / URL",
+    enableSorting: false,
+    cell: ({ row }) => (
+      <div className="text-xs font-mono text-muted-foreground max-w-[220px] truncate">
+        {row.original.method && (
+          <Badge className={`${METHOD_CLS[row.original.method] ?? ""} text-xs mr-1 font-mono`}>
+            {row.original.method}
+          </Badge>
+        )}
+        {row.original.path}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ getValue }) => {
+      const val = getValue<number | null>();
+      if (val == null) return null;
+      return (
+        <Badge className={val >= 400 ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}>
+          {val}
+        </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: "ip",
+    header: "IP",
+    cell: ({ getValue }) => (
+      <span className="text-xs font-mono text-muted-foreground">{getValue<string | null>() ?? "—"}</span>
+    ),
+  },
+  {
+    accessorKey: "timestamp",
+    header: "Vaqt",
+    cell: ({ getValue }) => (
+      <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtDateTime(getValue<string>())}</span>
+    ),
+  },
+];
+
 export function AdminAuditLogs() {
-  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { data: logs = [], isLoading: loading, error: loadError } = useQuery({
+    queryKey: qk.auditLogs(),
+    queryFn: listAuditLogs,
+    staleTime: 30_000,
+  });
+  const error = loadError instanceof Error ? loadError.message : loadError ? "Loglarni yuklab bo'lmadi" : null;
+  const load = () => queryClient.invalidateQueries({ queryKey: qk.auditLogs() });
+
   const [search, setSearch] = useState("");
   const [methodFilter, setMethodFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setLogs(await listAuditLogs());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Loglarni yuklab bo'lmadi");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const filtered = logs.filter((log) => {
+  const filtered = useMemo(() => logs.filter((log) => {
     const t = search.trim().toLowerCase();
     const matchSearch = !t ||
       (log.username ?? "").toLowerCase().includes(t) ||
@@ -57,15 +114,15 @@ export function AdminAuditLogs() {
       (statusFilter === "4xx" && log.status != null && log.status >= 400 && log.status < 500) ||
       (statusFilter === "5xx" && log.status != null && log.status >= 500);
     return matchSearch && matchMethod && matchStatus;
-  });
+  }), [logs, search, methodFilter, statusFilter]);
 
-  const methods = [...new Set(logs.map((l) => l.method).filter(Boolean))];
+  const methods = useMemo(() => [...new Set(logs.map((l) => l.method).filter(Boolean))], [logs]);
 
-  const stats = {
+  const stats = useMemo(() => ({
     total:  logs.length,
     errors: logs.filter((l) => l.status != null && l.status >= 400).length,
     users:  new Set(logs.map((l) => l.username).filter(Boolean)).size,
-  };
+  }), [logs]);
 
   return (
     <div className="p-6 space-y-6">
@@ -151,7 +208,7 @@ export function AdminAuditLogs() {
             <CardDescription>So'nggi {logs.length} ta yozuv</CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent>
           {loading ? (
             <div className="flex justify-center py-12"><Spinner className="h-8 w-8" /></div>
           ) : error ? (
@@ -161,56 +218,12 @@ export function AdminAuditLogs() {
               <Button onClick={load} className="gap-2"><RefreshCw className="h-4 w-4" />Qayta urinish</Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Foydalanuvchi</TableHead>
-                    <TableHead>Harakat</TableHead>
-                    <TableHead>Metod / URL</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>IP</TableHead>
-                    <TableHead>Vaqt</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                        Log topilmadi
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {filtered.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-medium text-sm">{log.username ?? <span className="text-muted-foreground">System</span>}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs font-mono">{log.action}</Badge>
-                      </TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground max-w-[200px] truncate">
-                        {log.method && (
-                          <Badge className={`${METHOD_CLS[log.method] ?? ""} text-xs mr-1 font-mono`}>
-                            {log.method}
-                          </Badge>
-                        )}
-                        {log.path}
-                      </TableCell>
-                      <TableCell>
-                        {log.status != null && (
-                          <Badge className={log.status >= 400 ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}>
-                            {log.status}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">{log.ip ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {fmtDateTime(log.timestamp)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <DataTable
+              columns={columns}
+              data={filtered}
+              defaultPageSize={20}
+              emptyText="Log topilmadi"
+            />
           )}
         </CardContent>
       </Card>

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/query-keys";
 import { KeyRound } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -34,14 +35,9 @@ interface TeacherForm {
 export function TeacherManagement() {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "TEACHER_WRITE");
-  const { items, loading, error, reload } = useCrudData<TeacherRecord>(() => listTeachers());
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
-  const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
-
-  useEffect(() => {
-    listDepartments().then(setDepartments).catch(() => setDepartments([]));
-    listSubjects().then(setSubjects).catch(() => setSubjects([]));
-  }, []);
+  const { items, loading, error, reload } = useCrudData<TeacherRecord>(qk.teachers(), listTeachers);
+  const { data: departments = [] } = useQuery({ queryKey: qk.departments(), queryFn: listDepartments, staleTime: 60_000 });
+  const { data: subjects = [] } = useQuery({ queryKey: qk.subjects(), queryFn: listSubjects, staleTime: 60_000 });
 
   const toggleSubject = (form: TeacherForm, id: number): number[] =>
     form.subjectIds.includes(id)

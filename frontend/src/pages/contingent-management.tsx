@@ -32,14 +32,8 @@ import { Button } from '@/components/ui/button.tsx';
 import { Input } from '@/components/ui/input.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table.tsx';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable } from '@/components/ui/data-table';
 import {
   Select,
   SelectContent,
@@ -260,6 +254,177 @@ export function ContingentManagement() {
     return 'text-red-600';
   };
 
+  const studentColumns: ColumnDef<(typeof students)[0]>[] = [
+    {
+      accessorKey: 'name',
+      header: 'Talaba',
+      cell: ({ row: { original: s } }) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={s.avatar} alt={s.name} />
+            <AvatarFallback>{s.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium">{s.name}</div>
+            <div className="text-sm text-muted-foreground">Ro'yxat: {s.enrollmentDate}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'idGroup',
+      header: 'ID / Guruh',
+      accessorFn: (s) => s.studentId,
+      cell: ({ row: { original: s } }) => (
+        <div>
+          <div className="font-medium">{s.studentId}</div>
+          <div className="text-sm text-muted-foreground">{s.group}</div>
+        </div>
+      ),
+    },
+    {
+      id: 'contact',
+      header: 'Aloqa',
+      enableSorting: false,
+      cell: ({ row: { original: s } }) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-1 text-sm"><Mail className="h-3 w-3" />{s.email}</div>
+          <div className="flex items-center gap-1 text-sm text-muted-foreground"><Phone className="h-3 w-3" />{s.phone}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'course',
+      header: 'Kurs',
+      cell: ({ getValue }) => <span className="text-sm">{getValue<string>()}</span>,
+    },
+    {
+      accessorKey: 'gpa',
+      header: 'GPA',
+      cell: ({ getValue }) => {
+        const g = getValue<number>();
+        return <span className={`font-medium ${getGPAColor(g)}`}>{g}</span>;
+      },
+    },
+    {
+      id: 'progress',
+      header: 'Jarayon',
+      enableSorting: false,
+      cell: ({ row: { original: s } }) => {
+        const pct = Math.round((s.completedCourses / s.totalCourses) * 100);
+        return (
+          <div className="space-y-1 min-w-[100px]">
+            <div className="flex justify-between text-sm">
+              <span>{s.completedCourses}/{s.totalCourses}</span>
+              <span>{pct}%</span>
+            </div>
+            <Progress value={pct} className="h-2" />
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'status',
+      header: 'Holat',
+      cell: ({ getValue }) => getStatusBadge(getValue<string>()),
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">Amallar</div>,
+      enableSorting: false,
+      cell: ({ row: { original: s } }) => (
+        <div className="flex items-center gap-1 justify-end">
+          <Button variant="ghost" size="icon" onClick={() => setSelectedPerson(s)}><Eye className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon"><Settings className="h-4 w-4" /></Button>
+        </div>
+      ),
+    },
+  ];
+
+  const teacherColumns: ColumnDef<(typeof teachers)[0]>[] = [
+    {
+      accessorKey: 'name',
+      header: "O'qituvchi",
+      cell: ({ row: { original: t } }) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={t.avatar} alt={t.name} />
+            <AvatarFallback>{t.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium">{t.name}</div>
+            <div className="text-sm text-muted-foreground">{t.education}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'idDept',
+      header: "ID / Bo'lim",
+      accessorFn: (t) => t.teacherId,
+      cell: ({ row: { original: t } }) => (
+        <div>
+          <div className="font-medium">{t.teacherId}</div>
+          <div className="text-sm text-muted-foreground">{t.department}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'position',
+      header: 'Lavozim',
+      cell: ({ getValue }) => <span className="text-sm">{getValue<string>()}</span>,
+    },
+    {
+      accessorKey: 'experience',
+      header: 'Tajriba',
+      cell: ({ getValue }) => (
+        <div className="flex items-center gap-1">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span>{getValue<number>()} yil</span>
+        </div>
+      ),
+    },
+    {
+      id: 'courses',
+      header: 'Kurslar',
+      enableSorting: false,
+      cell: ({ row: { original: t } }) => (
+        <div className="space-y-1">
+          <div className="text-sm font-medium">{t.courses.length} ta kurs</div>
+          <div className="text-sm text-muted-foreground">{t.students} talaba</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'rating',
+      header: 'Reyting',
+      cell: ({ getValue }) => (
+        <div className="flex items-center gap-1">
+          <Star className="h-4 w-4 text-yellow-500 fill-current" />
+          <span className="font-medium">{getValue<number>()}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Holat',
+      cell: ({ getValue }) => getStatusBadge(getValue<string>()),
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">Amallar</div>,
+      enableSorting: false,
+      cell: ({ row: { original: t } }) => (
+        <div className="flex items-center gap-1 justify-end">
+          <Button variant="ghost" size="icon" onClick={() => setSelectedPerson(t)}><Eye className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon"><Settings className="h-4 w-4" /></Button>
+        </div>
+      ),
+    },
+  ];
+
   const totalStudents = students.length;
   const activeStudents = students.filter(s => s.status === 'active').length;
   const totalTeachers = teachers.length;
@@ -459,100 +624,11 @@ export function ContingentManagement() {
               <CardDescription>Barcha talabalar va ularning ma'lumotlari</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Talaba</TableHead>
-                    <TableHead>ID / Guruh</TableHead>
-                    <TableHead>Aloqa</TableHead>
-                    <TableHead>Kurs</TableHead>
-                    <TableHead>GPA</TableHead>
-                    <TableHead>Jarayon</TableHead>
-                    <TableHead>Holat</TableHead>
-                    <TableHead className="text-right">Amallar</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={student.avatar} alt={student.name} />
-                            <AvatarFallback>
-                              {student.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">{student.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              Ro'yxat: {student.enrollmentDate}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{student.studentId}</div>
-                          <div className="text-sm text-muted-foreground">{student.group}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-sm">
-                            <Mail className="h-3 w-3" />
-                            {student.email}
-                          </div>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            {student.phone}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{student.course}</div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`font-medium ${getGPAColor(student.gpa)}`}>
-                          {student.gpa}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span>{student.completedCourses}/{student.totalCourses}</span>
-                            <span>{Math.round((student.completedCourses / student.totalCourses) * 100)}%</span>
-                          </div>
-                          <Progress 
-                            value={(student.completedCourses / student.totalCourses) * 100} 
-                            className="h-2" 
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(student.status)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => setSelectedPerson(student)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={studentColumns}
+                data={filteredStudents}
+                emptyText="Talaba topilmadi"
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -591,87 +667,11 @@ export function ContingentManagement() {
               <CardDescription>Barcha o'qituvchilar va ularning ma'lumotlari</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>O'qituvchi</TableHead>
-                    <TableHead>ID / Bo'lim</TableHead>
-                    <TableHead>Lavozim</TableHead>
-                    <TableHead>Tajriba</TableHead>
-                    <TableHead>Kurslar</TableHead>
-                    <TableHead>Reyting</TableHead>
-                    <TableHead>Holat</TableHead>
-                    <TableHead className="text-right">Amallar</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTeachers.map((teacher) => (
-                    <TableRow key={teacher.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={teacher.avatar} alt={teacher.name} />
-                            <AvatarFallback>
-                              {teacher.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">{teacher.name}</div>
-                            <div className="text-sm text-muted-foreground">{teacher.education}</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{teacher.teacherId}</div>
-                          <div className="text-sm text-muted-foreground">{teacher.department}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{teacher.position}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>{teacher.experience} yil</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">{teacher.courses.length} ta kurs</div>
-                          <div className="text-sm text-muted-foreground">{teacher.students} talaba</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span className="font-medium">{teacher.rating}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(teacher.status)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => setSelectedPerson(teacher)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={teacherColumns}
+                data={filteredTeachers}
+                emptyText="O'qituvchi topilmadi"
+              />
             </CardContent>
           </Card>
         </TabsContent>

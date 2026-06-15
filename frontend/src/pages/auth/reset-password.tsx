@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { useMutation } from "@tanstack/react-query";
 import { resetPasswordWithToken } from "@/lib/api";
 
 // ─── WelcomePanel (loginformnikiga o'xshash) ────────────────────────────────
@@ -71,11 +73,23 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const mutation = useMutation({
+    mutationFn: ({ token, password }: { token: string; password: string }) =>
+      resetPasswordWithToken(token, password),
+    onSuccess: () => setTimeout(() => navigate("/login"), 3000),
+  });
+
+  const done = mutation.isSuccess;
+  const isLoading = mutation.isPending;
+  const mutationError = mutation.isError
+    ? ((mutation.error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+       "Xatolik yuz berdi. Token muddati o'tgan yoki noto'g'ri bo'lishi mumkin.")
+    : null;
+  const error = validationError ?? mutationError;
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
       setError("Tiklash havolasi noto'g'ri. Emaildagi havolani qayta bosing.");
@@ -104,6 +118,11 @@ export default function ResetPasswordPage() {
     } finally {
       setIsLoading(false);
     }
+    if (!token) { setValidationError("Tiklash havolasi noto'g'ri. Emaildagi havolani qayta bosing."); return; }
+    if (newPassword.length < 6) { setValidationError("Parol kamida 6 ta belgidan iborat bo'lishi kerak"); return; }
+    if (newPassword !== confirmPassword) { setValidationError("Parollar mos kelmadi"); return; }
+    setValidationError(null);
+    mutation.mutate({ token, password: newPassword });
   };
 
   return (

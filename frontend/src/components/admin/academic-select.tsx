@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { listFaculties, listGroups, listPrograms } from "@/lib/academic-api";
+import { qk } from "@/lib/query-keys";
 
 type Kind = "faculty" | "program" | "group";
 
-const LOADERS: Record<Kind, () => Promise<{ name: string }[]>> = {
-  faculty: listFaculties,
-  program: listPrograms,
-  group: listGroups,
+const QUERY_CONFIG: Record<Kind, { key: () => readonly string[]; fn: () => Promise<{ name: string }[]> }> = {
+  faculty: { key: qk.faculties, fn: listFaculties as () => Promise<{ name: string }[]> },
+  program: { key: qk.programs,  fn: listPrograms  as () => Promise<{ name: string }[]> },
+  group:   { key: qk.groups,    fn: listGroups    as () => Promise<{ name: string }[]> },
 };
 
 /**
@@ -26,14 +27,14 @@ export function AcademicSelect({
   onChange: (name: string) => void;
   placeholder?: string;
 }) {
-  const [names, setNames] = useState<string[]>([]);
+  const cfg = QUERY_CONFIG[kind];
+  const { data = [] } = useQuery({
+    queryKey: cfg.key(),
+    queryFn: cfg.fn,
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    LOADERS[kind]()
-      .then((rows) => setNames(rows.map((r) => r.name).filter(Boolean)))
-      .catch(() => setNames([]));
-  }, [kind]);
-
+  const names = (data as { name: string }[]).map((r) => r.name).filter(Boolean) as string[];
   const options = value && !names.includes(value) ? [value, ...names] : names;
 
   return (

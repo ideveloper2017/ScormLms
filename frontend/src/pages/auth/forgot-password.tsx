@@ -13,6 +13,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
+import { useMutation } from "@tanstack/react-query";
+import { forgotPassword } from "@/lib/api";
 
 // ─── WelcomePanel (loginformnikiga o'xshash) ────────────────────────────────
 const WelcomePanel = () => (
@@ -63,14 +66,16 @@ const WelcomePanel = () => (
 // ─── Main page ───────────────────────────────────────────────────────────────
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const mutation = useMutation({
+    mutationFn: (email: string) => forgotPassword(email),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      setError("Email manzilingizni kiriting");
+      setEmailError("Email manzilingizni kiriting");
       return;
     }
     setIsLoading(true);
@@ -84,7 +89,13 @@ export default function ForgotPasswordPage() {
     } finally {
       setIsLoading(false);
     }
+    setEmailError(null);
+    mutation.mutate(email.trim());
   };
+
+  const sent = mutation.isSuccess;
+  const isLoading = mutation.isPending;
+  const error = emailError ?? (mutation.isError ? "Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring." : null);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4 dark:bg-slate-900">
