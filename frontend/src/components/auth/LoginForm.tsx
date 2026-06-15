@@ -384,11 +384,17 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                                 <span className="h-px flex-1 bg-border" />
                             </div>
 
-                            {/* Sign up */}
-                            <p className="text-center text-sm text-muted-foreground">
-                                Hisobingiz yo'qmi?{' '}
-                                <Link to="/login" className="font-medium text-blue-600 hover:underline">Ro'yxatdan o'ting</Link>
-                            </p>
+                            {/* HEMIS orqali kirish */}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full gap-2"
+                                onClick={() => { window.location.href = 'https://hemis.uz'; }}
+                                disabled={isSubmitting || isAuthLoading}
+                            >
+                                <GraduationCap className="h-4 w-4 text-blue-600" />
+                                HEMIS orqali kirish
+                            </Button>
 
                             {/* ── Tezkor kirish (Dev Mode) — funksiya saqlab qolingan ── */}
                             <div className="space-y-3 rounded-lg border border-dashed border-border p-3">
