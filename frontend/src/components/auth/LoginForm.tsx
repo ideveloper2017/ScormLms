@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -335,7 +335,7 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                                 <div className="space-y-2 w-full">
                                     <div className="flex items-center justify-between">
                                         <label htmlFor="password" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Parol</label>
-                                        <a href="#" className="text-sm text-blue-600 hover:underline">Parolni unutdingizmi?</a>
+                                        <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">Parolni unutdingizmi?</Link>
                                     </div>
                                     <div className="relative">
                                         <Input

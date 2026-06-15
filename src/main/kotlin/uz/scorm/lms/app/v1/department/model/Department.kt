@@ -2,29 +2,28 @@ package uz.scorm.lms.app.v1.department.model
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
+import jakarta.persistence.FetchType
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
-
+import uz.scorm.lms.app.v1.faculty.model.Faculty
 
 @Entity
-@Table(name = "department")
-data class Department(
+@Table(name = "departments")
+class Department(
 
-    @Column(name= "name")
-    var name:String,
+    @Column(nullable = false)
+    var name: String = "",
 
-    @Column(name = "code")
-    var code:String,
+    @Column
+    var code: String? = null,
 
-    @Column(name = "parent")
-    var parent:String,
+    @Column(nullable = false)
+    var active: Boolean = true,
 
-    @Column(name = "active")
-    var active:Boolean,
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "faculty_id")
+    var faculty: Faculty? = null,
 
-    ): BaseEntity(){
-
-}
+) : BaseEntity()

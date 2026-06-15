@@ -68,10 +68,9 @@ class StudentService(
     @Transactional
     fun createStudent(dto: StudentDto): StudentDto {
         val username = "std_${dto.studentIdNumber}"
-        val user = userService.register(username, "std123", "ROLE_STUDENT")
+        val user = userService.register(username, "std123", "student")
 
-        user.firstName = dto.firstName
-        user.lastName = dto.thirdName
+        user.fullName = listOfNotNull(dto.firstName, dto.thirdName).joinToString(" ").ifEmpty { null }
         user.email = "$username@std.uz"
         
         val profile = StudentProfile(
@@ -93,8 +92,8 @@ class StudentService(
         val student = studentRepository.findByUserUsername(username)
             ?: throw NoSuchElementException("Student profile not found")
         
-        student.user.firstName = dto.firstName ?: student.user.firstName
-        student.user.lastName = dto.thirdName ?: student.user.lastName
+        val newFullName = listOfNotNull(dto.firstName, dto.thirdName).joinToString(" ").ifEmpty { null }
+        if (newFullName != null) student.user.fullName = newFullName
         student.jshshir = dto.studentIdNumber ?: student.jshshir
         student.groupName = dto.group?.name ?: student.groupName
         student.faculty = dto.department?.name ?: student.faculty
@@ -105,13 +104,11 @@ class StudentService(
     }
 
     fun toDto(student: StudentProfile): StudentDto {
-        val fullName = "${student.user.firstName ?: ""} ${student.user.lastName ?: ""}".trim()
-        
         return StudentDto(
             id = student.id,
-            fullName = fullName,
-            firstName = student.user.firstName,
-            thirdName = student.user.lastName,
+            fullName = student.user.fullName ?: "",
+            firstName = student.user.fullName,
+            thirdName = null,
             studentIdNumber = student.jshshir,
             group = GroupDto(name = student.groupName, educationLang = uz.scorm.lms.app.v1.student.dto.CodeNameDto(code = student.language)),
             level = uz.scorm.lms.app.v1.student.dto.CodeNameDto(code = student.course.toString()),

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { listStudents, graduateStudent, archiveStudent, reinstateStudent, promoteStudent, editStudent, createStudent } from '@/lib/student-api';
 import { StudentDto } from '@/types/student.types';
+import { AcademicSelect } from '@/components/admin/academic-select';
 import { Loader2, ArrowUpCircle, GraduationCap, Archive, UserCheck, Ban, Edit, Upload, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -184,15 +185,15 @@ export function StudentManagement() {
                 </div>
                 <div className="space-y-2">
                     <Label>Fakultet</Label>
-                    <Input value={formData.faculty} onChange={e => setFormData({...formData, faculty: e.target.value})} placeholder="Fakultet"/>
+                    <AcademicSelect kind="faculty" value={formData.faculty} onChange={v => setFormData({...formData, faculty: v})}/>
                 </div>
                 <div className="space-y-2">
                     <Label>Yo'nalish</Label>
-                    <Input value={formData.educationPath} onChange={e => setFormData({...formData, educationPath: e.target.value})} placeholder="Ta'lim yo'nalishi"/>
+                    <AcademicSelect kind="program" value={formData.educationPath} onChange={v => setFormData({...formData, educationPath: v})}/>
                 </div>
                 <div className="space-y-2">
                     <Label>Guruh</Label>
-                    <Input value={formData.groupName} onChange={e => setFormData({...formData, groupName: e.target.value})} placeholder="Guruh nomi"/>
+                    <AcademicSelect kind="group" value={formData.groupName} onChange={v => setFormData({...formData, groupName: v})}/>
                 </div>
                 <div className="space-y-2">
                     <Label>Ta'lim tili</Label>

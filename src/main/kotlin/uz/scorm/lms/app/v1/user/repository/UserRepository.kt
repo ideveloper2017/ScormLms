@@ -6,6 +6,7 @@ import uz.scorm.lms.app.v1.user.model.UserStatus
 
 interface UserRepository : JpaRepository<User, Long> {
     fun findByUsername(username: String): User?
+    fun findByEmail(email: String): User?
     fun existsByUsername(username: String): Boolean
     fun existsByEmail(email: String): Boolean
     fun existsByPhone(phone: String): Boolean

@@ -1,3 +1,5 @@
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED' | 'GRADUATED' | 'EXPELLED' | 'ARCHIVED';
+
 export interface User {
   id?: number | null;
   username: string;
@@ -7,12 +9,17 @@ export interface User {
   lastName?: string;
   phone?: string | null;
   photo?: string;
+  jshshir?: string | null;
+  faculty?: string | null;
+  direction?: string | null;
+  groupName?: string | null;
   enabled?: boolean;
   emailVerified?: boolean;
   twoFactorEnabled?: boolean;
   role?: Role | null;
   roles: Role[];
-  status?: string;
+  permissions?: string[];
+  status?: UserStatus;
   createdAt?: string;
   updatedAt?: string;
 }
