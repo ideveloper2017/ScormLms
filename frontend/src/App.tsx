@@ -40,9 +40,6 @@ import { TeacherManagement } from "@/pages/teacher-management";
 import { AcademicStructure } from "@/pages/academic-structure";
 import { CoursePlayer } from "@/components/scorm/course-player";
 import { ProctoringSession } from "@/components/proctoring/proctoring-session";
-import { ProctorDashboard } from "@/pages/proctor-dashboard";
-import { MonitorDashboard } from "@/pages/monitor-dashboard";
-import { StudentManagement } from "@/pages/student-management";
 
 // Admin pages
 import { AdminRoles } from "@/pages/admin/roles";
@@ -299,6 +296,22 @@ function hasRole(user: ReturnType<typeof useAuth>["user"], roleToMatch: string):
 
 function norm(role: string): string {
   return role.replace(/^ROLE_/i, "").toUpperCase();
+}
+
+function ProtectedPage({
+  allowedRoles,
+  children,
+}: {
+  allowedRoles: string[];
+  children: ReactNode;
+}) {
+  return (
+    <AuthGuard>
+      <DashboardLayout>
+        <RoleGuard allowedRoles={allowedRoles}>{children}</RoleGuard>
+      </DashboardLayout>
+    </AuthGuard>
+  );
 }
 
 export default App;

@@ -33,3 +33,4 @@ src/lib/database.mock.ts
 *.njsproj
 *.sln
 *.sw?
+vite.config.ts

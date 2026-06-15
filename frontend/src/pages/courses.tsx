@@ -409,55 +409,59 @@ export function Courses() {
       </div>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="courses">Kurslar</TabsTrigger>
-          <TabsTrigger value="content">Kontent Boshqaruvi</TabsTrigger>
-          <TabsTrigger value="assignments">Topshiriqlar</TabsTrigger>
-          <TabsTrigger value="analytics">Tahlil</TabsTrigger>
-        </TabsList>
+        <div className="sticky top-[-24px] z-30 bg-background/95 backdrop-blur-sm pb-4 pt-2 space-y-4 border-b border-border/40">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="courses">Kurslar</TabsTrigger>
+            <TabsTrigger value="content">Kontent Boshqaruvi</TabsTrigger>
+            <TabsTrigger value="assignments">Topshiriqlar</TabsTrigger>
+            <TabsTrigger value="analytics">Tahlil</TabsTrigger>
+          </TabsList>
+
+          {selectedTab === "courses" && (
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Kurslarni qidiring..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(category => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Holat" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Barcha holatlar</SelectItem>
+                  <SelectItem value="active">Faol</SelectItem>
+                  <SelectItem value="draft">Loyiha</SelectItem>
+                  <SelectItem value="archived">Arxiv</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Courses Tab */}
-        <TabsContent value="courses" className="space-y-6">
-          {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Kurslarni qidiring..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Holat" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Barcha holatlar</SelectItem>
-                <SelectItem value="active">Faol</SelectItem>
-                <SelectItem value="draft">Loyiha</SelectItem>
-                <SelectItem value="archived">Arxiv</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button variant="outline" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filter
-            </Button>
-          </div>
+        <TabsContent value="courses" className="space-y-6 pt-2">
 
           {/* Courses Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
