@@ -35,9 +35,9 @@ export function AcademicStructure({ defaultTab = "faculties" }: { defaultTab?: s
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
 
-  const faculties = useCrudData<FacultyRecord>(() => listFaculties());
-  const departments = useCrudData<DepartmentRecord>(() => listDepartments());
-  const programs = useCrudData<ProgramRecord>(() => listPrograms());
+  const faculties = useCrudData<FacultyRecord>(["faculties"], listFaculties);
+  const departments = useCrudData<DepartmentRecord>(["departments"], listDepartments);
+  const programs = useCrudData<ProgramRecord>(["programs"], listPrograms);
 
   return (
     <div className="p-6">

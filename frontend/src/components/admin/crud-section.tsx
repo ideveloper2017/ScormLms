@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useQuery, type QueryKey } from "@tanstack/react-query";
 import { Plus, Search, Trash2, Pencil, MoreHorizontal, RefreshCw, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -270,25 +271,17 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
 }
 
 /** List yuklash + holatni boshqaruvchi kichik hook (har sahifa qayta ishlatadi). */
-export function useCrudData<T>(loader: () => Promise<T[]>) {
-  const [items, setItems] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useCrudData<T>(queryKey: QueryKey, loader: () => Promise<T[]>) {
+  const { data, isLoading, error, refetch } = useQuery<T[]>({
+    queryKey,
+    queryFn: loader,
+    staleTime: 30_000,
+  });
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setItems(await loader());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Yuklab bo'lmadi");
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => { reload(); }, [reload]);
-
-  return { items, loading, error, reload };
+  return {
+    items: data ?? [],
+    loading: isLoading,
+    error: error instanceof Error ? error.message : error ? "Yuklab bo'lmadi" : null,
+    reload: refetch as () => Promise<unknown>,
+  };
 }

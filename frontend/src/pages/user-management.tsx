@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/lib/query-keys';
+import { ColumnDef } from '@tanstack/react-table';
 import {
   Users, Plus, Search, Shield, Key, Trash2, UserCheck, UserX,
   RefreshCw, AlertTriangle, MoreHorizontal, Pencil, History,
@@ -10,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
+import { DataTable } from '@/components/ui/data-table';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -182,12 +186,27 @@ export function UserManagement() {
   const canRoles       = hasAuthority(currentUser, 'ROLE_MANAGE');
   const canManageRoles = canRoles || hasAuthority(currentUser, 'ROLE_SUPER_ADMIN');
 
+  const queryClient = useQueryClient();
+
   // ── data ──────────────────────────────────────────────────────────────────
-  const [users,     setUsers]     = useState<UserRecord[]>([]);
-  const [roles,     setRoles]     = useState<Role[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
-  const [isLoading,   setIsLoading]   = useState(true);
-  const [loadError,   setLoadError]   = useState<string | null>(null);
+  const { data: users = [], isLoading, error: usersError } = useQuery({
+    queryKey: qk.users(),
+    queryFn: listUsers,
+    staleTime: 30_000,
+  });
+  const { data: roles = [] } = useQuery({
+    queryKey: qk.roles(),
+    queryFn: listRoles,
+    staleTime: 5 * 60_000,
+  });
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: qk.auditLogs(),
+    queryFn: listAuditLogs,
+    enabled: canAudit,
+    staleTime: 60_000,
+  });
+
+  const loadError = usersError instanceof Error ? usersError.message : usersError ? "Ma'lumotlarni yuklab bo'lmadi" : null;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ── filters ───────────────────────────────────────────────────────────────
@@ -204,8 +223,6 @@ export function UserManagement() {
   const [blockTarget,    setBlockTarget]    = useState<{ user: UserRecord; block: boolean } | null>(null);
   const [importOpen,  setImportOpen]  = useState(false);
   const [auditTarget, setAuditTarget] = useState<UserRecord | null>(null);
-  const [userAuditLogs, setUserAuditLogs] = useState<AuditLogEntry[]>([]);
-  const [auditLoading,  setAuditLoading]  = useState(false);
 
   // ── form state ────────────────────────────────────────────────────────────
   const [form, setForm]             = useState<UserCreateRequest>(blankForm());
@@ -216,25 +233,18 @@ export function UserManagement() {
   const [importText, setImportText] = useState('');
   const [importPreview, setImportPreview] = useState<UserCreateRequest[]>([]);
 
-  // ─── load ─────────────────────────────────────────────────────────────────
-  const loadAll = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
-    try {
-      const [u, r] = await Promise.all([listUsers(), listRoles()]);
-      setUsers(u);
-      setRoles(r);
-      if (canAudit) {
-        try { setAuditLogs(await listAuditLogs()); } catch { /* ignore */ }
-      }
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Ma'lumotlarni yuklab bo'lmadi");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [canAudit]);
+  // ─── user audit log (lazy — fetched only when a user is selected) ──────────
+  const { data: userAuditLogs = [], isLoading: auditLoading } = useQuery({
+    queryKey: qk.userAuditLogs(auditTarget?.username ?? ''),
+    queryFn: () => getUserAuditLogs(auditTarget!.username),
+    enabled: !!auditTarget,
+    staleTime: 30_000,
+  });
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  const loadAll = () => {
+    queryClient.invalidateQueries({ queryKey: qk.users() });
+    if (canAudit) queryClient.invalidateQueries({ queryKey: qk.auditLogs() });
+  };
 
   // ─── filter ───────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -266,7 +276,7 @@ export function UserManagement() {
     try {
       await fn();
       toast({ title: msg });
-      await loadAll();
+      await queryClient.invalidateQueries({ queryKey: qk.users() });
       return true;
     } catch (err) {
       toast({ variant: 'destructive', title: 'Xatolik', description: err instanceof Error ? err.message : 'Amal bajarilmadi' });
@@ -369,18 +379,182 @@ export function UserManagement() {
     if (ok) { setImportOpen(false); setImportText(''); setImportPreview([]); }
   };
 
-  const openAudit = async (u: UserRecord) => {
-    setAuditTarget(u);
-    setUserAuditLogs([]);
-    setAuditLoading(true);
-    try {
-      setUserAuditLogs(await getUserAuditLogs(u.username));
-    } catch {
-      toast({ variant: 'destructive', title: 'Loglarni yuklab bo\'lmadi' });
-    } finally {
-      setAuditLoading(false);
-    }
-  };
+  const openAudit = (u: UserRecord) => setAuditTarget(u);
+
+  // ─── columns ─────────────────────────────────────────────────────────────
+  const userColumns = useMemo<ColumnDef<UserRecord>[]>(() => [
+    {
+      id: 'nameLogin',
+      header: "F.I.Sh / Login",
+      accessorFn: (u) => displayName(u),
+      cell: ({ row: { original: u } }) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="text-xs">{initials(u)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium text-sm leading-tight">{displayName(u)}</div>
+            <div className="text-xs text-muted-foreground">{u.username}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'contact',
+      header: "Telefon / Email",
+      enableSorting: false,
+      cell: ({ row: { original: u } }) => (
+        <div>
+          <div className="text-sm leading-tight">{u.phone ?? '—'}</div>
+          <div className="text-xs text-muted-foreground">{u.email ?? '—'}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'jshshir',
+      header: 'JSHSHIR',
+      cell: ({ getValue }) => <span className="font-mono text-xs">{getValue<string | null>() ?? '—'}</span>,
+    },
+    {
+      id: 'role',
+      header: 'Rol',
+      accessorFn: (u) => u.role?.name ?? '',
+      cell: ({ row: { original: u } }) => <RoleBadge role={u.role} />,
+    },
+    {
+      id: 'academic',
+      header: "Fak. / Yo'n. / Guruh",
+      enableSorting: false,
+      cell: ({ row: { original: u } }) => (
+        <div className="text-xs leading-snug space-y-0.5">
+          {u.faculty   && <div className="text-muted-foreground">{u.faculty}</div>}
+          {u.direction && <div className="text-muted-foreground">{u.direction}</div>}
+          {u.groupName && <div className="font-medium">{u.groupName}</div>}
+          {!u.faculty && !u.direction && !u.groupName && <span className="text-muted-foreground">—</span>}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row: { original: u } }) => <StatusBadge status={u.status} />,
+    },
+    {
+      accessorKey: 'createdAt',
+      header: "Qo'shilgan",
+      cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{fmtDate(getValue<string | null>())}</span>,
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">Amal</div>,
+      enableSorting: false,
+      cell: ({ row: { original: u } }) => {
+        const isSelf = currentUser?.username === u.username;
+        return (
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {canWrite && (
+                  <DropdownMenuItem onClick={() => openEdit(u)} className="gap-2">
+                    <Pencil className="h-4 w-4" />Tahrirlash
+                  </DropdownMenuItem>
+                )}
+                {canRoles && (
+                  <DropdownMenuItem onClick={() => { setAssignTarget(u); setAssignRole(''); }} className="gap-2">
+                    <Shield className="h-4 w-4" />Rol biriktirish
+                  </DropdownMenuItem>
+                )}
+                {canManage && (
+                  <DropdownMenuItem onClick={() => { setResetPwdTarget(u); setNewPwd(''); }} className="gap-2">
+                    <Key className="h-4 w-4" />Parolni tiklash
+                  </DropdownMenuItem>
+                )}
+                {canAudit && (
+                  <DropdownMenuItem onClick={() => openAudit(u)} className="gap-2">
+                    <History className="h-4 w-4" />Harakatlarni ko'rish
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {canWrite && !isSelf && u.status !== 'BLOCKED' && (
+                  <DropdownMenuItem onClick={() => setBlockTarget({ user: u, block: true })} className="gap-2 text-orange-600 focus:text-orange-600">
+                    <Lock className="h-4 w-4" />Bloklash
+                  </DropdownMenuItem>
+                )}
+                {canWrite && !isSelf && u.status === 'BLOCKED' && (
+                  <DropdownMenuItem onClick={() => setBlockTarget({ user: u, block: false })} className="gap-2 text-green-600 focus:text-green-600">
+                    <Unlock className="h-4 w-4" />Blokni ochish
+                  </DropdownMenuItem>
+                )}
+                {canWrite && !isSelf && (
+                  <DropdownMenuItem onClick={() => setDeleteTarget(u)} className="gap-2 text-destructive focus:text-destructive">
+                    <Trash2 className="h-4 w-4" />O'chirish
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ], [currentUser, canWrite, canRoles, canManage, canAudit]);
+
+  const auditTableColumns = useMemo<ColumnDef<AuditLogEntry>[]>(() => [
+    {
+      accessorKey: 'username',
+      header: 'Foydalanuvchi',
+      cell: ({ getValue }) => (
+        <span className="font-medium text-sm">{getValue<string | null>() ?? 'System'}</span>
+      ),
+    },
+    {
+      accessorKey: 'action',
+      header: 'Harakat',
+      cell: ({ getValue }) => (
+        <Badge variant="outline" className="text-xs font-mono">{getValue<string>()}</Badge>
+      ),
+    },
+    {
+      id: 'methodUrl',
+      header: 'Metod / URL',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <span className="text-xs font-mono text-muted-foreground">
+          {row.original.method && <span className="text-foreground mr-1">{row.original.method}</span>}
+          {row.original.path}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ getValue }) => {
+        const v = getValue<number | null>();
+        if (!v) return null;
+        return (
+          <Badge className={v >= 400 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>{v}</Badge>
+        );
+      },
+    },
+    {
+      accessorKey: 'ip',
+      header: 'IP',
+      cell: ({ getValue }) => (
+        <span className="text-xs font-mono">{getValue<string | null>() ?? '—'}</span>
+      ),
+    },
+    {
+      accessorKey: 'timestamp',
+      header: 'Vaqt',
+      cell: ({ getValue }) => (
+        <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtDateTime(getValue<string>())}</span>
+      ),
+    },
+  ], []);
 
   // ─── loading/error ────────────────────────────────────────────────────────
   if (isLoading) return (
@@ -495,129 +669,19 @@ export function UserManagement() {
           {/* Table */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">
-                  {filtered.length} ta foydalanuvchi
-                  {filtered.length !== users.length && ` (jami: ${users.length})`}
-                </CardTitle>
-              </div>
+              <CardTitle className="text-base">
+                {filtered.length} ta foydalanuvchi
+                {filtered.length !== users.length && ` (jami: ${users.length})`}
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[180px]">F.I.Sh / Login</TableHead>
-                      <TableHead>Telefon / Email</TableHead>
-                      <TableHead>JSHSHIR</TableHead>
-                      <TableHead>Rol</TableHead>
-                      <TableHead>Fak. / Yo'n. / Guruh</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Qo'shilgan</TableHead>
-                      <TableHead className="text-right w-12">Amal</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
-                          Foydalanuvchi topilmadi
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {filtered.map((u) => {
-                      const isSelf = currentUser?.username === u.username;
-                      return (
-                        <TableRow key={u.id} className="group">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback className="text-xs">{initials(u)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="font-medium text-sm leading-tight">{displayName(u)}</div>
-                                <div className="text-xs text-muted-foreground">{u.username}</div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm leading-tight">{u.phone ?? '—'}</div>
-                            <div className="text-xs text-muted-foreground">{u.email ?? '—'}</div>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">{u.jshshir ?? '—'}</TableCell>
-                          <TableCell><RoleBadge role={u.role} /></TableCell>
-                          <TableCell>
-                            <div className="text-xs leading-snug space-y-0.5">
-                              {u.faculty   && <div className="text-muted-foreground">{u.faculty}</div>}
-                              {u.direction && <div className="text-muted-foreground">{u.direction}</div>}
-                              {u.groupName && <div className="font-medium">{u.groupName}</div>}
-                              {!u.faculty && !u.direction && !u.groupName && <span className="text-muted-foreground">—</span>}
-                            </div>
-                          </TableCell>
-                          <TableCell><StatusBadge status={u.status} /></TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{fmtDate(u.createdAt)}</TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                {canWrite && (
-                                  <DropdownMenuItem onClick={() => openEdit(u)} className="gap-2">
-                                    <Pencil className="h-4 w-4" />Tahrirlash
-                                  </DropdownMenuItem>
-                                )}
-                                {canRoles && (
-                                  <DropdownMenuItem onClick={() => { setAssignTarget(u); setAssignRole(''); }} className="gap-2">
-                                    <Shield className="h-4 w-4" />Rol biriktirish
-                                  </DropdownMenuItem>
-                                )}
-                                {canManage && (
-                                  <DropdownMenuItem onClick={() => { setResetPwdTarget(u); setNewPwd(''); }} className="gap-2">
-                                    <Key className="h-4 w-4" />Parolni tiklash
-                                  </DropdownMenuItem>
-                                )}
-                                {canAudit && (
-                                  <DropdownMenuItem onClick={() => openAudit(u)} className="gap-2">
-                                    <History className="h-4 w-4" />Harakatlarni ko'rish
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                {canWrite && !isSelf && u.status !== 'BLOCKED' && (
-                                  <DropdownMenuItem
-                                    onClick={() => setBlockTarget({ user: u, block: true })}
-                                    className="gap-2 text-orange-600 focus:text-orange-600"
-                                  >
-                                    <Lock className="h-4 w-4" />Bloklash
-                                  </DropdownMenuItem>
-                                )}
-                                {canWrite && !isSelf && u.status === 'BLOCKED' && (
-                                  <DropdownMenuItem
-                                    onClick={() => setBlockTarget({ user: u, block: false })}
-                                    className="gap-2 text-green-600 focus:text-green-600"
-                                  >
-                                    <Unlock className="h-4 w-4" />Blokni ochish
-                                  </DropdownMenuItem>
-                                )}
-                                {canWrite && !isSelf && (
-                                  <DropdownMenuItem
-                                    onClick={() => setDeleteTarget(u)}
-                                    className="gap-2 text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />O'chirish
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+            <CardContent>
+              <DataTable
+                columns={userColumns}
+                data={filtered}
+                defaultPageSize={20}
+                showColumnToggle
+                emptyText="Foydalanuvchi topilmadi"
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -726,49 +790,13 @@ export function UserManagement() {
                 <CardTitle>Tizim Audit Logi</CardTitle>
                 <CardDescription>So'nggi 200 ta amal</CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Foydalanuvchi</TableHead>
-                        <TableHead>Harakat</TableHead>
-                        <TableHead>Metod / URL</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>IP</TableHead>
-                        <TableHead>Vaqt</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {auditLogs.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Log topilmadi</TableCell>
-                        </TableRow>
-                      )}
-                      {auditLogs.map((log) => (
-                        <TableRow key={log.id}>
-                          <TableCell className="font-medium text-sm">{log.username ?? 'System'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs font-mono">{log.action}</Badge>
-                          </TableCell>
-                          <TableCell className="text-xs font-mono text-muted-foreground">
-                            {log.method && <span className="text-foreground mr-1">{log.method}</span>}
-                            {log.path}
-                          </TableCell>
-                          <TableCell>
-                            {log.status && (
-                              <Badge className={log.status >= 400 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
-                                {log.status}
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs font-mono">{log.ip ?? '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{fmtDateTime(log.timestamp)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+              <CardContent>
+                <DataTable
+                  columns={auditTableColumns}
+                  data={auditLogs}
+                  defaultPageSize={20}
+                  emptyText="Log topilmadi"
+                />
               </CardContent>
             </Card>
           </TabsContent>

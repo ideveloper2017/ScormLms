@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/query-keys";
 import { Shield, Users, RefreshCw, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,31 +49,35 @@ const ALL_PERMISSIONS: { code: string; label: string; group: string }[] = [
 const ROLES_ORDER = ["super_admin","admin","metodist","teacher","student","proctor","monitoring"];
 
 export function AdminRoles() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [userCounts, setUserCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [r, u] = await Promise.all([listRoles(), listUsers()]);
-      setRoles(r);
-      const counts: Record<string, number> = {};
-      u.forEach((usr) => {
-        const key = usr.role?.name?.toLowerCase() ?? "unknown";
-        counts[key] = (counts[key] ?? 0) + 1;
-      });
-      setUserCounts(counts);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Yuklab bo'lmadi");
-    } finally {
-      setLoading(false);
-    }
+  const { data: roles = [], isLoading: rolesLoading, error: rolesError } = useQuery({
+    queryKey: qk.roles(),
+    queryFn: listRoles,
+    staleTime: 5 * 60_000,
+  });
+  const { data: usersList = [], isLoading: usersLoading } = useQuery({
+    queryKey: qk.users(),
+    queryFn: listUsers,
+    staleTime: 30_000,
+  });
+
+  const loading = rolesLoading || usersLoading;
+  const error = rolesError instanceof Error ? rolesError.message : rolesError ? "Yuklab bo'lmadi" : null;
+
+  const userCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    usersList.forEach((usr) => {
+      const key = usr.role?.name?.toLowerCase() ?? "unknown";
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+    return counts;
+  }, [usersList]);
+
+  const load = () => {
+    queryClient.invalidateQueries({ queryKey: qk.roles() });
+    queryClient.invalidateQueries({ queryKey: qk.users() });
   };
-
-  useEffect(() => { load(); }, []);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">

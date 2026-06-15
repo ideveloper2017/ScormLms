@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/query-keys";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -31,12 +32,8 @@ const LANGS = [
 export function Groups() {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
-  const { items, loading, error, reload } = useCrudData<GroupRecord>(() => listGroups());
-  const [programs, setPrograms] = useState<ProgramRecord[]>([]);
-
-  useEffect(() => {
-    listPrograms().then(setPrograms).catch(() => setPrograms([]));
-  }, []);
+  const { items, loading, error, reload } = useCrudData<GroupRecord>(qk.groups(), listGroups);
+  const { data: programs = [] } = useQuery({ queryKey: qk.programs(), queryFn: listPrograms, staleTime: 60_000 });
 
   return (
     <div className="p-6">

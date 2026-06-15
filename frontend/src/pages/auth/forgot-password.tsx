@@ -4,31 +4,30 @@ import { Droplets, Loader2, Mail, ArrowLeft, CheckCircle, Shield } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { useMutation } from "@tanstack/react-query";
 import { forgotPassword } from "@/lib/api";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const mutation = useMutation({
+    mutationFn: (email: string) => forgotPassword(email),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      setError("Email manzilingizni kiriting");
+      setEmailError("Email manzilingizni kiriting");
       return;
     }
-    setIsLoading(true);
-    setError(null);
-    try {
-      await forgotPassword(email.trim());
-      setSent(true);
-    } catch {
-      setError("Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.");
-    } finally {
-      setIsLoading(false);
-    }
+    setEmailError(null);
+    mutation.mutate(email.trim());
   };
+
+  const sent = mutation.isSuccess;
+  const isLoading = mutation.isPending;
+  const error = emailError ?? (mutation.isError ? "Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring." : null);
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
