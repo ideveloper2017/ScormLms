@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Field, FieldGroup, FieldLabel, FieldSeparator } from '@/components/ui/field';
-import { Eye, EyeOff, Camera, Shield, CheckCircle, AlertCircle, Loader2, LogIn, Droplets } from 'lucide-react';
+import { Eye, EyeOff, Camera, Shield, CheckCircle, AlertCircle, Loader2, LogIn, Droplets, User, GraduationCap, UserCheck, Monitor, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -91,6 +91,58 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
 
     const handleSkipFaceRecognition = () => handleLoginSuccess();
 
+    // Quick login handlers
+    const handleQuickLogin = async (role: 'admin' | 'instructor' | 'student' | 'proctor' | 'monitor') => {
+        const quickLoginCredentials = {
+            admin: { username: 'admin', password: 'admin' },
+            instructor: { username: 'instructor', password: 'instructor123' },
+            student: { username: 'student', password: 'student123' },
+            proctor: { username: 'proctor1', password: 'proctor123' },
+            monitor: { username: 'monitor1', password: 'monitor123' }
+        };
+
+        const credentials = quickLoginCredentials[role];
+        setFormData(credentials);
+        
+        // Simulate form submission
+        setIsSubmitting(true);
+        setErrors({});
+
+        try {
+            const result = await authLogin(credentials.username, credentials.password);
+
+            if (result?.success) {
+                const userRoles = result.data?.user?.roles || [];
+                const roles = Array.isArray(userRoles)
+                    ? userRoles.map((r: any) => typeof r === 'string' ? r : r.code || r.name)
+                    : [];
+                const isStudent = roles.some((role) => normalizeRole(role) === 'STUDENT');
+                ensureFaceRecognitionFlag();
+
+                 if (isStudent) {
+                    setLoginStep('face-recognition');
+                } else {
+                     handleLoginSuccess();
+                }
+
+                if (result?.message) {
+                    toast({ title: 'Success', description: result?.message, variant: 'default' });
+                }
+            } else {
+                const errorMessage = result?.message || 'Login failed. Please try again.';
+                setErrors({ general: errorMessage });
+                toast({ title: 'Login Failed', description: errorMessage, variant: 'destructive' });
+            }
+        } catch (error: any) {
+            console.error('Quick login error:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'An error occurred during login';
+            setErrors({ general: errorMessage });
+            toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isSubmitting) return;
@@ -142,7 +194,6 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
             setIsSubmitting(false);
         }
     };
-
 
     useEffect(() => {
         if (loginStep === 'face-recognition') {
@@ -253,8 +304,8 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                     <form onSubmit={handleSubmit} className={cn("flex flex-col gap-6")}>
                         <FieldGroup>
                             <div className="flex flex-col items-center gap-1 text-center">
-                                <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-2">
-                                    <Droplets className="h-8 w-8 text-blue-600"/>
+                                <div className="mx-auto mb-4">
+                                    <img src="/logo.png" alt="EduLMS Logo" className="h-16 w-auto" />
                                 </div>
                                 <h1 className="text-2xl font-bold tracking-tight">EduLMS tizimiga kirish</h1>
                                 <p className="text-sm text-muted-foreground">Hisobingizga kirish uchun ma'lumotlaringizni kiriting</p>
@@ -319,9 +370,60 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                             <FieldSeparator>YOKI</FieldSeparator>
                             
                             <Field>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Button type="button" variant="outline" className="w-full">Talaba</Button>
-                                    <Button type="button" variant="outline" className="w-full">O'qituvchi</Button>
+                                <div className="space-y-3">
+                                    <p className="text-sm text-muted-foreground text-center">Tezkor kirish (Dev Mode)</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            className="w-full gap-2 text-xs" 
+                                            onClick={() => handleQuickLogin('student')}
+                                            disabled={isSubmitting || isAuthLoading}
+                                        >
+                                            <GraduationCap className="h-4 w-4" />
+                                            Talaba
+                                        </Button>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            className="w-full gap-2 text-xs"
+                                            onClick={() => handleQuickLogin('instructor')}
+                                            disabled={isSubmitting || isAuthLoading}
+                                        >
+                                            <User className="h-4 w-4" />
+                                            O'qituvchi
+                                        </Button>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            className="w-full gap-2 text-xs"
+                                            onClick={() => handleQuickLogin('admin')}
+                                            disabled={isSubmitting || isAuthLoading}
+                                        >
+                                            <Settings className="h-4 w-4" />
+                                            Admin
+                                        </Button>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            className="w-full gap-2 text-xs"
+                                            onClick={() => handleQuickLogin('proctor')}
+                                            disabled={isSubmitting || isAuthLoading}
+                                        >
+                                            <UserCheck className="h-4 w-4" />
+                                            Proktor
+                                        </Button>
+                                    </div>
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        className="w-full gap-2 text-xs"
+                                        onClick={() => handleQuickLogin('monitor')}
+                                        disabled={isSubmitting || isAuthLoading}
+                                    >
+                                        <Monitor className="h-4 w-4" />
+                                        Monitor
+                                    </Button>
                                 </div>
                             </Field>
                         </FieldGroup>
@@ -335,14 +437,17 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
 };
 
 const DecorativeSide = () => (
-    <div className="hidden bg-muted lg:flex flex-col justify-end p-12 text-white bg-gradient-to-br from-blue-600 to-indigo-700">
-        <div className="space-y-4">
-            <Shield className="h-12 w-12 text-white/80" />
-            <h2 className="text-3xl font-bold">EduLMS SCORM Platformasi</h2>
-            <p className="text-lg opacity-90 max-w-md">
-                O'quv jarayonini boshqarish va nazorat qilishning zamonaviy yechimi. 
-                Xavfsiz, tezkor va qulay.
-            </p>
+    <div className="hidden bg-muted lg:flex flex-col justify-start p-12 text-white bg-gradient-to-br from-blue-600 to-indigo-700">
+        <div className="space-y-6 pt-8">
+            <div className="flex items-center gap-4">
+                <Shield className="h-16 w-16 text-white/90" />
+                <h2 className="text-4xl font-bold">EduLMS SCORM Platformasi</h2>
+            </div>
+            <div className="space-y-4">
+                <p className="text-xl opacity-90 max-w-md leading-relaxed">
+                    O'quv jarayonini boshqarish va nazorat qilishning zamonaviy yechimi. Xavfsiz, tezkor va qulay.
+                </p>
+            </div>
         </div>
     </div>
 )

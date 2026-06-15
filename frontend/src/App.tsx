@@ -25,6 +25,9 @@ import { TeachingManagement } from "@/pages/teaching-management";
 import { UserManagement } from "@/pages/user-management";
 import { CoursePlayer } from "@/components/scorm/course-player";
 import { ProctoringSession } from "@/components/proctoring/proctoring-session";
+import { ProctorDashboard } from "@/pages/proctor-dashboard";
+import { MonitorDashboard } from "@/pages/monitor-dashboard";
+import { StudentManagement } from "@/pages/student-management";
 
 function App() {
   const { user, isLoading, completeLogin } = useAuth();
@@ -197,6 +200,15 @@ function App() {
         />
 
         <Route
+          path="/students-management"
+          element={
+            <ProtectedPage allowedRoles={["ROLE_ADMIN", "ROLE_METODIST"]}>
+              <StudentManagement />
+            </ProtectedPage>
+          }
+        />
+
+        <Route
           path="*"
           element={
             <AuthGuard>
@@ -225,19 +237,6 @@ function ProtectedPage({
     </AuthGuard>
   );
 }
-
-import { ProctorDashboard } from "@/pages/proctor-dashboard";
-import { MonitorDashboard } from "@/pages/monitor-dashboard";
-import { StudentManagement } from "@/pages/student-management";
-// ...
-        <Route
-          path="/students-management"
-          element={
-            <ProtectedPage allowedRoles={["ROLE_ADMIN", "ROLE_METODIST"]}>
-              <StudentManagement />
-            </ProtectedPage>
-          }
-        />
 
 function getDashboardComponent(user: ReturnType<typeof useAuth>["user"]) {
   if (isStudent(user)) return <StudentDashboard />;
