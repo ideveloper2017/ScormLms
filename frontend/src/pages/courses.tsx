@@ -48,105 +48,12 @@ import { Label } from '@/components/ui/label.tsx';
 import { Textarea } from '@/components/ui/textarea.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
 import { Switch } from '@/components/ui/switch.tsx';
+import { useCourses } from '@/hooks/courses/useCourses';
+import { CourseCardSkeletonList } from '@/components/ui/skeletons/CourseCardSkeleton';
+import { toast } from 'sonner';
+import type { CourseFilters } from '@/types/course.types';
 
-const courses = [
-  {
-    id: 1,
-    title: 'JavaScript Asoslari',
-    description: 'Zamonaviy web dasturlash uchun JavaScript tilini o\'rganing',
-    instructor: 'Alisher Karimov',
-    students: 245,
-    duration: '8 soat',
-    rating: 4.8,
-    progress: 75,
-    scormCompliant: true,
-    category: 'Dasturlash',
-    level: 'Boshlang\'ich',
-    image: 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'active',
-    createdAt: '2024-01-15',
-    lessons: 12,
-    assignments: 5,
-    tests: 3,
-    resources: 8,
-    videoLessons: 10,
-    syncSessions: 4,
-    asyncContent: 8,
-    externalLinks: 3,
-  },
-  {
-    id: 2,
-    title: 'React Development',
-    description: 'React kutubxonasi yordamida zamonaviy web ilovalar yarating',
-    instructor: 'Malika Tosheva',
-    students: 189,
-    duration: '12 soat',
-    rating: 4.9,
-    progress: 60,
-    scormCompliant: true,
-    category: 'Dasturlash',
-    level: 'O\'rta',
-    image: 'https://images.pexels.com/photos/11035471/pexels-photo-11035471.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'active',
-    createdAt: '2024-01-10',
-    lessons: 15,
-    assignments: 8,
-    tests: 4,
-    resources: 12,
-    videoLessons: 13,
-    syncSessions: 6,
-    asyncContent: 9,
-    externalLinks: 5,
-  },
-  {
-    id: 3,
-    title: 'Python Dasturlash',
-    description: 'Python tilida dasturlashni o\'rganing va loyihalar yarating',
-    instructor: 'Bobur Rahimov',
-    students: 312,
-    duration: '15 soat',
-    rating: 4.7,
-    progress: 90,
-    scormCompliant: true,
-    category: 'Dasturlash',
-    level: 'Boshlang\'ich',
-    image: 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'active',
-    createdAt: '2024-01-05',
-    lessons: 18,
-    assignments: 10,
-    tests: 5,
-    resources: 15,
-    videoLessons: 16,
-    syncSessions: 8,
-    asyncContent: 10,
-    externalLinks: 7,
-  },
-  {
-    id: 4,
-    title: 'Data Science Kirish',
-    description: 'Ma\'lumotlar tahlili va machine learning asoslari',
-    instructor: 'Nodira Saidova',
-    students: 156,
-    duration: '20 soat',
-    rating: 4.6,
-    progress: 45,
-    scormCompliant: true,
-    category: 'Ma\'lumotlar',
-    level: 'O\'rta',
-    image: 'https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'draft',
-    createdAt: '2023-12-20',
-    lessons: 22,
-    assignments: 12,
-    tests: 6,
-    resources: 18,
-    videoLessons: 20,
-    syncSessions: 10,
-    asyncContent: 12,
-    externalLinks: 9,
-  },
-];
+// Mock data removed - now using API
 
 const categories = [
   'Barcha kategoriyalar',
@@ -169,17 +76,34 @@ const contentTypes = [
 export function Courses() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Barcha kategoriyalar');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'completed' | 'draft'>('all');
   const [selectedTab, setSelectedTab] = useState('courses');
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'Barcha kategoriyalar' || course.category === selectedCategory;
-    const matchesStatus = selectedStatus === 'all' || course.status === selectedStatus;
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // Build filters for API
+  const filters: CourseFilters = {};
+  if (selectedStatus !== 'all') {
+    filters.status = selectedStatus;
+  }
+  if (searchTerm) {
+    filters.search = searchTerm;
+  }
+
+  // Fetch courses from API
+  const { data: courses, isLoading, isError, error, refetch } = useCourses(filters);
+
+  // Show error toast when error occurs
+  if (isError && error) {
+    toast.error('Kurslarni yuklashda xatolik', {
+      description: error.message || 'Iltimos, qayta urinib ko\'ring',
+    });
+  }
+
+  // Filter by category (client-side for now since API doesn't support it)
+  const filteredCourses = courses?.filter(course => {
+    // Note: Category filtering is client-side since the API Course type doesn't have category field
+    // If needed, this should be added to the backend API and Course type
+    return true; // For now, show all courses that match API filters
+  }) || [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -187,17 +111,16 @@ export function Courses() {
         return <Badge className="bg-green-100 text-green-800">Faol</Badge>;
       case 'draft':
         return <Badge className="bg-yellow-100 text-yellow-800">Loyiha</Badge>;
-      case 'archived':
-        return <Badge className="bg-gray-100 text-gray-800">Arxiv</Badge>;
+      case 'completed':
+        return <Badge className="bg-gray-100 text-gray-800">Yakunlangan</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
-  const totalCourses = courses.length;
-  const activeCourses = courses.filter(c => c.status === 'active').length;
-  const totalStudents = courses.reduce((sum, course) => sum + course.students, 0);
-  const avgRating = courses.reduce((sum, course) => sum + course.rating, 0) / courses.length;
+  const totalCourses = courses?.length || 0;
+  const activeCourses = courses?.filter(c => c.status === 'active').length || 0;
+  const completedCourses = courses?.filter(c => c.status === 'completed').length || 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -322,7 +245,7 @@ export function Courses() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
@@ -336,10 +259,10 @@ export function Courses() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600 mb-1">{totalCourses}</div>
+            <div className="text-3xl font-bold text-blue-600 mb-1">{isLoading ? '...' : totalCourses}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <TrendingUp className="h-3 w-3 text-green-500" />
-              {activeCourses} faol
+              {isLoading ? '...' : activeCourses} faol
             </div>
           </CardContent>
         </Card>
@@ -348,19 +271,19 @@ export function Courses() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Jami Talabalar
+                <CheckCircle className="h-4 w-4" />
+                Yakunlangan
               </span>
               <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-md">
-                <Users className="h-4 w-4 text-white" />
+                <CheckCircle className="h-4 w-4 text-white" />
               </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-emerald-600 mb-1">{totalStudents.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-emerald-600 mb-1">{isLoading ? '...' : completedCourses}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              Barcha kurslarda
+              <CheckCircle className="h-3 w-3 text-green-500" />
+              Muvaffaqiyatli
             </div>
           </CardContent>
         </Card>
@@ -369,40 +292,23 @@ export function Courses() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Star className="h-4 w-4" />
-                O'rtacha Reyting
+                <TrendingUp className="h-4 w-4" />
+                O'rtacha Progress
               </span>
               <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
-                <Star className="h-4 w-4 text-white" />
+                <TrendingUp className="h-4 w-4 text-white" />
               </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600 mb-1">{avgRating.toFixed(1)}</div>
+            <div className="text-3xl font-bold text-purple-600 mb-1">
+              {isLoading ? '...' : courses && courses.length > 0 
+                ? Math.round(courses.reduce((sum, c) => sum + c.progress, 0) / courses.length) 
+                : 0}%
+            </div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <Star className="h-3 w-3 text-yellow-500 fill-current" />
-              5 dan
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                SCORM Kurslar
-              </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 shadow-md">
-                <Shield className="h-4 w-4 text-white" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-amber-600 mb-1">{courses.filter(c => c.scormCompliant).length}</div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Shield className="h-3 w-3 text-green-500" />
-              100% uyg'unlik
+              Barcha kurslar
             </div>
           </CardContent>
         </Card>
@@ -440,15 +346,15 @@ export function Courses() {
                 </SelectContent>
               </Select>
               
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as 'all' | 'active' | 'completed' | 'draft')}>
                 <SelectTrigger className="w-full md:w-48">
                   <SelectValue placeholder="Holat" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Barcha holatlar</SelectItem>
                   <SelectItem value="active">Faol</SelectItem>
+                  <SelectItem value="completed">Yakunlangan</SelectItem>
                   <SelectItem value="draft">Loyiha</SelectItem>
-                  <SelectItem value="archived">Arxiv</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -463,101 +369,125 @@ export function Courses() {
         {/* Courses Tab */}
         <TabsContent value="courses" className="space-y-6 pt-2">
 
-          {/* Courses Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course) => (
-              <Card key={course.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105 overflow-hidden">
-                <div className="relative">
-                  <img 
-                    src={course.image} 
-                    alt={course.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute top-2 right-2 flex gap-1">
-                    {course.scormCompliant && (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800 gap-1">
-                        <Shield className="h-3 w-3" />
-                        SCORM
-                      </Badge>
-                    )}
-                    {getStatusBadge(course.status)}
-                  </div>
-                  <div className="absolute top-2 left-2">
-                    <Badge variant="secondary">{course.level}</Badge>
-                  </div>
+          {/* Loading State */}
+          {isLoading && <CourseCardSkeletonList count={6} />}
+
+          {/* Error State */}
+          {isError && !isLoading && (
+            <Card className="p-8">
+              <div className="flex flex-col items-center justify-center text-center space-y-4">
+                <AlertCircle className="h-12 w-12 text-destructive" />
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">Kurslarni yuklashda xatolik</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {error?.message || 'Iltimos, qayta urinib ko\'ring'}
+                  </p>
+                  <Button onClick={() => refetch()} variant="outline">
+                    Qayta yuklash
+                  </Button>
                 </div>
-                
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">{course.title}</CardTitle>
-                      <CardDescription className="text-sm">
-                        {course.description}
-                      </CardDescription>
+              </div>
+            </Card>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && !isError && filteredCourses.length === 0 && (
+            <Card className="p-8">
+              <div className="flex flex-col items-center justify-center text-center space-y-4">
+                <BookOpen className="h-12 w-12 text-muted-foreground" />
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">Kurslar topilmadi</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Filtrlarga mos kurslar mavjud emas
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Courses Grid */}
+          {!isLoading && !isError && filteredCourses.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCourses.map((course) => (
+                <Card key={course.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105 overflow-hidden">
+                  <div className="relative">
+                    {course.imageUrl ? (
+                      <img 
+                        src={course.imageUrl} 
+                        alt={course.title}
+                        className="w-full h-48 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center">
+                        <BookOpen className="h-16 w-16 text-blue-300 dark:text-blue-700" />
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      {getStatusBadge(course.status)}
                     </div>
+                    {course.grade && (
+                      <div className="absolute top-2 left-2">
+                        <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                          {course.grade}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {course.students}
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="text-lg">{course.title}</CardTitle>
+                        <CardDescription className="text-sm">
+                          {course.description}
+                        </CardDescription>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {course.duration}
+                    
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        {course.instructor}
+                      </div>
+                      {course.credits && (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4" />
+                          {course.credits} kredit
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      {course.rating}
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div className="flex items-center gap-1">
-                      <Video className="h-3 w-3 text-blue-600" />
-                      <span>{course.videoLessons} video</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <FileText className="h-3 w-3 text-green-600" />
-                      <span>{course.assignments} topshiriq</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3 text-purple-600" />
-                      <span>{course.tests} test</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Link className="h-3 w-3 text-orange-600" />
-                      <span>{course.externalLinks} havola</span>
-                    </div>
-                  </div>
+                  </CardHeader>
                   
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Yakunlanish</span>
-                      <span>{course.progress}%</span>
+                  <CardContent className="space-y-4">
+                    {course.nextLesson && (
+                      <div className="text-xs text-muted-foreground flex items-center gap-2">
+                        <Calendar className="h-3 w-3" />
+                        <span>Keyingi dars: {course.nextLesson.title}</span>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Progress</span>
+                        <span>{course.progress}%</span>
+                      </div>
+                      <Progress value={course.progress} className="h-2" />
                     </div>
-                    <Progress value={course.progress} className="h-2" />
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button className="flex-1 gap-2" size="sm">
-                      <Eye className="h-4 w-4" />
-                      Ko'rish
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Edit className="h-4 w-4" />
-                      Tahrirlash
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    
+                    <div className="flex gap-2">
+                      <Button className="flex-1 gap-2" size="sm">
+                        <Eye className="h-4 w-4" />
+                        Ko'rish
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* Content Management Tab */}

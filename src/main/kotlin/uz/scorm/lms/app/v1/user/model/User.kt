@@ -44,4 +44,13 @@ class User(
     @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'ACTIVE'")
     var status: UserStatus = UserStatus.ACTIVE,
 
+    @Column(name = "face_photo_url", length = 500)
+    var facePhotoUrl: String? = null,
+
+    @Column(name = "face_descriptor", columnDefinition = "TEXT")
+    var faceDescriptor: String? = null,
+
+    @Column(name = "face_uploaded_at")
+    var faceUploadedAt: java.time.LocalDateTime? = null,
+
 ) : BaseEntity(), Serializable

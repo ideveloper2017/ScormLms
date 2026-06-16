@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
     mutationFn: (email: string) => forgotPassword(email),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
       setEmailError("Email manzilingizni kiriting");

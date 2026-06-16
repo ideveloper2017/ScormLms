@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils"
+import { faceRecognitionApi } from '@/services/api/face-recognition-api';
 
 interface LoginFormProps {
     onSuccess: () => void;
@@ -27,7 +28,7 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [stream, setStream] = useState<MediaStream | null>(null);
 
-    const { login:authLogin, completeLogin, pendingUser, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+    const { login:authLogin, completeLogin, pendingUser, isAuthenticated, isLoading: isAuthLoading, setFaceRecognitionRequired } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -120,10 +121,28 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                 const isStudent = roles.some((role) => normalizeRole(role) === 'STUDENT');
                 ensureFaceRecognitionFlag();
 
-                 if (isStudent) {
-                    setLoginStep('face-recognition');
+                if (isStudent) {
+                    // Check if user has face photo in backend
+                    try {
+                        const facePhoto = await faceRecognitionApi.getFacePhotoUrl();
+                        
+                        if (facePhoto && facePhoto.photoUrl) {
+                            // User has face photo → redirect to face verification
+                            setFaceRecognitionRequired(true);
+                            handleLoginSuccess();
+                        } else {
+                            // No face photo → optional first-time setup, allow skip
+                            setFaceRecognitionRequired(false);
+                            handleLoginSuccess();
+                        }
+                    } catch (error) {
+                        console.error('Error checking face photo:', error);
+                        // On error, allow login without face recognition
+                        setFaceRecognitionRequired(false);
+                        handleLoginSuccess();
+                    }
                 } else {
-                     handleLoginSuccess();
+                    handleLoginSuccess();
                 }
 
                 if (result?.message) {
@@ -172,10 +191,28 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                 const isStudent = roles.some((role) => normalizeRole(role) === 'STUDENT');
                 ensureFaceRecognitionFlag();
 
-                 if (isStudent) {
-                    setLoginStep('face-recognition');
+                if (isStudent) {
+                    // Check if user has face photo in backend
+                    try {
+                        const facePhoto = await faceRecognitionApi.getFacePhotoUrl();
+                        
+                        if (facePhoto && facePhoto.photoUrl) {
+                            // User has face photo → redirect to face verification
+                            setFaceRecognitionRequired(true);
+                            handleLoginSuccess(); // This will redirect to App.tsx where FaceRecognition component will show
+                        } else {
+                            // No face photo → optional first-time setup, allow skip
+                            setFaceRecognitionRequired(false);
+                            handleLoginSuccess();
+                        }
+                    } catch (error) {
+                        console.error('Error checking face photo:', error);
+                        // On error, allow login without face recognition
+                        setFaceRecognitionRequired(false);
+                        handleLoginSuccess();
+                    }
                 } else {
-                     handleLoginSuccess();
+                    handleLoginSuccess();
                 }
 
                 if (result?.message) {

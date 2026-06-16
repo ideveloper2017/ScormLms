@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
     : null;
   const error = validationError ?? mutationError;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
       setError("Tiklash havolasi noto'g'ri. Emaildagi havolani qayta bosing.");

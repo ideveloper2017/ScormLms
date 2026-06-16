@@ -7,6 +7,7 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { DashboardLayout } from "@/components/layout/AdminLayout";
 import { Toaster } from "@/components/ui/toaster";
 import FaceRecognition from "@/components/auth/face-recognition";
+import FacePhotoSetup from "@/components/auth/face-photo-setup";
 
 // Auth pages
 import LoginPage from "@/pages/auth/login";
@@ -52,6 +53,8 @@ import { AdminAuditLogs } from "@/pages/admin/audit-logs";
 import { StudentSchedule } from "@/pages/student/schedule";
 import { StudentAssignments } from "@/pages/student/assignments";
 import { StudentTests } from "@/pages/student/tests";
+import { TestSession } from "@/pages/student/test-session";
+import { TestResults } from "@/pages/student/test-results";
 import { StudentGrades } from "@/pages/student/grades";
 import { StudentAttendance } from "@/pages/student/attendance";
 import { StudentNotifications } from "@/pages/student/notifications";
@@ -100,8 +103,19 @@ function App() {
   const [faceRecognitionCompleted, setFaceRecognitionCompleted] = useState(
     localStorage.getItem("faceRecognitionCompleted") === "true"
   );
+  const [showFaceSetup, setShowFaceSetup] = useState(false);
+
+  // Debug logging
+  console.log('App.tsx - State:', { 
+    isLoading, 
+    user, 
+    faceRecognitionCompleted,
+    showFaceSetup,
+    userRoles: user?.roles,
+  });
 
   if (isLoading) {
+    console.log('App.tsx - Showing loading screen');
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
@@ -116,6 +130,16 @@ function App() {
     completeLogin(user ?? undefined);
     localStorage.setItem("faceRecognitionCompleted", "true");
     setFaceRecognitionCompleted(true);
+    setShowFaceSetup(false);
+  };
+
+  const handleFaceSetupRequest = () => {
+    setShowFaceSetup(true);
+  };
+
+  const handleFaceSetupSuccess = () => {
+    // After uploading face photo, mark as completed
+    handleFaceCompleted();
   };
 
   return (
@@ -125,6 +149,25 @@ function App() {
         <Route path="/login"          element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password"  element={<ResetPasswordPage />} />
+        
+        {/* ── Face Recognition Setup (for students) ──────────────────────── */}
+        <Route 
+          path="/face-setup" 
+          element={
+            <AuthGuard>
+              <FacePhotoSetup
+                onSuccess={() => {
+                  localStorage.setItem("faceRecognitionCompleted", "true");
+                  window.location.href = "/";
+                }}
+                onSkip={() => {
+                  localStorage.setItem("faceRecognitionCompleted", "true");
+                  window.location.href = "/";
+                }}
+              />
+            </AuthGuard>
+          }
+        />
 
         {/* ── Root: redirect to role-appropriate dashboard ─────────────────── */}
         <Route
@@ -132,11 +175,17 @@ function App() {
           element={
             <AuthGuard>
               {isStudent(user) && !faceRecognitionCompleted ? (
-                <FaceRecognition
-                  referenceImage={user?.photo || "img.png"}
-                  onSuccess={handleFaceCompleted}
-                  onSkip={handleFaceCompleted}
-                />
+                showFaceSetup ? (
+                  <FacePhotoSetup
+                    onSuccess={handleFaceSetupSuccess}
+                    onSkip={handleFaceCompleted}
+                  />
+                ) : (
+                  <FaceRecognition
+                    onSuccess={handleFaceCompleted}
+                    onSkip={handleFaceSetupRequest}
+                  />
+                )
               ) : (
                 <DashboardLayout>{getDashboardComponent(user)}</DashboardLayout>
               )}
@@ -177,6 +226,8 @@ function App() {
         <Route path="/student/schedule"      element={<P roles={[R_STU]}><StudentSchedule /></P>} />
         <Route path="/student/assignments"   element={<P roles={[R_STU]}><StudentAssignments /></P>} />
         <Route path="/student/tests"         element={<P roles={[R_STU]}><StudentTests /></P>} />
+        <Route path="/student/tests/:testId/session" element={<P roles={[R_STU]}><TestSession /></P>} />
+        <Route path="/student/tests/:testId/results" element={<P roles={[R_STU]}><TestResults /></P>} />
         <Route path="/student/exams"         element={<P roles={[R_STU]}><Exams /></P>} />
         <Route path="/student/grades"        element={<P roles={[R_STU]}><StudentGrades /></P>} />
         <Route path="/student/attendance"    element={<P roles={[R_STU]}><StudentAttendance /></P>} />

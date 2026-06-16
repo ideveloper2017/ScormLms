@@ -19,6 +19,8 @@ interface AuthContextType {
   completeLogin: (userData?: User) => void;
   logout: () => void;
   isFaceRecognitionCompleted: boolean;
+  faceRecognitionRequired: boolean;
+  setFaceRecognitionRequired: (required: boolean) => void;
   checkAuthStatus: () => Promise<boolean>;
 }
 
@@ -32,6 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isFaceRecognitionCompleted, setIsFaceRecognitionCompleted] = useState(
     localStorage.getItem("faceRecognitionCompleted") === "true"
   );
+  const [faceRecognitionRequired, setFaceRecognitionRequired] = useState(false);
   const navigate = useNavigate();
 
   const clearAuthState = useCallback(() => {
@@ -40,6 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPendingUser(null);
     setIsAuthenticated(false);
     setIsFaceRecognitionCompleted(false);
+    setFaceRecognitionRequired(false);
     localStorage.removeItem("faceRecognitionCompleted");
   }, []);
 
@@ -173,6 +177,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         checkAuthStatus,
         isFaceRecognitionCompleted,
+        faceRecognitionRequired,
+        setFaceRecognitionRequired,
       }}
     >
       {children}

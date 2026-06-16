@@ -1,3 +1,6 @@
+/* Import loading transition animations */
+@import './styles/transitions.css';
+
 /* Remove default styles and use Tailwind */
 #root {
   width: 100%;
