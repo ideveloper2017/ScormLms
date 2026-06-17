@@ -27,7 +27,7 @@ export function Subjects() {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
   const { items, loading, error, reload } = useCrudData<SubjectRecord>(qk.subjects(), listSubjects);
-  const { data: programs = [] } = useQuery({ queryKey: qk.programs(), queryFn: listPrograms, staleTime: 60_000 });
+  const { data: programs = [] } = useQuery({ queryKey: qk.programs(), queryFn: () => listPrograms(), staleTime: 60_000 });
 
   const parseCredits = (s: string): number | null => {
     const n = parseInt(s, 10);

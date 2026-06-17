@@ -1,10 +1,10 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
-    id 'org.jetbrains.kotlin.plugin.spring' version '2.2.0'
+    id 'org.jetbrains.kotlin.jvm' version '2.2.21'
+    id 'org.jetbrains.kotlin.plugin.spring' version '2.2.21'
     id 'war'
-    id 'org.springframework.boot' version '3.5.5'
+    id 'org.springframework.boot' version '3.5.15'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'org.jetbrains.kotlin.plugin.jpa' version '2.2.0'
+    id 'org.jetbrains.kotlin.plugin.jpa' version '2.2.21'
 }
 
 group = 'uz.scorm.lms.app'
@@ -13,7 +13,7 @@ description = 'ScromLmsProjects'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(24)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -36,7 +36,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    
+    // MUHIM: tashqi Tomcat'ga WAR deploy qilinadi, shuning uchun embedded Tomcat
+    // WAR ichiga (WEB-INF/lib) qo'shilmasligi kerak — aks holda tashqi Tomcat bilan
+    // to'qnashadi va Spring Boot jimgina ishga tushmaydi. providedRuntime shu uchun.
+    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
     // JWT
 
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
@@ -52,8 +55,8 @@ dependencies {
 
     // Kotlin
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2'
-    implementation 'org.jetbrains.kotlin:kotlin-reflect:2.2.0'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.0'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect:2.2.21'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.21'
     
     // XML Processing
     implementation 'org.dom4j:dom4j:2.1.4'
@@ -103,14 +106,14 @@ tasks.named('test') {
 compileKotlin {
     kotlinOptions {
         freeCompilerArgs = ['-Xjsr305=strict']
-        jvmTarget = '24'
+        jvmTarget = '21'
     }
 }
 
 compileTestKotlin {
     kotlinOptions {
         freeCompilerArgs = ['-Xjsr305=strict']
-        jvmTarget = '24'
+        jvmTarget = '21'
     }
 }
 
@@ -122,6 +125,13 @@ tasks.withType(JavaCompile) {
 bootJar {
     archiveFileName = 'scorm-lms.jar'
     launchScript()
+}
+
+// Tashqi Tomcat'ga deploy uchun WAR'ni ROOT.war qilib yasaymiz, shunda
+// ilova context-path'siz (root: http://server/...) ishlaydi va frontend'ning
+// /api/... chaqiruvlari to'g'ri keladi.
+bootWar {
+    archiveFileName = 'ROOT.war'
 }
 
 springBoot {

@@ -1,5 +1,5 @@
 server:
-    port: 8080
+#    port: 8080
 #    servlet:
 #        context-path: /api
     compression:
@@ -83,6 +83,8 @@ springdoc:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://172.16.10.159:8080,http://localhost:5173,http://localhost:4173,http://localhost:8080}
+  seed:
+        admin-password: admin
   jwt:
     # HS512 uchun kamida 64 baytlik secret talab qilinadi.
     # Prod muhitda JWT_SECRET env variable orqali beriladi; default faqat lokal dev uchun.

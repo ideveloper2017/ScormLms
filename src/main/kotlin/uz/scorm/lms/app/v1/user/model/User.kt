@@ -41,7 +41,11 @@ class User(
     var role: Role? = null,
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'ACTIVE'")
+    // DEFAULT'ni columnDefinition'ga yozmaymiz: ddl-auto=update PostgreSQL'da
+    // yaroqsiz "ALTER COLUMN ... SET DATA TYPE VARCHAR(20) DEFAULT 'ACTIVE'" SQL
+    // yasaydi (PG bunday inline DEFAULT'ni qabul qilmaydi). Default qiymat baribir
+    // shu yerda (= UserStatus.ACTIVE) Kotlin tomonida ta'minlanadi.
+    @Column(nullable = false, length = 20)
     var status: UserStatus = UserStatus.ACTIVE,
 
 ) : BaseEntity(), Serializable

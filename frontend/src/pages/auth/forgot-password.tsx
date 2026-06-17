@@ -78,17 +78,6 @@ export default function ForgotPasswordPage() {
       setEmailError("Email manzilingizni kiriting");
       return;
     }
-    setIsLoading(true);
-    setError(null);
-    try {
-      // API call - import lazim bo'lsa: await forgotPassword(email.trim());
-      await new Promise((r) => setTimeout(r, 1200)); // mock delay
-      setSent(true);
-    } catch {
-      setError("Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.");
-    } finally {
-      setIsLoading(false);
-    }
     setEmailError(null);
     mutation.mutate(email.trim());
   };
@@ -175,7 +164,7 @@ export default function ForgotPasswordPage() {
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
-                        setError(null);
+                        setEmailError(null);
                       }}
                       disabled={isLoading}
                       autoComplete="email"

@@ -17,8 +17,11 @@ import java.util.*
 @Service
 class FaceService {
 
-    private val targetSize = Size(160, 160)
-    private val cascade: CascadeClassifier? = loadCascade()
+    // OpenCV native kutubxonasi konstruktorda emas, birinchi ishlatishda yuklanadi.
+    // Shunda native yuklanmasa ham ilova ko'tariladi (faqat face funksiyasi ishlamaydi),
+    // bean yaratilishida "Constructor threw exception" bilan yiqilmaydi.
+    private val targetSize by lazy { Size(160, 160) }
+    private val cascade: CascadeClassifier? by lazy { loadCascade() }
 
     private fun loadCascade(): CascadeClassifier? {
         return try {
