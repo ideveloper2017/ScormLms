@@ -42,7 +42,7 @@ class DataInitializer(
     }
 
     private fun isDevProfile(): Boolean =
-        environment.acceptsProfiles(Profiles.of("postgresql-dev"))
+        environment.acceptsProfiles(Profiles.of("postgresql-prod"))
 
     private fun seedRole(name: String) {
         if (!roleRepository.existsByName(name)) {

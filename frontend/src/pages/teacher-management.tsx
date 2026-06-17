@@ -36,8 +36,8 @@ export function TeacherManagement() {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "TEACHER_WRITE");
   const { items, loading, error, reload } = useCrudData<TeacherRecord>(qk.teachers(), listTeachers);
-  const { data: departments = [] } = useQuery({ queryKey: qk.departments(), queryFn: listDepartments, staleTime: 60_000 });
-  const { data: subjects = [] } = useQuery({ queryKey: qk.subjects(), queryFn: listSubjects, staleTime: 60_000 });
+  const { data: departments = [] } = useQuery({ queryKey: qk.departments(), queryFn: () => listDepartments(), staleTime: 60_000 });
+  const { data: subjects = [] } = useQuery({ queryKey: qk.subjects(), queryFn: () => listSubjects(), staleTime: 60_000 });
 
   const toggleSubject = (form: TeacherForm, id: number): number[] =>
     form.subjectIds.includes(id)

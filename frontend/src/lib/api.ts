@@ -16,7 +16,7 @@ export interface CommonApiResponse<T> {
 
 export type ApiResponse<T> = CommonApiResponse<T>;
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "https://api.lms.nstu.uz/api/v1";
 const TOKEN_KEY = "token";
 const REFRESH_TOKEN_KEY = "refreshToken";
 const TOKEN_EXPIRES_AT_KEY = "tokenExpiresAt";

@@ -91,33 +91,6 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) {
-      setError("Tiklash havolasi noto'g'ri. Emaildagi havolani qayta bosing.");
-      return;
-    }
-    if (newPassword.length < 6) {
-      setError("Parol kamida 6 ta belgidan iborat bo'lishi kerak");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError("Parollar mos kelmadi");
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      await resetPasswordWithToken(token, newPassword);
-      setDone(true);
-      setTimeout(() => navigate("/login"), 3000);
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ??
-        "Xatolik yuz berdi. Token muddati o'tgan yoki noto'g'ri bo'lishi mumkin.";
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
     if (!token) { setValidationError("Tiklash havolasi noto'g'ri. Emaildagi havolani qayta bosing."); return; }
     if (newPassword.length < 6) { setValidationError("Parol kamida 6 ta belgidan iborat bo'lishi kerak"); return; }
     if (newPassword !== confirmPassword) { setValidationError("Parollar mos kelmadi"); return; }
@@ -202,7 +175,7 @@ export default function ResetPasswordPage() {
                       value={newPassword}
                       onChange={(e) => {
                         setNewPassword(e.target.value);
-                        setError(null);
+                        setValidationError(null);
                       }}
                       disabled={isLoading || !token}
                       autoFocus
@@ -240,7 +213,7 @@ export default function ResetPasswordPage() {
                       value={confirmPassword}
                       onChange={(e) => {
                         setConfirmPassword(e.target.value);
-                        setError(null);
+                        setValidationError(null);
                       }}
                       disabled={isLoading || !token}
                     />

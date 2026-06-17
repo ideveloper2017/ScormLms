@@ -33,7 +33,7 @@ export function Groups() {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
   const { items, loading, error, reload } = useCrudData<GroupRecord>(qk.groups(), listGroups);
-  const { data: programs = [] } = useQuery({ queryKey: qk.programs(), queryFn: listPrograms, staleTime: 60_000 });
+  const { data: programs = [] } = useQuery({ queryKey: qk.programs(), queryFn: () => listPrograms(), staleTime: 60_000 });
 
   return (
     <div className="p-6">

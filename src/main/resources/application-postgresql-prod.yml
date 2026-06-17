@@ -16,8 +16,6 @@ logging:
     org.hibernate.SQL: WARN
     com.zaxxer.hikari: WARN
     uz.scorm.lms: INFO
-  file:
-    name: ${LOG_FILE:./logs/scorm-lms.log}
   logback:
     rollingpolicy:
       max-file-size: 50MB
@@ -103,9 +101,9 @@ management:
     java:
       enabled: true
 
-# Swagger prod'da default o'chiq; vaqtincha yoqish uchun SWAGGER_ENABLED=true
+# Prod server'da o'chirish uchun: SWAGGER_ENABLED=false env variable qo'yilsin
 springdoc:
   api-docs:
-    enabled: ${SWAGGER_ENABLED:false}
+    enabled: ${SWAGGER_ENABLED:true}
   swagger-ui:
-    enabled: ${SWAGGER_ENABLED:false}
+    enabled: ${SWAGGER_ENABLED:true}
