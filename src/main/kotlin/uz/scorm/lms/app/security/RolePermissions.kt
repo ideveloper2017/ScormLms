@@ -24,6 +24,8 @@ object RolePermissions {
     const val ACADEMIC_WRITE = "ACADEMIC_WRITE"
     const val TEACHER_READ   = "TEACHER_READ"
     const val TEACHER_WRITE  = "TEACHER_WRITE"
+    const val STUDENT_READ   = "STUDENT_READ"
+    const val STUDENT_WRITE  = "STUDENT_WRITE"
 
     private val MATRIX: Map<String, List<String>> = mapOf(
         "super_admin" to listOf(
@@ -52,7 +54,7 @@ object RolePermissions {
             ACADEMIC_READ, TEACHER_READ
         ),
         "student" to listOf(
-            COURSE_READ, EXAM_TAKE
+            COURSE_READ, EXAM_TAKE, STUDENT_READ, STUDENT_WRITE
         ),
         "proctor" to listOf(
             EXAM_PROCTOR, USER_MONITOR
@@ -72,7 +74,8 @@ object RolePermissions {
         COURSE_READ, COURSE_WRITE,
         ROLE_MANAGE, AUDIT_READ, REPORT_READ, STAT_READ,
         EXAM_MANAGE, EXAM_PROCTOR, EXAM_TAKE,
-        ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE
+        ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE,
+        STUDENT_READ, STUDENT_WRITE
     )
 
     val allRoles: List<String> = MATRIX.keys.toList()

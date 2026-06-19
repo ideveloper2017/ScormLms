@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
   MapPin,
   Edit,
   Camera,
@@ -55,51 +56,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.tsx';
+import { useToast } from '@/hooks/use-toast.ts';
+import { getMyProfile, updateMyProfile } from '@/lib/student-portal-api';
+import { qk } from '@/lib/query-keys';
 
-const studentProfile = {
-  id: 'STU001',
-  name: 'Alisher Karimov',
-  email: 'alisher@student.uz',
-  phone: '+998901234567',
-  birthDate: '1998-05-15',
-  address: 'Toshkent sh., Yunusobod t.',
-  group: 'JS-2024-01',
-  enrollmentDate: '2024-01-15',
-  gpa: 4.2,
-  totalCredits: 45,
-  completedCourses: 3,
-  activeCourses: 2,
-  avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=200',
+const STATIC_PROFILE = {
+  avatar: '',
   profileCompletion: 85,
-  lastLogin: '2024-01-15 14:30',
   achievements: [
     { id: 1, name: 'JavaScript Master', icon: '🏆', date: '2024-01-10' },
     { id: 2, name: 'Perfect Attendance', icon: '📅', date: '2024-01-05' },
     { id: 3, name: 'First Course Complete', icon: '🎓', date: '2023-12-20' },
   ],
-  learningStats: {
-    totalHours: 120,
-    thisWeekHours: 15,
-    avgSessionTime: 45,
-    streakDays: 12,
-  },
+  learningStats: { totalHours: 120, thisWeekHours: 15, avgSessionTime: 45, streakDays: 12 },
   preferences: {
-    notifications: {
-      email: true,
-      push: true,
-      sms: false,
-    },
-    privacy: {
-      profileVisible: true,
-      showProgress: true,
-      showAchievements: true,
-    },
-    learning: {
-      autoplay: true,
-      subtitles: true,
-      playbackSpeed: 1.0,
-    }
-  }
+    notifications: { email: true, push: true, sms: false },
+    privacy: { profileVisible: true, showProgress: true, showAchievements: true },
+    learning: { autoplay: true, subtitles: true, playbackSpeed: 1.0 },
+  },
 };
 
 const recentActivities = [
@@ -169,9 +143,51 @@ const learningGoals = [
 ];
 
 export function StudentCabinet() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const [selectedTab, setSelectedTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
-  const [editedProfile, setEditedProfile] = useState(studentProfile);
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+
+  const { data: profile, isLoading } = useQuery({
+    queryKey: qk.studentProfile(),
+    queryFn: getMyProfile,
+    staleTime: 30_000,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: updateMyProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.studentProfile() });
+      setIsEditing(false);
+      toast({ title: "Profil yangilandi" });
+    },
+    onError: () => {
+      toast({ title: "Xatolik yuz berdi", variant: "destructive" });
+    },
+  });
+
+  const handleEditToggle = () => {
+    if (!isEditing && profile) {
+      setEditEmail(profile.email ?? '');
+      setEditPhone(profile.phone ?? '');
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSave = () => {
+    updateMutation.mutate({ email: editEmail || null, phone: editPhone || null });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+      </div>
+    );
+  }
 
   const getGoalStatusColor = (status: string) => {
     switch (status) {
@@ -199,6 +215,9 @@ export function StudentCabinet() {
     }
   };
 
+  const displayName = profile?.fullName ?? profile?.username ?? 'Talaba';
+  const initials = displayName.split(' ').filter(Boolean).map((p: string) => p[0]).join('').slice(0, 2).toUpperCase();
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -206,64 +225,39 @@ export function StudentCabinet() {
         <div className="flex items-center gap-4">
           <div className="relative">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={studentProfile.avatar} alt={studentProfile.name} />
-              <AvatarFallback className="text-2xl">
-                {studentProfile.name.split(' ').map(n => n[0]).join('')}
+              <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+                {initials}
               </AvatarFallback>
             </Avatar>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button 
-                  size="icon" 
-                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Profil Rasmini O'zgartirish</DialogTitle>
-                  <DialogDescription>
-                    Yangi profil rasmini yuklang
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="text-center">
-                    <Avatar className="h-32 w-32 mx-auto mb-4">
-                      <AvatarImage src={studentProfile.avatar} alt={studentProfile.name} />
-                      <AvatarFallback className="text-4xl">
-                        {studentProfile.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Button className="gap-2">
-                      <Upload className="h-4 w-4" />
-                      Rasm Yuklash
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
           <div>
-            <h1 className="text-3xl font-bold">{studentProfile.name}</h1>
+            <h1 className="text-3xl font-bold">{displayName}</h1>
             <p className="text-muted-foreground">
-              {studentProfile.id} • {studentProfile.group} • GPA: {studentProfile.gpa}
+              {profile?.username} • {profile?.groupName ?? '—'} • Kurs: {profile?.course}
             </p>
             <div className="flex items-center gap-2 mt-2">
-              <Badge className="bg-green-100 text-green-800">Faol Talaba</Badge>
-              <Badge variant="outline">{studentProfile.completedCourses} kurs yakunlangan</Badge>
+              <Badge className="bg-green-100 text-green-800">{profile?.status ?? 'ACTIVE'}</Badge>
+              <Badge variant="outline">Semestr: {profile?.semester}</Badge>
             </div>
           </div>
         </div>
-        
-        <Button 
-          variant={isEditing ? "default" : "outline"} 
-          className="gap-2"
-          onClick={() => setIsEditing(!isEditing)}
-        >
-          <Edit className="h-4 w-4" />
-          {isEditing ? 'Saqlash' : 'Tahrirlash'}
-        </Button>
+
+        <div className="flex gap-2">
+          {isEditing && (
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Bekor qilish
+            </Button>
+          )}
+          <Button
+            variant={isEditing ? 'default' : 'outline'}
+            className="gap-2"
+            onClick={isEditing ? handleSave : handleEditToggle}
+            disabled={updateMutation.isPending}
+          >
+            <Edit className="h-4 w-4" />
+            {isEditing ? 'Saqlash' : 'Tahrirlash'}
+          </Button>
+        </div>
       </div>
 
       {/* Profile Completion */}
@@ -277,10 +271,10 @@ export function StudentCabinet() {
               </p>
             </div>
             <div className="text-2xl font-bold text-blue-600">
-              {studentProfile.profileCompletion}%
+              {STATIC_PROFILE.profileCompletion}%
             </div>
           </div>
-          <Progress value={studentProfile.profileCompletion} className="h-3" />
+          <Progress value={STATIC_PROFILE.profileCompletion} className="h-3" />
         </CardContent>
       </Card>
 
@@ -299,7 +293,7 @@ export function StudentCabinet() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-emerald-600 mb-1">{studentProfile.learningStats.thisWeekHours}h</div>
+            <div className="text-3xl font-bold text-emerald-600 mb-1">{STATIC_PROFILE.learningStats.thisWeekHours}h</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <TrendingUp className="h-3 w-3 text-green-500" />
               O'quv vaqti
@@ -320,7 +314,7 @@ export function StudentCabinet() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600 mb-1">{studentProfile.learningStats.totalHours}h</div>
+            <div className="text-3xl font-bold text-blue-600 mb-1">{STATIC_PROFILE.learningStats.totalHours}h</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <BookOpen className="h-3 w-3 text-blue-500" />
               Umumiy o'quv
@@ -341,7 +335,7 @@ export function StudentCabinet() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600 mb-1">{studentProfile.learningStats.avgSessionTime}m</div>
+            <div className="text-3xl font-bold text-purple-600 mb-1">{STATIC_PROFILE.learningStats.avgSessionTime}m</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3 text-purple-500" />
               Daqiqa
@@ -362,7 +356,7 @@ export function StudentCabinet() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600 mb-1">{studentProfile.learningStats.streakDays}</div>
+            <div className="text-3xl font-bold text-orange-600 mb-1">{STATIC_PROFILE.learningStats.streakDays}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <Star className="h-3 w-3 text-orange-500 fill-current" />
               Kun ketma-ket
@@ -395,60 +389,53 @@ export function StudentCabinet() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>To'liq ism</Label>
-                    <Input 
-                      value={editedProfile.name}
-                      disabled={!isEditing}
-                      onChange={(e) => setEditedProfile({...editedProfile, name: e.target.value})}
-                    />
+                    <Input value={profile?.fullName ?? ''} disabled />
                   </div>
                   <div className="space-y-2">
-                    <Label>Talaba ID</Label>
-                    <Input value={studentProfile.id} disabled />
+                    <Label>Login (username)</Label>
+                    <Input value={profile?.username ?? ''} disabled />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Email</Label>
-                    <Input 
-                      value={editedProfile.email}
+                    <Input
+                      value={isEditing ? editEmail : (profile?.email ?? '')}
                       disabled={!isEditing}
-                      onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
+                      onChange={(e) => setEditEmail(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Telefon</Label>
-                    <Input 
-                      value={editedProfile.phone}
+                    <Input
+                      value={isEditing ? editPhone : (profile?.phone ?? '')}
                       disabled={!isEditing}
-                      onChange={(e) => setEditedProfile({...editedProfile, phone: e.target.value})}
+                      onChange={(e) => setEditPhone(e.target.value)}
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Tug'ilgan sana</Label>
-                    <Input 
-                      type="date"
-                      value={editedProfile.birthDate}
-                      disabled={!isEditing}
-                      onChange={(e) => setEditedProfile({...editedProfile, birthDate: e.target.value})}
-                    />
+                    <Label>JSHSHIR</Label>
+                    <Input value={profile?.jshshir ?? ''} disabled />
                   </div>
                   <div className="space-y-2">
                     <Label>Guruh</Label>
-                    <Input value={studentProfile.group} disabled />
+                    <Input value={profile?.groupName ?? '—'} disabled />
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label>Manzil</Label>
-                  <Textarea 
-                    value={editedProfile.address}
-                    disabled={!isEditing}
-                    onChange={(e) => setEditedProfile({...editedProfile, address: e.target.value})}
-                  />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Fakultet</Label>
+                    <Input value={profile?.faculty ?? '—'} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Yo'nalish</Label>
+                    <Input value={profile?.educationPath ?? '—'} disabled />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -508,31 +495,35 @@ export function StudentCabinet() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{studentProfile.gpa}</div>
-                    <div className="text-sm text-blue-700 dark:text-blue-400">GPA</div>
+                    <div className="text-2xl font-bold text-blue-600">{profile?.course ?? '—'}</div>
+                    <div className="text-sm text-blue-700 dark:text-blue-400">Kurs</div>
                   </div>
                   <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{studentProfile.totalCredits}</div>
-                    <div className="text-sm text-green-700 dark:text-green-400">Kreditlar</div>
+                    <div className="text-2xl font-bold text-green-600">{profile?.semester ?? '—'}</div>
+                    <div className="text-sm text-green-700 dark:text-green-400">Semestr</div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Ro'yxatdan o'tgan sana:</span>
-                    <span className="text-sm font-medium">{studentProfile.enrollmentDate}</span>
+                    <span className="text-sm text-muted-foreground">Fakultet:</span>
+                    <span className="text-sm font-medium">{profile?.faculty ?? '—'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Yakunlangan kurslar:</span>
-                    <span className="text-sm font-medium">{studentProfile.completedCourses}</span>
+                    <span className="text-sm text-muted-foreground">Yo'nalish:</span>
+                    <span className="text-sm font-medium">{profile?.educationPath ?? '—'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Faol kurslar:</span>
-                    <span className="text-sm font-medium">{studentProfile.activeCourses}</span>
+                    <span className="text-sm text-muted-foreground">Guruh:</span>
+                    <span className="text-sm font-medium">{profile?.groupName ?? '—'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Oxirgi kirish:</span>
-                    <span className="text-sm font-medium">{studentProfile.lastLogin}</span>
+                    <span className="text-sm text-muted-foreground">O'qish tili:</span>
+                    <span className="text-sm font-medium">{profile?.language?.toUpperCase() ?? '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Holat:</span>
+                    <span className="text-sm font-medium">{profile?.status ?? '—'}</span>
                   </div>
                 </div>
               </CardContent>
@@ -549,19 +540,19 @@ export function StudentCabinet() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Jami o'quv vaqti</span>
-                    <span className="font-bold text-blue-600">{studentProfile.learningStats.totalHours}h</span>
+                    <span className="font-bold text-blue-600">{STATIC_PROFILE.learningStats.totalHours}h</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Bu hafta</span>
-                    <span className="font-bold text-green-600">{studentProfile.learningStats.thisWeekHours}h</span>
+                    <span className="font-bold text-green-600">{STATIC_PROFILE.learningStats.thisWeekHours}h</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">O'rtacha sessiya</span>
-                    <span className="font-bold text-purple-600">{studentProfile.learningStats.avgSessionTime}m</span>
+                    <span className="font-bold text-purple-600">{STATIC_PROFILE.learningStats.avgSessionTime}m</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Ketma-ketlik</span>
-                    <span className="font-bold text-orange-600">{studentProfile.learningStats.streakDays} kun</span>
+                    <span className="font-bold text-orange-600">{STATIC_PROFILE.learningStats.streakDays} kun</span>
                   </div>
                 </div>
 
@@ -579,7 +570,7 @@ export function StudentCabinet() {
         {/* Achievements Tab */}
         <TabsContent value="achievements" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {studentProfile.achievements.map((achievement) => (
+            {STATIC_PROFILE.achievements.map((achievement) => (
               <Card key={achievement.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105">
                 <CardContent className="p-6 text-center">
                   <div className="text-4xl mb-4">{achievement.icon}</div>
@@ -723,7 +714,7 @@ export function StudentCabinet() {
                       Yangi darslar va topshiriqlar haqida email olish
                     </p>
                   </div>
-                  <Switch defaultChecked={studentProfile.preferences.notifications.email} />
+                  <Switch defaultChecked={STATIC_PROFILE.preferences.notifications.email} />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -733,7 +724,7 @@ export function StudentCabinet() {
                       Brauzer orqali bildirishnomalar
                     </p>
                   </div>
-                  <Switch defaultChecked={studentProfile.preferences.notifications.push} />
+                  <Switch defaultChecked={STATIC_PROFILE.preferences.notifications.push} />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -743,7 +734,7 @@ export function StudentCabinet() {
                       Muhim xabarlar uchun SMS
                     </p>
                   </div>
-                  <Switch defaultChecked={studentProfile.preferences.notifications.sms} />
+                  <Switch defaultChecked={STATIC_PROFILE.preferences.notifications.sms} />
                 </div>
               </CardContent>
             </Card>
@@ -763,7 +754,7 @@ export function StudentCabinet() {
                       Boshqa talabalar profilingizni ko'ra olsinmi
                     </p>
                   </div>
-                  <Switch defaultChecked={studentProfile.preferences.privacy.profileVisible} />
+                  <Switch defaultChecked={STATIC_PROFILE.preferences.privacy.profileVisible} />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -773,7 +764,7 @@ export function StudentCabinet() {
                       O'quv jarayoningizni boshqalarga ko'rsatish
                     </p>
                   </div>
-                  <Switch defaultChecked={studentProfile.preferences.privacy.showProgress} />
+                  <Switch defaultChecked={STATIC_PROFILE.preferences.privacy.showProgress} />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -783,7 +774,7 @@ export function StudentCabinet() {
                       Yutuqlaringizni boshqalarga ko'rsatish
                     </p>
                   </div>
-                  <Switch defaultChecked={studentProfile.preferences.privacy.showAchievements} />
+                  <Switch defaultChecked={STATIC_PROFILE.preferences.privacy.showAchievements} />
                 </div>
               </CardContent>
             </Card>
@@ -804,7 +795,7 @@ export function StudentCabinet() {
                     Video darslarni avtomatik boshlash
                   </p>
                 </div>
-                <Switch defaultChecked={studentProfile.preferences.learning.autoplay} />
+                <Switch defaultChecked={STATIC_PROFILE.preferences.learning.autoplay} />
               </div>
               
               <div className="flex items-center justify-between">
@@ -814,12 +805,12 @@ export function StudentCabinet() {
                     Video darslarda subtitrlarni ko'rsatish
                   </p>
                 </div>
-                <Switch defaultChecked={studentProfile.preferences.learning.subtitles} />
+                <Switch defaultChecked={STATIC_PROFILE.preferences.learning.subtitles} />
               </div>
               
               <div className="space-y-2">
                 <Label>Ijro tezligi</Label>
-                <Select defaultValue={studentProfile.preferences.learning.playbackSpeed.toString()}>
+                <Select defaultValue={STATIC_PROFILE.preferences.learning.playbackSpeed.toString()}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
