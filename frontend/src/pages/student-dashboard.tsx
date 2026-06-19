@@ -67,6 +67,7 @@ import { DashboardStatsSkeleton } from '@/components/ui/skeletons/DashboardStats
 import { handleApiError } from '@/utils/error-handler';
 import { useLoadingTransition } from '@/hooks/useLoadingTransition';
 import { ErrorBoundaryTest } from '@/components/error-boundary-test';
+import { useAuth } from '@/contexts/auth-context';
 
 const quickActions = [
   { id: 1, title: 'Yangi Darsni Boshlash', icon: Play, color: 'bg-green-100 text-green-800', action: 'start-lesson' },
@@ -127,6 +128,7 @@ const notifications = [
 ];
 
 export function StudentDashboard() {
+  const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState('overview');
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -144,12 +146,11 @@ export function StudentDashboard() {
   const showAssignmentsLoading = useLoadingTransition(assignmentsLoading);
   const showTestsLoading = useLoadingTransition(testsLoading);
 
-  // Calculate dashboard stats from fetched data
+  const displayName = user?.fullName?.trim() || user?.username || 'Talaba';
   const studentData = {
-    name: 'Alisher Karimov', // This should come from auth context
-    email: 'alisher@student.uz',
-    studentId: 'STU001',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100',
+    name: displayName,
+    studentId: user?.username || '—',
+    avatar: user?.photo || '',
     gpa: stats?.gpa || 0,
     totalCredits: stats?.totalCredits || 0,
     completedCourses: stats?.completedCourses || 0,
@@ -801,35 +802,20 @@ export function StudentDashboard() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Star className="h-5 w-5 text-yellow-600" />
-                  So'nggi Baholar
+                  Baholar
                 </div>
                 <Badge className="bg-green-100 text-green-800">GPA: {studentData.gpa}</Badge>
               </CardTitle>
-              <CardDescription>Oxirgi imtihon va topshiriq natijalari</CardDescription>
+              <CardDescription>Fanlar bo'yicha joriy va yakuniy baholar</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentGrades.map((grade, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{grade.assignment}</h4>
-                        {grade.score >= 90 && (
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{grade.course}</p>
-                      <p className="text-xs text-muted-foreground">{grade.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">{grade.grade}</div>
-                      <div className="text-sm text-muted-foreground">{grade.score} ball</div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+              <div className="text-center py-8 space-y-4">
+                <Star className="h-12 w-12 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">To'liq baholar sahifasiga o'ting</p>
+                <Button variant="outline" className="gap-2" onClick={() => window.location.href = '/student/grades'}>
+                  <Eye className="h-4 w-4" />
+                  Baholarni ko'rish
+                </Button>
               </div>
             </CardContent>
           </Card>

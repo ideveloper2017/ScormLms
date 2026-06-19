@@ -105,7 +105,43 @@ export function StudentSchedule() {
   const { data: nextClass } = useNextClass();
   const { data: todaySchedule } = useTodaySchedule();
 
-  // Show error state with retry button
+  // All hooks must be called before any conditional returns
+  const courseColorMap = useMemo(() => {
+    if (!schedule) return {};
+    const uniqueCourses = Array.from(new Set(schedule.map((item) => item.courseId)));
+    const colorMap: Record<string, string> = {};
+    uniqueCourses.forEach((courseId, index) => {
+      colorMap[courseId] = COURSE_COLORS[index % COURSE_COLORS.length];
+    });
+    return colorMap;
+  }, [schedule]);
+
+  const organizedSchedule = useMemo(() => {
+    if (!schedule) return {};
+    const organized: Record<number, ScheduleItem[]> = {};
+    schedule.forEach((item) => {
+      const day = item.dayOfWeek === 0 ? -1 : item.dayOfWeek - 1;
+      if (day >= 0 && day < 6) {
+        if (!organized[day]) organized[day] = [];
+        organized[day].push(item);
+      }
+    });
+    Object.keys(organized).forEach((day) => {
+      organized[Number(day)].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    });
+    return organized;
+  }, [schedule]);
+
+  const todayDay = new Date().getDay() - 1;
+  const dayLessons = (day: number) => organizedSchedule[day] || [];
+  const todayLessons = todaySchedule || [];
+  const totalLessons = schedule?.length || 0;
+  const uniqueCourses = schedule ? new Set(schedule.map((l) => l.courseId)).size : 0;
+  const totalHours = totalLessons * 1.5;
+
+  // Conditional returns — AFTER all hooks
+  if (isLoading) return <ScheduleSkeleton />;
+
   if (error) {
     return (
       <div className="p-6">
@@ -119,73 +155,14 @@ export function StudentSchedule() {
               <p className="text-destructive">
                 {error.message || "Dars jadvalini yuklashda xatolik yuz berdi"}
               </p>
-              <Button 
-                onClick={() => refetch()} 
-                variant="outline"
-                disabled={isLoading}
-              >
-                {isLoading ? "Yuklanmoqda..." : "Qayta urinish"}
+              <Button onClick={() => refetch()} variant="outline">
+                Qayta urinish
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
     );
-  }
-
-  // Generate course-to-color mapping for consistent color-coding
-  const courseColorMap = useMemo(() => {
-    if (!schedule) return {};
-    const uniqueCourses = Array.from(new Set(schedule.map((item) => item.courseId)));
-    const colorMap: Record<string, string> = {};
-    uniqueCourses.forEach((courseId, index) => {
-      colorMap[courseId] = COURSE_COLORS[index % COURSE_COLORS.length];
-    });
-    return colorMap;
-  }, [schedule]);
-
-  // Convert backend dayOfWeek (0=Sunday) to our format (0=Monday)
-  const convertDayOfWeek = (backendDay: number): number => {
-    // Backend: 0=Sunday, 1=Monday, ..., 6=Saturday
-    // Our format: 0=Monday, 1=Tuesday, ..., 5=Saturday
-    if (backendDay === 0) return -1; // Sunday (not shown in our schedule)
-    return backendDay - 1;
-  };
-
-  // Filter and organize schedule items by day
-  const organizedSchedule = useMemo(() => {
-    if (!schedule) return {};
-    
-    const organized: Record<number, ScheduleItem[]> = {};
-    schedule.forEach((item) => {
-      const day = convertDayOfWeek(item.dayOfWeek);
-      if (day >= 0 && day < 6) { // Only weekdays
-        if (!organized[day]) organized[day] = [];
-        organized[day].push(item);
-      }
-    });
-
-    // Sort classes by time within each day
-    Object.keys(organized).forEach((day) => {
-      organized[Number(day)].sort((a, b) => a.startTime.localeCompare(b.startTime));
-    });
-
-    return organized;
-  }, [schedule]);
-
-  const todayDay = new Date().getDay() - 1; // Convert to our format
-  const showDays = window.innerWidth < 768 ? [selectedDay] : [0, 1, 2, 3, 4, 5];
-
-  const dayLessons = (day: number) => organizedSchedule[day] || [];
-  
-  const todayLessons = todaySchedule || [];
-  const totalLessons = schedule?.length || 0;
-  const uniqueCourses = schedule ? new Set(schedule.map((l) => l.courseId)).size : 0;
-  const totalHours = totalLessons * 1.5; // Approximate
-
-  // Show loading skeleton
-  if (isLoading) {
-    return <ScheduleSkeleton />;
   }
 
   return (

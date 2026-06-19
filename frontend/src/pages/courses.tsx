@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   BookOpen, 
   Plus, 
@@ -91,12 +91,13 @@ export function Courses() {
   // Fetch courses from API
   const { data: courses, isLoading, isError, error, refetch } = useCourses(filters);
 
-  // Show error toast when error occurs
-  if (isError && error) {
-    toast.error('Kurslarni yuklashda xatolik', {
-      description: error.message || 'Iltimos, qayta urinib ko\'ring',
-    });
-  }
+  useEffect(() => {
+    if (isError && error) {
+      toast.error('Kurslarni yuklashda xatolik', {
+        description: error.message || "Iltimos, qayta urinib ko'ring",
+      });
+    }
+  }, [isError, error]);
 
   // Filter by category (client-side for now since API doesn't support it)
   const filteredCourses = courses?.filter(course => {
@@ -675,11 +676,11 @@ export function Courses() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {courses.map((course) => (
+                {(courses || []).map((course) => (
                   <div key={course.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-4">
-                      <img 
-                        src={course.image} 
+                      <img
+                        src={course.image}
                         alt={course.title}
                         className="w-12 h-12 rounded-lg object-cover"
                       />

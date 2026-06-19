@@ -27,6 +27,7 @@ import {
 } from '@/types/schemas';
 import { validateDataOrFallback, validateArrayPartial } from '@/utils/validation';
 
+
 /**
  * Notification summary for dashboard display
  */
@@ -59,36 +60,13 @@ export interface NotificationSummary {
  * ```
  */
 export const fetchDashboardStats = async (): Promise<DashboardStats> => {
-  try {
-    const response = await api.get('/students/me/dashboard/stats');
-    const data = response.data.data || response.data;
-
-    // Validate with Zod schema
-    const validatedStats = validateDataOrFallback(
-      DashboardStatsSchema,
-      data,
-      {
-        activeCourses: 0,
-        completedCourses: 0,
-        pendingAssignments: 0,
-        upcomingTests: 0,
-        averageGrade: 0,
-        attendancePercentage: 0,
-        gpa: 0,
-        totalCredits: 0,
-        learningStreak: 0,
-      },
-      { context: 'dashboardApi.fetchDashboardStats', logErrors: true }
-    );
-
-    return validatedStats;
-  } catch (error) {
-    handleApiError(error, {
-      showToast: false, // Let the calling component handle UI feedback
-      logToConsole: true,
-    });
-    throw error;
-  }
+  const response = await api.get('/students/me/dashboard/stats');
+  const data = response.data.data || response.data;
+  return validateDataOrFallback(
+    DashboardStatsSchema, data,
+    { activeCourses: 0, completedCourses: 0, pendingAssignments: 0, upcomingTests: 0, averageGrade: 0, attendancePercentage: 0, gpa: 0, totalCredits: 0, learningStreak: 0 },
+    { context: 'dashboardApi.fetchDashboardStats', logErrors: true }
+  );
 };
 
 /**
@@ -104,25 +82,9 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
  * ```
  */
 export const fetchRecentCourses = async (): Promise<Course[]> => {
-  try {
-    const response = await api.get('/students/me/dashboard/courses');
-    const data = response.data.data || response.data;
-
-    // Validate array with element-level filtering (Requirement 14.4)
-    const validatedCourses = validateArrayPartial(
-      CourseSchema,
-      data,
-      { context: 'dashboardApi.fetchRecentCourses', logErrors: true }
-    );
-
-    return validatedCourses;
-  } catch (error) {
-    handleApiError(error, {
-      showToast: false,
-      logToConsole: true,
-    });
-    throw error;
-  }
+  const response = await api.get('/students/me/dashboard/courses');
+  const data = response.data.data || response.data;
+  return validateArrayPartial(CourseSchema, data, { context: 'dashboardApi.fetchRecentCourses', logErrors: true });
 };
 
 /**
@@ -138,25 +100,9 @@ export const fetchRecentCourses = async (): Promise<Course[]> => {
  * ```
  */
 export const fetchUpcomingAssignments = async (): Promise<Assignment[]> => {
-  try {
-    const response = await api.get('/students/me/dashboard/assignments');
-    const data = response.data.data || response.data;
-
-    // Validate array with element-level filtering (Requirement 14.4)
-    const validatedAssignments = validateArrayPartial(
-      AssignmentSchema,
-      data,
-      { context: 'dashboardApi.fetchUpcomingAssignments', logErrors: true }
-    );
-
-    return validatedAssignments;
-  } catch (error) {
-    handleApiError(error, {
-      showToast: false,
-      logToConsole: true,
-    });
-    throw error;
-  }
+  const response = await api.get('/students/me/dashboard/assignments');
+  const data = response.data.data || response.data;
+  return validateArrayPartial(AssignmentSchema, data, { context: 'dashboardApi.fetchUpcomingAssignments', logErrors: true });
 };
 
 /**
@@ -172,25 +118,9 @@ export const fetchUpcomingAssignments = async (): Promise<Assignment[]> => {
  * ```
  */
 export const fetchUpcomingTests = async (): Promise<Test[]> => {
-  try {
-    const response = await api.get('/students/me/dashboard/tests');
-    const data = response.data.data || response.data;
-
-    // Validate array with element-level filtering (Requirement 14.4)
-    const validatedTests = validateArrayPartial(
-      TestSchema,
-      data,
-      { context: 'dashboardApi.fetchUpcomingTests', logErrors: true }
-    );
-
-    return validatedTests;
-  } catch (error) {
-    handleApiError(error, {
-      showToast: false,
-      logToConsole: true,
-    });
-    throw error;
-  }
+  const response = await api.get('/students/me/dashboard/tests');
+  const data = response.data.data || response.data;
+  return validateArrayPartial(TestSchema, data, { context: 'dashboardApi.fetchUpcomingTests', logErrors: true });
 };
 
 /**
@@ -206,25 +136,9 @@ export const fetchUpcomingTests = async (): Promise<Test[]> => {
  * ```
  */
 export const fetchRecentActivity = async (): Promise<ActivityItem[]> => {
-  try {
-    const response = await api.get('/students/me/dashboard/activity');
-    const data = response.data.data || response.data;
-
-    // Validate array with element-level filtering (Requirement 14.4)
-    const validatedActivity = validateArrayPartial(
-      ActivityItemSchema,
-      data,
-      { context: 'dashboardApi.fetchRecentActivity', logErrors: true }
-    );
-
-    return validatedActivity;
-  } catch (error) {
-    handleApiError(error, {
-      showToast: false,
-      logToConsole: true,
-    });
-    throw error;
-  }
+  const response = await api.get('/students/me/dashboard/activity');
+  const data = response.data.data || response.data;
+  return validateArrayPartial(ActivityItemSchema, data, { context: 'dashboardApi.fetchRecentActivity', logErrors: true });
 };
 
 /**
@@ -241,16 +155,8 @@ export const fetchRecentActivity = async (): Promise<ActivityItem[]> => {
  * ```
  */
 export const fetchNotificationSummary = async (): Promise<NotificationSummary> => {
-  try {
-    const response = await api.get('/students/me/dashboard/notifications');
-    return response.data.data || response.data;
-  } catch (error) {
-    handleApiError(error, {
-      showToast: false,
-      logToConsole: true,
-    });
-    throw error;
-  }
+  const response = await api.get('/students/me/dashboard/notifications');
+  return response.data.data || response.data;
 };
 
 /**

@@ -1,7 +1,25 @@
 import React from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, WifiOff, ServerCrash, FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+function getApiErrorInfo(error?: Error): { icon: React.ElementType; title: string; description: string } | null {
+  if (!error) return null;
+  const msg = error.message || '';
+  if (msg.includes('Network Error') || msg.includes('ECONNREFUSED') || msg.includes('ERR_NETWORK')) {
+    return { icon: WifiOff, title: 'Server bilan aloqa yo\'q', description: 'Backend server ishga tushirilmagan yoki tarmoq uzilgan. Server ishga tushirilgach qayta urinib ko\'ring.' };
+  }
+  if (msg.includes('404') || msg.includes('Not Found')) {
+    return { icon: FileQuestion, title: 'API endpoint topilmadi', description: 'So\'ralgan ma\'lumot manzili hali backend da yaratilmagan (404). Backend endpoint tayyor bo\'lgach ishlaydi.' };
+  }
+  if (msg.includes('401') || msg.includes('Unauthorized')) {
+    return { icon: ServerCrash, title: 'Autentifikatsiya xatosi', description: 'Sessiya muddati tugagan. Qayta kiring.' };
+  }
+  if (msg.includes('500') || msg.includes('Internal Server')) {
+    return { icon: ServerCrash, title: 'Server ichki xatosi', description: 'Backend server xato qaytardi (500). Dasturchi bilan bog\'laning.' };
+  }
+  return null;
+}
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -72,56 +90,48 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       }
 
       // Default error UI
+      const apiInfo = getApiErrorInfo(this.state.error);
+      const ApiIcon = apiInfo?.icon ?? AlertTriangle;
       return (
         <div className="flex min-h-[400px] items-center justify-center p-4">
           <Card className="w-full max-w-md">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <CardTitle>Xatolik yuz berdi</CardTitle>
+                <ApiIcon className="h-5 w-5 text-destructive" />
+                <CardTitle>{apiInfo?.title ?? 'Xatolik yuz berdi'}</CardTitle>
               </div>
               <CardDescription>
-                Komponent yuklanishida kutilmagan xatolik sodir bo'ldi
+                {apiInfo?.description ?? "Komponent yuklanishida kutilmagan xatolik sodir bo'ldi"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {this.state.error && (
+              {this.state.error && !apiInfo && (
                 <div className="rounded-md bg-muted p-3 text-sm">
-                  <p className="font-medium text-muted-foreground">
-                    Xatolik xabari:
-                  </p>
-                  <p className="mt-1 text-foreground">
-                    {this.state.error.message}
-                  </p>
+                  <p className="font-medium text-muted-foreground">Xatolik xabari:</p>
+                  <p className="mt-1 text-foreground">{this.state.error.message}</p>
                 </div>
               )}
 
-              {/* Show error stack in development mode */}
               {import.meta.env.DEV && this.state.errorInfo && (
                 <details className="rounded-md bg-muted p-3 text-xs">
                   <summary className="cursor-pointer font-medium text-muted-foreground">
                     Texnik ma'lumotlar (faqat development rejimida)
                   </summary>
                   <pre className="mt-2 overflow-auto text-foreground">
+                    {this.state.error?.message}
+                  </pre>
+                  <pre className="mt-1 overflow-auto text-muted-foreground">
                     {this.state.errorInfo.componentStack}
                   </pre>
                 </details>
               )}
 
               <div className="flex gap-2">
-                <Button
-                  onClick={this.resetError}
-                  className="flex-1"
-                  variant="default"
-                >
+                <Button onClick={this.resetError} className="flex-1" variant="default">
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Qayta urinish
                 </Button>
-                <Button
-                  onClick={() => window.location.reload()}
-                  variant="outline"
-                  className="flex-1"
-                >
+                <Button onClick={() => window.location.reload()} variant="outline" className="flex-1">
                   Sahifani yangilash
                 </Button>
               </div>
