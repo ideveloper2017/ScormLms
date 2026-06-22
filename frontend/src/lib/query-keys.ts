@@ -74,4 +74,68 @@ export const qk = {
     unread: () => [...qk.notifications.root(), 'unread'] as const,
     count: () => [...qk.notifications.root(), 'count'] as const,
   },
+
+  proctor: {
+    root: () => ['proctor'] as const,
+    stats: () => [...qk.proctor.root(), 'stats'] as const,
+    activeExams: () => [...qk.proctor.root(), 'active-exams'] as const,
+    violations: () => [...qk.proctor.root(), 'violations'] as const,
+  },
+
+  monitor: {
+    root: () => ['monitor'] as const,
+    stats: () => [...qk.monitor.root(), 'stats'] as const,
+    alerts: () => [...qk.monitor.root(), 'alerts'] as const,
+  },
+
+  instructor: {
+    root: () => ['instructor'] as const,
+    stats: () => [...qk.instructor.root(), 'stats'] as const,
+    courses: () => [...qk.instructor.root(), 'courses'] as const,
+    submissions: () => [...qk.instructor.root(), 'submissions'] as const,
+    todayLessons: () => [...qk.instructor.root(), 'today-lessons'] as const,
+    weeklyActivity: () => [...qk.instructor.root(), 'weekly-activity'] as const,
+  },
+
+  teacher: {
+    root: () => ['teacher'] as const,
+    profile: () => [...qk.teacher.root(), 'profile'] as const,
+    stats: () => [...qk.teacher.root(), 'stats'] as const,
+    courses: () => [...qk.teacher.root(), 'courses'] as const,
+    students: (courseId?: string) => [...qk.teacher.root(), 'students', courseId] as const,
+    assignments: () => [...qk.teacher.root(), 'assignments'] as const,
+    submissions: () => [...qk.teacher.root(), 'submissions'] as const,
+    tests: () => [...qk.teacher.root(), 'tests'] as const,
+    attendance: () => [...qk.teacher.root(), 'attendance'] as const,
+    gradebook: (courseId: string) => [...qk.teacher.root(), 'gradebook', courseId] as const,
+    todaySchedule: () => [...qk.teacher.root(), 'today-schedule'] as const,
+  },
+
+  exams: {
+    root: () => ['exams'] as const,
+    list: () => [...qk.exams.root(), 'list'] as const,
+    results: () => [...qk.exams.root(), 'results'] as const,
+    stats: () => [...qk.exams.root(), 'stats'] as const,
+  },
+
+  reports: {
+    root: () => ['reports'] as const,
+    list: () => [...qk.reports.root(), 'list'] as const,
+    academic: () => [...qk.reports.root(), 'academic'] as const,
+    monthly: () => [...qk.reports.root(), 'monthly'] as const,
+    courses: () => [...qk.reports.root(), 'courses'] as const,
+  },
+
+  resources: {
+    root: () => ['resources'] as const,
+    list: (courseId?: string) => [...qk.resources.root(), 'list', courseId] as const,
+    categories: () => [...qk.resources.root(), 'categories'] as const,
+  },
+
+  adminStats: {
+    root: () => ['admin-stats'] as const,
+    system: () => [...qk.adminStats.root(), 'system'] as const,
+    users: () => [...qk.adminStats.root(), 'users'] as const,
+    activity: () => [...qk.adminStats.root(), 'activity'] as const,
+  },
 };

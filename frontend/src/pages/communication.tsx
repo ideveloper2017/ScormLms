@@ -235,6 +235,16 @@ export function Communication() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* API not connected banner */}
+      <Card className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
+        <CardContent className="py-3 px-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+          <p className="text-sm text-yellow-800 dark:text-yellow-300">
+            Kommunikatsiya xizmati hali real API ga ulanmagan. Ko'rsatilgan ma'lumotlar namunavirus.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

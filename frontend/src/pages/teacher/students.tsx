@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Search, Users, TrendingUp, TrendingDown, Clock, Eye,
-  MessageCircle, ChevronRight,
+  Search, MessageCircle, ChevronRight, AlertTriangle, RefreshCw,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,64 +13,62 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-
-interface Student {
-  id: number;
-  name: string;
-  group: string;
-  course: string;
-  avgScore: number;
-  attendance: number;
-  progress: number;
-  lastActive: string;
-  status: "active" | "atrisk" | "inactive";
-  pendingAssignments: number;
-}
-
-const STUDENTS: Student[] = [
-  { id: 1,  name: "Alisher Karimov",  group: "CS-22-01", course: "JS Asoslari",  avgScore: 88, attendance: 95, progress: 82, lastActive: "Bugun",        status: "active",   pendingAssignments: 0 },
-  { id: 2,  name: "Malika Tosheva",   group: "CS-22-01", course: "JS Asoslari",  avgScore: 94, attendance: 98, progress: 90, lastActive: "Bugun",        status: "active",   pendingAssignments: 0 },
-  { id: 3,  name: "Bobur Rahimov",    group: "CS-22-01", course: "JS Asoslari",  avgScore: 65, attendance: 72, progress: 55, lastActive: "3 kun oldin",  status: "atrisk",   pendingAssignments: 3 },
-  { id: 4,  name: "Dilnoza Yusupova", group: "CS-22-01", course: "JS Asoslari",  avgScore: 97, attendance: 100,progress: 95, lastActive: "Bugun",        status: "active",   pendingAssignments: 0 },
-  { id: 5,  name: "Jasur Mirzayev",   group: "CS-22-01", course: "JS Asoslari",  avgScore: 78, attendance: 88, progress: 70, lastActive: "Kecha",        status: "active",   pendingAssignments: 1 },
-  { id: 6,  name: "Nodira Saidova",   group: "CS-22-01", course: "JS Asoslari",  avgScore: 89, attendance: 92, progress: 85, lastActive: "Bugun",        status: "active",   pendingAssignments: 0 },
-  { id: 7,  name: "Sarvar Umarov",    group: "CS-22-01", course: "JS Asoslari",  avgScore: 58, attendance: 65, progress: 40, lastActive: "1 hafta oldin",status: "inactive", pendingAssignments: 5 },
-  { id: 8,  name: "Zulfiya Xoliqova", group: "CS-22-02", course: "React Dev",    avgScore: 92, attendance: 96, progress: 88, lastActive: "Bugun",        status: "active",   pendingAssignments: 0 },
-  { id: 9,  name: "Doniyor Ergashev", group: "CS-22-02", course: "React Dev",    avgScore: 72, attendance: 80, progress: 65, lastActive: "Kecha",        status: "active",   pendingAssignments: 2 },
-  { id: 10, name: "Feruza Nazarova",  group: "CS-22-02", course: "React Dev",    avgScore: 83, attendance: 90, progress: 78, lastActive: "Bugun",        status: "active",   pendingAssignments: 1 },
-];
+import { qk } from "@/lib/query-keys";
+import { teacherPortalApi } from "@/services/api/teacher-portal-api";
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  active:   { label: "Faol",         cls: "bg-green-100  text-green-800"  },
-  atrisk:   { label: "Xavf ostida",  cls: "bg-orange-100 text-orange-800" },
-  inactive: { label: "Faolsiz",      cls: "bg-red-100    text-red-800"    },
+  active:    { label: "Faol",         cls: "bg-green-100  text-green-800"  },
+  atrisk:    { label: "Xavf ostida",  cls: "bg-orange-100 text-orange-800" },
+  "at-risk": { label: "Xavf ostida",  cls: "bg-orange-100 text-orange-800" },
+  inactive:  { label: "Faolsiz",      cls: "bg-red-100    text-red-800"    },
+  excellent: { label: "A'lo",         cls: "bg-blue-100   text-blue-800"   },
 };
-
-const COURSES  = ["Barchasi", "JS Asoslari", "React Dev", "Node.js", "TypeScript"];
-const GROUPS   = ["Barchasi", "CS-22-01", "CS-22-02", "CS-21-03"];
 
 export function TeacherStudents() {
   const [search, setSearch] = useState("");
-  const [course, setCourse] = useState("Barchasi");
-  const [grp, setGrp] = useState("Barchasi");
   const [statusF, setStatusF] = useState("all");
 
-  const filtered = STUDENTS.filter((s) => {
+  const { data: students = [], isLoading, error, refetch } = useQuery({
+    queryKey: qk.teacher.students(),
+    queryFn: () => teacherPortalApi.getStudents(),
+    staleTime: 60_000,
+  });
+
+  const filtered = students.filter((s) => {
     const t = search.toLowerCase();
     return (
-      (!t || s.name.toLowerCase().includes(t)) &&
-      (course === "Barchasi" || s.course === course) &&
-      (grp === "Barchasi" || s.group === grp) &&
-      (statusF === "all" || s.status === statusF)
+      (!t || s.fullName.toLowerCase().includes(t)) &&
+      (statusF === "all" || s.status === statusF || (statusF === "atrisk" && s.status === "at-risk"))
     );
   });
 
   const stats = {
-    total:    STUDENTS.length,
-    active:   STUDENTS.filter((s) => s.status === "active").length,
-    atRisk:   STUDENTS.filter((s) => s.status === "atrisk").length,
-    inactive: STUDENTS.filter((s) => s.status === "inactive").length,
+    total:    students.length,
+    active:   students.filter((s) => s.status === "active" || s.status === "excellent").length,
+    atRisk:   students.filter((s) => s.status === "at-risk").length,
+    inactive: 0,
   };
+
+  if (isLoading) return (
+    <div className="p-6 space-y-6">
+      <Skeleton className="h-9 w-48" />
+      <div className="space-y-3">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-6 space-y-4">
+      <h1 className="text-3xl font-bold tracking-tight">Talabalar</h1>
+      <Card className="border-destructive/50">
+        <CardContent className="pt-6 text-center space-y-3">
+          <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
+          <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
+          <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
+          <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -92,76 +91,63 @@ export function TeacherStudents() {
         ))}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-48">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Talaba ismi..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
-        <Select value={course} onValueChange={setCourse}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>{COURSES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-        </Select>
-        <Select value={grp} onValueChange={setGrp}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-          <SelectContent>{GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-        </Select>
         <Select value={statusF} onValueChange={setStatusF}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Barcha holat</SelectItem>
-            {Object.entries(STATUS_META).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+            <SelectItem value="active">Faol</SelectItem>
+            <SelectItem value="at-risk">Xavf ostida</SelectItem>
+            <SelectItem value="excellent">A'lo</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
+      {filtered.length === 0 && (
+        <p className="text-center text-muted-foreground py-8">Talaba topilmadi</p>
+      )}
+
       <div className="space-y-3">
-        {filtered.map((s) => (
-          <Card key={s.id} className={s.status === "atrisk" ? "border-orange-200" : s.status === "inactive" ? "border-red-200" : ""}>
+        {filtered.map((s) => {
+          const meta = STATUS_META[s.status] ?? STATUS_META['active'];
+          return (
+          <Card key={s.id} className={s.status === "at-risk" ? "border-orange-200" : ""}>
             <CardContent className="flex items-center gap-4 p-4">
               <Avatar className="h-10 w-10 shrink-0">
                 <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white text-sm font-bold">
-                  {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                  {s.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div>
-                  <div className="font-medium text-sm">{s.name}</div>
-                  <div className="text-xs text-muted-foreground">{s.group} · {s.course}</div>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Badge className={STATUS_META[s.status].cls + " text-xs"}>{STATUS_META[s.status].label}</Badge>
-                    {s.pendingAssignments > 0 && (
-                      <Badge className="bg-orange-100 text-orange-700 text-xs">{s.pendingAssignments} topshiriq</Badge>
-                    )}
-                  </div>
+                  <div className="font-medium text-sm">{s.fullName}</div>
+                  {s.groupName && <div className="text-xs text-muted-foreground">{s.groupName}</div>}
+                  <Badge className={meta.cls + " text-xs mt-1"}>{meta.label}</Badge>
                 </div>
                 <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">{s.progress}%</span>
-                  </div>
-                  <Progress value={s.progress} className="h-1.5" />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Ball: {s.avgScore}%</span>
                     <span>Davomat: {s.attendance}%</span>
                   </div>
+                  <Progress value={s.attendance} className="h-1.5" />
                 </div>
-                <div className="flex items-center justify-between md:justify-end gap-2">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />{s.lastActive}
-                  </span>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MessageCircle className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                <div className="flex items-center justify-end gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

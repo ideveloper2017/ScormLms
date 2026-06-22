@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen, Plus, Search, Users, BarChart3, Eye,
   Edit, Trash2, MoreHorizontal, TrendingUp, Clock,
+  AlertTriangle, RefreshCw,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,36 +20,15 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { qk } from "@/lib/query-keys";
+import { teacherPortalApi, type TeacherCourse } from "@/services/api/teacher-portal-api";
 
-interface Course {
-  id: number;
-  title: string;
-  description: string;
-  subject: string;
-  students: number;
-  modules: number;
-  lessons: number;
-  progress: number;
-  avgScore: number;
-  status: "active" | "draft" | "archived";
-  startDate: string;
-  endDate: string;
-  group: string;
-}
-
-const COURSES: Course[] = [
-  { id: 1, title: "JavaScript Asoslari",    description: "JavaScript dasturlash tilining asoslarini o'rganish",      subject: "Dasturlash",        students: 45, modules: 8,  lessons: 32, progress: 85, avgScore: 88, status: "active",   startDate: "2025-02-10", endDate: "2025-06-30", group: "CS-22-01" },
-  { id: 2, title: "React Development",      description: "React.js bilan zamonaviy web ilovalar yaratish",            subject: "Web dasturlash",    students: 32, modules: 6,  lessons: 24, progress: 72, avgScore: 82, status: "active",   startDate: "2025-03-01", endDate: "2025-07-31", group: "CS-22-02" },
-  { id: 3, title: "Node.js Backend",        description: "Node.js va Express yordamida backend API yaratish",         subject: "Backend",           students: 28, modules: 5,  lessons: 20, progress: 60, avgScore: 75, status: "active",   startDate: "2025-03-15", endDate: "2025-08-31", group: "CS-21-03" },
-  { id: 4, title: "TypeScript Advanced",    description: "TypeScript'ning ilg'or xususiyatlarini o'rganish",          subject: "Dasturlash",        students: 51, modules: 7,  lessons: 28, progress: 45, avgScore: 79, status: "active",   startDate: "2025-04-01", endDate: "2025-09-30", group: "CS-22-04" },
-  { id: 5, title: "Python Asoslari",        description: "Python dasturlash tilini noldan o'rganish",                 subject: "Dasturlash",        students: 0,  modules: 6,  lessons: 24, progress: 0,  avgScore: 0,  status: "draft",    startDate: "2025-07-01", endDate: "2025-12-31", group: "CS-23-01" },
-  { id: 6, title: "HTML/CSS Asoslari",      description: "Web dizayn asoslari — HTML va CSS bilan ishlash",           subject: "Web dasturlash",    students: 38, modules: 4,  lessons: 16, progress: 100,avgScore: 91, status: "archived", startDate: "2024-09-01", endDate: "2025-01-31", group: "CS-21-01" },
-];
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  active:   { label: "Faol",       cls: "bg-green-100  text-green-800  dark:bg-green-900/30  dark:text-green-300"  },
-  draft:    { label: "Qoralama",   cls: "bg-slate-100  text-slate-600  dark:bg-slate-800/40  dark:text-slate-400"  },
-  archived: { label: "Arxivlangan",cls: "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300"   },
+  active:    { label: "Faol",       cls: "bg-green-100  text-green-800  dark:bg-green-900/30  dark:text-green-300"  },
+  draft:     { label: "Qoralama",   cls: "bg-slate-100  text-slate-600  dark:bg-slate-800/40  dark:text-slate-400"  },
+  archived:  { label: "Arxivlangan",cls: "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300"   },
+  completed: { label: "Yakunlangan",cls: "bg-gray-100   text-gray-800   dark:bg-gray-800/40   dark:text-gray-300"   },
 };
 
 export function TeacherCourses() {
@@ -54,19 +36,48 @@ export function TeacherCourses() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filtered = COURSES.filter((c) => {
+  const { data: courses = [], isLoading, error, refetch } = useQuery({
+    queryKey: qk.teacher.courses(),
+    queryFn: teacherPortalApi.getCourses,
+    staleTime: 60_000,
+  });
+
+  const filtered = courses.filter((c) => {
     const t = search.toLowerCase();
     return (
-      (!t || c.title.toLowerCase().includes(t) || c.subject.toLowerCase().includes(t)) &&
+      (!t || c.title.toLowerCase().includes(t)) &&
       (statusFilter === "all" || c.status === statusFilter)
     );
   });
 
   const stats = {
-    active:   COURSES.filter((c) => c.status === "active").length,
-    students: COURSES.filter((c) => c.status === "active").reduce((s, c) => s + c.students, 0),
-    avgScore: Math.round(COURSES.filter((c) => c.avgScore > 0).reduce((s, c) => s + c.avgScore, 0) / COURSES.filter((c) => c.avgScore > 0).length),
+    active:   courses.filter((c) => c.status === "active").length,
+    students: courses.filter((c) => c.status === "active").reduce((s, c) => s + c.students, 0),
+    avgScore: (() => { const scored = courses.filter(c => (c.avgScore ?? 0) > 0); return scored.length ? Math.round(scored.reduce((s, c) => s + (c.avgScore ?? 0), 0) / scored.length) : 0; })(),
   };
+
+  if (isLoading) return (
+    <div className="p-6 space-y-6">
+      <Skeleton className="h-9 w-56" />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {[1,2,3,4,5,6].map(i => <Card key={i}><CardContent className="pt-6 space-y-3"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-16 w-full" /></CardContent></Card>)}
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-6 space-y-4">
+      <h1 className="text-3xl font-bold tracking-tight">Mening Kurslarim</h1>
+      <Card className="border-destructive/50">
+        <CardContent className="pt-6 text-center space-y-3">
+          <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
+          <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
+          <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
+          <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -128,7 +139,7 @@ export function TeacherCourses() {
                     </div>
                     <div>
                       <CardTitle className="text-base leading-tight">{course.title}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">{course.subject} · {course.group}</CardDescription>
+                      <CardDescription className="text-xs mt-0.5">{course.groupName}</CardDescription>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -160,11 +171,11 @@ export function TeacherCourses() {
 
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div>
-                    <div className="font-semibold">{course.modules}</div>
+                    <div className="font-semibold">—</div>
                     <div className="text-muted-foreground">Modul</div>
                   </div>
                   <div>
-                    <div className="font-semibold">{course.lessons}</div>
+                    <div className="font-semibold">—</div>
                     <div className="text-muted-foreground">Dars</div>
                   </div>
                   <div>
@@ -182,7 +193,7 @@ export function TeacherCourses() {
                       <span className="font-medium">{course.progress}%</span>
                     </div>
                     <Progress value={course.progress} className="h-1.5" />
-                    {course.avgScore > 0 && (
+                    {(course.avgScore ?? 0) > 0 && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <TrendingUp className="h-3 w-3 text-green-500" />
                         O'rtacha: {course.avgScore}%

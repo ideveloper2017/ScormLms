@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Megaphone, Plus, Eye, Edit, Trash2, MoreHorizontal,
-  Users, Clock, Pin, Globe, Lock,
+  Users, Clock, Pin, Globe, Lock, AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,14 @@ export function TeacherAnnouncements() {
 
   return (
     <div className="p-6 space-y-6">
+      <Card className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
+        <CardContent className="py-3 px-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+          <p className="text-sm text-yellow-800 dark:text-yellow-300">
+            E'lonlar xizmati hali real API ga ulanmagan. Ko'rsatilgan ma'lumotlar namunavirus.
+          </p>
+        </CardContent>
+      </Card>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">E'lonlar</h1>
