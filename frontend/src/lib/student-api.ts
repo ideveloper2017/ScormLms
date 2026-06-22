@@ -45,3 +45,20 @@ export async function promoteStudent(id: number): Promise<StudentDto> {
 export async function deleteStudent(id: number): Promise<void> {
     await api.delete(`/students/${id}`);
 }
+
+export async function editStudent(username: string, req: Partial<StudentDto>): Promise<StudentDto> {
+    const res = await api.put<StudentDto>(`/students/by-username/${encodeURIComponent(username)}`, req);
+    return res.data;
+}
+
+export async function graduateStudent(id: number): Promise<StudentDto> {
+    return changeStudentStatus(id, 'GRADUATED');
+}
+
+export async function archiveStudent(id: number): Promise<StudentDto> {
+    return changeStudentStatus(id, 'EXPELLED');
+}
+
+export async function reinstateStudent(id: number): Promise<StudentDto> {
+    return changeStudentStatus(id, 'ACTIVE');
+}
