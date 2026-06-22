@@ -4,6 +4,7 @@ import jakarta.persistence.*
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.role.model.Role
 import java.io.Serializable
+import java.time.Instant
 
 @Entity
 @Table(name = "users")
@@ -56,5 +57,11 @@ class User(
 
     @Column(name = "face_uploaded_at")
     var faceUploadedAt: java.time.LocalDateTime? = null,
+
+    @Column(name = "last_login_at")
+    var lastLoginAt: Instant? = null,
+
+    @Column(name = "one_id_subject", length = 200)
+    var oneIdSubject: String? = null,
 
 ) : BaseEntity(), Serializable

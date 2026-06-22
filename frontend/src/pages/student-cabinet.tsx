@@ -1,612 +1,557 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  MapPin,
-  Edit,
-  Camera,
-  Shield,
-  Award,
-  BookOpen,
-  Clock,
-  Target,
-  Activity,
-  Settings,
-  Bell,
-  Lock,
-  Eye,
-  Download,
-  Upload,
-  Star,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  GraduationCap,
-  FileText,
-  Video,
-  MessageCircle,
-  BarChart3,
-  Plus
+  User, Mail, Phone, Calendar, MapPin, Edit, Shield,
+  Award, BookOpen, Clock, Target, Activity, Bell, Lock,
+  Eye, Download, Star, TrendingUp, CheckCircle, GraduationCap,
+  FileText, Video, BarChart3, Plus, CreditCard, Home, Building2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import { Input } from '@/components/ui/input.tsx';
 import { Label } from '@/components/ui/label.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar.tsx';
 import { Progress } from '@/components/ui/progress.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
 import { Switch } from '@/components/ui/switch.tsx';
-import { Textarea } from '@/components/ui/textarea.tsx';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select.tsx';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog.tsx';
-import { useAuth } from '@/contexts/auth-context';
+import { Separator } from '@/components/ui/separator.tsx';
+import { useToast } from '@/hooks/use-toast.ts';
+import { getMyProfile, updateMyProfile } from '@/lib/student-portal-api';
+import { qk } from '@/lib/query-keys';
+import type { UpdateStudentProfileRequest } from '@/types/student.types';
 
-// ─── Mock: backend hali yo'q bo'lgan ma'lumotlar ──────────────────────────────
-const MOCK_STATS = { thisWeekHours: 15, totalHours: 120, avgSessionTime: 45, streakDays: 12 };
-const MOCK_GPA = 4.2;
-const MOCK_CREDITS = 45;
-const MOCK_COMPLETED = 3;
-const MOCK_ACTIVE = 2;
+// ── Static (kelajakda backenddan keladi) ──────────────────────────────────────
+const STATIC = {
+  profileCompletion: 85,
+  learningStats: { totalHours: 120, thisWeekHours: 15, avgSessionTime: 45, streakDays: 12 },
+  notifications:    { email: true,  push: true, sms: false },
+  privacy:          { profileVisible: true, showProgress: true, showAchievements: true },
+  learning:         { autoplay: true, subtitles: true, playbackSpeed: '1.0' },
+};
 
-const MOCK_ACHIEVEMENTS = [
-  { id: 1, name: 'JavaScript Master', icon: '🏆', date: '2024-01-10' },
-  { id: 2, name: 'Perfect Attendance', icon: '📅', date: '2024-01-05' },
-  { id: 3, name: 'First Course Complete', icon: '🎓', date: '2023-12-20' },
+const recentActivities = [
+  { id: 1, title: 'Darsni yakunladingiz',  description: 'JavaScript Asoslari - Dars 7',   timestamp: '2 soat oldin',  icon: CheckCircle,    color: 'text-green-600'  },
+  { id: 2, title: 'Topshiriq yuborildi',   description: 'React Components loyihasi',        timestamp: '1 kun oldin',   icon: FileText,       color: 'text-blue-600'   },
+  { id: 3, title: 'Imtihon topshirildi',   description: 'HTML/CSS yakuniy test - 95 ball',  timestamp: '3 kun oldin',   icon: GraduationCap,  color: 'text-purple-600' },
+  { id: 4, title: 'Yangi yutuq',           description: 'JavaScript Master unvoni olindi',  timestamp: '1 hafta oldin', icon: Award,          color: 'text-yellow-600' },
 ];
 
-const MOCK_GOALS = [
-  { id: 1, title: "JavaScript kursini yakunlash",     progress: 85, deadline: '2024-02-15', status: 'on-track' },
-  { id: 2, title: "React asoslarini o'rganish",        progress: 60, deadline: '2024-03-01', status: 'on-track' },
-  { id: 3, title: 'Portfolio loyihasi yaratish',       progress: 30, deadline: '2024-03-15', status: 'behind'   },
-];
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const GENDER_LABEL:  Record<string, string> = { MALE: 'Erkak', FEMALE: 'Ayol' };
+const DEGREE_LABEL:  Record<string, string> = { BACHELOR: 'Bakalavr', MASTER: 'Magistr', PHD: 'Doktorantura', ASSOCIATE: 'Texnikum' };
+const EFORM_LABEL:   Record<string, string> = { FULL_TIME: 'Kunduzgi', PART_TIME: 'Sirtqi', DISTANCE: 'Masofaviy', EVENING: 'Kechki' };
+const PAYMENT_LABEL: Record<string, string> = { CONTRACT: 'Kontrakt', GRANT: 'Grant' };
+const STATUS_STYLE:  Record<string, string> = {
+  ACTIVE:    'bg-green-100 text-green-800',
+  SUSPENDED: 'bg-yellow-100 text-yellow-800',
+  EXPELLED:  'bg-red-100 text-red-800',
+  GRADUATED: 'bg-blue-100 text-blue-800',
+};
+const STATUS_LABEL: Record<string, string> = {
+  ACTIVE: 'Faol', SUSPENDED: 'To\'xtatilgan', EXPELLED: 'Chetlatilgan', GRADUATED: 'Bitiruvchi',
+};
 
-const MOCK_ACTIVITIES = [
-  { id: 1, title: 'Darsni yakunladingiz',  description: 'JavaScript Asoslari - Dars 7: Funksiyalar', timestamp: '2 soat oldin',  icon: CheckCircle,   color: 'text-green-600'  },
-  { id: 2, title: 'Topshiriq yuborildi',   description: 'React Components loyihasi',                 timestamp: '1 kun oldin',   icon: FileText,       color: 'text-blue-600'   },
-  { id: 3, title: 'Imtihon topshirildi',   description: 'HTML/CSS yakuniy test - 95 ball',           timestamp: '3 kun oldin',   icon: GraduationCap,  color: 'text-purple-600' },
-  { id: 4, title: 'Yangi yutuq',           description: 'JavaScript Master unvoni olindi',           timestamp: '1 hafta oldin', icon: Award,          color: 'text-yellow-600' },
-];
-
-interface EditableProfile {
-  name: string;
-  email: string;
-  phone: string;
-  birthDate: string;
-  address: string;
+function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="flex justify-between items-center py-1.5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium">{value ?? '—'}</span>
+    </div>
+  );
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export function StudentCabinet() {
-  const { user } = useAuth();
-
-  const displayName = user?.fullName?.trim() || user?.username || 'Talaba';
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((p: string) => p[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || 'T';
-
-  const [selectedTab, setSelectedTab] = useState('profile');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [tab, setTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
-  const [editedProfile, setEditedProfile] = useState<EditableProfile>({
-    name:      displayName,
-    email:     user?.email || '',
-    phone:     user?.phone || '',
-    birthDate: '',
-    address:   '',
+
+  const [editForm, setEditForm] = useState<UpdateStudentProfileRequest>({});
+
+  const { data: profile, isLoading } = useQuery({
+    queryKey: qk.studentProfile(),
+    queryFn: getMyProfile,
+    staleTime: 30_000,
   });
 
-  useEffect(() => {
-    if (user) {
-      setEditedProfile((prev) => ({
-        ...prev,
-        name:  user.fullName?.trim() || user.username || prev.name,
-        email: user.email || prev.email,
-        phone: user.phone || prev.phone,
-      }));
-    }
-  }, [user]);
+  const updateMutation = useMutation({
+    mutationFn: updateMyProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.studentProfile() });
+      setIsEditing(false);
+      toast({ title: 'Profil yangilandi' });
+    },
+    onError: () => toast({ title: 'Xatolik yuz berdi', variant: 'destructive' }),
+  });
 
-  const profileCompletion = Math.round(
-    [user?.fullName, user?.email, user?.phone, user?.groupName, user?.faculty]
-      .filter(Boolean).length * 20
-  );
-
-  const enrollmentDate = user?.createdAt?.split('T')[0] ?? '—';
-  const statusLabel = user?.status === 'ACTIVE' ? 'Faol Talaba'
-                    : user?.status === 'INACTIVE' ? 'Nofaol'
-                    : user?.status ?? 'Faol Talaba';
-
-  const getGoalStatusColor = (status: string) => {
-    if (status === 'on-track') return 'text-green-600';
-    if (status === 'behind')   return 'text-red-600';
-    if (status === 'ahead')    return 'text-blue-600';
-    return 'text-gray-600';
+  const startEdit = () => {
+    setEditForm({
+      phoneNumber:     profile?.phoneNumber     ?? '',
+      email:           profile?.email           ?? '',
+      currentRegion:   profile?.currentRegion   ?? '',
+      currentDistrict: profile?.currentDistrict ?? '',
+      currentAddress:  profile?.currentAddress  ?? '',
+      photoUrl:        profile?.photoUrl        ?? '',
+    });
+    setIsEditing(true);
   };
 
-  const getGoalStatusBadge = (status: string) => {
-    if (status === 'on-track') return <Badge className="bg-green-100 text-green-800">Vaqtida</Badge>;
-    if (status === 'behind')   return <Badge className="bg-red-100 text-red-800">Kechikish</Badge>;
-    if (status === 'ahead')    return <Badge className="bg-blue-100 text-blue-800">Oldinda</Badge>;
-    return <Badge variant="secondary">{status}</Badge>;
-  };
+  const saveEdit = () => updateMutation.mutate(editForm);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  const fullName  = profile?.fullName  ?? profile?.username ?? 'Talaba';
+  const initials  = fullName.split(' ').filter(Boolean).map((p: string) => p[0]).join('').slice(0, 2).toUpperCase();
+  const statusKey = profile?.studentStatus ?? 'ACTIVE';
+
+  // Profil to'ldirilishi % (pasport ma'lumotlari, manzil va h.k. bo'yicha)
+  const filledFields = [
+    profile?.pinfl, profile?.lastName, profile?.firstName,
+    profile?.birthDate, profile?.gender, profile?.passportNumber,
+    profile?.phoneNumber, profile?.email,
+    profile?.permanentAddress, profile?.currentAddress,
+    profile?.studentNumber, profile?.facultyId, profile?.groupId,
+  ].filter(Boolean).length;
+  const completion = Math.round((filledFields / 13) * 100);
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <Avatar className="h-20 w-20">
-              {user?.photo && <AvatarImage src={user.photo} alt={displayName} />}
-              <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="icon" className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full">
-                  <Camera className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Profil Rasmini O'zgartirish</DialogTitle>
-                  <DialogDescription>Yangi profil rasmini yuklang</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="text-center">
-                    <Avatar className="h-32 w-32 mx-auto mb-4">
-                      {user?.photo && <AvatarImage src={user.photo} alt={displayName} />}
-                      <AvatarFallback className="text-4xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Button className="gap-2">
-                      <Upload className="h-4 w-4" />
-                      Rasm Yuklash
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <Avatar className="h-20 w-20">
+            {profile?.photoUrl
+              ? <img src={profile.photoUrl} alt={fullName} className="h-full w-full object-cover rounded-full" />
+              : <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-400 to-purple-500 text-white">{initials}</AvatarFallback>
+            }
+          </Avatar>
           <div>
-            <h1 className="text-3xl font-bold">{displayName}</h1>
-            <p className="text-muted-foreground">
-              {user?.username ?? '—'} • {user?.groupName ?? '—'} • GPA: {MOCK_GPA}
+            <h1 className="text-2xl font-bold">{fullName}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {profile?.studentNumber} • {profile?.username}
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge className="bg-green-100 text-green-800">{statusLabel}</Badge>
-              <Badge variant="outline">{MOCK_COMPLETED} kurs yakunlangan</Badge>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <Badge className={STATUS_STYLE[statusKey]}>
+                {STATUS_LABEL[statusKey] ?? statusKey}
+              </Badge>
+              {profile?.degreeLevel && (
+                <Badge variant="outline">{DEGREE_LABEL[profile.degreeLevel] ?? profile.degreeLevel}</Badge>
+              )}
+              {profile?.courseNumber && (
+                <Badge variant="secondary">{profile.courseNumber}-kurs</Badge>
+              )}
+              {profile?.academicYear && (
+                <Badge variant="secondary">{profile.academicYear}</Badge>
+              )}
             </div>
           </div>
         </div>
 
-        <Button
-          variant={isEditing ? 'default' : 'outline'}
-          className="gap-2"
-          onClick={() => setIsEditing(!isEditing)}
-        >
-          <Edit className="h-4 w-4" />
-          {isEditing ? 'Saqlash' : 'Tahrirlash'}
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          {isEditing && (
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Bekor
+            </Button>
+          )}
+          <Button
+            variant={isEditing ? 'default' : 'outline'}
+            className="gap-2"
+            onClick={isEditing ? saveEdit : startEdit}
+            disabled={updateMutation.isPending}
+          >
+            <Edit className="h-4 w-4" />
+            {isEditing ? 'Saqlash' : 'Tahrirlash'}
+          </Button>
+        </div>
       </div>
 
-      {/* Profile Completion */}
+      {/* ── Profil to'ldirilishi ────────────────────────────────────────────── */}
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="font-semibold">Profil To'ldirilishi</h3>
-              <p className="text-sm text-muted-foreground">
-                Profilingizni to'liq to'ldiring va qo'shimcha imkoniyatlardan foydalaning
+              <p className="font-semibold">Profil to'ldirilishi</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Barcha ma'lumotlarni to'ldiring
               </p>
             </div>
-            <div className="text-2xl font-bold text-blue-600">{profileCompletion}%</div>
+            <span className="text-2xl font-bold text-blue-600">{completion}%</span>
           </div>
-          <Progress value={profileCompletion} className="h-3" />
+          <Progress value={completion} className="h-2.5" />
         </CardContent>
       </Card>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* ── Stats ──────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Bu Hafta',       value: `${MOCK_STATS.thisWeekHours}h`, sub: "O'quv vaqti",    color: 'text-emerald-600', bg: 'from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20', border: 'border-emerald-200 dark:border-emerald-800', icon: Clock,     iconBg: 'from-emerald-500 to-emerald-600' },
-          { label: 'Jami Soatlar',   value: `${MOCK_STATS.totalHours}h`,   sub: "Umumiy o'quv",   color: 'text-blue-600',    bg: 'from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20',          border: 'border-blue-200 dark:border-blue-800',    icon: Activity, iconBg: 'from-blue-500 to-blue-600'    },
-          { label: "O'rtacha Sessiya", value: `${MOCK_STATS.avgSessionTime}m`, sub: 'Daqiqa',        color: 'text-purple-600',  bg: 'from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20',    border: 'border-purple-200 dark:border-purple-800',icon: Target,   iconBg: 'from-purple-500 to-purple-600' },
-          { label: 'Ketma-ketlik',   value: `${MOCK_STATS.streakDays}`,    sub: 'Kun ketma-ket',  color: 'text-orange-600',  bg: 'from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20',    border: 'border-orange-200 dark:border-orange-800',icon: Award,    iconBg: 'from-orange-500 to-orange-600' },
-        ].map(({ label, value, sub, color, bg, border, icon: Icon, iconBg }) => (
-          <Card key={label} className={`bg-gradient-to-br ${bg} ${border} border-2 hover:shadow-xl transition-all duration-300 hover:scale-105`}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                <span className="flex items-center gap-2"><Icon className="h-4 w-4" />{label}</span>
-                <div className={`p-2 rounded-lg bg-gradient-to-br ${iconBg} shadow-md`}>
-                  <Icon className="h-4 w-4 text-white" />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold ${color} mb-1`}>{value}</div>
-              <div className="text-xs text-muted-foreground flex items-center gap-1">
-                <Star className="h-3 w-3" />{sub}
+          { label: 'Bu hafta', value: `${STATIC.learningStats.thisWeekHours}h`, icon: Clock,      color: 'emerald' },
+          { label: 'Jami soat', value: `${STATIC.learningStats.totalHours}h`,  icon: Activity,   color: 'blue'    },
+          { label: 'Sessiya',   value: `${STATIC.learningStats.avgSessionTime}m`, icon: Target,  color: 'purple'  },
+          { label: 'Streak',    value: `${STATIC.learningStats.streakDays}🔥`,  icon: Star,      color: 'orange'  },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <Card key={label} className={`border-${color}-200 dark:border-${color}-800 border-2`}>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className={`p-2 rounded-lg bg-${color}-100 dark:bg-${color}-900/30`}>
+                <Icon className={`h-5 w-5 text-${color}-600`} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className={`text-xl font-bold text-${color}-600`}>{value}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+      {/* ── Tabs ───────────────────────────────────────────────────────────── */}
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">Profil</TabsTrigger>
           <TabsTrigger value="academic">Akademik</TabsTrigger>
-          <TabsTrigger value="achievements">Yutuqlar</TabsTrigger>
-          <TabsTrigger value="goals">Maqsadlar</TabsTrigger>
+          <TabsTrigger value="address">Manzil</TabsTrigger>
           <TabsTrigger value="activity">Faoliyat</TabsTrigger>
           <TabsTrigger value="settings">Sozlamalar</TabsTrigger>
         </TabsList>
 
-        {/* Profile Tab */}
+        {/* ── Profil tab ────────────────────────────────────────────────────── */}
         <TabsContent value="profile" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Shaxsiy */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Shaxsiy Ma'lumotlar
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <User className="h-4 w-4" /> Shaxsiy ma'lumotlar
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>To'liq ism</Label>
-                    <Input
-                      value={editedProfile.name}
-                      disabled={!isEditing}
-                      onChange={(e) => setEditedProfile({ ...editedProfile, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Foydalanuvchi nomi</Label>
-                    <Input value={user?.username ?? '—'} disabled />
-                  </div>
-                </div>
+              <CardContent className="space-y-1">
+                <InfoRow label="Familiya"    value={profile?.lastName} />
+                <InfoRow label="Ism"         value={profile?.firstName} />
+                <InfoRow label="Otasining ismi" value={profile?.middleName} />
+                <Separator className="my-2" />
+                <InfoRow label="PINFL"       value={profile?.pinfl} />
+                <InfoRow label="Tug'ilgan sana" value={profile?.birthDate ?? undefined} />
+                <InfoRow label="Jinsi"       value={profile?.gender ? (GENDER_LABEL[profile.gender] ?? profile.gender) : undefined} />
+                <InfoRow label="Fuqarolik"   value={profile?.citizenship === 'UZBEKISTAN' ? "O'zbekiston" : profile?.citizenship ?? undefined} />
+              </CardContent>
+            </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input
-                      value={editedProfile.email}
-                      disabled={!isEditing}
-                      onChange={(e) => setEditedProfile({ ...editedProfile, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Telefon</Label>
-                    <Input
-                      value={editedProfile.phone}
-                      disabled={!isEditing}
-                      onChange={(e) => setEditedProfile({ ...editedProfile, phone: e.target.value })}
-                    />
-                  </div>
-                </div>
+            {/* Pasport */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CreditCard className="h-4 w-4" /> Pasport ma'lumotlari
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <InfoRow label="Hujjat turi"  value={profile?.passportType?.replace('_', ' ')} />
+                <InfoRow label="Seriya"        value={profile?.passportSeries} />
+                <InfoRow label="Raqam"         value={profile?.passportNumber} />
+                <Separator className="my-2" />
+                <InfoRow label="Berilgan sana" value={profile?.passportIssuedDate ?? undefined} />
+                <InfoRow label="Amal qilish muddati" value={profile?.passportExpiryDate ?? undefined} />
+                <InfoRow label="Bergan organ"  value={profile?.passportIssuedBy} />
+              </CardContent>
+            </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tug'ilgan sana</Label>
-                    <Input
-                      type="date"
-                      value={editedProfile.birthDate}
-                      disabled={!isEditing}
-                      onChange={(e) => setEditedProfile({ ...editedProfile, birthDate: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Guruh</Label>
-                    <Input value={user?.groupName ?? '—'} disabled />
-                  </div>
-                </div>
-
-                {user?.faculty && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Fakultet</Label>
-                      <Input value={user.faculty} disabled />
-                    </div>
-                    {user?.direction && (
-                      <div className="space-y-2">
-                        <Label>Yo'nalish</Label>
-                        <Input value={user.direction} disabled />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Manzil</Label>
-                  <Textarea
-                    value={editedProfile.address}
+            {/* Aloqa — tahrirlanadigan */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Phone className="h-4 w-4" /> Aloqa ma'lumotlari
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Telefon raqam</Label>
+                  <Input
+                    value={isEditing ? (editForm.phoneNumber ?? '') : (profile?.phoneNumber ?? '')}
                     disabled={!isEditing}
-                    onChange={(e) => setEditedProfile({ ...editedProfile, address: e.target.value })}
+                    onChange={(e) => setEditForm(f => ({ ...f, phoneNumber: e.target.value }))}
+                    placeholder="+998901234567"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Email</Label>
+                  <Input
+                    type="email"
+                    value={isEditing ? (editForm.email ?? '') : (profile?.email ?? '')}
+                    disabled={!isEditing}
+                    onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="email@example.com"
                   />
                 </div>
               </CardContent>
             </Card>
 
+            {/* Xavfsizlik */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Xavfsizlik
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Shield className="h-4 w-4" /> Xavfsizlik
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Joriy parol</Label>
-                  <Input type="password" placeholder="Joriy parolni kiriting" />
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Joriy parol</Label>
+                  <Input type="password" placeholder="••••••••" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Yangi parol</Label>
-                  <Input type="password" placeholder="Yangi parolni kiriting" />
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Yangi parol</Label>
+                  <Input type="password" placeholder="••••••••" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Parolni tasdiqlash</Label>
-                  <Input type="password" placeholder="Yangi parolni qaytaring" />
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tasdiqlash</Label>
+                  <Input type="password" placeholder="••••••••" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-base font-medium">Ikki faktorli autentifikatsiya</Label>
-                    <p className="text-sm text-muted-foreground">Qo'shimcha xavfsizlik uchun 2FA yoqish</p>
-                  </div>
-                  <Switch defaultChecked={user?.twoFactorEnabled ?? false} />
-                </div>
-                <Button className="w-full gap-2">
-                  <Lock className="h-4 w-4" />
-                  Parolni Yangilash
+                <Button className="w-full gap-2" size="sm">
+                  <Lock className="h-4 w-4" /> Parolni yangilash
                 </Button>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* Academic Tab */}
+        {/* ── Akademik tab ──────────────────────────────────────────────────── */}
         <TabsContent value="academic" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Ta'lim */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5" />
-                  Akademik Ma'lumotlar
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <GraduationCap className="h-4 w-4" /> Ta'lim ma'lumotlari
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{MOCK_GPA}</div>
-                    <div className="text-sm text-blue-700 dark:text-blue-400">GPA</div>
+              <CardContent className="space-y-1">
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600">{profile?.courseNumber ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Kurs</p>
                   </div>
-                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{MOCK_CREDITS}</div>
-                    <div className="text-sm text-green-700 dark:text-green-400">Kreditlar</div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Ro'yxatdan o'tgan sana:</span>
-                    <span className="text-sm font-medium">{enrollmentDate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Yakunlangan kurslar:</span>
-                    <span className="text-sm font-medium">{MOCK_COMPLETED}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Faol kurslar:</span>
-                    <span className="text-sm font-medium">{MOCK_ACTIVE}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Holat:</span>
-                    <span className="text-sm font-medium">{statusLabel}</span>
+                  <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <p className="text-lg font-bold text-purple-600">
+                      {profile?.degreeLevel ? (DEGREE_LABEL[profile.degreeLevel] ?? profile.degreeLevel) : '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Daraja</p>
                   </div>
                 </div>
+                <Separator className="my-2" />
+                <InfoRow label="Talaba raqami"   value={profile?.studentNumber} />
+                <InfoRow label="Ta'lim shakli"   value={profile?.educationForm ? (EFORM_LABEL[profile.educationForm] ?? profile.educationForm) : undefined} />
+                <InfoRow label="Ta'lim tili"     value={profile?.educationLanguage?.toUpperCase()} />
+                <InfoRow label="Akademik yil"    value={profile?.academicYear} />
+                <InfoRow label="Qabul sanasi"    value={profile?.admissionDate ?? undefined} />
+                <InfoRow label="Buyruq raqami"   value={profile?.admissionOrderNumber} />
               </CardContent>
             </Card>
 
+            {/* To'lov */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  O'quv Statistikasi
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CreditCard className="h-4 w-4" /> To'lov ma'lumotlari
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  {[
-                    { label: "Jami o'quv vaqti",   value: `${MOCK_STATS.totalHours}h`,      color: 'text-blue-600'   },
-                    { label: 'Bu hafta',            value: `${MOCK_STATS.thisWeekHours}h`,   color: 'text-green-600'  },
-                    { label: "O'rtacha sessiya",    value: `${MOCK_STATS.avgSessionTime}m`,  color: 'text-purple-600' },
-                    { label: 'Ketma-ketlik',        value: `${MOCK_STATS.streakDays} kun`,   color: 'text-orange-600' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="flex justify-between items-center">
-                      <span className="text-sm">{label}</span>
-                      <span className={`font-bold ${color}`}>{value}</span>
-                    </div>
-                  ))}
+              <CardContent className="space-y-1">
+                <div className="mb-3">
+                  {profile?.paymentType ? (
+                    <Badge className={profile.paymentType === 'GRANT' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}>
+                      {PAYMENT_LABEL[profile.paymentType]}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">—</Badge>
+                  )}
                 </div>
-                <div className="pt-4">
-                  <Button variant="outline" className="w-full gap-2">
-                    <Download className="h-4 w-4" />
-                    Akademik Ma'lumotnoma
-                  </Button>
-                </div>
+                <Separator className="my-2" />
+                <InfoRow label="Kontrakt raqami"  value={profile?.contractNumber} />
+                <InfoRow
+                  label="Kontrakt summasi"
+                  value={profile?.contractAmount != null
+                    ? `${profile.contractAmount.toLocaleString()} so'm`
+                    : undefined}
+                />
+                <Separator className="my-2" />
+                <InfoRow label="Tizimga kirish"   value={profile?.username} />
+                <InfoRow
+                  label="Oxirgi kirish"
+                  value={profile?.lastLoginAt
+                    ? new Date(profile.lastLoginAt).toLocaleString('uz-UZ')
+                    : undefined}
+                />
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
 
-        {/* Achievements Tab */}
-        <TabsContent value="achievements" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {MOCK_ACHIEVEMENTS.map((achievement) => (
-              <Card key={achievement.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl mb-4">{achievement.icon}</div>
-                  <h3 className="font-semibold mb-2">{achievement.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Olindi: {achievement.date}</p>
-                  <Badge className="bg-yellow-100 text-yellow-800">Yutuq</Badge>
-                </CardContent>
-              </Card>
-            ))}
-            <Card className="opacity-60 border-dashed">
-              <CardContent className="p-6 text-center">
-                <div className="text-4xl mb-4 grayscale">🔒</div>
-                <h3 className="font-semibold mb-2">React Specialist</h3>
-                <p className="text-sm text-muted-foreground mb-4">React kursini yakunlang</p>
-                <Badge variant="outline">Qulflangan</Badge>
-              </CardContent>
-            </Card>
-            <Card className="opacity-60 border-dashed">
-              <CardContent className="p-6 text-center">
-                <div className="text-4xl mb-4 grayscale">🔒</div>
-                <h3 className="font-semibold mb-2">Full Stack Developer</h3>
-                <p className="text-sm text-muted-foreground mb-4">5 ta kursni yakunlang</p>
-                <Badge variant="outline">Qulflangan</Badge>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Goals Tab */}
-        <TabsContent value="goals" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">O'quv Maqsadlarim</h2>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Yangi Maqsad
+          <div className="flex justify-end">
+            <Button variant="outline" className="gap-2">
+              <Download className="h-4 w-4" /> Akademik ma'lumotnoma
             </Button>
           </div>
-          <div className="space-y-4">
-            {MOCK_GOALS.map((goal) => (
-              <Card key={goal.id} className="hover:shadow-lg transition-all duration-200">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold">{goal.title}</h3>
-                      <p className="text-sm text-muted-foreground">Muddat: {goal.deadline}</p>
-                    </div>
-                    {getGoalStatusBadge(goal.status)}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Jarayon</span>
-                      <span className={getGoalStatusColor(goal.status)}>{goal.progress}% / 100%</span>
-                    </div>
-                    <Progress value={goal.progress} className="h-3" />
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1">Batafsil</Button>
-                    <Button variant="outline" size="sm"><Edit className="h-4 w-4" /></Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        </TabsContent>
+
+        {/* ── Manzil tab ────────────────────────────────────────────────────── */}
+        <TabsContent value="address" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Doimiy */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Home className="h-4 w-4" /> Doimiy yashash manzili
+                </CardTitle>
+                <CardDescription className="text-xs">Pasportdagi manzil — faqat admin o'zgartira oladi</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <InfoRow label="Viloyat"  value={profile?.permanentRegion} />
+                <InfoRow label="Tuman"    value={profile?.permanentDistrict} />
+                <InfoRow label="Manzil"   value={profile?.permanentAddress} />
+              </CardContent>
+            </Card>
+
+            {/* Hozirgi — tahrirlanadigan */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MapPin className="h-4 w-4" /> Hozirgi yashash manzili
+                </CardTitle>
+                <CardDescription className="text-xs">O'zingiz yangilay olasiz</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Viloyat</Label>
+                  <Input
+                    value={isEditing ? (editForm.currentRegion ?? '') : (profile?.currentRegion ?? '')}
+                    disabled={!isEditing}
+                    onChange={(e) => setEditForm(f => ({ ...f, currentRegion: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tuman</Label>
+                  <Input
+                    value={isEditing ? (editForm.currentDistrict ?? '') : (profile?.currentDistrict ?? '')}
+                    disabled={!isEditing}
+                    onChange={(e) => setEditForm(f => ({ ...f, currentDistrict: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">To'liq manzil</Label>
+                  <Input
+                    value={isEditing ? (editForm.currentAddress ?? '') : (profile?.currentAddress ?? '')}
+                    disabled={!isEditing}
+                    onChange={(e) => setEditForm(f => ({ ...f, currentAddress: e.target.value }))}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
-        {/* Activity Tab */}
+        {/* ── Faoliyat tab ──────────────────────────────────────────────────── */}
         <TabsContent value="activity" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                So'nggi Faoliyatlar
+                <Activity className="h-5 w-5" /> So'nggi faoliyatlar
               </CardTitle>
               <CardDescription>Oxirgi o'quv faoliyatlari va yutuqlar</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {MOCK_ACTIVITIES.map((activity) => {
-                  const Icon = activity.icon;
-                  return (
-                    <div key={activity.id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
-                      <div className="p-2 rounded-lg bg-white shadow-sm">
-                        <Icon className={`h-5 w-5 ${activity.color}`} />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium">{activity.title}</h4>
-                        <p className="text-sm text-muted-foreground">{activity.description}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{activity.timestamp}</p>
-                      </div>
+              <div className="space-y-3">
+                {recentActivities.map(({ id, icon: Icon, color, title, description, timestamp }) => (
+                  <div key={id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
+                    <div className="p-2 rounded-lg bg-white dark:bg-muted shadow-sm shrink-0">
+                      <Icon className={`h-5 w-5 ${color}`} />
                     </div>
-                  );
-                })}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{title}</p>
+                      <p className="text-sm text-muted-foreground">{description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{timestamp}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
+
+          {/* Statistika */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card><CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{STATIC.learningStats.thisWeekHours}h</p>
+              <p className="text-xs text-muted-foreground mt-1">Bu hafta</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600">{STATIC.learningStats.totalHours}h</p>
+              <p className="text-xs text-muted-foreground mt-1">Jami</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-purple-600">{STATIC.learningStats.avgSessionTime}m</p>
+              <p className="text-xs text-muted-foreground mt-1">O'rtacha sessiya</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-orange-600">{STATIC.learningStats.streakDays}</p>
+              <p className="text-xs text-muted-foreground mt-1">Kun streak 🔥</p>
+            </CardContent></Card>
+          </div>
         </TabsContent>
 
-        {/* Settings Tab */}
+        {/* ── Sozlamalar tab ────────────────────────────────────────────────── */}
         <TabsContent value="settings" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Bildirishnoma Sozlamalari
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Bell className="h-4 w-4" /> Bildirishnomalar
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {[
-                  { label: 'Email bildirishnomalar',  desc: 'Yangi darslar va topshiriqlar haqida email olish', def: true  },
-                  { label: 'Push bildirishnomalar',   desc: 'Brauzer orqali bildirishnomalar',                 def: true  },
-                  { label: 'SMS bildirishnomalar',    desc: "Muhim xabarlar uchun SMS",                        def: false },
-                ].map(({ label, desc, def }) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <Label className="text-base font-medium">{label}</Label>
-                      <p className="text-sm text-muted-foreground">{desc}</p>
+                  { label: 'Email bildirishnomalar',  desc: 'Yangi darslar va topshiriqlar haqida', key: 'email'  as const },
+                  { label: 'Push bildirishnomalar',    desc: 'Brauzer orqali bildirishnomalar',       key: 'push'   as const },
+                  { label: 'SMS bildirishnomalar',     desc: 'Muhim xabarlar uchun SMS',              key: 'sms'    as const },
+                ].map(({ label, desc, key }) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{label}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
                     </div>
-                    <Switch defaultChecked={def} />
+                    <Switch defaultChecked={STATIC.notifications[key]} />
                   </div>
                 ))}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Eye className="h-5 w-5" />
-                  Maxfiylik Sozlamalari
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Eye className="h-4 w-4" /> Maxfiylik
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {[
-                  { label: "Profil ko'rinishi",    desc: "Boshqa talabalar profilingizni ko'ra olsinmi",    def: true  },
-                  { label: "Jarayon ko'rsatish",   desc: "O'quv jarayoningizni boshqalarga ko'rsatish",    def: true  },
-                  { label: "Yutuqlar ko'rsatish",  desc: 'Yutuqlaringizni boshqalarga ko\'rsatish',         def: true  },
-                ].map(({ label, desc, def }) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <Label className="text-base font-medium">{label}</Label>
-                      <p className="text-sm text-muted-foreground">{desc}</p>
+                  { label: "Profil ko'rinishi",    desc: "Boshqa talabalar profilingizni ko'ra olsinmi",       key: 'profileVisible'    as const },
+                  { label: "Jarayon ko'rsatish",   desc: "O'quv jarayoningizni boshqalarga ko'rsatish",        key: 'showProgress'      as const },
+                  { label: "Yutuqlar ko'rsatish",  desc: "Yutuqlaringizni boshqalarga ko'rsatish",             key: 'showAchievements'  as const },
+                ].map(({ label, desc, key }) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{label}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
                     </div>
-                    <Switch defaultChecked={def} />
+                    <Switch defaultChecked={STATIC.privacy[key]} />
                   </div>
                 ))}
               </CardContent>
@@ -614,31 +559,34 @@ export function StudentCabinet() {
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Video className="h-5 w-5" />
-                O'quv Sozlamalari
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Video className="h-4 w-4" /> O'quv sozlamalari
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { label: 'Avtomatik ijro', desc: 'Video darslarni avtomatik boshlash',  def: true  },
-                { label: 'Subtitrlar',     desc: "Video darslarda subtitrlarni ko'rsatish", def: true  },
-              ].map(({ label, desc, def }) => (
-                <div key={label} className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-base font-medium">{label}</Label>
-                    <p className="text-sm text-muted-foreground">{desc}</p>
-                  </div>
-                  <Switch defaultChecked={def} />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Avtomatik ijro</p>
+                  <p className="text-xs text-muted-foreground">Video darslarni avtomatik boshlash</p>
                 </div>
-              ))}
-              <div className="space-y-2">
-                <Label>Ijro tezligi</Label>
-                <Select defaultValue="1.0">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Switch defaultChecked={STATIC.learning.autoplay} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Subtitrlar</p>
+                  <p className="text-xs text-muted-foreground">Video darslarda subtitrlarni ko'rsatish</p>
+                </div>
+                <Switch defaultChecked={STATIC.learning.subtitles} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Ijro tezligi</Label>
+                <Select defaultValue={STATIC.learning.playbackSpeed}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {['0.5', '0.75', '1.0', '1.25', '1.5', '2.0'].map((v) => (
+                    {['0.5', '0.75', '1.0', '1.25', '1.5', '2.0'].map(v => (
                       <SelectItem key={v} value={v}>{v === '1.0' ? '1.0x (Normal)' : `${v}x`}</SelectItem>
                     ))}
                   </SelectContent>

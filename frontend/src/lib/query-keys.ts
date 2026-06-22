@@ -1,6 +1,7 @@
 import type { CourseFilters } from '@/types/course.types';
 
 export const qk = {
+  studentProfile: ()             => ['student', 'me']            as const,
   students:      ()              => ['students']                 as const,
   users:         ()              => ['users']                    as const,
   roles:         ()              => ['roles']                    as const,
