@@ -55,14 +55,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.tsx';
-import { 
-  useDashboardStats, 
-  useRecentCourses, 
-  useUpcomingAssignments, 
+import {
+  useDashboardStats,
+  useRecentCourses,
+  useUpcomingAssignments,
   useUpcomingTests,
   useRecentActivity,
   useNotificationSummary
 } from '@/hooks/dashboard/useDashboard';
+import { useNotifications } from '@/hooks/notifications/useNotifications';
 import { DashboardStatsSkeleton } from '@/components/ui/skeletons/DashboardStatsSkeleton';
 import { handleApiError } from '@/utils/error-handler';
 import { useLoadingTransition } from '@/hooks/useLoadingTransition';
@@ -100,32 +101,6 @@ const studyTips = [
   },
 ];
 
-const notifications = [
-  {
-    id: 1,
-    title: 'Yangi dars mavjud',
-    message: 'JavaScript Asoslari - Dars 8: Obyektlar',
-    time: '10 daqiqa oldin',
-    type: 'course',
-    isRead: false,
-  },
-  {
-    id: 2,
-    title: 'Topshiriq muddati yaqinlashmoqda',
-    message: 'React loyihasi - 2 kun qoldi',
-    time: '2 soat oldin',
-    type: 'assignment',
-    isRead: false,
-  },
-  {
-    id: 3,
-    title: 'Imtihon e\'lon qilindi',
-    message: 'JavaScript yakuniy imtihon - 22 yanvar',
-    time: '1 kun oldin',
-    type: 'exam',
-    isRead: true,
-  },
-];
 
 export function StudentDashboard() {
   const { user } = useAuth();
@@ -139,6 +114,7 @@ export function StudentDashboard() {
   const { data: tests, isLoading: testsLoading, error: testsError } = useUpcomingTests();
   const { data: activity, isLoading: activityLoading, error: activityError } = useRecentActivity();
   const { data: notificationSummary, isLoading: notificationsLoading, error: notificationsError } = useNotificationSummary();
+  const { data: notificationsList = [] } = useNotifications();
 
   // Apply loading transition with minimum 300ms display time (AC 9.7)
   const showStatsLoading = useLoadingTransition(statsLoading);
@@ -519,21 +495,25 @@ export function StudentDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {notifications.slice(0, 3).map((notification) => (
-                    <div key={notification.id} className={`p-3 rounded-lg border-l-4 ${
-                      notification.type === 'course' ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/20' :
-                      notification.type === 'assignment' ? 'border-l-orange-500 bg-orange-50 dark:bg-orange-900/20' :
-                      'border-l-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                    } ${!notification.isRead ? 'font-medium' : ''}`}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="text-sm font-medium">{notification.title}</h4>
-                          <p className="text-xs text-muted-foreground">{notification.message}</p>
+                  {notificationsList.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-4">Bildirishnomalar yo'q</p>
+                  ) : (
+                    notificationsList.slice(0, 3).map((notification) => (
+                      <div key={notification.id} className={`p-3 rounded-lg border-l-4 ${
+                        notification.type === 'course' ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/20' :
+                        notification.type === 'assignment' ? 'border-l-orange-500 bg-orange-50 dark:bg-orange-900/20' :
+                        'border-l-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                      } ${!notification.isRead ? 'font-medium' : ''}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-sm font-medium">{notification.title}</h4>
+                            <p className="text-xs text-muted-foreground">{notification.message}</p>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{notification.createdAt ? new Date(notification.createdAt).toLocaleDateString('uz') : ''}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground">{notification.time}</span>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                   <Button variant="outline" className="w-full gap-2 mt-4">
                     <Bell className="h-4 w-4" />
                     Barcha Bildirishnomalar
