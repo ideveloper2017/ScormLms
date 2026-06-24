@@ -97,10 +97,10 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
     const handleQuickLogin = async (role: 'admin' | 'instructor' | 'student' | 'proctor' | 'monitor') => {
         const quickLoginCredentials = {
             admin: { username: 'admin', password: 'admin' },
-            instructor: { username: 'teacher', password: 'teacher123' },
-            student: { username: 'student', password: 'student123' },
-            proctor: { username: 'proctor1', password: 'proctor123' },
-            monitor: { username: 'monitor1', password: 'monitor123' }
+            instructor: { username: 'a.karimov', password: 'Teacher@123' },
+            student: { username: 'std_DT220101', password: 'Student@123' },
+            proctor: { username: 'admin', password: 'admin' },
+            monitor: { username: 'admin', password: 'admin' }
         };
 
         const credentials = quickLoginCredentials[role];
