@@ -345,23 +345,22 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                 <div className="flex items-center justify-center p-8 lg:p-12">
                     <div className="w-full max-w-sm">
                         <form onSubmit={handleSubmit} className={cn("flex flex-col gap-5")}>
-                            <div className="space-y-1">
-                                <h1 className="text-2xl font-bold tracking-tight">Tizimga kiring</h1>
-                                <p className="text-sm text-muted-foreground">Davom etish uchun ma'lumotlaringizni kiriting</p>
+                            <div className="flex justify-center pb-2">
+                                <img src="/logo.png" alt="LMS Logo" className="h-14 w-auto object-contain" />
                             </div>
 
                             {errors.general && <div className="p-3 text-sm text-red-700 bg-red-100 rounded-md border border-red-200">{errors.general}</div>}
 
                             {/* Email / Username */}
                             <div className="space-y-2">
-                                <label htmlFor="username" className="text-sm font-medium leading-none">Foydalanuvchi nomi yoki email</label>
+                                <label htmlFor="username" className="text-sm font-medium leading-none">Talaba ID</label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                     <Input
                                         id="username"
                                         name="username"
                                         type="text"
-                                        placeholder="Email yoki login kiriting"
+                                        placeholder="Talaba ID kiriting"
                                         value={formData.username}
                                         onChange={handleInputChange}
                                         disabled={isSubmitting || isAuthLoading}
