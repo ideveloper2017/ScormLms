@@ -186,6 +186,20 @@ class StudentPortalController(private val svc: StudentPortalService) {
     ): ResponseEntity<ApiResponse<List<StudentAssignmentDto>>> =
         ResponseEntity.ok(ApiResponse.success(svc.getAssignments(user)))
 
+    // ─── Tests ───────────────────────────────────────────────────────────────
+
+    @GetMapping("/tests")
+    fun getTests(
+        @CurrentUser user: User,
+        @RequestParam(required = false) status: String?,
+        @RequestParam(required = false) courseId: String?,
+    ): ResponseEntity<ApiResponse<List<StudentTestDto>>> =
+        ResponseEntity.ok(ApiResponse.success(svc.getTests(user)))
+
+    @GetMapping("/tests/history")
+    fun getTestHistory(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentTestDto>>> =
+        ResponseEntity.ok(ApiResponse.success(emptyList()))
+
     // ─── Exams (raw response — frontend uses res.data directly) ──────────────
 
     @GetMapping("/exams")
