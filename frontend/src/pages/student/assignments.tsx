@@ -25,6 +25,7 @@ import { useAssignments, useSubmitAssignment } from "@/hooks/assignments/useAssi
 import { AssignmentListSkeleton } from "@/components/ui/skeletons/AssignmentListSkeleton";
 import { useLoadingTransition } from "@/hooks/useLoadingTransition";
 import type { Assignment } from "@/types/assignment.types";
+import { toast } from "sonner";
 
 const STATUS_META: Record<Assignment['status'], { label: string; cls: string; icon: React.ElementType }> = {
   pending:   { label: "Kutilmoqda",     cls: "bg-slate-100  text-slate-600  dark:bg-slate-800/40  dark:text-slate-300",   icon: Circle       },
@@ -108,11 +109,47 @@ export function StudentAssignments() {
     setSubmissionFile(null);
   };
 
+  // File validation constants
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.zip', '.rar'];
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSubmissionFile(file);
+    
+    if (!file) {
+      setSubmissionFile(null);
+      return;
     }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ 
+        title: "Xatolik", 
+        description: `Fayl hajmi ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(0)}MB dan kichik bo'lishi kerak`,
+        variant: "destructive"
+      });
+      e.target.value = "";
+      return;
+    }
+
+    // Validate file extension
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+      toast({ 
+        title: "Xatolik", 
+        description: `Faqat ${ALLOWED_EXTENSIONS.join(', ')} formatdagi fayllar qabul qilinadi`,
+        variant: "destructive"
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setSubmissionFile(file);
+    toast({ 
+      title: "Muvaffaqiyatli", 
+      description: `${file.name} yuklandi`,
+      variant: "default"
+    });
   };
 
   const handleSubmitAssignment = () => {
@@ -228,8 +265,36 @@ export function StudentAssignments() {
 
       {/* Assignment list */}
       <div className="space-y-3">
-        {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">Topshiriq topilmadi</div>
+        {filtered.length === 0 && !showLoading && (
+          <Card className="border-dashed">
+            <CardContent className="pt-6">
+              <div className="text-center py-12 space-y-4">
+                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                  <ClipboardList className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg mb-1">
+                    {search || statusFilter !== "all" 
+                      ? "Topshiriq topilmadi" 
+                      : "Hozircha topshiriq yo'q"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {search || statusFilter !== "all"
+                      ? "Boshqa so'rov yoki filtr bilan qayta urinib ko'ring"
+                      : "O'qituvchilar yangi topshiriqlar qo'shganda, ular shu yerda ko'rinadi"}
+                  </p>
+                </div>
+                {(search || statusFilter !== "all") && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => { setSearch(""); setStatusFilter("all"); }}
+                  >
+                    Filterni tozalash
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         )}
         {filtered.map((a) => {
           const meta = STATUS_META[a.status];
