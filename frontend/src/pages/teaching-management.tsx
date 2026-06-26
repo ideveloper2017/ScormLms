@@ -356,11 +356,11 @@ export function TeachingManagement() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">O'qitishni Boshqarish</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">O'qitishni Boshqarish</h1>
           <p className="text-muted-foreground">
             Talabalarni o'tkazish, kreditlar berish va tashkiliy-metodik vositalarni boshqarish
           </p>
@@ -504,13 +504,15 @@ export function TeachingManagement() {
       </div>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[440px] w-full grid-cols-5">
           <TabsTrigger value="transfers">O'tkazishlar</TabsTrigger>
           <TabsTrigger value="credits">Kreditlar</TabsTrigger>
           <TabsTrigger value="organizational">Tashkiliy Vositalar</TabsTrigger>
           <TabsTrigger value="subjects">Fanlar Ro'yxati</TabsTrigger>
           <TabsTrigger value="analytics">Tahlil</TabsTrigger>
         </TabsList>
+          </div>
 
         {/* Transfers Tab */}
         <TabsContent value="transfers" className="space-y-6">

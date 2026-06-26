@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { HemisLoginDialog } from '@/components/auth/HemisLoginDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,6 +24,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
     const [showPassword, setShowPassword] = useState(false);
     const [loginStep, setLoginStep] = useState<'credentials' | 'face-recognition' | 'success'>('credentials');
+    const [hemisDialogOpen, setHemisDialogOpen] = useState(false);
     const [faceRecognitionStatus, setFaceRecognitionStatus] = useState<'idle' | 'scanning' | 'success' | 'failed'>('idle');
 
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -259,7 +261,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     if (loginStep === 'success') {
         return (
             <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-                <div className="flex items-center justify-center p-6 lg:p-12">
+                <div className="flex items-center justify-center p-4 sm:p-6 lg:p-12">
                     <Card className="w-full max-w-sm shadow-none border border-border p-6 text-center space-y-4">
                         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                             <CheckCircle className="h-8 w-8 text-green-600" />
@@ -279,15 +281,15 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     if (loginStep === 'face-recognition') {
         return (
             <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-                <div className="flex items-center justify-center p-6 lg:p-12">
-                    <Card className="w-full max-w-sm shadow-none border border-border p-6 space-y-6 relative">
+                <div className="flex items-center justify-center p-4 sm:p-6 lg:p-12">
+                    <Card className="w-full max-w-sm shadow-none border border-border p-4 sm:p-6 space-y-4 sm:space-y-6 relative">
                         <div className="text-center">
-                            <h1 className="text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
-                                <Camera className="h-6 w-6" /> Yuzni Tanib Olish
+                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
+                                <Camera className="h-5 w-5 sm:h-6 sm:w-6" /> Yuzni Tanib Olish
                             </h1>
-                            <p className="text-sm text-muted-foreground mt-1">Xavfsizlik uchun yuzingizni kameraga ko'rsating</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Xavfsizlik uchun yuzingizni kameraga ko'rsating</p>
                         </div>
-                        <video ref={videoRef} autoPlay muted className="w-full h-80 bg-black rounded-lg object-cover" />
+                        <video ref={videoRef} autoPlay muted className="w-full h-56 sm:h-80 bg-black rounded-lg object-cover" />
                         <div className="absolute top-4 right-4">
                             <Badge variant={faceRecognitionStatus === 'success' ? 'default' : faceRecognitionStatus === 'failed' ? 'destructive' : 'secondary'}>
                                 <Shield className="h-3 w-3 mr-1" />
@@ -336,13 +338,13 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
 
     // Default: credentials step
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4 dark:bg-slate-900">
-            <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl bg-background shadow-2xl lg:grid-cols-2">
+        <div className="flex min-h-screen items-center justify-center bg-slate-100 p-3 sm:p-4 dark:bg-slate-900">
+            <div className="grid w-full max-w-5xl overflow-hidden rounded-xl sm:rounded-2xl bg-background shadow-2xl lg:grid-cols-2">
                 {/* ── Chap panel: Welcome ──────────────────────────────── */}
                 <WelcomePanel />
 
                 {/* ── O'ng panel: Login form ───────────────────────────── */}
-                <div className="flex items-center justify-center p-8 lg:p-12">
+                <div className="flex items-center justify-center p-5 sm:p-8 lg:p-12">
                     <div className="w-full max-w-sm">
                         <form onSubmit={handleSubmit} className={cn("flex flex-col gap-5")}>
                             <div className="flex justify-center pb-2">
@@ -425,12 +427,18 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                                 type="button"
                                 variant="outline"
                                 className="w-full gap-2"
-                                onClick={() => { window.location.href = 'https://hemis.uz'; }}
+                                onClick={() => setHemisDialogOpen(true)}
                                 disabled={isSubmitting || isAuthLoading}
                             >
                                 <GraduationCap className="h-4 w-4 text-blue-600" />
                                 HEMIS orqali kirish
                             </Button>
+
+                            <HemisLoginDialog
+                                open={hemisDialogOpen}
+                                onOpenChange={setHemisDialogOpen}
+                                onSuccess={() => handleLoginSuccess()}
+                            />
 
                             {/* ── Tezkor kirish (Dev Mode) — funksiya saqlab qolingan ── */}
                             <div className="space-y-3 rounded-lg border border-dashed border-border p-3">

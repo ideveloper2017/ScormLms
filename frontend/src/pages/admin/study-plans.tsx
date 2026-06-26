@@ -47,10 +47,10 @@ export function AdminStudyPlans() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">O'quv Reja</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">O'quv Reja</h1>
           <p className="text-muted-foreground">Ta'lim dasturlari uchun o'quv rejalari</p>
         </div>
         <Button className="gap-2">

@@ -19,7 +19,7 @@ import { instructorApi } from '@/services/api/instructor-api';
 
 function DashboardSkeleton() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-16 w-16 rounded-full" />
         <div className="space-y-2"><Skeleton className="h-7 w-64" /><Skeleton className="h-4 w-40" /></div>
@@ -81,8 +81,8 @@ export function InstructorDashboard() {
 
   if (statsError) {
     return (
-      <div className="p-6 space-y-4">
-        <h1 className="text-3xl font-bold">O'qituvchi Paneli</h1>
+      <div className="p-3 sm:p-4 md:p-6 space-y-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">O'qituvchi Paneli</h1>
         <Card className="border-destructive/50">
           <CardContent className="pt-6 text-center space-y-3">
             <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -101,7 +101,7 @@ export function InstructorDashboard() {
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -111,7 +111,7 @@ export function InstructorDashboard() {
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-3xl font-bold">Xush kelibsiz, {displayName}!</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Xush kelibsiz, {displayName}!</h1>
             <p className="text-muted-foreground">
               {stats?.activeCourses ?? 0} faol kurs • {stats?.totalStudents ?? 0} talaba
             </p>
@@ -143,12 +143,14 @@ export function InstructorDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[360px] w-full grid-cols-4">
           <TabsTrigger value="overview">Umumiy</TabsTrigger>
           <TabsTrigger value="courses">Kurslarim</TabsTrigger>
           <TabsTrigger value="students">Topshiriqlar</TabsTrigger>
           <TabsTrigger value="schedule">Jadval</TabsTrigger>
         </TabsList>
+          </div>
 
         {/* Overview */}
         <TabsContent value="overview" className="space-y-6">

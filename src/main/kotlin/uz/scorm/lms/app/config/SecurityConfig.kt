@@ -86,7 +86,8 @@ class SecurityConfig(
                     "/api/v1/auth/logout",
                     "/auth/hemis/**",
                     "/auth/email/**",
-                    "/api/v1/users/register"
+                    "/api/v1/users/register",
+                    "/ws/**"       // WebSocket handshake — JWT STOMP da tekshiriladi
                 ).permitAll()
                 it.anyRequest().authenticated()
             }

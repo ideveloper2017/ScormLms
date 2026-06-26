@@ -36,7 +36,7 @@ export function Groups() {
   const { data: programs = [] } = useQuery({ queryKey: qk.programs(), queryFn: () => listPrograms(), staleTime: 60_000 });
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-4 md:p-6">
       <CrudSection<GroupRecord, GroupForm>
         title="Guruhlar"
         description="O'quv guruhlarini boshqarish"

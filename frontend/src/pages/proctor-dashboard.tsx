@@ -35,7 +35,7 @@ function StatCard({ label, value, icon: Icon, cls = '' }: { label: string; value
 
 function DashboardSkeleton() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <Skeleton className="h-8 w-56" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-8 w-16" /></CardContent></Card>)}
@@ -70,8 +70,8 @@ export function ProctorDashboard() {
 
   if (statsError) {
     return (
-      <div className="p-6 space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">Proktor Dashboard</h1>
+      <div className="p-3 sm:p-4 md:p-6 space-y-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Proktor Dashboard</h1>
         <Card className="border-destructive/50">
           <CardContent className="pt-6 text-center space-y-3">
             <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -87,10 +87,10 @@ export function ProctorDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Proktor Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Proktor Dashboard</h1>
           <p className="text-muted-foreground">Imtihon jarayonlarini real-time nazorat qilish</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetchStats()}>

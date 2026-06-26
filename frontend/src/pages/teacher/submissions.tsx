@@ -74,7 +74,7 @@ export function TeacherSubmissions() {
   };
 
   if (isLoading) return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <Skeleton className="h-9 w-56" />
       <div className="grid grid-cols-4 gap-3">
         {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-10 w-16" /></CardContent></Card>)}
@@ -84,7 +84,7 @@ export function TeacherSubmissions() {
   );
 
   if (error) return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4">
       <h1 className="text-2xl font-bold">Topshiriqlar</h1>
       <Card className="border-destructive/50">
         <CardContent className="pt-6 text-center space-y-3">
@@ -98,7 +98,7 @@ export function TeacherSubmissions() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-start gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/teacher/assignments")}>
           <ArrowLeft className="h-5 w-5" />

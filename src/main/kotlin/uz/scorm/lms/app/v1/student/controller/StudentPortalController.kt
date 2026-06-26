@@ -21,7 +21,7 @@ class StudentPortalController(private val svc: StudentPortalService) {
         ResponseEntity.ok(ApiResponse.success(svc.getProfile(user)))
 
     @PutMapping
-    @PreAuthorize("hasAuthority('STUDENT_WRITE')")
+    @PreAuthorize("hasAuthority('STUDENT_WRITE') or hasAuthority('USER_MANAGE')")
     fun updateProfile(
         @CurrentUser user: User,
         @RequestBody req: UpdateStudentProfileRequest,
@@ -213,26 +213,6 @@ class StudentPortalController(private val svc: StudentPortalService) {
     @GetMapping("/exams/stats")
     fun getExamStats(@CurrentUser user: User): ResponseEntity<StudentExamStatsDto> =
         ResponseEntity.ok(svc.getExamStats(user))
-
-    // ─── Notifications ───────────────────────────────────────────────────────
-
-    @GetMapping("/notifications")
-    fun getNotifications(
-        @CurrentUser user: User,
-        @RequestParam(required = false) page: Int?,
-        @RequestParam(required = false) size: Int?,
-        @RequestParam(required = false) read: Boolean?,
-    ): ResponseEntity<ApiResponse<List<StudentNotificationDto>>> =
-        ResponseEntity.ok(ApiResponse.success(emptyList()))
-
-    @GetMapping("/notifications/unread/count")
-    fun getUnreadCount(@CurrentUser user: User): ResponseEntity<ApiResponse<UnreadCountDto>> =
-        ResponseEntity.ok(ApiResponse.success(UnreadCountDto(0)))
-
-    @PostMapping("/notifications/read-all")
-    @PreAuthorize("hasAuthority('STUDENT_WRITE')")
-    fun markAllRead(@CurrentUser user: User): ResponseEntity<ApiResponse<String>> =
-        ResponseEntity.ok(ApiResponse.success("Barcha bildirishnomalar o'qildi deb belgilandi"))
 
     // ─── Reports (raw response) ──────────────────────────────────────────────
 

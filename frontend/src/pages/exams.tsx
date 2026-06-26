@@ -54,7 +54,7 @@ export function Exams() {
 
   if (examsLoading || statsLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         <Skeleton className="h-9 w-56" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-10 w-16" /></CardContent></Card>)}
@@ -66,8 +66,8 @@ export function Exams() {
 
   if (examsError) {
     return (
-      <div className="p-6 space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">Imtihonlar</h1>
+      <div className="p-3 sm:p-4 md:p-6 space-y-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Imtihonlar</h1>
         <Card className="border-destructive/50">
           <CardContent className="pt-6 text-center space-y-3">
             <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -83,11 +83,11 @@ export function Exams() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Imtihonlar</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Imtihonlar</h1>
           <p className="text-muted-foreground">Avtoproktoring tizimi bilan imtihonlarni boshqaring</p>
         </div>
 

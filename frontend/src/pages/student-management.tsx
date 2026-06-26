@@ -153,9 +153,9 @@ export function StudentManagement() {
   if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Talabalar Boshqaruvi</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Talabalar Boshqaruvi</h1>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2"><Upload className="h-4 w-4" /> Excel Import</Button>
           <Button className="gap-2" onClick={() => { resetForm(); setIsAdding(true); }}>

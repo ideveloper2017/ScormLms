@@ -19,13 +19,13 @@ import { teacherPortalApi } from "@/services/api/teacher-portal-api";
 
 function DashSkeleton() {
   return (
-    <div className="p-6 space-y-6">
-      <Skeleton className="h-9 w-72" />
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[1,2,3,4,5,6].map(i => <Card key={i}><CardContent className="pt-4"><Skeleton className="h-8 w-12" /></CardContent></Card>)}
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      <Skeleton className="h-7 sm:h-9 w-48 sm:w-72" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+        {[1,2,3,4,5,6].map(i => <Card key={i}><CardContent className="pt-3 sm:pt-4"><Skeleton className="h-7 sm:h-8 w-10 sm:w-12" /></CardContent></Card>)}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[1,2].map(i => <Card key={i}><CardContent className="pt-6 space-y-3">{[1,2,3].map(j => <Skeleton key={j} className="h-14 w-full" />)}</CardContent></Card>)}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {[1,2].map(i => <Card key={i}><CardContent className="pt-4 sm:pt-6 space-y-3">{[1,2,3].map(j => <Skeleton key={j} className="h-14 w-full" />)}</CardContent></Card>)}
       </div>
     </div>
   );
@@ -64,8 +64,8 @@ export function TeacherDashboard() {
 
   if (statsError) {
     return (
-      <div className="p-6 space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">O'qituvchi Dashboard</h1>
+      <div className="p-3 sm:p-4 md:p-6 space-y-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">O'qituvchi Dashboard</h1>
         <Card className="border-destructive/50">
           <CardContent className="pt-6 text-center space-y-3">
             <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -88,27 +88,27 @@ export function TeacherDashboard() {
   }));
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">O'qituvchi Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">O'qituvchi Dashboard</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Bugun, {new Date().toLocaleDateString("uz-Latn", { weekday: "long", day: "numeric", month: "long" })}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => navigate("/teacher/courses/create")}>
-            <Plus className="h-4 w-4" />Yangi kurs
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate("/teacher/courses/create")}>
+            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Yangi kurs
           </Button>
-          <Button className="gap-2" onClick={() => navigate("/teacher/assignments")}>
-            <Plus className="h-4 w-4" />Topshiriq
+          <Button size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate("/teacher/assignments")}>
+            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Topshiriq
           </Button>
         </div>
       </div>
 
       {/* 6 ta metrik */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         {[
           { label: "Kurslar",            value: stats?.activeCourses ?? 0,       sub: `${stats?.totalStudents ?? 0} talaba`, icon: BookOpen,     cls: "text-blue-600",   href: "/teacher/courses"     },
           { label: "Tekshirilmagan",     value: stats?.pendingSubmissions ?? 0,  sub: "topshiriqlar",                        icon: ClipboardList, cls: "text-orange-600", href: "/teacher/assignments" },

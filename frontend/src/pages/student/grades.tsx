@@ -108,10 +108,10 @@ export function StudentGrades() {
   // Show loading skeleton
   if (showLoading) {
     return (
-      <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Baholar</h1>
-          <p className="text-muted-foreground">Fanlar bo'yicha joriy va yakuniy baholar</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Baholar</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Fanlar bo'yicha joriy va yakuniy baholar</p>
         </div>
         <GradeTableSkeleton rows={10} />
       </div>
@@ -121,9 +121,9 @@ export function StudentGrades() {
   // Show error state
   if (gradesError) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Baholar</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Baholar</h1>
           <p className="text-muted-foreground">Fanlar bo'yicha joriy va yakuniy baholar</p>
         </div>
         <Card>
@@ -151,10 +151,10 @@ export function StudentGrades() {
   const cumulativeGPA = gpaData?.cumulativeGPA.toFixed(2) ?? "—";
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Baholar</h1>
-        <p className="text-muted-foreground">Fanlar bo'yicha joriy va yakuniy baholar</p>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Baholar</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Fanlar bo'yicha joriy va yakuniy baholar</p>
       </div>
 
       {/* GPA + summary */}
@@ -286,8 +286,8 @@ export function StudentGrades() {
                   <p className="text-muted-foreground">Hali baholar mavjud emas</p>
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
+                <div className="overflow-x-auto rounded-md border">
+                  <Table className="min-w-[500px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Fan</TableHead>

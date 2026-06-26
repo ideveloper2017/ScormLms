@@ -38,13 +38,13 @@ const DEFAULT_CONFIG = ROLE_CONFIG['ADMIN'];
 
 function DashSkeleton() {
   return (
-    <div className="p-6 space-y-6">
-      <Skeleton className="h-9 w-72" />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-8 w-16" /></CardContent></Card>)}
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      <Skeleton className="h-7 sm:h-9 w-48 sm:w-72" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-4 sm:pt-6"><Skeleton className="h-7 sm:h-8 w-12 sm:w-16" /></CardContent></Card>)}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[1,2].map(i => <Card key={i}><CardContent className="pt-6 space-y-3">{[1,2,3].map(j => <Skeleton key={j} className="h-10 w-full" />)}</CardContent></Card>)}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {[1,2].map(i => <Card key={i}><CardContent className="pt-4 sm:pt-6 space-y-3">{[1,2,3].map(j => <Skeleton key={j} className="h-10 w-full" />)}</CardContent></Card>)}
       </div>
     </div>
   );
@@ -105,8 +105,8 @@ export function AdminDashboard() {
 
   if (statsError) {
     return (
-      <div className="p-6 space-y-4">
-        <h1 className="text-3xl font-bold">{cfg.title}</h1>
+      <div className="p-3 sm:p-4 md:p-6 space-y-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{cfg.title}</h1>
         <Card className="border-destructive/50">
           <CardContent className="pt-6 text-center space-y-3">
             <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -124,34 +124,34 @@ export function AdminDashboard() {
   const tabCount = 2 + (cfg.showUsers ? 1 : 0) + (cfg.showSystem ? 1 : 0) + (cfg.showSecurity ? 1 : 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">{cfg.title}</h1>
-          <p className="text-muted-foreground">{cfg.description}</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{cfg.title}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">{cfg.description}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {isSuperAdmin && (
-            <Button variant="outline" className="gap-2" onClick={() => navigate('/admin/settings')}>
-              <Settings className="h-4 w-4" />Sozlamalar
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate('/admin/settings')}>
+              <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Sozlamalar
             </Button>
           )}
           {(isSuperAdmin || isAdmin) && (
-            <Button className="gap-2" onClick={() => navigate('/admin/users')}>
-              <Plus className="h-4 w-4" />Yangi Foydalanuvchi
+            <Button size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate('/admin/users')}>
+              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Yangi Foydalanuvchi
             </Button>
           )}
           {isMetodist && (
-            <Button className="gap-2" onClick={() => navigate('/admin/courses')}>
-              <BookOpen className="h-4 w-4" />Yangi Kurs
+            <Button size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate('/admin/courses')}>
+              <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Yangi Kurs
             </Button>
           )}
         </div>
       </div>
 
       {/* 4 ta asosiy metrika */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -216,7 +216,7 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-end justify-between">
-              <span className="text-3xl font-bold">{stats?.contentCompletion ?? 0}%</span>
+              <span className="text-xl sm:text-2xl md:text-3xl font-bold">{stats?.contentCompletion ?? 0}%</span>
               <span className="text-xs text-muted-foreground">o'rtacha</span>
             </div>
             <Progress value={stats?.contentCompletion ?? 0} className="h-2" />
@@ -231,7 +231,7 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-end justify-between">
-              <span className="text-3xl font-bold">{stats?.avgAchievement ?? 0}%</span>
+              <span className="text-xl sm:text-2xl md:text-3xl font-bold">{stats?.avgAchievement ?? 0}%</span>
               <span className="text-xs text-muted-foreground">o'rtacha ball</span>
             </div>
             <div className="space-y-2">
@@ -284,14 +284,16 @@ export function AdminDashboard() {
         </div>
       )}
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(0, 1fr))` }}>
-          <TabsTrigger value="overview">Umumiy</TabsTrigger>
-          {cfg.showUsers    && <TabsTrigger value="users">Foydalanuvchilar</TabsTrigger>}
-          {cfg.showSystem   && <TabsTrigger value="system">Tizim</TabsTrigger>}
-          <TabsTrigger value="analytics">Tahlil</TabsTrigger>
-          {cfg.showSecurity && <TabsTrigger value="security">Xavfsizlik</TabsTrigger>}
-        </TabsList>
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4 sm:space-y-6">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid w-full min-w-max" style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(100px, 1fr))` }}>
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Umumiy</TabsTrigger>
+            {cfg.showUsers    && <TabsTrigger value="users" className="text-xs sm:text-sm">Foydalanuvchilar</TabsTrigger>}
+            {cfg.showSystem   && <TabsTrigger value="system" className="text-xs sm:text-sm">Tizim</TabsTrigger>}
+            <TabsTrigger value="analytics" className="text-xs sm:text-sm">Tahlil</TabsTrigger>
+            {cfg.showSecurity && <TabsTrigger value="security" className="text-xs sm:text-sm">Xavfsizlik</TabsTrigger>}
+          </TabsList>
+        </div>
 
         {/* Overview */}
         <TabsContent value="overview" className="space-y-6">

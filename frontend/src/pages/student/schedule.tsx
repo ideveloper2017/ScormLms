@@ -46,7 +46,7 @@ const WEEKS_UZ = [
 // Skeleton component for loading state
 function ScheduleSkeleton() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <Skeleton className="h-8 w-48 mb-2" />
@@ -144,9 +144,9 @@ export function StudentSchedule() {
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Dars jadvali</h1>
+      <div className="p-3 sm:p-4 md:p-6">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Dars jadvali</h1>
           <p className="text-muted-foreground">Haftalik dars jadvali va keyingi darslar</p>
         </div>
         <Card className="border-destructive/50">
@@ -166,27 +166,27 @@ export function StudentSchedule() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dars Jadvali</h1>
-          <p className="text-muted-foreground">Haftalik darslar va mashg'ulotlar</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Dars Jadvali</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Haftalik darslar va mashg'ulotlar</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w - 1)}>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setWeekOffset((w) => w - 1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm font-medium min-w-[160px] text-center">
+          <span className="text-xs sm:text-sm font-medium min-w-[120px] sm:min-w-[160px] text-center">
             {WEEKS_UZ[(weekOffset % WEEKS_UZ.length + WEEKS_UZ.length) % WEEKS_UZ.length]}
           </span>
-          <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w + 1)}>
+          <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setWeekOffset((w) => w + 1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: "Bugungi darslar", value: todayLessons.length, cls: "text-blue-600" },
           { label: "Haftalik darslar", value: totalLessons, cls: "" },

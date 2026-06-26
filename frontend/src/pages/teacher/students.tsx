@@ -50,15 +50,15 @@ export function TeacherStudents() {
   };
 
   if (isLoading) return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <Skeleton className="h-9 w-48" />
       <div className="space-y-3">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
     </div>
   );
 
   if (error) return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-3xl font-bold tracking-tight">Talabalar</h1>
+    <div className="p-3 sm:p-4 md:p-6 space-y-4">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Talabalar</h1>
       <Card className="border-destructive/50">
         <CardContent className="pt-6 text-center space-y-3">
           <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -71,9 +71,9 @@ export function TeacherStudents() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Talabalar</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Talabalar</h1>
         <p className="text-muted-foreground">Barcha kurslardagi talabalar ro'yxati</p>
       </div>
 

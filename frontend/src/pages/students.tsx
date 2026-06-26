@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { 
-  Users, 
-  Plus, 
-  Search, 
+import {
+  Users,
+  Plus,
+  Search,
   Filter,
   Mail,
   Phone,
@@ -11,8 +11,10 @@ import {
   TrendingUp,
   Award,
   CheckCircle,
-  Star
+  Star,
+  Download,
 } from 'lucide-react';
+import { HemisImportDialog } from '@/components/admin/HemisImportDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import { Input } from '@/components/ui/input.tsx';
@@ -90,8 +92,9 @@ const students = [
 ];
 
 export function Students() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm]       = useState('');
+  const [statusFilter, setStatusFilter]   = useState('all');
+  const [importOpen, setImportOpen]       = useState(false);
 
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -125,16 +128,27 @@ export function Students() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Talabalar</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Talabalar</h1>
           <p className="text-muted-foreground">
             Talabalar ro'yxati va ularning o'quv jarayoni
           </p>
         </div>
         
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Yangi Talaba
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+            <Download className="h-4 w-4" />
+            HEMIS dan import
+          </Button>
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Yangi Talaba
+          </Button>
+        </div>
+
+        <HemisImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+        />
       </div>
 
       {/* Stats Cards */}

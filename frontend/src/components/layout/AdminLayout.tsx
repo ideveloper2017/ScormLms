@@ -1,7 +1,8 @@
-import { Bell, Search, Shield, Monitor } from "lucide-react";
+import { Search, Shield, Monitor } from "lucide-react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { RoleSwitcher } from "@/components/layout/role-switcher";
+import { NotificationPanel } from "@/components/layout/notification-panel";
 import {
   SidebarInset, SidebarProvider, SidebarTrigger,
 } from "@/components/ui/sidebar";
@@ -26,26 +27,31 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <AppSidebar />
       <SidebarInset className="h-svh overflow-hidden">
         {/* ── Header (skrol qilinganda yuqorida qotib turadi) ──────── */}
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-3 sm:px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
 
-          {/* Qidiruv */}
+          {/* Desktop qidiruv */}
           <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Kurslar, talabalar yoki imtihonlarni qidiring..."
-              className="w-80 bg-muted/50 pl-10"
+              className="w-56 lg:w-80 bg-muted/50 pl-10"
             />
           </div>
 
+          {/* Mobile qidiruv tugmasi */}
+          <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
+            <Search className="h-4 w-4" />
+          </Button>
+
           {/* O'ng tomon */}
-          <div className="ml-auto flex items-center gap-3">
-            <div className="hidden items-center gap-2 md:flex">
-              <Badge variant="secondary" className="gap-1">
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <div className="hidden items-center gap-1.5 lg:flex">
+              <Badge variant="secondary" className="gap-1 text-xs">
                 <Shield className="h-3 w-3" /> SCORM
               </Badge>
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="secondary" className="gap-1 text-xs">
                 <Monitor className="h-3 w-3" /> Avtoproktoring
               </Badge>
             </div>
@@ -56,10 +62,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
             <ThemeToggle />
 
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-500" />
-            </Button>
+            <NotificationPanel />
           </div>
         </header>
 

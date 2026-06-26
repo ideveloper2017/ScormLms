@@ -89,8 +89,10 @@ const ITEMS = {
   aCalendar:     { name: "Akademik kalendar",   href: "/admin/calendar",     icon: Calendar        },
   aReports:      { name: "Hisobotlar",          href: "/admin/reports",      icon: BarChart3       },
   aIntegrations: { name: "Integratsiyalar",     href: "/admin/integrations", icon: Plug            },
-  aAuditLogs:    { name: "Audit log",           href: "/admin/audit-logs",   icon: ScrollText      },
-  aSettings:     { name: "Sozlamalar",          href: "/admin/settings",     icon: Settings        },
+  aAuditLogs:     { name: "Audit log",            href: "/admin/audit-logs",       icon: ScrollText      },
+  aSettings:      { name: "Sozlamalar",          href: "/admin/settings",         icon: Settings        },
+  aNotifications: { name: "Bildirishnomalar",    href: "/admin/notifications",     icon: Bell            },
+  tNotifications: { name: "Bildirishnomalar",    href: "/teacher/notifications",   icon: Bell            },
 } satisfies Record<string, NavItem>;
 
 // Role → grouped navigation. Bo'sh guruhlar avtomatik yashiriladi.
@@ -98,7 +100,7 @@ function buildNav(role: string): NavGroup[] {
   const r = role.replace(/^ROLE_/i, "").toUpperCase();
 
   const ADMIN_NAV: NavGroup[] = [
-    { label: "Asosiy",           items: [ITEMS.aDashboard] },
+    { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
     { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aTeachers, ITEMS.aRoles] },
     { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aGroups, ITEMS.aSubjects] },
     { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aCourses, ITEMS.aCalendar] },
@@ -109,7 +111,7 @@ function buildNav(role: string): NavGroup[] {
     SUPER_ADMIN: ADMIN_NAV,
     ADMIN:       ADMIN_NAV,
     METODIST: [
-      { label: "Asosiy",           items: [ITEMS.aDashboard] },
+      { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
       { label: "Ta'lim",           items: [ITEMS.aCourses, ITEMS.resources, ITEMS.teaching, ITEMS.exams] },
       { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aGroups, ITEMS.aSubjects] },
       { label: "Boshqaruv",        items: [ITEMS.aStudents, ITEMS.aTeachers, ITEMS.contingent, ITEMS.comms] },
@@ -120,7 +122,7 @@ function buildNav(role: string): NavGroup[] {
       { label: "Kurslar",        items: [ITEMS.tCourses, ITEMS.tContent] },
       { label: "Baholash",       items: [ITEMS.tAssignments, ITEMS.tTests, ITEMS.tGradebook] },
       { label: "Talabalar",      items: [ITEMS.tStudents, ITEMS.tAttendance] },
-      { label: "Kommunikatsiya", items: [ITEMS.tMessages, ITEMS.tAnnouncements] },
+      { label: "Kommunikatsiya", items: [ITEMS.tMessages, ITEMS.tAnnouncements, ITEMS.tNotifications] },
       { label: "Boshqa",         items: [ITEMS.tReports, ITEMS.tProfile] },
     ],
     STUDENT: [

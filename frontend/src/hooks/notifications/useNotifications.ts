@@ -78,8 +78,11 @@ export const useUnreadCount = () => {
   return useQuery<NotificationCount, Error>({
     queryKey: qk.notifications.count(),
     queryFn: notificationApi.fetchUnreadCount,
-    staleTime: 1 * 60 * 1000, // 1 minute - real-time unread count
-    gcTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 30_000,                  // 30 sekund — tez-tez yangilansin
+    gcTime: 2 * 60 * 1000,
+    refetchInterval: 30_000,            // fon polling: har 30 sekund
+    refetchIntervalInBackground: false, // faqat aktiv tab'da
+    refetchOnWindowFocus: true,         // oyna fokusga kelganda
   });
 };
 

@@ -3,6 +3,7 @@
 import {
   ColumnDef,
   ColumnFiltersState,
+  FilterFn,
   SortingState,
   VisibilityState,
   flexRender,
@@ -61,6 +62,7 @@ interface DataTableProps<TData, TValue> {
   emptyText?: string
   toolbar?: React.ReactNode
   className?: string
+  filterFn?: FilterFn<TData>
 }
 
 export function DataTable<TData, TValue>({
@@ -73,6 +75,7 @@ export function DataTable<TData, TValue>({
   emptyText = "Ma'lumot topilmadi",
   toolbar,
   className,
+  filterFn,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -90,6 +93,7 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: filterFn,
     state: {
       sorting,
       columnFilters,

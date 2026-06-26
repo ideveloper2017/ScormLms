@@ -27,17 +27,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.t
 
 export function Settings() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Sozlamalar</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Sozlamalar</h1>
         <p className="text-muted-foreground">
           LMS platformasi va SCORM tizimi sozlamalari
         </p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[520px] w-full grid-cols-6">
           <TabsTrigger value="general">Umumiy</TabsTrigger>
           <TabsTrigger value="scorm">SCORM</TabsTrigger>
           <TabsTrigger value="proctoring">Proctoring</TabsTrigger>
@@ -45,6 +46,7 @@ export function Settings() {
           <TabsTrigger value="users">Foydalanuvchilar</TabsTrigger>
           <TabsTrigger value="security">Xavfsizlik</TabsTrigger>
         </TabsList>
+          </div>
 
         {/* General Settings */}
         <TabsContent value="general" className="space-y-6">

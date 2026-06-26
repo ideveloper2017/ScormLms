@@ -126,7 +126,7 @@ export function StudentCabinet() {
   const completion = Math.round((filledFields / 13) * 100);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
@@ -217,13 +217,15 @@ export function StudentCabinet() {
 
       {/* ── Tabs ───────────────────────────────────────────────────────────── */}
       <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[440px] w-full grid-cols-5">
           <TabsTrigger value="profile">Profil</TabsTrigger>
           <TabsTrigger value="academic">Akademik</TabsTrigger>
           <TabsTrigger value="address">Manzil</TabsTrigger>
           <TabsTrigger value="activity">Faoliyat</TabsTrigger>
           <TabsTrigger value="settings">Sozlamalar</TabsTrigger>
         </TabsList>
+          </div>
 
         {/* ── Profil tab ────────────────────────────────────────────────────── */}
         <TabsContent value="profile" className="space-y-6">

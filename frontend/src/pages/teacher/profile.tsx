@@ -59,7 +59,7 @@ export function TeacherProfile() {
     .split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   if (profileLoading || statsLoading) return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto">
       <Skeleton className="h-9 w-32" />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Skeleton className="h-64" />
@@ -72,8 +72,8 @@ export function TeacherProfile() {
   );
 
   if (error) return (
-    <div className="p-6 space-y-4 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold tracking-tight">Profil</h1>
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Profil</h1>
       <Card className="border-destructive/50">
         <CardContent className="pt-6 text-center space-y-3">
           <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -86,9 +86,9 @@ export function TeacherProfile() {
   );
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Profil</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Profil</h1>
         {!editing
           ? <Button variant="outline" className="gap-2" onClick={startEditing}><Edit className="h-4 w-4" />Tahrirlash</Button>
           : (

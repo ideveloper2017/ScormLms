@@ -576,7 +576,7 @@ export function UserManagement() {
   );
 
   if (loadError) return (
-    <div className="p-6">
+    <div className="p-3 sm:p-4 md:p-6">
       <Card className="border-destructive/50">
         <CardContent className="flex flex-col items-center gap-4 py-12">
           <AlertTriangle className="h-10 w-10 text-destructive" />
@@ -589,12 +589,12 @@ export function UserManagement() {
 
   // ─── render ───────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Foydalanuvchilar Reestri</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Foydalanuvchilar Reestri</h1>
           <p className="text-muted-foreground">Barcha tizim foydalanuvchilari yagona ro'yxatda</p>
         </div>
         <div className="flex items-center gap-2">
@@ -635,11 +635,13 @@ export function UserManagement() {
 
       {/* Tabs */}
       <Tabs defaultValue="users" className="space-y-4">
-        <TabsList className={`grid w-full ${canAudit && canManageRoles ? 'grid-cols-3' : canAudit || canManageRoles ? 'grid-cols-2' : 'grid-cols-1'}`}>
-          <TabsTrigger value="users"       className={ACTIVE_TAB}>Foydalanuvchilar</TabsTrigger>
-          {canManageRoles && <TabsTrigger value="permissions" className={ACTIVE_TAB}>Huquqlar Matritsasi</TabsTrigger>}
-          {canAudit       && <TabsTrigger value="audit"       className={ACTIVE_TAB}>Audit Log</TabsTrigger>}
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className={`grid min-w-[280px] w-full ${canAudit && canManageRoles ? 'grid-cols-3' : canAudit || canManageRoles ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <TabsTrigger value="users"       className={ACTIVE_TAB}>Foydalanuvchilar</TabsTrigger>
+            {canManageRoles && <TabsTrigger value="permissions" className={ACTIVE_TAB}>Huquqlar Matritsasi</TabsTrigger>}
+            {canAudit       && <TabsTrigger value="audit"       className={ACTIVE_TAB}>Audit Log</TabsTrigger>}
+          </TabsList>
+        </div>
 
         {/* ── Users tab ──────────────────────────────────────────────────── */}
         <TabsContent value="users" className="space-y-4">

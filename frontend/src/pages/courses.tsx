@@ -124,11 +124,11 @@ export function Courses() {
   const completedCourses = courses?.filter(c => c.status === 'completed').length || 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Kurslar Boshqaruvi</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Kurslar Boshqaruvi</h1>
           <p className="text-muted-foreground">
             O'quv kontentlari, videodarslar, testlar va topshiriqlarni boshqaring
           </p>
@@ -317,12 +317,14 @@ export function Courses() {
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
         <div className="sticky top-[-24px] z-30 bg-background/95 backdrop-blur-sm pb-4 pt-2 space-y-4 border-b border-border/40">
-          <TabsList className="grid w-full grid-cols-4">
+          <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[360px] w-full grid-cols-4">
             <TabsTrigger value="courses">Kurslar</TabsTrigger>
             <TabsTrigger value="content">Kontent Boshqaruvi</TabsTrigger>
             <TabsTrigger value="assignments">Topshiriqlar</TabsTrigger>
             <TabsTrigger value="analytics">Tahlil</TabsTrigger>
           </TabsList>
+          </div>
 
           {selectedTab === "courses" && (
             <div className="flex flex-col md:flex-row gap-4">

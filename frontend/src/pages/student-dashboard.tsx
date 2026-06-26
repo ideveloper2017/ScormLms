@@ -170,7 +170,7 @@ export function StudentDashboard() {
   // Show loading skeleton while stats are loading (with fade-in/out animation)
   if (showStatsLoading) {
     return (
-      <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
         <DashboardStatsSkeleton count={4} />
       </div>
     );
@@ -179,7 +179,7 @@ export function StudentDashboard() {
   // Show error message if stats failed to load
   if (statsError) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
           <CardHeader>
             <CardTitle className="text-red-800 dark:text-red-200 flex items-center gap-2">
@@ -207,121 +207,124 @@ export function StudentDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
       {/* ErrorBoundary Test - Only in Development */}
       {import.meta.env.DEV && (
         <ErrorBoundaryTest />
       )}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12 sm:h-14 sm:w-14 shrink-0">
             <AvatarImage src={studentData.avatar} alt={studentData.name} />
             <AvatarFallback>
               {studentData.name.split(' ').map(n => n[0]).join('')}
             </AvatarFallback>
           </Avatar>
-          <div>
-            <h1 className="text-3xl font-bold">Xush kelibsiz, {studentData.name}!</h1>
-            <p className="text-muted-foreground">
-              {studentData.studentId} • GPA: {studentData.gpa} • Reyting: #{studentData.rank}
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold leading-tight truncate">
+              Xush kelibsiz, {studentData.name}!
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+              {studentData.studentId} • GPA: {studentData.gpa} • #{studentData.rank}
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge className="bg-blue-100 text-blue-800">
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <Badge className="bg-blue-100 text-blue-800 text-xs">
                 {studentData.thisWeekHours}h bu hafta
               </Badge>
-              <Badge className="bg-green-100 text-green-800">
-                {studentData.currentStreak} kun ketma-ket
+              <Badge className="bg-green-100 text-green-800 text-xs">
+                {studentData.currentStreak} kun
               </Badge>
             </div>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="relative">
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
             <Bell className="h-4 w-4" />
-            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center">
               2
             </span>
           </Button>
-          <Button className="gap-2">
-            <User className="h-4 w-4" />
-            Shaxsiy Kabinet
+          <Button className="gap-2 text-sm h-8 sm:h-9 px-3 sm:px-4">
+            <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Shaxsiy Kabinet</span>
+            <span className="sm:hidden">Kabinet</span>
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
+          <CardHeader className="pb-2 pt-3 px-3 sm:pb-3 sm:pt-4 sm:px-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Faol Kurslar
               </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
-                <BookOpen className="h-4 w-4 text-white" />
+              <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
+                <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600 mb-1">{studentData.activeCourses}</div>
+          <CardContent className="px-3 pb-3 sm:px-6 sm:pb-4">
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-0.5">{studentData.activeCourses}</div>
             <div className="text-xs text-muted-foreground">Davom etmoqda</div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
+          <CardHeader className="pb-2 pt-3 px-3 sm:pb-3 sm:pt-4 sm:px-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Yakunlangan
               </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-md">
-                <CheckCircle className="h-4 w-4 text-white" />
+              <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-md">
+                <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-emerald-600 mb-1">{studentData.completedCourses}</div>
+          <CardContent className="px-3 pb-3 sm:px-6 sm:pb-4">
+            <div className="text-2xl sm:text-3xl font-bold text-emerald-600 mb-0.5">{studentData.completedCourses}</div>
             <div className="text-xs text-muted-foreground">Kurslar</div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Award className="h-4 w-4" />
-                Jami Kreditlar
+          <CardHeader className="pb-2 pt-3 px-3 sm:pb-3 sm:pt-4 sm:px-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Award className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                Kreditlar
               </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
-                <Award className="h-4 w-4 text-white" />
+              <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
+                <Award className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-600 mb-1">{studentData.totalCredits}</div>
+          <CardContent className="px-3 pb-3 sm:px-6 sm:pb-4">
+            <div className="text-2xl sm:text-3xl font-bold text-purple-600 mb-0.5">{studentData.totalCredits}</div>
             <div className="text-xs text-muted-foreground">Kredit</div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
+          <CardHeader className="pb-2 pt-3 px-3 sm:pb-3 sm:pt-4 sm:px-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 GPA
               </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 shadow-md">
-                <TrendingUp className="h-4 w-4 text-white" />
+              <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 shadow-md">
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-amber-600 mb-1">{studentData.gpa}</div>
+          <CardContent className="px-3 pb-3 sm:px-6 sm:pb-4">
+            <div className="text-2xl sm:text-3xl font-bold text-amber-600 mb-0.5">{studentData.gpa}</div>
             <div className="text-xs text-muted-foreground">5.0 dan</div>
           </CardContent>
         </Card>
@@ -329,27 +332,27 @@ export function StudentDashboard() {
 
       {/* Quick Actions */}
       <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-indigo-600" />
+        <CardHeader className="pb-3 pt-4 px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
             Tezkor Amallar
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs sm:text-sm">
             Eng ko'p ishlatiladigan funksiyalar
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <CardContent className="px-4 pb-4 sm:px-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
                 <Button
                   key={action.id}
                   variant="outline"
-                  className="h-20 flex-col gap-2 hover:scale-105 transition-all duration-200"
+                  className="h-16 sm:h-20 flex-col gap-1.5 sm:gap-2 hover:scale-105 transition-all duration-200"
                 >
-                  <Icon className="h-6 w-6" />
-                  <span className="text-xs text-center">{action.title}</span>
+                  <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-[10px] sm:text-xs text-center leading-tight">{action.title}</span>
                 </Button>
               );
             })}
@@ -357,15 +360,17 @@ export function StudentDashboard() {
         </CardContent>
       </Card>
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Umumiy</TabsTrigger>
-          <TabsTrigger value="courses">Kurslarim</TabsTrigger>
-          <TabsTrigger value="assignments">Vazifalar</TabsTrigger>
-          <TabsTrigger value="grades">Baholar</TabsTrigger>
-          <TabsTrigger value="exams">Imtihonlar</TabsTrigger>
-          <TabsTrigger value="resources">Resurslar</TabsTrigger>
-        </TabsList>
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4 sm:space-y-6">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[480px] w-full grid-cols-6">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Umumiy</TabsTrigger>
+            <TabsTrigger value="courses" className="text-xs sm:text-sm">Kurslarim</TabsTrigger>
+            <TabsTrigger value="assignments" className="text-xs sm:text-sm">Vazifalar</TabsTrigger>
+            <TabsTrigger value="grades" className="text-xs sm:text-sm">Baholar</TabsTrigger>
+            <TabsTrigger value="exams" className="text-xs sm:text-sm">Imtihonlar</TabsTrigger>
+            <TabsTrigger value="resources" className="text-xs sm:text-sm">Resurslar</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
@@ -844,21 +849,21 @@ export function StudentDashboard() {
                     <CardDescription>{exam.courseName}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{new Date(exam.date).toLocaleDateString('uz-UZ')}</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-sm">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="truncate">{new Date(exam.date).toLocaleDateString('uz-UZ')}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span>{exam.startTime}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-1.5">
+                        <Target className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span>{exam.questionCount} savol</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-1.5">
+                        <Activity className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span>{exam.duration} daq</span>
                       </div>
                     </div>

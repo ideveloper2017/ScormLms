@@ -234,7 +234,7 @@ export function Communication() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* API not connected banner */}
       <Card className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
         <CardContent className="py-3 px-4 flex items-center gap-3">
@@ -248,7 +248,7 @@ export function Communication() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Kommunikatsiya</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Kommunikatsiya</h1>
           <p className="text-muted-foreground">
             Forum, chat, xabarlar va videokonferensiya tizimi
           </p>
@@ -388,12 +388,14 @@ export function Communication() {
       </div>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[360px] w-full grid-cols-4">
           <TabsTrigger value="forum">Forum</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
           <TabsTrigger value="messages">Xabarlar</TabsTrigger>
           <TabsTrigger value="video">Videokonferensiya</TabsTrigger>
         </TabsList>
+          </div>
 
         {/* Forum Tab */}
         <TabsContent value="forum" className="space-y-6">

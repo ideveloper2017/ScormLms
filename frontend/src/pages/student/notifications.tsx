@@ -90,7 +90,7 @@ export function StudentNotifications() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         <NotificationPageSkeleton />
       </div>
     );
@@ -99,7 +99,7 @@ export function StudentNotifications() {
   // Error state
   if (error) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         <div className="text-center py-12">
           <AlertTriangle className="h-10 w-10 text-destructive mx-auto mb-3" />
           <h3 className="text-lg font-semibold mb-2">Xatolik yuz berdi</h3>
@@ -118,15 +118,15 @@ export function StudentNotifications() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Bildirishnomalar</h1>
-            <p className="text-muted-foreground">Barcha xabarnomalar va eslatmalar</p>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Bildirishnomalar</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Barcha xabarnomalar va eslatmalar</p>
           </div>
           {unreadCount > 0 && (
-            <Badge className="bg-red-500 text-white text-sm">{unreadCount}</Badge>
+            <Badge className="bg-red-500 text-white text-xs sm:text-sm">{unreadCount}</Badge>
           )}
         </div>
         <div className="flex gap-2">

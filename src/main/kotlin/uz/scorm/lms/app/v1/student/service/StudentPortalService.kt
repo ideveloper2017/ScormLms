@@ -2,6 +2,7 @@ package uz.scorm.lms.app.v1.student.service
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import uz.scorm.lms.app.v1.notification.service.NotificationService
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
@@ -13,6 +14,7 @@ import java.time.LocalDate
 class StudentPortalService(
     private val studentRepository: StudentRepository,
     private val userRepository: UserRepository,
+    private val notificationService: NotificationService,
 ) {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -134,8 +136,10 @@ class StudentPortalService(
     // ─── Notification summary ─────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getNotificationSummary(user: User): StudentNotificationSummaryDto =
-        StudentNotificationSummaryDto(unreadCount = 0, urgent = 0)
+    fun getNotificationSummary(user: User): StudentNotificationSummaryDto {
+        val countDto = notificationService.getUnreadCount(user.id!!)
+        return StudentNotificationSummaryDto(unreadCount = countDto.count.toInt(), urgent = 0)
+    }
 
     // ─── Exams ───────────────────────────────────────────────────────────────
 

@@ -44,6 +44,11 @@ import { ProctoringSession } from "@/components/proctoring/proctoring-session";
 
 // Admin pages
 import { AdminRoles } from "@/pages/admin/roles";
+import { AdminFaculties } from "@/pages/admin/faculties";
+import { AdminDepartments } from "@/pages/admin/departments";
+import { AdminPrograms } from "@/pages/admin/programs";
+import { AdminGroups } from "@/pages/admin/groups";
+import { AdminSubjects } from "@/pages/admin/subjects";
 import { AdminStudyPlans } from "@/pages/admin/study-plans";
 import { AdminCalendar } from "@/pages/admin/calendar";
 import { AdminIntegrations } from "@/pages/admin/integrations";
@@ -216,6 +221,7 @@ function App() {
         <Route path="/teacher/attendance"             element={<P roles={TEACHER_ROLES}><TeacherAttendance /></P>} />
         <Route path="/teacher/messages"               element={<P roles={TEACHER_ROLES}><Communication /></P>} />
         <Route path="/teacher/announcements"          element={<P roles={TEACHER_ROLES}><TeacherAnnouncements /></P>} />
+        <Route path="/teacher/notifications"          element={<P roles={TEACHER_ROLES}><StudentNotifications /></P>} />
         <Route path="/teacher/content"                element={<P roles={TEACHER_ROLES}><TeacherContent /></P>} />
         <Route path="/teacher/reports"                element={<P roles={TEACHER_ROLES}><Reports /></P>} />
         <Route path="/teacher/profile"                element={<P roles={TEACHER_ROLES}><TeacherProfile /></P>} />
@@ -270,18 +276,19 @@ function App() {
         <Route path="/admin/students"     element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
         <Route path="/admin/teachers"     element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
         <Route path="/admin/roles"        element={<P roles={ADMIN_ROLES}><AdminRoles /></P>} />
-        <Route path="/admin/faculties"    element={<P roles={STAFF_ROLES}><AcademicStructure defaultTab="faculties" /></P>} />
-        <Route path="/admin/departments"  element={<P roles={STAFF_ROLES}><AcademicStructure defaultTab="departments" /></P>} />
-        <Route path="/admin/programs"     element={<P roles={STAFF_ROLES}><AcademicStructure defaultTab="programs" /></P>} />
-        <Route path="/admin/groups"       element={<P roles={STAFF_ROLES}><Groups /></P>} />
-        <Route path="/admin/subjects"     element={<P roles={STAFF_ROLES}><Subjects /></P>} />
+        <Route path="/admin/faculties"    element={<P roles={STAFF_ROLES}><AdminFaculties /></P>} />
+        <Route path="/admin/departments"  element={<P roles={STAFF_ROLES}><AdminDepartments /></P>} />
+        <Route path="/admin/programs"     element={<P roles={STAFF_ROLES}><AdminPrograms /></P>} />
+        <Route path="/admin/groups"       element={<P roles={STAFF_ROLES}><AdminGroups /></P>} />
+        <Route path="/admin/subjects"     element={<P roles={STAFF_ROLES}><AdminSubjects /></P>} />
         <Route path="/admin/study-plans"  element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
         <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><Courses /></P>} />
         <Route path="/admin/calendar"     element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
         <Route path="/admin/reports"      element={<P roles={REPORTING_ROLES}><Reports /></P>} />
         <Route path="/admin/integrations" element={<P roles={ADMIN_ROLES}><AdminIntegrations /></P>} />
         <Route path="/admin/audit-logs"   element={<P roles={ADMIN_ROLES}><AdminAuditLogs /></P>} />
-        <Route path="/admin/settings"     element={<P roles={ADMIN_ROLES}><Settings /></P>} />
+        <Route path="/admin/settings"          element={<P roles={ADMIN_ROLES}><Settings /></P>} />
+        <Route path="/admin/notifications"     element={<P roles={STAFF_ROLES}><StudentNotifications /></P>} />
 
         {/* ── Wildcard: show role-appropriate dashboard ────────────────────── */}
         <Route

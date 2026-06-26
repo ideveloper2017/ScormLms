@@ -180,12 +180,10 @@ export function StudentAssignments() {
   // Show loading skeleton
   if (showLoading) {
     return (
-      <div className="p-6 space-y-6 animate-fade-in">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Topshiriqlar</h1>
-            <p className="text-muted-foreground">Barcha kurslar bo'yicha topshiriqlar</p>
-          </div>
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Topshiriqlar</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Barcha kurslar bo'yicha topshiriqlar</p>
         </div>
         <AssignmentListSkeleton count={6} />
       </div>
@@ -195,7 +193,7 @@ export function StudentAssignments() {
   // Show error state
   if (isError) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" />
           <h2 className="text-xl font-semibold mb-2">Xatolik yuz berdi</h2>
@@ -215,16 +213,14 @@ export function StudentAssignments() {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Topshiriqlar</h1>
-          <p className="text-muted-foreground">Barcha kurslar bo'yicha topshiriqlar</p>
-        </div>
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Topshiriqlar</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Barcha kurslar bo'yicha topshiriqlar</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: "Jami", value: stats.total, cls: "" },
           { label: "Kutilmoqda", value: stats.pending, cls: "text-blue-600" },

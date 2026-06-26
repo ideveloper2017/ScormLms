@@ -69,10 +69,10 @@ export function AdminCalendar() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Akademik Kalendar</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Akademik Kalendar</h1>
           <p className="text-muted-foreground">Semestrlar, imtihonlar va muhim sanalar</p>
         </div>
         <Button className="gap-2">

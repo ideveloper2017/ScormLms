@@ -184,11 +184,11 @@ export function AttendanceProgress() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Davomat va O'zlashtirish</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Davomat va O'zlashtirish</h1>
           <p className="text-muted-foreground">
             Talabalarning o'quv jarayoni, individual rejalar va o'zlashtirish tahlili
           </p>
@@ -302,13 +302,15 @@ export function AttendanceProgress() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[440px] w-full grid-cols-5">
           <TabsTrigger value="overview">Umumiy Ko'rinish</TabsTrigger>
           <TabsTrigger value="students">Talabalar</TabsTrigger>
           <TabsTrigger value="courses">Kurslar</TabsTrigger>
           <TabsTrigger value="paths">O'quv Yo'nalishlari</TabsTrigger>
           <TabsTrigger value="analytics">Tahlil</TabsTrigger>
         </TabsList>
+          </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">

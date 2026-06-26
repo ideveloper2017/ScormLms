@@ -95,7 +95,7 @@ export function TeacherContent() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <Card className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
         <CardContent className="py-3 px-4 flex items-center gap-3">
           <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
@@ -106,7 +106,7 @@ export function TeacherContent() {
       </Card>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Kontent kutubxonasi</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Kontent kutubxonasi</h1>
           <p className="text-muted-foreground">SCORM, video, PDF va boshqa materiallar</p>
         </div>
         <div className="flex gap-2">

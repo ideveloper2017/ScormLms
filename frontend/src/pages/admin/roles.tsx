@@ -86,7 +86,7 @@ export function AdminRoles() {
   );
 
   if (error) return (
-    <div className="p-6">
+    <div className="p-3 sm:p-4 md:p-6">
       <Card className="border-destructive/50">
         <CardContent className="flex flex-col items-center gap-4 py-12">
           <AlertTriangle className="h-10 w-10 text-destructive" />
@@ -100,10 +100,10 @@ export function AdminRoles() {
   const totalUsers = Object.values(userCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Rollar</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Rollar</h1>
           <p className="text-muted-foreground">Tizim rollari va ruxsatlar matritsasi</p>
         </div>
         <Button variant="outline" size="icon" onClick={load}><RefreshCw className="h-4 w-4" /></Button>

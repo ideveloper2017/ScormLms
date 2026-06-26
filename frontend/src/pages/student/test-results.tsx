@@ -135,7 +135,7 @@ export function TestResults() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{result.score}</div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold">{result.score}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Maksimal: {result.totalPoints}
               </p>
@@ -150,7 +150,7 @@ export function TestResults() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{result.percentage.toFixed(1)}%</div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold">{result.percentage.toFixed(1)}%</div>
               <Progress value={result.percentage} className="mt-2 h-2" />
             </CardContent>
           </Card>

@@ -82,10 +82,10 @@ export function StudentAttendance() {
   // Loading state
   if (isLoadingRecords || isLoadingStats) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Davomat</h1>
-          <p className="text-muted-foreground">Fan bo'yicha davomat holati</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Davomat</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Fan bo'yicha davomat holati</p>
         </div>
 
         {/* Stats skeleton */}
@@ -127,10 +127,10 @@ export function StudentAttendance() {
   // Error state
   if (recordsError || statsError) {
     return (
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Davomat</h1>
-          <p className="text-muted-foreground">Fan bo'yicha davomat holati</p>
+      <div className="p-3 sm:p-4 md:p-6">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Davomat</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Fan bo'yicha davomat holati</p>
         </div>
         <Card className="border-red-200 dark:border-red-900/50">
           <CardContent className="pt-6">
@@ -165,14 +165,14 @@ export function StudentAttendance() {
   const lowAttendanceCourses = courseAttendanceData.filter(c => c.percentage < 75);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Davomat</h1>
-        <p className="text-muted-foreground">Fan bo'yicha davomat holati</p>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Davomat</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Fan bo'yicha davomat holati</p>
       </div>
 
       {/* Overall stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: "Jami davomat", value: `${Math.round(overallRate)}%`, cls: overallRate >= 80 ? "text-green-600" : "text-red-600" },
           { label: "Qatnashdi", value: totalAtt, cls: "text-green-600" },

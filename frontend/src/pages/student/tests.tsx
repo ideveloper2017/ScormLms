@@ -75,16 +75,14 @@ export function StudentTests() {
   }, [tests, search, statusFilter]);
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Testlar</h1>
-          <p className="text-muted-foreground">Bilim tekshirish testlari va imtihonlar</p>
-        </div>
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Testlar</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Bilim tekshirish testlari va imtihonlar</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: "Jami testlar",    value: stats.total,     icon: FileQuestion, cls: "" },
           { label: "Yaqinlashmoqda",  value: stats.upcoming,  icon: PlayCircle,   cls: "text-green-600" },
@@ -103,19 +101,19 @@ export function StudentTests() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-2 sm:gap-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Test yoki kurs nomi..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 sm:gap-2 flex-wrap">
           {["all", "upcoming", "in-progress", "completed", "missed"].map((status) => (
             <Button
               key={status}
               variant={statusFilter === status ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter(status as any)}
-              className="text-xs"
+              className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3"
             >
               {status === "all" ? "Barchasi" : STATUS_META[status]?.label}
             </Button>

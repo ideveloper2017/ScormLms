@@ -138,7 +138,7 @@ export function TeacherGradebook() {
     : 0;
 
   if (coursesLoading || gbLoading) return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <Skeleton className="h-9 w-56" />
       <div className="grid grid-cols-3 gap-3">
         {[1,2,3].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-10 w-16" /></CardContent></Card>)}
@@ -148,8 +148,8 @@ export function TeacherGradebook() {
   );
 
   if (error) return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-3xl font-bold tracking-tight">Baholash jurnali</h1>
+    <div className="p-3 sm:p-4 md:p-6 space-y-4">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Baholash jurnali</h1>
       <Card className="border-destructive/50">
         <CardContent className="pt-6 text-center space-y-3">
           <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -162,10 +162,10 @@ export function TeacherGradebook() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Baholash jurnali</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Baholash jurnali</h1>
           <p className="text-muted-foreground">Talabalar baholarini boshqarish</p>
         </div>
         <Button variant="outline" className="gap-2">

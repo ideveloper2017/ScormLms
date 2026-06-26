@@ -63,7 +63,7 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
   const course = COURSES_DATA[id ?? "1"] ?? COURSES_DATA["1"];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/teacher/courses")}>
@@ -97,12 +97,14 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
       </div>
 
       <Tabs defaultValue={defaultTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
+          <TabsList className="grid min-w-[360px] w-full grid-cols-4">
           <TabsTrigger value="overview">Umumiy</TabsTrigger>
           <TabsTrigger value="modules">Modullar</TabsTrigger>
           <TabsTrigger value="lessons">Darslar</TabsTrigger>
           <TabsTrigger value="contents">Kontent</TabsTrigger>
         </TabsList>
+          </div>
 
         {/* Overview */}
         <TabsContent value="overview" className="space-y-4 mt-4">

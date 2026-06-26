@@ -40,7 +40,7 @@ export function AcademicStructure({ defaultTab = "faculties" }: { defaultTab?: s
   const programs = useCrudData<ProgramRecord>(["programs"], listPrograms);
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-4 md:p-6">
       <div className="mb-4">
         <h1 className="text-2xl font-bold">Akademik tuzilma</h1>
         <p className="text-sm text-muted-foreground">Fakultet → Kafedra → Yo'nalish ierarxiyasi</p>
