@@ -37,11 +37,41 @@ const COURSE_COLORS = [
   "border-l-red-400    bg-red-50/60    dark:bg-red-950/20",
 ];
 
-const WEEKS_UZ = [
-  "2025-yil 9–13 iyun",
-  "2025-yil 16–20 iyun",
-  "2025-yil 23–27 iyun",
-];
+// Generate dynamic week label based on current week + offset
+function getWeekLabel(weekOffset: number): string {
+  const now = new Date();
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + weekOffset * 7);
+  
+  // Get Monday of the target week
+  const dayOfWeek = targetDate.getDay();
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(targetDate);
+  monday.setDate(targetDate.getDate() + diff);
+  
+  // Get Friday of the same week
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  
+  // Format dates
+  const monthNames = [
+    "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+    "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+  ];
+  
+  const startDay = monday.getDate();
+  const endDay = friday.getDate();
+  const startMonth = monthNames[monday.getMonth()];
+  const endMonth = monthNames[friday.getMonth()];
+  const year = monday.getFullYear();
+  
+  // If same month
+  if (monday.getMonth() === friday.getMonth()) {
+    return `${year}-yil ${startDay}–${endDay} ${startMonth}`;
+  }
+  // Different months
+  return `${year}-yil ${startDay} ${startMonth}–${endDay} ${endMonth}`;
+}
 
 // Skeleton component for loading state
 function ScheduleSkeleton() {
@@ -177,7 +207,7 @@ export function StudentSchedule() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm font-medium min-w-[160px] text-center">
-            {WEEKS_UZ[(weekOffset % WEEKS_UZ.length + WEEKS_UZ.length) % WEEKS_UZ.length]}
+            {getWeekLabel(weekOffset)}
           </span>
           <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w + 1)}>
             <ChevronRight className="h-4 w-4" />

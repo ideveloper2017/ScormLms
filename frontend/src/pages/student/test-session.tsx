@@ -30,10 +30,10 @@ export function TestSession() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const session = location.state?.session as TestSessionType | undefined;
+  const sessionFromState = location.state?.session as TestSessionType | undefined;
 
-  // Fetch test details
-  const { data: test, isLoading } = useTest(testId!);
+  // Fetch test details - always fetch from API
+  const { data: test, isLoading, error } = useTest(testId!);
   const submitTestMutation = useSubmitTest();
 
   // Test state
@@ -42,18 +42,33 @@ export function TestSession() {
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
-  // Get questions from session or test details
+  // Use test data from API (fallback to state if available for initial load)
   const questions = useMemo(() => {
-    return session?.questions || test?.questions || [];
-  }, [session, test]);
+    if (test?.questions) return test.questions;
+    if (sessionFromState?.questions) return sessionFromState.questions;
+    return [];
+  }, [test, sessionFromState]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
+  // Redirect if no testId or test not found
+  useEffect(() => {
+    if (!testId) {
+      navigate('/student/tests', { replace: true });
+    }
+  }, [testId, navigate]);
+
+  useEffect(() => {
+    if (!isLoading && error) {
+      navigate('/student/tests', { replace: true });
+    }
+  }, [isLoading, error, navigate]);
+
   // Initialize timer
   useEffect(() => {
-    if (!session && !test) return;
+    if (!test) return;
 
-    const expiresAt = session?.expiresAt || new Date(Date.now() + (test?.duration || 0) * 60 * 1000);
+    const expiresAt = sessionFromState?.expiresAt || new Date(Date.now() + (test.duration || 0) * 60 * 1000);
     const updateTimer = () => {
       const remaining = differenceInSeconds(expiresAt, new Date());
       setTimeRemaining(Math.max(0, remaining));
@@ -67,7 +82,7 @@ export function TestSession() {
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [session, test]);
+  }, [test, sessionFromState]);
 
   // Handle auto-submit when time runs out
   const handleAutoSubmit = async () => {
