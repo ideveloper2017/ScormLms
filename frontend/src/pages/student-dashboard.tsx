@@ -36,7 +36,9 @@ import {
     Coffee,
     Music,
     Headphones,
-    Upload, Shield
+    Upload, 
+    Shield,
+    AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Button } from '@/components/ui/button.tsx';
@@ -53,115 +55,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.tsx';
-
-const studentData = {
-  name: 'Alisher Karimov',
-  email: 'alisher@student.uz',
-  studentId: 'STU001',
-  avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100',
-  gpa: 4.2,
-  totalCredits: 45,
-  completedCourses: 3,
-  activeCourses: 2,
-  achievements: ['JavaScript Master', 'Perfect Attendance'],
-  currentStreak: 12,
-  totalHours: 120,
-  thisWeekHours: 15,
-  rank: 5,
-  totalStudents: 245,
-};
-
-const myCourses = [
-  {
-    id: 1,
-    title: 'JavaScript Asoslari',
-    instructor: 'Dr. Aziz Karimov',
-    progress: 85,
-    grade: 'A',
-    status: 'active',
-    nextLesson: 'Dars 8: Obyektlar',
-    dueDate: '2024-01-20',
-    image: 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=300',
-  },
-  {
-    id: 2,
-    title: 'React Development',
-    instructor: 'Prof. Malika Tosheva',
-    progress: 60,
-    grade: 'B+',
-    status: 'active',
-    nextLesson: 'Dars 5: Hooks',
-    dueDate: '2024-01-25',
-    image: 'https://images.pexels.com/photos/11035471/pexels-photo-11035471.jpeg?auto=compress&cs=tinysrgb&w=300',
-  },
-  {
-    id: 3,
-    title: 'HTML/CSS Asoslari',
-    instructor: 'Bobur Rahimov',
-    progress: 100,
-    grade: 'A+',
-    status: 'completed',
-    nextLesson: null,
-    dueDate: null,
-    image: 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=300',
-  },
-];
-
-const upcomingAssignments = [
-  {
-    id: 1,
-    title: 'JavaScript Loyiha',
-    course: 'JavaScript Asoslari',
-    dueDate: '2024-01-20',
-    status: 'pending',
-    priority: 'high',
-  },
-  {
-    id: 2,
-    title: 'React Component',
-    course: 'React Development',
-    dueDate: '2024-01-25',
-    status: 'in-progress',
-    priority: 'medium',
-  },
-  {
-    id: 3,
-    title: 'CSS Animation',
-    course: 'HTML/CSS Asoslari',
-    dueDate: '2024-01-30',
-    status: 'completed',
-    priority: 'low',
-  },
-];
-
-const recentGrades = [
-  { course: 'JavaScript Asoslari', assignment: 'Dars 7 Test', grade: 'A', score: 95, date: '2024-01-15' },
-  { course: 'React Development', assignment: 'Component Quiz', grade: 'B+', score: 87, date: '2024-01-12' },
-  { course: 'HTML/CSS Asoslari', assignment: 'Final Project', grade: 'A+', score: 98, date: '2024-01-10' },
-];
-
-const upcomingExams = [
-  {
-    id: 1,
-    title: 'JavaScript Yakuniy Imtihon',
-    course: 'JavaScript Asoslari',
-    date: '2024-01-22',
-    time: '14:00',
-    duration: '90 daqiqa',
-    questions: 50,
-    proctoring: true,
-  },
-  {
-    id: 2,
-    title: 'React Components Test',
-    course: 'React Development',
-    date: '2024-01-28',
-    time: '10:00',
-    duration: '60 daqiqa',
-    questions: 30,
-    proctoring: true,
-  },
-];
+import {
+  useDashboardStats,
+  useRecentCourses,
+  useUpcomingAssignments,
+  useUpcomingTests,
+  useRecentActivity,
+  useNotificationSummary
+} from '@/hooks/dashboard/useDashboard';
+import { useNotifications } from '@/hooks/notifications/useNotifications';
+import { DashboardStatsSkeleton } from '@/components/ui/skeletons/DashboardStatsSkeleton';
+import { handleApiError } from '@/utils/error-handler';
+import { useLoadingTransition } from '@/hooks/useLoadingTransition';
+import { ErrorBoundaryTest } from '@/components/error-boundary-test';
+import { useAuth } from '@/contexts/auth-context';
 
 const quickActions = [
   { id: 1, title: 'Yangi Darsni Boshlash', icon: Play, color: 'bg-green-100 text-green-800', action: 'start-lesson' },
@@ -194,36 +101,43 @@ const studyTips = [
   },
 ];
 
-const notifications = [
-  {
-    id: 1,
-    title: 'Yangi dars mavjud',
-    message: 'JavaScript Asoslari - Dars 8: Obyektlar',
-    time: '10 daqiqa oldin',
-    type: 'course',
-    isRead: false,
-  },
-  {
-    id: 2,
-    title: 'Topshiriq muddati yaqinlashmoqda',
-    message: 'React loyihasi - 2 kun qoldi',
-    time: '2 soat oldin',
-    type: 'assignment',
-    isRead: false,
-  },
-  {
-    id: 3,
-    title: 'Imtihon e\'lon qilindi',
-    message: 'JavaScript yakuniy imtihon - 22 yanvar',
-    time: '1 kun oldin',
-    type: 'exam',
-    isRead: true,
-  },
-];
 
 export function StudentDashboard() {
+  const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState('overview');
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Fetch dashboard data from API
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useDashboardStats();
+  const { data: courses, isLoading: coursesLoading, error: coursesError } = useRecentCourses();
+  const { data: assignments, isLoading: assignmentsLoading, error: assignmentsError } = useUpcomingAssignments();
+  const { data: tests, isLoading: testsLoading, error: testsError } = useUpcomingTests();
+  const { data: activity, isLoading: activityLoading, error: activityError } = useRecentActivity();
+  const { data: notificationSummary, isLoading: notificationsLoading, error: notificationsError } = useNotificationSummary();
+  const { data: notificationsList = [] } = useNotifications();
+
+  // Apply loading transition with minimum 300ms display time (AC 9.7)
+  const showStatsLoading = useLoadingTransition(statsLoading);
+  const showCoursesLoading = useLoadingTransition(coursesLoading);
+  const showAssignmentsLoading = useLoadingTransition(assignmentsLoading);
+  const showTestsLoading = useLoadingTransition(testsLoading);
+
+  const displayName = user?.fullName?.trim() || user?.username || 'Talaba';
+  const studentData = {
+    name: displayName,
+    studentId: user?.username || '—',
+    avatar: user?.photo || '',
+    gpa: stats?.gpa || 0,
+    totalCredits: stats?.totalCredits || 0,
+    completedCourses: stats?.completedCourses || 0,
+    activeCourses: stats?.activeCourses || 0,
+    achievements: ['JavaScript Master', 'Perfect Attendance'],
+    currentStreak: stats?.learningStreak || 0,
+    totalHours: 120,
+    thisWeekHours: 15,
+    rank: 5,
+    totalStudents: 245,
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -253,8 +167,52 @@ export function StudentDashboard() {
     }
   };
 
+  // Show loading skeleton while stats are loading (with fade-in/out animation)
+  if (showStatsLoading) {
+    return (
+      <div className="p-6 space-y-6 animate-fade-in">
+        <DashboardStatsSkeleton count={4} />
+      </div>
+    );
+  }
+
+  // Show error message if stats failed to load
+  if (statsError) {
+    return (
+      <div className="p-6">
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+          <CardHeader>
+            <CardTitle className="text-red-800 dark:text-red-200 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Xatolik yuz berdi
+            </CardTitle>
+            <CardDescription className="text-red-700 dark:text-red-300">
+              {statsError instanceof Error ? statsError.message : "Ma'lumotlarni yuklab bo'lmadi"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={() => refetchStats()} 
+              variant="outline"
+              className="gap-2"
+              disabled={statsLoading}
+            >
+              <AlertCircle className="h-4 w-4" />
+              {statsLoading ? "Yuklanmoqda..." : "Qayta urinish"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 animate-fade-in">
+      {/* ErrorBoundary Test - Only in Development */}
+      {import.meta.env.DEV && (
+        <ErrorBoundaryTest />
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -422,30 +380,46 @@ export function StudentDashboard() {
                 <CardDescription>Faol kurslar bo'yicha o'zlashtirish</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {myCourses.filter(course => course.status === 'active').map((course) => (
-                  <div key={course.id} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{course.title}</span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">{course.grade}</Badge>
-                        <span className="text-sm text-muted-foreground">{course.progress}%</span>
+                {showCoursesLoading ? (
+                  <div className="space-y-4 animate-pulse-loading">
+                    <div className="h-4 bg-gray-200 rounded" />
+                    <div className="h-2 bg-gray-200 rounded" />
+                    <div className="h-4 bg-gray-200 rounded" />
+                  </div>
+                ) : coursesError ? (
+                  <div className="text-sm text-red-600 dark:text-red-400">
+                    Ma'lumotlarni yuklab bo'lmadi
+                  </div>
+                ) : courses && courses.length > 0 ? (
+                  courses.filter(course => course.status === 'active').map((course) => (
+                    <div key={course.id} className="space-y-2 animate-fade-in">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">{course.title}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">{course.grade || 'N/A'}</Badge>
+                          <span className="text-sm text-muted-foreground">{course.progress}%</span>
+                        </div>
+                      </div>
+                      <Progress value={course.progress} className="h-2" />
+                      <div className="text-sm text-muted-foreground">
+                        Keyingi: {course.nextLesson?.title || 'Mavjud emas'}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1 gap-1">
+                          <Play className="h-3 w-3" />
+                          Davom etish
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <Progress value={course.progress} className="h-2" />
-                    <div className="text-sm text-muted-foreground">
-                      Keyingi: {course.nextLesson}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" className="flex-1 gap-1">
-                        <Play className="h-3 w-3" />
-                        Davom etish
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    Faol kurslar mavjud emas
                   </div>
-                ))}
+                )}
               </CardContent>
             </Card>
 
@@ -521,21 +495,25 @@ export function StudentDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {notifications.slice(0, 3).map((notification) => (
-                    <div key={notification.id} className={`p-3 rounded-lg border-l-4 ${
-                      notification.type === 'course' ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/20' :
-                      notification.type === 'assignment' ? 'border-l-orange-500 bg-orange-50 dark:bg-orange-900/20' :
-                      'border-l-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                    } ${!notification.isRead ? 'font-medium' : ''}`}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="text-sm font-medium">{notification.title}</h4>
-                          <p className="text-xs text-muted-foreground">{notification.message}</p>
+                  {notificationsList.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-4">Bildirishnomalar yo'q</p>
+                  ) : (
+                    notificationsList.slice(0, 3).map((notification) => (
+                      <div key={notification.id} className={`p-3 rounded-lg border-l-4 ${
+                        notification.type === 'course' ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/20' :
+                        notification.type === 'assignment' ? 'border-l-orange-500 bg-orange-50 dark:bg-orange-900/20' :
+                        'border-l-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                      } ${!notification.isRead ? 'font-medium' : ''}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-sm font-medium">{notification.title}</h4>
+                            <p className="text-xs text-muted-foreground">{notification.message}</p>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{notification.createdAt ? new Date(notification.createdAt).toLocaleDateString('uz') : ''}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground">{notification.time}</span>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                   <Button variant="outline" className="w-full gap-2 mt-4">
                     <Bell className="h-4 w-4" />
                     Barcha Bildirishnomalar
@@ -556,30 +534,48 @@ export function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {upcomingAssignments.filter(a => a.status !== 'completed').map((assignment) => (
-                  <div key={assignment.id} className={`p-4 border-l-4 ${getPriorityColor(assignment.priority)} bg-muted/50 rounded-r-lg`}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium">{assignment.title}</h4>
-                          {assignment.priority === 'high' && (
-                            <AlertCircle className="h-4 w-4 text-red-500" />
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{assignment.course}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{assignment.dueDate}</div>
-                        {getStatusBadge(assignment.status)}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <Button size="sm" variant="outline" className="flex-1">
-                        Ko'rish
-                      </Button>
-                    </div>
+                {showAssignmentsLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-20 bg-gray-200 animate-pulse-loading rounded" />
+                    ))}
                   </div>
-                ))}
+                ) : assignmentsError ? (
+                  <div className="text-sm text-red-600 dark:text-red-400">
+                    Ma'lumotlarni yuklab bo'lmadi
+                  </div>
+                ) : assignments && assignments.length > 0 ? (
+                  assignments.filter(a => a.status !== 'submitted' && a.status !== 'graded').map((assignment) => (
+                    <div key={assignment.id} className={`p-4 border-l-4 ${getPriorityColor(assignment.priority)} bg-muted/50 rounded-r-lg animate-fade-in`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{assignment.title}</h4>
+                            {assignment.priority === 'high' && (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{assignment.courseName}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium">
+                            {new Date(assignment.dueDate).toLocaleDateString('uz-UZ')}
+                          </div>
+                          {getStatusBadge(assignment.status)}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="outline" className="flex-1">
+                          Ko'rish
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    Yaqinlashayotgan topshiriqlar yo'q
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -587,82 +583,113 @@ export function StudentDashboard() {
 
         {/* Courses Tab */}
         <TabsContent value="courses" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {myCourses.map((course) => (
-              <Card key={course.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105 overflow-hidden">
-                <div className="relative">
-                  <img 
-                    src={course.image} 
-                    alt={course.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute top-2 right-2">
-                    {getStatusBadge(course.status)}
-                  </div>
-                  {course.grade && (
-                    <div className="absolute top-2 left-2">
-                      <Badge variant="secondary" className="bg-white/90">
-                        {course.grade}
-                      </Badge>
+          {coursesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[1, 2, 3].map(i => (
+                <Card key={i} className="animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-t-lg" />
+                  <CardContent className="space-y-3 p-6">
+                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+                    <div className="h-2 bg-gray-200 rounded" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : coursesError ? (
+            <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+              <CardContent className="p-6 text-center">
+                <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                <p className="text-red-600 dark:text-red-400">Kurslarni yuklab bo'lmadi</p>
+              </CardContent>
+            </Card>
+          ) : courses && courses.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {courses.map((course) => (
+                <Card key={course.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105 overflow-hidden">
+                  <div className="relative">
+                    <img 
+                      src={course.imageUrl || 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=300'} 
+                      alt={course.title}
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="absolute top-2 right-2">
+                      {getStatusBadge(course.status)}
                     </div>
-                  )}
-                </div>
-                
-                <div className="absolute bottom-2 left-2">
-                  <div className="flex items-center gap-1 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                    <Users className="h-3 w-3" />
-                    <span>245 talaba</span>
-                  </div>
-                </div>
-                
-                <CardHeader>
-                  <CardTitle className="text-lg">{course.title}</CardTitle>
-                  <CardDescription>{course.instructor}</CardDescription>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Jarayon</span>
-                      <span>{course.progress}%</span>
-                    </div>
-                    <Progress value={course.progress} className="h-2" />
+                    {course.grade && (
+                      <div className="absolute top-2 left-2">
+                        <Badge variant="secondary" className="bg-white/90">
+                          {course.grade}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                   
-                  {course.nextLesson && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Keyingi: </span>
-                      <span className="font-medium">{course.nextLesson}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Video className="h-3 w-3" />
-                      12 video
+                  <div className="absolute bottom-2 left-2">
+                    <div className="flex items-center gap-1 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                      <Users className="h-3 w-3" />
+                      <span>245 talaba</span>
                     </div>
                   </div>
                   
-                  {course.dueDate && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Muddat: </span>
-                      <span className="font-medium">{course.dueDate}</span>
-                    </div>
-                  )}
+                  <CardHeader>
+                    <CardTitle className="text-lg">{course.title}</CardTitle>
+                    <CardDescription>{course.instructor}</CardDescription>
+                  </CardHeader>
                   
-                  <div className="flex gap-2">
-                    <Button className="flex-1 gap-2" size="sm">
-                      <Play className="h-3 w-3" />
-                      Davom etish
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Jarayon</span>
+                        <span>{course.progress}%</span>
+                      </div>
+                      <Progress value={course.progress} className="h-2" />
+                    </div>
+                    
+                    {course.nextLesson && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Keyingi: </span>
+                        <span className="font-medium">{course.nextLesson.title}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Video className="h-3 w-3" />
+                        12 video
+                      </div>
+                    </div>
+                    
+                    {course.dueDate && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Muddat: </span>
+                        <span className="font-medium">
+                          {new Date(course.dueDate).toLocaleDateString('uz-UZ')}
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      <Button className="flex-1 gap-2" size="sm">
+                        <Play className="h-3 w-3" />
+                        Davom etish
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">Kurslar mavjud emas</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Resources Tab */}
@@ -692,41 +719,58 @@ export function StudentDashboard() {
               <CardDescription>Barcha topshiriqlar va ularning holati</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {upcomingAssignments.map((assignment) => (
-                  <div key={assignment.id} className={`p-4 border-l-4 ${getPriorityColor(assignment.priority)} bg-muted/50 rounded-r-lg`}>
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1">
+              {assignmentsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-24 bg-gray-200 animate-pulse rounded" />
+                  ))}
+                </div>
+              ) : assignmentsError ? (
+                <div className="text-center py-8">
+                  <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                  <p className="text-red-600 dark:text-red-400">Topshiriqlarni yuklab bo'lmadi</p>
+                </div>
+              ) : assignments && assignments.length > 0 ? (
+                <div className="space-y-4">
+                  {assignments.map((assignment) => (
+                    <div key={assignment.id} className={`p-4 border-l-4 ${getPriorityColor(assignment.priority)} bg-muted/50 rounded-r-lg`}>
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{assignment.title}</h4>
+                            {assignment.priority === 'high' && (
+                              <Badge className="bg-red-100 text-red-800 text-xs">Muhim</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{assignment.courseName}</p>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4" />
+                            <span>Muddat: {new Date(assignment.dueDate).toLocaleDateString('uz-UZ')}</span>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-medium">{assignment.title}</h4>
-                          {assignment.priority === 'high' && (
-                            <Badge className="bg-red-100 text-red-800 text-xs">Muhim</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{assignment.course}</p>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4" />
-                          <span>Muddat: {assignment.dueDate}</span>
+                          {getStatusBadge(assignment.status)}
+                          <Button variant="outline" size="sm">
+                            Ko'rish
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(assignment.status)}
-                        <Button variant="outline" size="sm">
-                          Ko'rish
-                        </Button>
-                      </div>
+                      {assignment.status === 'pending' && (
+                        <div className="mt-3 pt-3 border-t">
+                          <Button size="sm" className="gap-2">
+                            <Upload className="h-3 w-3" />
+                            Topshiriq Yuborish
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {assignment.status === 'pending' && (
-                      <div className="mt-3 pt-3 border-t">
-                        <Button size="sm" className="gap-2">
-                          <Upload className="h-3 w-3" />
-                          Topshiriq Yuborish
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Topshiriqlar mavjud emas
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -738,35 +782,20 @@ export function StudentDashboard() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Star className="h-5 w-5 text-yellow-600" />
-                  So'nggi Baholar
+                  Baholar
                 </div>
                 <Badge className="bg-green-100 text-green-800">GPA: {studentData.gpa}</Badge>
               </CardTitle>
-              <CardDescription>Oxirgi imtihon va topshiriq natijalari</CardDescription>
+              <CardDescription>Fanlar bo'yicha joriy va yakuniy baholar</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentGrades.map((grade, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{grade.assignment}</h4>
-                        {grade.score >= 90 && (
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{grade.course}</p>
-                      <p className="text-xs text-muted-foreground">{grade.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">{grade.grade}</div>
-                      <div className="text-sm text-muted-foreground">{grade.score} ball</div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+              <div className="text-center py-8 space-y-4">
+                <Star className="h-12 w-12 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">To'liq baholar sahifasiga o'ting</p>
+                <Button variant="outline" className="gap-2" onClick={() => window.location.href = '/student/grades'}>
+                  <Eye className="h-4 w-4" />
+                  Baholarni ko'rish
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -774,55 +803,90 @@ export function StudentDashboard() {
 
         {/* Exams Tab */}
         <TabsContent value="exams" className="space-y-6">
-          <div className="space-y-6">
-            {upcomingExams.map((exam) => (
-              <Card key={exam.id} className="hover:shadow-lg transition-all duration-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>{exam.title}</span>
+          {testsLoading ? (
+            <div className="space-y-6">
+              {[1, 2].map(i => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-6 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2 mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="h-4 bg-gray-200 rounded" />
+                      <div className="h-10 bg-gray-200 rounded" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : testsError ? (
+            <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+              <CardContent className="p-6 text-center">
+                <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                <p className="text-red-600 dark:text-red-400">Imtihonlarni yuklab bo'lmadi</p>
+              </CardContent>
+            </Card>
+          ) : tests && tests.length > 0 ? (
+            <div className="space-y-6">
+              {tests.map((exam) => (
+                <Card key={exam.id} className="hover:shadow-lg transition-all duration-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>{exam.title}</span>
+                      {exam.proctoring && (
+                        <Badge className="bg-blue-100 text-blue-800 gap-1">
+                          <Shield className="h-3 w-3" />
+                          Proctoring
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>{exam.courseName}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{new Date(exam.date).toLocaleDateString('uz-UZ')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>{exam.startTime}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-muted-foreground" />
+                        <span>{exam.questionCount} savol</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-muted-foreground" />
+                        <span>{exam.duration} daq</span>
+                      </div>
+                    </div>
+                    
                     {exam.proctoring && (
-                      <Badge className="bg-blue-100 text-blue-800 gap-1">
-                        <Shield className="h-3 w-3" />
-                        Proctoring
-                      </Badge>
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-400">
+                          ⚠️ Imtihon AI proctoring tizimi bilan nazorat qilinadi
+                        </p>
+                      </div>
                     )}
-                  </CardTitle>
-                  <CardDescription>{exam.course}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-4 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>{exam.date}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span>{exam.time}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-muted-foreground" />
-                      <span>{exam.questions} savol</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-muted-foreground" />
-                      <span>{exam.duration}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-sm text-blue-800 dark:text-blue-400">
-                      ⚠️ Imtihon AI proctoring tizimi bilan nazorat qilinadi
-                    </p>
-                  </div>
-                  
-                  <Button className="w-full gap-2" size="lg">
-                    <GraduationCap className="h-4 w-4" />
-                    Imtihon Boshlash
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    
+                    <Button className="w-full gap-2" size="lg">
+                      <GraduationCap className="h-4 w-4" />
+                      Imtihon Boshlash
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <GraduationCap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">Yaqinlashayotgan imtihonlar yo'q</p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Exam Instructions */}
           <Card>

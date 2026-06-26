@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { AuthResponse, RefreshTokenResponse, User } from "@/types/auth.types";
+import { monitorApiRequest } from "./performance-monitor";
 
 export interface LoginRequest {
   username: string;
@@ -31,15 +32,45 @@ const api: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
+// Request interceptor: Add auth token and start performance monitoring
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Start performance monitoring for this request
+    const url = config.url || 'unknown';
+    const method = config.method?.toUpperCase() || 'GET';
+    const monitor = monitorApiRequest(url, method);
+    
+    // Store monitor in config so we can access it in response/error interceptors
+    (config as any).__performanceMonitor = monitor;
+    
     return config;
   },
   (error: AxiosError) => Promise.reject(error)
+);
+
+// Response interceptor: Complete performance monitoring
+api.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Complete performance monitoring
+    const monitor = (response.config as any).__performanceMonitor;
+    if (monitor) {
+      monitor.complete();
+    }
+    return response;
+  },
+  (error: AxiosError) => {
+    // Complete performance monitoring even on error
+    const monitor = (error.config as any)?.__performanceMonitor;
+    if (monitor) {
+      monitor.complete();
+    }
+    return Promise.reject(error);
+  }
 );
 
 export async function login(credentials: LoginRequest): Promise<AxiosResponse<AuthResponse>> {

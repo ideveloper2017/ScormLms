@@ -325,7 +325,18 @@ export function UserManagement() {
         };
         await updateUser(editTarget.id, req);
       } else {
-        await createUser(form);
+        await createUser({
+          username:  form.username,
+          password:  form.password,
+          roleCode:  form.roleCode,
+          fullName:  form.fullName  || undefined,
+          email:     form.email     || undefined,
+          phone:     form.phone     || undefined,
+          jshshir:   form.jshshir   || undefined,
+          faculty:   form.faculty   || undefined,
+          direction: form.direction || undefined,
+          groupName: form.groupName || undefined,
+        });
       }
     }, editTarget ? `${form.username} yangilandi` : `${form.username} yaratildi`);
 

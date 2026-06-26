@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardList, Plus, Search, Eye, Edit, Trash2,
   MoreHorizontal, Clock, Users, CheckCircle2, AlertCircle,
+  AlertTriangle, RefreshCw,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,28 +25,8 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-
-interface Assignment {
-  id: number;
-  title: string;
-  course: string;
-  group: string;
-  dueDate: string;
-  maxScore: number;
-  submitted: number;
-  graded: number;
-  total: number;
-  type: "homework" | "project" | "lab" | "practice";
-  status: "active" | "draft" | "closed";
-}
-
-const ASSIGNMENTS: Assignment[] = [
-  { id: 1, title: "JavaScript Loyiha: To-do ilova",     course: "JavaScript Asoslari", group: "CS-22-01", dueDate: "2025-06-20", maxScore: 100, submitted: 38, graded: 26, total: 45, type: "project",  status: "active" },
-  { id: 2, title: "React Component kutubxona",           course: "React Development",   group: "CS-22-02", dueDate: "2025-06-22", maxScore: 80,  submitted: 20, graded: 10, total: 32, type: "homework", status: "active" },
-  { id: 3, title: "Node.js REST API yaratish",           course: "Node.js Backend",     group: "CS-21-03", dueDate: "2025-06-25", maxScore: 90,  submitted: 15, graded: 5,  total: 28, type: "project",  status: "active" },
-  { id: 4, title: "TypeScript tiplar va interfeyslar",   course: "TypeScript Advanced", group: "CS-22-04", dueDate: "2025-06-18", maxScore: 60,  submitted: 50, graded: 50, total: 51, type: "homework", status: "closed" },
-  { id: 5, title: "API testi va hujjatlashtirish",       course: "Node.js Backend",     group: "CS-21-03", dueDate: "2025-07-05", maxScore: 70,  submitted: 0,  graded: 0,  total: 28, type: "lab",      status: "draft"  },
-];
+import { qk } from "@/lib/query-keys";
+import { teacherPortalApi } from "@/services/api/teacher-portal-api";
 
 const TYPE_META: Record<string, string> = {
   homework: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -51,12 +34,14 @@ const TYPE_META: Record<string, string> = {
   lab:      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   practice: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
 };
-const TYPE_LABEL: Record<string, string> = { homework: "Uy vazifasi", project: "Loyiha", lab: "Laboratoriya", practice: "Amaliyot" };
+const TYPE_LABEL: Record<string, string> = {
+  homework: "Uy vazifasi", project: "Loyiha", lab: "Laboratoriya", practice: "Amaliyot",
+};
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  active: { label: "Faol",      cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
-  draft:  { label: "Qoralama",  cls: "bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400" },
-  closed: { label: "Yopilgan",  cls: "bg-red-100   text-red-800   dark:bg-red-900/30   dark:text-red-300"   },
+  active: { label: "Faol",     cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
+  draft:  { label: "Qoralama", cls: "bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400" },
+  closed: { label: "Yopilgan", cls: "bg-red-100   text-red-800   dark:bg-red-900/30   dark:text-red-300"   },
 };
 
 function fmtDate(s: string) {
@@ -69,19 +54,27 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(openCreate);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: "", course: "", group: "", dueDate: "", maxScore: "100", description: "", type: "homework" });
+  const [form, setForm] = useState({
+    title: "", course: "", dueDate: "", maxScore: "100", description: "", type: "homework",
+  });
+
+  const { data: assignments = [], isLoading, error, refetch } = useQuery({
+    queryKey: qk.teacher.assignments(),
+    queryFn: teacherPortalApi.getAssignments,
+    staleTime: 60_000,
+  });
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const filtered = ASSIGNMENTS.filter((a) => {
+  const filtered = assignments.filter((a) => {
     const t = search.toLowerCase();
-    return !t || a.title.toLowerCase().includes(t) || a.course.toLowerCase().includes(t);
+    return !t || a.title.toLowerCase().includes(t) || a.courseTitle.toLowerCase().includes(t);
   });
 
   const stats = {
-    total:   ASSIGNMENTS.length,
-    pending: ASSIGNMENTS.reduce((s, a) => s + (a.submitted - a.graded), 0),
-    graded:  ASSIGNMENTS.reduce((s, a) => s + a.graded, 0),
+    total:   assignments.length,
+    pending: assignments.reduce((s, a) => s + a.pendingGrade, 0),
+    graded:  assignments.reduce((s, a) => s + (a.totalSubmissions - a.pendingGrade), 0),
   };
 
   const handleCreate = async () => {
@@ -92,6 +85,32 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
     setCreateOpen(false);
     setSaving(false);
   };
+
+  if (isLoading) return (
+    <div className="p-6 space-y-6">
+      <Skeleton className="h-9 w-48" />
+      <div className="grid grid-cols-3 gap-3">
+        {[1,2,3].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-10 w-16" /></CardContent></Card>)}
+      </div>
+      <div className="space-y-3">
+        {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-6 space-y-4">
+      <h1 className="text-3xl font-bold tracking-tight">Topshiriqlar</h1>
+      <Card className="border-destructive/50">
+        <CardContent className="pt-6 text-center space-y-3">
+          <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
+          <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
+          <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
+          <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -107,12 +126,14 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Jami", value: stats.total, cls: "" },
+          { label: "Jami",           value: stats.total,   cls: "" },
           { label: "Tekshirilmagan", value: stats.pending, cls: "text-orange-600" },
-          { label: "Baholangan", value: stats.graded, cls: "text-green-600" },
+          { label: "Baholangan",     value: stats.graded,  cls: "text-green-600" },
         ].map(({ label, value, cls }) => (
           <Card key={label}>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
+            </CardHeader>
             <CardContent><div className={`text-2xl font-bold ${cls}`}>{value}</div></CardContent>
           </Card>
         ))}
@@ -120,69 +141,92 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Topshiriq yoki kurs nomi..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+        <Input
+          placeholder="Topshiriq yoki kurs nomi..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10"
+        />
       </div>
+
+      {filtered.length === 0 && (
+        <p className="text-center text-muted-foreground py-8">Topshiriq topilmadi</p>
+      )}
 
       <div className="space-y-3">
-        {filtered.map((a) => {
-          const pending = a.submitted - a.graded;
-          return (
-            <Card key={a.id} className={pending > 0 ? "border-orange-200 dark:border-orange-900/50" : ""}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <ClipboardList className={`h-5 w-5 mt-0.5 shrink-0 ${pending > 0 ? "text-orange-500" : "text-muted-foreground"}`} />
-                    <div>
-                      <CardTitle className="text-base leading-tight">{a.title}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">{a.course} · {a.group}</CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge className={TYPE_META[a.type] + " text-xs"}>{TYPE_LABEL[a.type]}</Badge>
-                    <Badge className={STATUS_META[a.status].cls + " text-xs"}>{STATUS_META[a.status].label}</Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/teacher/assignments/${a.id}/submissions`)} className="gap-2">
-                          <Eye className="h-4 w-4" />Topshiriqlarni ko'rish
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2"><Edit className="h-4 w-4" />Tahrirlash</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
-                          <Trash2 className="h-4 w-4" />O'chirish
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+        {filtered.map((a) => (
+          <Card key={a.id} className={a.pendingGrade > 0 ? "border-orange-200 dark:border-orange-900/50" : ""}>
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <ClipboardList className={`h-5 w-5 mt-0.5 shrink-0 ${a.pendingGrade > 0 ? "text-orange-500" : "text-muted-foreground"}`} />
+                  <div>
+                    <CardTitle className="text-base leading-tight">{a.title}</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">{a.courseTitle}</CardDescription>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />Muddat: {fmtDate(a.dueDate)}</span>
-                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{a.submitted}/{a.total} topshirdi</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {pending > 0 && (
-                      <Badge className="bg-orange-100 text-orange-800 gap-1 text-xs">
-                        <AlertCircle className="h-3 w-3" />{pending} tekshirilmagan
-                      </Badge>
-                    )}
-                    <Button size="sm" className="h-8 text-xs gap-1.5"
-                      onClick={() => navigate(`/teacher/assignments/${a.id}/submissions`)}>
-                      <Eye className="h-3.5 w-3.5" />Ko'rish
-                    </Button>
-                  </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge className={STATUS_META[a.status].cls + " text-xs"}>{STATUS_META[a.status].label}</Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => navigate(`/teacher/assignments/${a.id}/submissions`)}
+                        className="gap-2"
+                      >
+                        <Eye className="h-4 w-4" />Topshiriqlarni ko'rish
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2">
+                        <Edit className="h-4 w-4" />Tahrirlash
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+                        <Trash2 className="h-4 w-4" />O'chirish
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />Muddat: {fmtDate(a.dueDate)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3.5 w-3.5" />{a.totalSubmissions} topshirdi
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {a.pendingGrade > 0 && (
+                    <Badge className="bg-orange-100 text-orange-800 gap-1 text-xs">
+                      <AlertCircle className="h-3 w-3" />{a.pendingGrade} tekshirilmagan
+                    </Badge>
+                  )}
+                  {a.pendingGrade === 0 && a.totalSubmissions > 0 && (
+                    <Badge className="bg-green-100 text-green-800 gap-1 text-xs">
+                      <CheckCircle2 className="h-3 w-3" />Baholandi
+                    </Badge>
+                  )}
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs gap-1.5"
+                    onClick={() => navigate(`/teacher/assignments/${a.id}/submissions`)}
+                  >
+                    <Eye className="h-3.5 w-3.5" />Ko'rish
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={(o) => { if (!o) setCreateOpen(false); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -215,7 +259,12 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
             </div>
             <div className="space-y-1.5">
               <Label>Tavsif</Label>
-              <Textarea placeholder="Topshiriq haqida batafsil..." rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} />
+              <Textarea
+                placeholder="Topshiriq haqida batafsil..."
+                rows={3}
+                value={form.description}
+                onChange={(e) => set("description", e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>

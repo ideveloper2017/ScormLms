@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   FileQuestion, Plus, Search, Edit, Trash2,
-  MoreHorizontal, CheckCircle2, Circle,
+  MoreHorizontal, CheckCircle2, Circle, AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,14 @@ export function TeacherQuestions() {
 
   return (
     <div className="p-6 space-y-6">
+      <Card className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
+        <CardContent className="py-3 px-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+          <p className="text-sm text-yellow-800 dark:text-yellow-300">
+            Savol banki xizmati hali real API ga ulanmagan. Ko'rsatilgan ma'lumotlar namunavirus.
+          </p>
+        </CardContent>
+      </Card>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Savol banki</h1>

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft, Search, CheckCircle2, Clock, FileText,
-  Download, Star, MessageSquare, Eye,
+  ArrowLeft, Search, Clock, Star, Eye, AlertTriangle, RefreshCw,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -17,83 +18,84 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-
-interface Submission {
-  id: number;
-  student: string;
-  group: string;
-  submittedAt: string;
-  file: string;
-  size: string;
-  status: "pending" | "graded" | "late";
-  score?: number;
-  feedback?: string;
-}
-
-const MOCK: Submission[] = [
-  { id: 1,  student: "Alisher Karimov",  group: "CS-22-01", submittedAt: "2025-06-18 14:32", file: "alisher_loyiha.zip",   size: "2.3 MB", status: "pending" },
-  { id: 2,  student: "Malika Tosheva",   group: "CS-22-01", submittedAt: "2025-06-18 16:10", file: "malika_todo.zip",      size: "1.8 MB", status: "graded",  score: 88, feedback: "Juda yaxshi loyiha!"       },
-  { id: 3,  student: "Bobur Rahimov",    group: "CS-22-01", submittedAt: "2025-06-18 23:55", file: "bobur_project.zip",   size: "3.1 MB", status: "late"    },
-  { id: 4,  student: "Dilnoza Yusupova", group: "CS-22-01", submittedAt: "2025-06-17 09:00", file: "dilnoza_todo.zip",    size: "2.0 MB", status: "graded",  score: 95, feedback: "A'lo darajada!"             },
-  { id: 5,  student: "Jasur Mirzayev",   group: "CS-22-01", submittedAt: "2025-06-18 11:45", file: "jasur_work.zip",      size: "1.5 MB", status: "pending" },
-  { id: 6,  student: "Nodira Saidova",   group: "CS-22-01", submittedAt: "2025-06-18 13:20", file: "nodira_proj.zip",     size: "2.7 MB", status: "pending" },
-  { id: 7,  student: "Sarvar Umarov",    group: "CS-22-01", submittedAt: "2025-06-18 10:05", file: "sarvar_todo_app.zip", size: "1.9 MB", status: "graded",  score: 72, feedback: "Yaxshi, lekin tezkor emas." },
-];
+import { qk } from "@/lib/query-keys";
+import { teacherPortalApi, type TeacherSubmission } from "@/services/api/teacher-portal-api";
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  pending: { label: "Kutilmoqda",  cls: "bg-orange-100 text-orange-800" },
-  graded:  { label: "Baholandi",   cls: "bg-green-100  text-green-800"  },
-  late:    { label: "Kechikkan",   cls: "bg-red-100    text-red-800"    },
-};
-
-const ASSIGNMENT_TITLES: Record<string, string> = {
-  "1": "JavaScript Loyiha: To-do ilova",
-  "2": "React Component kutubxona",
-  "3": "Node.js REST API yaratish",
+  pending: { label: "Kutilmoqda", cls: "bg-orange-100 text-orange-800" },
+  graded:  { label: "Baholandi",  cls: "bg-green-100  text-green-800"  },
+  late:    { label: "Kechikkan",  cls: "bg-red-100    text-red-800"    },
 };
 
 export function TeacherSubmissions() {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [grading, setGrading] = useState<Submission | null>(null);
+  const [grading, setGrading] = useState<TeacherSubmission | null>(null);
   const [score, setScore] = useState("");
   const [feedback, setFeedback] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const title = ASSIGNMENT_TITLES[id ?? "1"] ?? "Topshiriq";
+  const { data: submissions = [], isLoading, error, refetch } = useQuery({
+    queryKey: qk.teacher.submissions(),
+    queryFn: teacherPortalApi.getSubmissions,
+    staleTime: 60_000,
+  });
 
-  const filtered = MOCK.filter((s) => {
+  const filtered = submissions.filter((s) => {
     const t = search.toLowerCase();
     return (
-      (!t || s.student.toLowerCase().includes(t)) &&
+      (!t || s.studentName.toLowerCase().includes(t) || s.assignmentTitle.toLowerCase().includes(t)) &&
       (filter === "all" || s.status === filter)
     );
   });
 
   const stats = {
-    total:   MOCK.length,
-    pending: MOCK.filter((s) => s.status === "pending").length,
-    graded:  MOCK.filter((s) => s.status === "graded").length,
-    late:    MOCK.filter((s) => s.status === "late").length,
+    total:   submissions.length,
+    pending: submissions.filter((s) => s.status === "pending").length,
+    graded:  submissions.filter((s) => s.status === "graded").length,
+    late:    submissions.filter((s) => s.status === "late").length,
   };
 
-  const openGrade = (s: Submission) => {
+  const openGrade = (s: TeacherSubmission) => {
     setGrading(s);
     setScore(s.score?.toString() ?? "");
-    setFeedback(s.feedback ?? "");
+    setFeedback("");
   };
 
   const handleGrade = async () => {
     if (!score) { toast({ variant: "destructive", title: "Ball kiriting" }); return; }
     setSaving(true);
     await new Promise((r) => setTimeout(r, 400));
-    toast({ title: "Baholandi", description: `${grading?.student} — ${score} ball` });
+    toast({ title: "Baholandi", description: `${grading?.studentName} — ${score} ball` });
     setGrading(null);
     setSaving(false);
   };
+
+  if (isLoading) return (
+    <div className="p-6 space-y-6">
+      <Skeleton className="h-9 w-56" />
+      <div className="grid grid-cols-4 gap-3">
+        {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-10 w-16" /></CardContent></Card>)}
+      </div>
+      <div className="space-y-3">{[1,2,3,4].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-bold">Topshiriqlar</h1>
+      <Card className="border-destructive/50">
+        <CardContent className="pt-6 text-center space-y-3">
+          <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
+          <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
+          <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
+          <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -102,20 +104,22 @@ export function TeacherSubmissions() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold leading-tight">{title}</h1>
-          <p className="text-muted-foreground text-sm">Talabalar topshiriqlari</p>
+          <h1 className="text-2xl font-bold leading-tight">Talabalar topshiriqlari</h1>
+          <p className="text-muted-foreground text-sm">Barcha kurslar bo'yicha</p>
         </div>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: "Jami",         value: stats.total,   cls: "" },
-          { label: "Kutilmoqda",   value: stats.pending, cls: "text-orange-600" },
-          { label: "Baholandi",    value: stats.graded,  cls: "text-green-600" },
-          { label: "Kechikkan",    value: stats.late,    cls: "text-red-600" },
+          { label: "Jami",       value: stats.total,   cls: "" },
+          { label: "Kutilmoqda", value: stats.pending, cls: "text-orange-600" },
+          { label: "Baholandi",  value: stats.graded,  cls: "text-green-600" },
+          { label: "Kechikkan",  value: stats.late,    cls: "text-red-600" },
         ].map(({ label, value, cls }) => (
           <Card key={label}>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
+            </CardHeader>
             <CardContent><div className={`text-2xl font-bold ${cls}`}>{value}</div></CardContent>
           </Card>
         ))}
@@ -124,7 +128,12 @@ export function TeacherSubmissions() {
       <div className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Talaba ismi..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          <Input
+            placeholder="Talaba yoki topshiriq nomi..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
         </div>
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -137,19 +146,27 @@ export function TeacherSubmissions() {
         </Select>
       </div>
 
+      {filtered.length === 0 && (
+        <p className="text-center text-muted-foreground py-8">Topshiriq topilmadi</p>
+      )}
+
       <div className="space-y-3">
         {filtered.map((s) => (
           <Card key={s.id}>
             <CardContent className="flex items-center gap-4 p-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium">{s.student}</span>
-                  <span className="text-xs text-muted-foreground">{s.group}</span>
-                  <Badge className={STATUS_META[s.status].cls + " text-xs"}>{STATUS_META[s.status].label}</Badge>
+                  <span className="font-medium">{s.studentName}</span>
+                  <span className="text-xs text-muted-foreground">{s.assignmentTitle}</span>
+                  <Badge className={STATUS_META[s.status].cls + " text-xs"}>
+                    {STATUS_META[s.status].label}
+                  </Badge>
                 </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><FileText className="h-3 w-3" />{s.file} ({s.size})</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{s.submittedAt}</span>
+                  <span className="text-muted-foreground">{s.courseTitle}</span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />{s.submittedAt}
+                  </span>
                   {s.score !== undefined && (
                     <span className="flex items-center gap-1 text-green-600 font-semibold">
                       <Star className="h-3 w-3" />{s.score} ball
@@ -158,9 +175,6 @@ export function TeacherSubmissions() {
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">
-                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                  <Download className="h-3.5 w-3.5" />Yuklab olish
-                </Button>
                 {s.status !== "graded" ? (
                   <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => openGrade(s)}>
                     <Star className="h-3.5 w-3.5" />Baholash
@@ -179,13 +193,18 @@ export function TeacherSubmissions() {
       <Dialog open={!!grading} onOpenChange={(o) => { if (!o) setGrading(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Baholash — {grading?.student}</DialogTitle>
-            <DialogDescription>{grading?.file}</DialogDescription>
+            <DialogTitle>Baholash — {grading?.studentName}</DialogTitle>
+            <DialogDescription>{grading?.assignmentTitle}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label>Ball (0–100)</Label>
-              <Input type="number" min={0} max={100} value={score} onChange={(e) => setScore(e.target.value)} placeholder="Masalan: 85" />
+              <Input
+                type="number" min={0} max={100}
+                value={score}
+                onChange={(e) => setScore(e.target.value)}
+                placeholder="Masalan: 85"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Izoh</Label>

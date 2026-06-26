@@ -11,12 +11,13 @@ import { useAuth } from '@/contexts/auth-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils"
+import { faceRecognitionApi } from '@/services/api/face-recognition-api';
 
 interface LoginFormProps {
     onSuccess: () => void;
 }
 
-export const LoginForm = ({onSuccess}:LoginFormProps) => {
+export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
@@ -27,7 +28,7 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [stream, setStream] = useState<MediaStream | null>(null);
 
-    const { login:authLogin, completeLogin, pendingUser, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+    const { login: authLogin, completeLogin, pendingUser, isAuthenticated, isLoading: isAuthLoading, setFaceRecognitionRequired } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -62,7 +63,7 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
         stopCamera();
         setLoginStep('success');
         if (pendingUser) completeLogin(pendingUser);
-         setTimeout(() => onSuccess(), 1500);
+        setTimeout(() => onSuccess(), 1500);
     };
 
     const handleFaceRecognition = async () => {
@@ -79,7 +80,7 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                 setFaceRecognitionStatus('failed');
                 setTimeout(() => setFaceRecognitionStatus('idle'), 1000);
             }
-        }catch (error){
+        } catch (error) {
             console.error('Face recognition error:', error);
             setFaceRecognitionStatus('failed');
             toast({
@@ -96,15 +97,15 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
     const handleQuickLogin = async (role: 'admin' | 'instructor' | 'student' | 'proctor' | 'monitor') => {
         const quickLoginCredentials = {
             admin: { username: 'admin', password: 'admin' },
-            instructor: { username: 'instructor', password: 'instructor123' },
-            student: { username: 'student', password: 'student123' },
-            proctor: { username: 'proctor1', password: 'proctor123' },
-            monitor: { username: 'monitor1', password: 'monitor123' }
+            instructor: { username: 'a.karimov', password: 'Teacher@123' },
+            student: { username: 'std_DT220101', password: 'Student@123' },
+            proctor: { username: 'admin', password: 'admin' },
+            monitor: { username: 'admin', password: 'admin' }
         };
 
         const credentials = quickLoginCredentials[role];
         setFormData(credentials);
-        
+
         // Simulate form submission
         setIsSubmitting(true);
         setErrors({});
@@ -120,10 +121,28 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                 const isStudent = roles.some((role) => normalizeRole(role) === 'STUDENT');
                 ensureFaceRecognitionFlag();
 
-                 if (isStudent) {
-                    setLoginStep('face-recognition');
+                if (isStudent) {
+                    // Check if user has face photo in backend
+                    try {
+                        const facePhoto = await faceRecognitionApi.getFacePhotoUrl();
+
+                        if (facePhoto && facePhoto.photoUrl) {
+                            // User has face photo → redirect to face verification
+                            setFaceRecognitionRequired(true);
+                            handleLoginSuccess();
+                        } else {
+                            // No face photo → optional first-time setup, allow skip
+                            setFaceRecognitionRequired(false);
+                            handleLoginSuccess();
+                        }
+                    } catch (error) {
+                        console.error('Error checking face photo:', error);
+                        // On error, allow login without face recognition
+                        setFaceRecognitionRequired(false);
+                        handleLoginSuccess();
+                    }
                 } else {
-                     handleLoginSuccess();
+                    handleLoginSuccess();
                 }
 
                 if (result?.message) {
@@ -172,10 +191,28 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                 const isStudent = roles.some((role) => normalizeRole(role) === 'STUDENT');
                 ensureFaceRecognitionFlag();
 
-                 if (isStudent) {
-                    setLoginStep('face-recognition');
+                if (isStudent) {
+                    // Check if user has face photo in backend
+                    try {
+                        const facePhoto = await faceRecognitionApi.getFacePhotoUrl();
+
+                        if (facePhoto && facePhoto.photoUrl) {
+                            // User has face photo → redirect to face verification
+                            setFaceRecognitionRequired(true);
+                            handleLoginSuccess(); // This will redirect to App.tsx where FaceRecognition component will show
+                        } else {
+                            // No face photo → optional first-time setup, allow skip
+                            setFaceRecognitionRequired(false);
+                            handleLoginSuccess();
+                        }
+                    } catch (error) {
+                        console.error('Error checking face photo:', error);
+                        // On error, allow login without face recognition
+                        setFaceRecognitionRequired(false);
+                        handleLoginSuccess();
+                    }
                 } else {
-                     handleLoginSuccess();
+                    handleLoginSuccess();
                 }
 
                 if (result?.message) {
@@ -225,12 +262,12 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                 <div className="flex items-center justify-center p-6 lg:p-12">
                     <Card className="w-full max-w-sm shadow-none border border-border p-6 text-center space-y-4">
                         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                            <CheckCircle className="h-8 w-8 text-green-600"/>
+                            <CheckCircle className="h-8 w-8 text-green-600" />
                         </div>
                         <h2 className="text-2xl font-bold text-green-600">Muvaffaqiyatli!</h2>
                         <p className="text-muted-foreground">Tizimga muvaffaqiyatli kirdingiz. Dashboard yuklanmoqda...</p>
                         <div className="flex items-center justify-center">
-                            <Loader2 className="h-6 w-6 animate-spin text-primary"/>
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
                     </Card>
                 </div>
@@ -246,14 +283,14 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                     <Card className="w-full max-w-sm shadow-none border border-border p-6 space-y-6 relative">
                         <div className="text-center">
                             <h1 className="text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
-                                <Camera className="h-6 w-6"/> Yuzni Tanib Olish
+                                <Camera className="h-6 w-6" /> Yuzni Tanib Olish
                             </h1>
                             <p className="text-sm text-muted-foreground mt-1">Xavfsizlik uchun yuzingizni kameraga ko'rsating</p>
                         </div>
-                        <video ref={videoRef} autoPlay muted className="w-full h-80 bg-black rounded-lg object-cover"/>
+                        <video ref={videoRef} autoPlay muted className="w-full h-80 bg-black rounded-lg object-cover" />
                         <div className="absolute top-4 right-4">
                             <Badge variant={faceRecognitionStatus === 'success' ? 'default' : faceRecognitionStatus === 'failed' ? 'destructive' : 'secondary'}>
-                                <Shield className="h-3 w-3 mr-1"/>
+                                <Shield className="h-3 w-3 mr-1" />
                                 {faceRecognitionStatus === 'idle' && 'Tayyor'}
                                 {faceRecognitionStatus === 'scanning' && 'Skanlanmoqda...'}
                                 {faceRecognitionStatus === 'success' && 'Tanildi!'}
@@ -263,19 +300,19 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
 
                         {faceRecognitionStatus === 'scanning' && (
                             <Alert>
-                                <Camera className="h-4 w-4"/>
+                                <Camera className="h-4 w-4" />
                                 <AlertDescription>Yuzingizni kameraga to'g'ri qarash va harakat qilmaslik...</AlertDescription>
                             </Alert>
                         )}
                         {faceRecognitionStatus === 'success' && (
                             <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
-                                <CheckCircle className="h-4 w-4 text-green-600"/>
+                                <CheckCircle className="h-4 w-4 text-green-600" />
                                 <AlertDescription className="text-green-800 dark:text-green-400">Yuz muvaffaqiyatli tanildi!</AlertDescription>
                             </Alert>
                         )}
                         {faceRecognitionStatus === 'failed' && (
                             <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4"/>
+                                <AlertCircle className="h-4 w-4" />
                                 <AlertDescription>Yuz tanilmadi. Qaytadan urinib ko'ring yoki o'tkazib yuboring.</AlertDescription>
                             </Alert>
                         )}
@@ -283,11 +320,11 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                         <div className="flex gap-3">
                             {(faceRecognitionStatus === 'idle' || faceRecognitionStatus === 'failed') && (
                                 <Button onClick={handleFaceRecognition} className="flex-1 gap-2">
-                                    <Camera className="h-4 w-4"/> {faceRecognitionStatus === 'idle' ? 'Yuzni Tanib Olishni Boshlash' : 'Qaytadan Urinish'}
+                                    <Camera className="h-4 w-4" /> {faceRecognitionStatus === 'idle' ? 'Yuzni Tanib Olishni Boshlash' : 'Qaytadan Urinish'}
                                 </Button>
                             )}
                             <Button variant="outline" onClick={handleSkipFaceRecognition} className="flex-1 gap-2">
-                                <LogIn className="h-4 w-4"/> O'tkazib Yuborish
+                                <LogIn className="h-4 w-4" /> O'tkazib Yuborish
                             </Button>
                         </div>
                     </Card>
@@ -308,23 +345,22 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                 <div className="flex items-center justify-center p-8 lg:p-12">
                     <div className="w-full max-w-sm">
                         <form onSubmit={handleSubmit} className={cn("flex flex-col gap-5")}>
-                            <div className="space-y-1">
-                                <h1 className="text-2xl font-bold tracking-tight">Tizimga kiring</h1>
-                                <p className="text-sm text-muted-foreground">Davom etish uchun ma'lumotlaringizni kiriting</p>
+                            <div className="flex justify-center pb-2">
+                                <img src="/logo.png" alt="LMS Logo" className="h-24 w-auto object-contain" />
                             </div>
 
                             {errors.general && <div className="p-3 text-sm text-red-700 bg-red-100 rounded-md border border-red-200">{errors.general}</div>}
 
                             {/* Email / Username */}
                             <div className="space-y-2">
-                                <label htmlFor="username" className="text-sm font-medium leading-none">Foydalanuvchi nomi yoki email</label>
+                                <label htmlFor="username" className="text-sm font-medium leading-none">Login</label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                     <Input
                                         id="username"
                                         name="username"
                                         type="text"
-                                        placeholder="Email yoki login kiriting"
+                                        placeholder="Login kiriting"
                                         value={formData.username}
                                         onChange={handleInputChange}
                                         disabled={isSubmitting || isAuthLoading}
@@ -357,7 +393,7 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
                                         onClick={() => setShowPassword(!showPassword)}
                                         disabled={isSubmitting || isAuthLoading}
                                     >
-                                        {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
                                 {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
@@ -374,7 +410,7 @@ export const LoginForm = ({onSuccess}:LoginFormProps) => {
 
                             {/* Login button */}
                             <Button type="submit" className="w-full" disabled={isSubmitting || isAuthLoading}>
-                                {(isSubmitting || isAuthLoading) ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Kirilmoqda...</>) : 'Kirish'}
+                                {(isSubmitting || isAuthLoading) ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Kirilmoqda...</>) : 'Kirish'}
                             </Button>
 
                             {/* OR divider */}
@@ -468,12 +504,13 @@ const WelcomePanel = () => (
 
         {/* Matn */}
         <div className="relative z-10 space-y-2">
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Xush kelibsiz</p>
-            <h2 className="text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">LMS</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Ta'limni Boshqarish Tizimi</p>
-            <div className="h-1 w-12 rounded-full bg-blue-600" />
+            <p className="text-sm font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">Namangan Davlat Texnika Universiteti</p>
+            <h2 className="text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                LMS
+            </h2>
+            <div className="h-1 w-14 rounded-full bg-blue-600" />
             <p className="max-w-xs pt-4 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                Kurslaringizga kiring, o'qishni davom ettiring va maqsadlaringizga erishing.
+                Elektron Ta'lim<br />Boshqaruv Tizimi
             </p>
         </div>
 

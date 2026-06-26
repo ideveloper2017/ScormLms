@@ -1,177 +1,104 @@
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { 
-  BookOpen, 
-  Users, 
-  BarChart3, 
-  Calendar,
-  Plus,
-  Eye,
-  Edit,
-  Settings,
-  Clock,
-  Award,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  MessageCircle,
-  Video,
-  FileText,
-  Download
+import {
+  BookOpen, Users, BarChart3, Calendar, Plus, Eye, Edit, Settings,
+  Clock, Award, CheckCircle, AlertCircle, MessageCircle, Video,
+  FileText, RefreshCw, AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
 import { Progress } from '@/components/ui/progress.tsx';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table.tsx';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.tsx';
+import { useAuth } from '@/contexts/auth-context';
+import { qk } from '@/lib/query-keys';
+import { instructorApi } from '@/services/api/instructor-api';
 
-const instructorData = {
-  name: 'Dr. Aziz Karimov',
-  email: 'aziz@instructor.uz',
-  department: 'Dasturlash',
-  avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=100',
-  totalStudents: 156,
-  activeCourses: 3,
-  completedCourses: 12,
-  rating: 4.8,
+function DashboardSkeleton() {
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-16 w-16 rounded-full" />
+        <div className="space-y-2"><Skeleton className="h-7 w-64" /><Skeleton className="h-4 w-40" /></div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-8 w-16" /></CardContent></Card>)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[1,2].map(i => <Card key={i}><CardContent className="pt-6 space-y-3">{[1,2,3].map(j => <Skeleton key={j} className="h-14 w-full" />)}</CardContent></Card>)}
+      </div>
+    </div>
+  );
+}
+
+const STATUS_BADGE: Record<string, JSX.Element> = {
+  active:    <Badge className="bg-green-100 text-green-800">Faol</Badge>,
+  completed: <Badge className="bg-blue-100 text-blue-800">Yakunlangan</Badge>,
+  draft:     <Badge className="bg-yellow-100 text-yellow-800">Loyiha</Badge>,
 };
 
-const myCourses = [
-  {
-    id: 1,
-    title: 'JavaScript Asoslari',
-    students: 45,
-    progress: 75,
-    status: 'active',
-    startDate: '2024-01-15',
-    endDate: '2024-06-15',
-    avgGrade: 4.2,
-    completionRate: 85,
-  },
-  {
-    id: 2,
-    title: 'React Development',
-    students: 32,
-    progress: 60,
-    status: 'active',
-    startDate: '2024-01-10',
-    endDate: '2024-07-10',
-    avgGrade: 4.5,
-    completionRate: 78,
-  },
-  {
-    id: 3,
-    title: 'Node.js Backend',
-    students: 28,
-    progress: 40,
-    status: 'active',
-    startDate: '2024-01-05',
-    endDate: '2024-08-05',
-    avgGrade: 4.1,
-    completionRate: 72,
-  },
-];
-
-const recentStudents = [
-  {
-    id: 1,
-    name: 'Alisher Karimov',
-    course: 'JavaScript Asoslari',
-    progress: 85,
-    grade: 'A',
-    lastActivity: '2 soat oldin',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 2,
-    name: 'Malika Tosheva',
-    course: 'React Development',
-    progress: 92,
-    grade: 'A+',
-    lastActivity: '4 soat oldin',
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 3,
-    name: 'Bobur Rahimov',
-    course: 'Node.js Backend',
-    progress: 67,
-    grade: 'B+',
-    lastActivity: '1 kun oldin',
-    avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-];
-
-const upcomingTasks = [
-  {
-    id: 1,
-    title: 'JavaScript Imtihon',
-    course: 'JavaScript Asoslari',
-    date: '2024-01-20',
-    type: 'exam',
-    students: 45,
-  },
-  {
-    id: 2,
-    title: 'React Loyiha Baholash',
-    course: 'React Development',
-    date: '2024-01-25',
-    type: 'assignment',
-    students: 32,
-  },
-  {
-    id: 3,
-    title: 'Node.js Vebinar',
-    course: 'Node.js Backend',
-    date: '2024-01-30',
-    type: 'webinar',
-    students: 28,
-  },
-];
-
-const courseAnalytics = [
-  { month: 'Yan', students: 120, completion: 78 },
-  { month: 'Fev', students: 135, completion: 82 },
-  { month: 'Mar', students: 142, completion: 85 },
-  { month: 'Apr', students: 156, completion: 87 },
-];
+function TaskTypeIcon({ type }: { type: string }) {
+  if (type === 'exam')       return <FileText className="h-4 w-4 text-red-600" />;
+  if (type === 'assignment') return <CheckCircle className="h-4 w-4 text-blue-600" />;
+  if (type === 'webinar')    return <Video className="h-4 w-4 text-purple-600" />;
+  return <Calendar className="h-4 w-4" />;
+}
 
 export function InstructorDashboard() {
-  const [selectedTab, setSelectedTab] = useState('overview');
+  const { user } = useAuth();
+  const [tab, setTab] = useState('overview');
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800">Faol</Badge>;
-      case 'completed':
-        return <Badge className="bg-blue-100 text-blue-800">Yakunlangan</Badge>;
-      case 'draft':
-        return <Badge className="bg-yellow-100 text-yellow-800">Loyiha</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch } = useQuery({
+    queryKey: qk.instructor.stats(),
+    queryFn: instructorApi.getStats,
+    staleTime: 60_000,
+  });
 
-  const getTaskTypeIcon = (type: string) => {
-    switch (type) {
-      case 'exam':
-        return <FileText className="h-4 w-4 text-red-600" />;
-      case 'assignment':
-        return <CheckCircle className="h-4 w-4 text-blue-600" />;
-      case 'webinar':
-        return <Video className="h-4 w-4 text-purple-600" />;
-      default:
-        return <Calendar className="h-4 w-4" />;
-    }
-  };
+  const { data: courses = [], isLoading: coursesLoading } = useQuery({
+    queryKey: qk.instructor.courses(),
+    queryFn: instructorApi.getCourses,
+    staleTime: 60_000,
+  });
+
+  const { data: submissions = [], isLoading: subsLoading } = useQuery({
+    queryKey: qk.instructor.submissions(),
+    queryFn: instructorApi.getRecentSubmissions,
+    staleTime: 30_000,
+  });
+
+  const { data: todayLessons = [], isLoading: lessonsLoading } = useQuery({
+    queryKey: qk.instructor.todayLessons(),
+    queryFn: instructorApi.getTodayLessons,
+    staleTime: 60_000,
+  });
+
+  const isLoading = statsLoading || coursesLoading || subsLoading || lessonsLoading;
+
+  if (isLoading) return <DashboardSkeleton />;
+
+  if (statsError) {
+    return (
+      <div className="p-6 space-y-4">
+        <h1 className="text-3xl font-bold">O'qituvchi Paneli</h1>
+        <Card className="border-destructive/50">
+          <CardContent className="pt-6 text-center space-y-3">
+            <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
+            <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
+            <p className="text-sm text-muted-foreground">{(statsError as Error).message}</p>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />Qayta urinish
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const displayName = user?.fullName ?? user?.username ?? "O'qituvchi";
+  const initials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
   return (
     <div className="p-6 space-y-6">
@@ -179,231 +106,145 @@ export function InstructorDashboard() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={instructorData.avatar} alt={instructorData.name} />
-            <AvatarFallback>
-              {instructorData.name.split(' ').map(n => n[0]).join('')}
+            <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+              {initials}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-3xl font-bold">Xush kelibsiz, {instructorData.name}!</h1>
+            <h1 className="text-3xl font-bold">Xush kelibsiz, {displayName}!</h1>
             <p className="text-muted-foreground">
-              {instructorData.department} • Reyting: {instructorData.rating} ⭐
+              {stats?.activeCourses ?? 0} faol kurs • {stats?.totalStudents ?? 0} talaba
             </p>
           </div>
         </div>
-        
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Yangi Kurs
-        </Button>
+        <Button className="gap-2"><Plus className="h-4 w-4" />Yangi Kurs</Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Jami Talabalar
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{instructorData.totalStudents}</div>
-            <div className="text-xs text-muted-foreground">Barcha kurslarda</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Faol Kurslar
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{instructorData.activeCourses}</div>
-            <div className="text-xs text-muted-foreground">Davom etmoqda</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Yakunlangan
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{instructorData.completedCourses}</div>
-            <div className="text-xs text-muted-foreground">Kurslar</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Award className="h-4 w-4" />
-              Reyting
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{instructorData.rating}</div>
-            <div className="text-xs text-muted-foreground">5.0 dan</div>
-          </CardContent>
-        </Card>
+        {[
+          { label: 'Jami Talabalar',  value: stats?.totalStudents ?? 0,      icon: Users,        sub: 'Barcha kurslarda',  cls: '' },
+          { label: 'Faol Kurslar',    value: stats?.activeCourses ?? 0,      icon: BookOpen,     sub: 'Davom etmoqda',     cls: '' },
+          { label: 'Yangi topshiriq', value: stats?.pendingAssignments ?? 0, icon: CheckCircle,  sub: 'Tekshirishni kutmoqda', cls: 'text-orange-600' },
+          { label: "Bugungi darslar", value: stats?.todayLessons ?? 0,       icon: Calendar,     sub: 'Reja bo\'yicha',   cls: 'text-blue-600' },
+        ].map(({ label, value, icon: Icon, sub, cls }) => (
+          <Card key={label}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Icon className="h-4 w-4" />{label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${cls}`}>{value}</div>
+              <div className="text-xs text-muted-foreground">{sub}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Umumiy</TabsTrigger>
           <TabsTrigger value="courses">Kurslarim</TabsTrigger>
-          <TabsTrigger value="students">Talabalar</TabsTrigger>
-          <TabsTrigger value="analytics">Tahlil</TabsTrigger>
+          <TabsTrigger value="students">Topshiriqlar</TabsTrigger>
+          <TabsTrigger value="schedule">Jadval</TabsTrigger>
         </TabsList>
 
-        {/* Overview Tab */}
+        {/* Overview */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Course Progress */}
             <Card>
               <CardHeader>
                 <CardTitle>Kurslar Jarayoni</CardTitle>
                 <CardDescription>Faol kurslar bo'yicha o'zlashtirish</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {myCourses.map((course) => (
-                  <div key={course.id} className="space-y-2">
+                {courses.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">Kurslar topilmadi</p>
+                ) : courses.map(c => (
+                  <div key={c.id} className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="font-medium">{course.title}</span>
-                      <span className="text-sm text-muted-foreground">{course.progress}%</span>
+                      <span className="font-medium text-sm">{c.title}</span>
+                      <span className="text-sm text-muted-foreground">{c.progress}%</span>
                     </div>
-                    <Progress value={course.progress} className="h-2" />
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{course.students} talaba</span>
-                      <span>O'rtacha: {course.avgGrade}</span>
+                    <Progress value={c.progress} className="h-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{c.students} talaba</span>
+                      <span>O'rtacha: {c.avgGrade}</span>
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
 
-            {/* Upcoming Tasks */}
             <Card>
               <CardHeader>
-                <CardTitle>Yaqinlashayotgan Vazifalar</CardTitle>
-                <CardDescription>Rejalashtirilgan imtihon va topshiriqlar</CardDescription>
+                <CardTitle>So'nggi Topshiriqlar</CardTitle>
+                <CardDescription>Tekshirishni kutayotgan topshiriqlar</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {upcomingTasks.map((task) => (
-                    <div key={task.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      {getTaskTypeIcon(task.type)}
-                      <div className="flex-1">
-                        <div className="font-medium">{task.title}</div>
-                        <div className="text-sm text-muted-foreground">{task.course}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{task.date}</div>
-                        <div className="text-xs text-muted-foreground">{task.students} talaba</div>
-                      </div>
+              <CardContent className="space-y-3">
+                {submissions.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">Topshiriqlar yo'q</p>
+                ) : submissions.slice(0, 5).map(s => (
+                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-xs">
+                        {s.studentName.split(' ').map(n => n[0]).join('').slice(0,2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{s.studentName}</div>
+                      <div className="text-xs text-muted-foreground truncate">{s.assignmentTitle}</div>
                     </div>
-                  ))}
-                </div>
+                    <Badge className={s.status === 'pending' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}>
+                      {s.status === 'pending' ? 'Kutmoqda' : s.status === 'late' ? 'Kechikkan' : 'Baholandi'}
+                    </Badge>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
-
-          {/* Recent Student Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle>So'nggi Talaba Faolligi</CardTitle>
-              <CardDescription>Eng faol talabalar va ularning natijalari</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentStudents.map((student) => (
-                  <div key={student.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={student.avatar} alt={student.name} />
-                        <AvatarFallback>
-                          {student.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{student.name}</div>
-                        <div className="text-sm text-muted-foreground">{student.course}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <div className="text-sm font-medium">{student.progress}%</div>
-                        <div className="text-xs text-muted-foreground">Jarayon</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-medium text-green-600">{student.grade}</div>
-                        <div className="text-xs text-muted-foreground">Baho</div>
-                      </div>
-                      <div className="text-xs text-muted-foreground">{student.lastActivity}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
-        {/* Courses Tab */}
+        {/* Courses */}
         <TabsContent value="courses" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myCourses.map((course) => (
-              <Card key={course.id} className="hover:shadow-lg transition-all duration-200">
+            {courses.length === 0 ? (
+              <div className="col-span-3 text-center py-12 text-muted-foreground">
+                <BookOpen className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <p>Kurslar topilmadi</p>
+              </div>
+            ) : courses.map(c => (
+              <Card key={c.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-lg">{course.title}</CardTitle>
-                      <CardDescription>{course.students} talaba</CardDescription>
+                      <CardTitle className="text-base">{c.title}</CardTitle>
+                      <CardDescription>{c.students} talaba</CardDescription>
                     </div>
-                    {getStatusBadge(course.status)}
+                    {STATUS_BADGE[c.status] ?? <Badge variant="secondary">{c.status}</Badge>}
                   </div>
                 </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
+                <CardContent className="space-y-3">
+                  <div className="space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span>Kurs jarayoni</span>
-                      <span>{course.progress}%</span>
+                      <span>Kurs jarayoni</span><span>{c.progress}%</span>
                     </div>
-                    <Progress value={course.progress} className="h-2" />
+                    <Progress value={c.progress} className="h-2" />
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">O'rtacha baho</div>
-                      <div className="font-medium text-green-600">{course.avgGrade}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Yakunlash</div>
-                      <div className="font-medium">{course.completionRate}%</div>
-                    </div>
-                  </div>
-                  
                   <div className="text-sm">
-                    <div className="text-muted-foreground">Muddat</div>
-                    <div>{course.startDate} - {course.endDate}</div>
+                    <span className="text-muted-foreground">O'rtacha baho: </span>
+                    <span className="font-medium text-green-600">{c.avgGrade}</span>
                   </div>
-                  
+                  {(c.startDate || c.endDate) && (
+                    <div className="text-xs text-muted-foreground">
+                      {c.startDate} {c.endDate ? `– ${c.endDate}` : ''}
+                    </div>
+                  )}
                   <div className="flex gap-2">
-                    <Button className="flex-1 gap-2" size="sm">
-                      <Eye className="h-4 w-4" />
-                      Ko'rish
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Settings className="h-4 w-4" />
-                    </Button>
+                    <Button className="flex-1 gap-1" size="sm"><Eye className="h-4 w-4" />Ko'rish</Button>
+                    <Button variant="outline" size="sm"><Edit className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm"><Settings className="h-4 w-4" /></Button>
                   </div>
                 </CardContent>
               </Card>
@@ -411,155 +252,80 @@ export function InstructorDashboard() {
           </div>
         </TabsContent>
 
-        {/* Students Tab */}
+        {/* Submissions */}
         <TabsContent value="students" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Talabalar Ro'yxati</CardTitle>
-              <CardDescription>Barcha kurslaridagi talabalar</CardDescription>
+              <CardTitle>Topshiriqlar Ro'yxati</CardTitle>
+              <CardDescription>Barcha topshiriqlar va ularning holati</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Talaba</TableHead>
-                    <TableHead>Kurs</TableHead>
-                    <TableHead>Jarayon</TableHead>
-                    <TableHead>Baho</TableHead>
-                    <TableHead>Oxirgi Faollik</TableHead>
-                    <TableHead className="text-right">Amallar</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={student.avatar} alt={student.name} />
-                            <AvatarFallback>
-                              {student.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{student.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{student.course}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={student.progress} className="h-2 w-16" />
-                          <span className="text-sm">{student.progress}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-green-600">
-                          {student.grade}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {student.lastActivity}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button variant="ghost" size="sm">
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              {submissions.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Topshiriqlar topilmadi</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Talaba</TableHead>
+                      <TableHead>Topshiriq</TableHead>
+                      <TableHead>Kurs</TableHead>
+                      <TableHead>Topshirilgan</TableHead>
+                      <TableHead>Holat</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {submissions.map(s => (
+                      <TableRow key={s.id}>
+                        <TableCell className="font-medium">{s.studentName}</TableCell>
+                        <TableCell>{s.assignmentTitle}</TableCell>
+                        <TableCell className="text-muted-foreground">{s.courseTitle}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{s.submittedAt}</TableCell>
+                        <TableCell>
+                          <Badge className={
+                            s.status === 'pending' ? 'bg-orange-100 text-orange-800' :
+                            s.status === 'late'    ? 'bg-red-100 text-red-800' :
+                            'bg-green-100 text-green-800'
+                          }>
+                            {s.status === 'pending' ? 'Kutmoqda' : s.status === 'late' ? 'Kechikkan' : 'Baholandi'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  O'rtacha Yakunlash
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">78%</div>
-                <div className="text-xs text-muted-foreground">Barcha kurslarda</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Talabalar Faolligi
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">92%</div>
-                <div className="text-xs text-muted-foreground">Haftalik</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  O'rtacha Baho
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-600">4.3</div>
-                <div className="text-xs text-muted-foreground">5.0 dan</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Feedback
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">4.8</div>
-                <div className="text-xs text-muted-foreground">Talabalar baholashi</div>
-              </CardContent>
-            </Card>
-          </div>
-
+        {/* Schedule */}
+        <TabsContent value="schedule" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Kurslar Statistikasi</CardTitle>
-              <CardDescription>Har bir kurs bo'yicha batafsil ma'lumot</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />Bugungi Darslar
+              </CardTitle>
+              <CardDescription>Bugungi dars jadval</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {myCourses.map((course) => (
-                  <div key={course.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                    <div>
-                      <h4 className="font-medium">{course.title}</h4>
-                      <p className="text-sm text-muted-foreground">{course.students} talaba</p>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-8 text-center">
-                      <div>
-                        <div className="text-lg font-bold text-green-600">{course.progress}%</div>
-                        <div className="text-xs text-muted-foreground">Jarayon</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-blue-600">{course.avgGrade}</div>
-                        <div className="text-xs text-muted-foreground">O'rtacha</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-purple-600">{course.completionRate}%</div>
-                        <div className="text-xs text-muted-foreground">Yakunlash</div>
-                      </div>
-                    </div>
+            <CardContent className="space-y-3">
+              {todayLessons.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Bugun dars yo'q</p>
+              ) : todayLessons.map(lesson => (
+                <div key={lesson.id} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                  <div className="text-center min-w-[80px]">
+                    <div className="text-sm font-semibold">{lesson.time.split('–')[0]?.trim() ?? lesson.time}</div>
+                    <div className="text-xs text-muted-foreground">{lesson.time.split('–')[1]?.trim() ?? ''}</div>
                   </div>
-                ))}
-              </div>
+                  <div className="flex-1">
+                    <div className="font-medium">{lesson.subject}</div>
+                    <div className="text-sm text-muted-foreground">{lesson.group} • {lesson.room}</div>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant="outline">{lesson.type}</Badge>
+                    <div className="text-xs text-muted-foreground mt-1">{lesson.students} talaba</div>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>

@@ -49,6 +49,15 @@ class User(
     @Column(nullable = false, length = 20)
     var status: UserStatus = UserStatus.ACTIVE,
 
+    @Column(name = "face_photo_url", length = 500)
+    var facePhotoUrl: String? = null,
+
+    @Column(name = "face_descriptor", columnDefinition = "TEXT")
+    var faceDescriptor: String? = null,
+
+    @Column(name = "face_uploaded_at")
+    var faceUploadedAt: java.time.LocalDateTime? = null,
+
     @Column(name = "last_login_at")
     var lastLoginAt: Instant? = null,
 

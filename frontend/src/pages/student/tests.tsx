@@ -1,84 +1,85 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  FileQuestion, Clock, CheckCircle2, PlayCircle,
-  Lock, BarChart3, Search, Trophy, Target,
+  FileQuestion, CheckCircle2, PlayCircle,
+  Lock, BarChart3, Search, Trophy, Target, Shield,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-
-interface Test {
-  id: number;
-  title: string;
-  course: string;
-  questions: number;
-  duration: number; // minutes
-  attempts: number;
-  maxAttempts: number;
-  status: "available" | "completed" | "in-progress" | "locked";
-  bestScore?: number;
-  lastAttemptDate?: string;
-  category: "quiz" | "midterm" | "practice" | "final";
-  difficulty: "easy" | "medium" | "hard";
-}
-
-const TESTS: Test[] = [
-  { id: 1, title: "JavaScript Asoslari — 1-modul testi", course: "Dasturlash asoslari", questions: 20, duration: 30, attempts: 1, maxAttempts: 3, status: "completed", bestScore: 90, lastAttemptDate: "2025-06-10", category: "quiz", difficulty: "easy" },
-  { id: 2, title: "SQL JOIN operatorlari", course: "Ma'lumotlar bazasi", questions: 15, duration: 25, attempts: 0, maxAttempts: 2, status: "available", category: "practice", difficulty: "medium" },
-  { id: 3, title: "Algoritmlar — Oraliq nazorat", course: "Algoritmlar nazariyasi", questions: 40, duration: 60, attempts: 0, maxAttempts: 1, status: "available", category: "midterm", difficulty: "hard" },
-  { id: 4, title: "HTML/CSS Tezkor test", course: "Web dasturlash", questions: 10, duration: 15, attempts: 2, maxAttempts: 2, status: "completed", bestScore: 80, lastAttemptDate: "2025-06-08", category: "quiz", difficulty: "easy" },
-  { id: 5, title: "Fizika — Mexanika bo'limi", course: "Fizika", questions: 30, duration: 45, attempts: 1, maxAttempts: 3, status: "in-progress", bestScore: 60, category: "quiz", difficulty: "medium" },
-  { id: 6, title: "Matematika — Integrallash", course: "Matematik tahlil", questions: 25, duration: 40, attempts: 0, maxAttempts: 1, status: "locked", category: "midterm", difficulty: "hard" },
-  { id: 7, title: "Ingliz tili — Grammar testi", course: "Ingliz tili", questions: 30, duration: 30, attempts: 0, maxAttempts: 3, status: "available", category: "practice", difficulty: "easy" },
-  { id: 8, title: "Python dasturlash tili", course: "Dasturlash asoslari", questions: 35, duration: 50, attempts: 0, maxAttempts: 1, status: "available", category: "quiz", difficulty: "medium" },
-];
+import { useTests, useStartTest } from "@/hooks/tests/useTests";
+import { TestCardSkeletonList } from "@/components/ui/skeletons";
+import { useLoadingTransition } from "@/hooks/useLoadingTransition";
+import { format } from "date-fns";
+import { uz } from "date-fns/locale";
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  available:   { label: "Ochiq",        cls: "bg-green-100  text-green-800  dark:bg-green-900/30  dark:text-green-300"  },
-  completed:   { label: "Yakunlandi",   cls: "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300"   },
-  "in-progress":{ label: "Davom etmoqda", cls: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" },
-  locked:      { label: "Yopiq",        cls: "bg-slate-100  text-slate-600  dark:bg-slate-800/40  dark:text-slate-400"  },
-};
-
-const CAT_META: Record<string, { label: string; cls: string }> = {
-  quiz:     { label: "Test",          cls: "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300"   },
-  midterm:  { label: "Oraliq nazorat", cls: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" },
-  practice: { label: "Mashq",         cls: "bg-teal-100   text-teal-800   dark:bg-teal-900/30   dark:text-teal-300"   },
-  final:    { label: "Yakuniy",       cls: "bg-red-100    text-red-800    dark:bg-red-900/30    dark:text-red-300"    },
-};
-
-const DIFF_META: Record<string, { label: string; cls: string }> = {
-  easy:   { label: "Oson",    cls: "text-green-600" },
-  medium: { label: "O'rta",   cls: "text-yellow-600" },
-  hard:   { label: "Qiyin",   cls: "text-red-600" },
+  upcoming:     { label: "Yaqinlashmoqda", cls: "bg-green-100  text-green-800  dark:bg-green-900/30  dark:text-green-300"  },
+  completed:    { label: "Yakunlandi",     cls: "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300"   },
+  "in-progress": { label: "Davom etmoqda", cls: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" },
+  missed:       { label: "O'tkazib yuborildi", cls: "bg-slate-100  text-slate-600  dark:bg-slate-800/40  dark:text-slate-400"  },
 };
 
 export function StudentTests() {
   const [search, setSearch] = useState("");
-  const [catFilter, setCatFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "upcoming" | "completed" | "in-progress" | "missed">("all");
 
-  const filtered = TESTS.filter((t) => {
-    const s = search.toLowerCase();
-    const matchSearch = !s || t.title.toLowerCase().includes(s) || t.course.toLowerCase().includes(s);
-    const matchCat = catFilter === "all" || t.category === catFilter;
-    return matchSearch && matchCat;
-  });
+  // Fetch tests from API
+  const { data: tests = [], isLoading, error, refetch } = useTests();
 
-  const stats = {
-    total:     TESTS.length,
-    available: TESTS.filter((t) => t.status === "available").length,
-    completed: TESTS.filter((t) => t.status === "completed").length,
-    avgScore:  Math.round(TESTS.filter((t) => t.bestScore != null).reduce((a, t) => a + (t.bestScore ?? 0), 0) / TESTS.filter((t) => t.bestScore != null).length || 0),
-  };
+  // Apply loading transition with minimum 300ms display time (AC 9.7)
+  const showLoading = useLoadingTransition(isLoading);
+
+  // Filter and separate tests
+  const { filteredTests, upcomingTests, completedTests, stats } = useMemo(() => {
+    if (!tests) {
+      return {
+        filteredTests: [],
+        upcomingTests: [],
+        completedTests: [],
+        stats: { total: 0, upcoming: 0, completed: 0, avgScore: 0 },
+      };
+    }
+
+    // Apply search and status filters
+    const filtered = tests.filter((t) => {
+      const s = search.toLowerCase();
+      const matchSearch = !s || t.title.toLowerCase().includes(s) || t.courseName.toLowerCase().includes(s);
+      const matchStatus = statusFilter === "all" || t.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+
+    // Separate upcoming and completed
+    const upcoming = filtered.filter((t) => t.status === "upcoming" || t.status === "in-progress");
+    const completed = filtered.filter((t) => t.status === "completed");
+
+    // Calculate stats
+    const completedWithScores = tests.filter((t) => t.status === "completed" && t.score != null);
+    const avgScore = completedWithScores.length > 0
+      ? Math.round(completedWithScores.reduce((sum, t) => sum + (t.score ?? 0), 0) / completedWithScores.length)
+      : 0;
+
+    return {
+      filteredTests: filtered,
+      upcomingTests: upcoming,
+      completedTests: completed,
+      stats: {
+        total: tests.length,
+        upcoming: tests.filter((t) => t.status === "upcoming" || t.status === "in-progress").length,
+        completed: tests.filter((t) => t.status === "completed").length,
+        avgScore,
+      },
+    };
+  }, [tests, search, statusFilter]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Testlar</h1>
-          <p className="text-muted-foreground">Bilim tekshirish testlari va mashqlar</p>
+          <p className="text-muted-foreground">Bilim tekshirish testlari va imtihonlar</p>
         </div>
       </div>
 
@@ -86,7 +87,7 @@ export function StudentTests() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Jami testlar",    value: stats.total,     icon: FileQuestion, cls: "" },
-          { label: "Ochiq",           value: stats.available, icon: PlayCircle,   cls: "text-green-600" },
+          { label: "Yaqinlashmoqda",  value: stats.upcoming,  icon: PlayCircle,   cls: "text-green-600" },
           { label: "Yakunlangan",     value: stats.completed, icon: CheckCircle2, cls: "text-blue-600"  },
           { label: "O'rtacha ball",   value: `${stats.avgScore}%`, icon: Trophy,  cls: "text-yellow-600" },
         ].map(({ label, value, icon: Icon, cls }) => (
@@ -108,109 +109,206 @@ export function StudentTests() {
           <Input placeholder="Test yoki kurs nomi..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
         <div className="flex gap-2">
-          {["all", "quiz", "practice", "midterm", "final"].map((cat) => (
+          {["all", "upcoming", "in-progress", "completed", "missed"].map((status) => (
             <Button
-              key={cat}
-              variant={catFilter === cat ? "default" : "outline"}
+              key={status}
+              variant={statusFilter === status ? "default" : "outline"}
               size="sm"
-              onClick={() => setCatFilter(cat)}
+              onClick={() => setStatusFilter(status as any)}
               className="text-xs"
             >
-              {cat === "all" ? "Barchasi" : CAT_META[cat]?.label}
+              {status === "all" ? "Barchasi" : STATUS_META[status]?.label}
             </Button>
           ))}
         </div>
       </div>
 
-      {/* Test cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.length === 0 && (
-          <div className="col-span-2 text-center py-12 text-muted-foreground">Test topilmadi</div>
-        )}
-        {filtered.map((test) => {
-          const statusMeta = STATUS_META[test.status];
-          const catMeta = CAT_META[test.category];
-          const diffMeta = DIFF_META[test.difficulty];
-          const isLocked = test.status === "locked";
-          const isCompleted = test.status === "completed";
-          const attemptsLeft = test.maxAttempts - test.attempts;
+      {/* Loading State */}
+      {showLoading && <TestCardSkeletonList count={6} />}
 
-          return (
-            <Card key={test.id} className={isLocked ? "opacity-60" : ""}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
-                    {isLocked ? (
-                      <Lock className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                    ) : isCompleted ? (
-                      <CheckCircle2 className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
-                    ) : (
-                      <FileQuestion className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-                    )}
-                    <div>
-                      <CardTitle className="text-base leading-tight">{test.title}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">{test.course}</CardDescription>
-                    </div>
-                  </div>
-                  <Badge className={statusMeta.cls + " text-xs shrink-0"}>{statusMeta.label}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <Badge className={catMeta.cls + " text-xs"}>{catMeta.label}</Badge>
-                  <span className={`text-xs font-medium ${diffMeta.cls}`}>{diffMeta.label}</span>
-                </div>
+      {/* Error State */}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <div className="text-center py-4 space-y-4">
+              <p className="text-destructive">
+                {error instanceof Error ? error.message : "Testlarni yuklashda xatolik yuz berdi. Iltimos, qayta urinib ko'ring."}
+              </p>
+              <Button 
+                onClick={() => refetch()} 
+                variant="outline"
+                disabled={isLoading}
+              >
+                {isLoading ? "Yuklanmoqda..." : "Qayta urinish"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div>
-                    <div className="font-semibold">{test.questions}</div>
-                    <div className="text-muted-foreground">Savol</div>
-                  </div>
-                  <div>
-                    <div className="font-semibold">{test.duration} daq</div>
-                    <div className="text-muted-foreground">Vaqt</div>
-                  </div>
-                  <div>
-                    <div className="font-semibold">{attemptsLeft}/{test.maxAttempts}</div>
-                    <div className="text-muted-foreground">Urinish</div>
-                  </div>
-                </div>
+      {/* Test sections */}
+      {!isLoading && !error && (
+        <>
+          {/* Upcoming Tests */}
+          {upcomingTests.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">Yaqinlashmoqda</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {upcomingTests.map((test) => (
+                  <TestCard key={test.id} test={test} />
+                ))}
+              </div>
+            </div>
+          )}
 
-                {test.bestScore != null && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Trophy className="h-3 w-3" />Eng yuqori natija
-                      </span>
-                      <span className="font-semibold">{test.bestScore}%</span>
-                    </div>
-                    <Progress value={test.bestScore} className="h-1.5" />
-                  </div>
-                )}
+          {/* Completed Tests */}
+          {completedTests.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">Yakunlangan testlar</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {completedTests.map((test) => (
+                  <TestCard key={test.id} test={test} />
+                ))}
+              </div>
+            </div>
+          )}
 
-                <Button
-                  className="w-full gap-2"
-                  size="sm"
-                  variant={isCompleted ? "outline" : "default"}
-                  disabled={isLocked || attemptsLeft === 0}
-                >
-                  {isLocked ? (
-                    <><Lock className="h-3.5 w-3.5" />Yopiq</>
-                  ) : test.status === "in-progress" ? (
-                    <><PlayCircle className="h-3.5 w-3.5" />Davom ettirish</>
-                  ) : isCompleted && attemptsLeft > 0 ? (
-                    <><Target className="h-3.5 w-3.5" />Qayta urinish</>
-                  ) : isCompleted ? (
-                    <><BarChart3 className="h-3.5 w-3.5" />Natijalarni ko'rish</>
-                  ) : (
-                    <><PlayCircle className="h-3.5 w-3.5" />Boshlash</>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+          {/* Empty State */}
+          {filteredTests.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              Test topilmadi
+            </div>
+          )}
+        </>
+      )}
     </div>
+  );
+}
+
+// Separate TestCard component for cleaner code
+function TestCard({ test }: { test: any }) {
+  const navigate = useNavigate();
+  const startTestMutation = useStartTest();
+  
+  const statusMeta = STATUS_META[test.status];
+  const isCompleted = test.status === "completed";
+  const isUpcoming = test.status === "upcoming";
+  const isInProgress = test.status === "in-progress";
+  const isMissed = test.status === "missed";
+
+  const handleStartTest = async () => {
+    try {
+      const session = await startTestMutation.mutateAsync(test.id);
+      // Navigate to test session page with session ID
+      navigate(`/student/tests/${test.id}/session`, { 
+        state: { session } 
+      });
+    } catch (error) {
+      // Error is handled by mutation hook with toast
+      console.error('Failed to start test:', error);
+    }
+  };
+
+  const handleContinueTest = () => {
+    // For in-progress tests, navigate directly to session
+    navigate(`/student/tests/${test.id}/session`);
+  };
+
+  const handleViewResults = () => {
+    // Navigate to test results page
+    navigate(`/student/tests/${test.id}/results`);
+  };
+
+  return (
+    <Card className={isMissed ? "opacity-60" : ""}>
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2">
+            {isMissed ? (
+              <Lock className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+            ) : isCompleted ? (
+              <CheckCircle2 className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+            ) : (
+              <FileQuestion className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+            )}
+            <div>
+              <CardTitle className="text-base leading-tight">{test.title}</CardTitle>
+              <CardDescription className="text-xs mt-0.5">{test.courseName}</CardDescription>
+            </div>
+          </div>
+          <Badge className={statusMeta.cls + " text-xs shrink-0"}>{statusMeta.label}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Test metadata */}
+        <div className="flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
+          <span>{format(new Date(test.date), "d MMMM, yyyy", { locale: uz })}</span>
+          <span>•</span>
+          <span>{test.startTime} - {test.endTime}</span>
+          {test.proctoring && (
+            <>
+              <span>•</span>
+              <Badge variant="outline" className="gap-1 text-xs">
+                <Shield className="h-3 w-3" />
+                Prokuror nazorati
+              </Badge>
+            </>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div>
+            <div className="font-semibold">{test.questionCount}</div>
+            <div className="text-muted-foreground">Savol</div>
+          </div>
+          <div>
+            <div className="font-semibold">{test.duration} daq</div>
+            <div className="text-muted-foreground">Vaqt</div>
+          </div>
+          <div>
+            <div className="font-semibold">{test.totalPoints}</div>
+            <div className="text-muted-foreground">Ball</div>
+          </div>
+        </div>
+
+        {/* Score display for completed tests */}
+        {isCompleted && test.score != null && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Trophy className="h-3 w-3" />Natija
+              </span>
+              <span className="font-semibold">{test.score}%</span>
+            </div>
+            <Progress value={test.score} className="h-1.5" />
+          </div>
+        )}
+
+        <Button
+          className="w-full gap-2"
+          size="sm"
+          variant={isCompleted ? "outline" : "default"}
+          disabled={isMissed || startTestMutation.isPending}
+          onClick={
+            isMissed ? undefined :
+            isInProgress ? handleContinueTest :
+            isCompleted ? handleViewResults :
+            handleStartTest
+          }
+        >
+          {isMissed ? (
+            <><Lock className="h-3.5 w-3.5" />O'tkazib yuborildi</>
+          ) : isInProgress ? (
+            <><PlayCircle className="h-3.5 w-3.5" />Davom ettirish</>
+          ) : isCompleted ? (
+            <><BarChart3 className="h-3.5 w-3.5" />Natijalarni ko'rish</>
+          ) : startTestMutation.isPending ? (
+            <>Boshlanmoqda...</>
+          ) : (
+            <><PlayCircle className="h-3.5 w-3.5" />Boshlash</>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

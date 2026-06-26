@@ -1,214 +1,125 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Users, BookOpen, GraduationCap,
-  Shield, Monitor, Activity, AlertTriangle, Settings,
-  Plus, BarChart3, Award, CheckCircle,
-  Database, Server, FileText, UserCheck, UserCog, TrendingUp,
+  Users, BookOpen, GraduationCap, Shield, Monitor, Activity, AlertTriangle, Settings,
+  Plus, BarChart3, Award, CheckCircle, Database, Server, FileText, UserCog, TrendingUp, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
 import { Progress } from '@/components/ui/progress.tsx';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table.tsx';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { qk } from '@/lib/query-keys';
+import { adminStatsApi } from '@/services/api/admin-stats-api';
 
-const systemStats = {
-  totalUsers: 2869,
-  activeUsers: 2756,
-  totalStudents: 2812,
-  totalTeachers: 45,
-  totalCourses: 156,
-  activeCourses: 142,
-  totalExams: 89,
-  activeExams: 23,
-  scormPackages: 234,
-  systemUptime: 99.8,
-  serverLoad: 67,
-  contentCompletion: 78,
-  avgAchievement: 82,
-  passRate: 91,
-};
-
-const recentActivities = [
-  {
-    id: 1,
-    user: 'Alisher Karimov',
-    action: 'Kursni yakunladi',
-    details: 'JavaScript Asoslari - 95 ball',
-    timestamp: '2 soat oldin',
-    type: 'success',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 2,
-    user: 'Dr. Malika Tosheva',
-    action: 'Yangi kurs yaratdi',
-    details: 'Machine Learning Asoslari',
-    timestamp: '4 soat oldin',
-    type: 'info',
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 3,
-    user: 'System',
-    action: 'Xavfsizlik ogohlantirishi',
-    details: 'Muvaffaqiyatsiz kirish urinishi aniqlandi',
-    timestamp: '6 soat oldin',
-    type: 'warning',
-    avatar: null,
-  },
-  {
-    id: 4,
-    user: 'Bobur Rahimov',
-    action: 'Imtihon topshirdi',
-    details: 'React Development - 87 ball',
-    timestamp: '1 kun oldin',
-    type: 'success',
-    avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-];
-
-const systemMetrics = [
-  { name: 'Yan', users: 2400, courses: 120, exams: 65 },
-  { name: 'Fev', users: 2500, courses: 135, exams: 72 },
-  { name: 'Mar', users: 2650, courses: 142, exams: 78 },
-  { name: 'Apr', users: 2750, courses: 148, exams: 85 },
-  { name: 'May', users: 2820, courses: 152, exams: 87 },
-  { name: 'Iyun', users: 2869, courses: 156, exams: 89 },
-];
-
-const topInstructors = [
-  {
-    id: 1,
-    name: 'Dr. Aziz Karimov',
-    department: 'Dasturlash',
-    students: 156,
-    courses: 3,
-    rating: 4.9,
-    avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 2,
-    name: 'Prof. Malika Tosheva',
-    department: 'Ma\'lumotlar tahlili',
-    students: 234,
-    courses: 4,
-    rating: 4.8,
-    avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 3,
-    name: 'Bobur Rahimov',
-    department: 'Web Development',
-    students: 189,
-    courses: 2,
-    rating: 4.7,
-    avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-];
-
-const systemAlerts = [
-  {
-    id: 1,
-    type: 'warning',
-    title: 'Server yuklanganligi yuqori',
-    message: 'Server yuklanishi 85% dan oshdi',
-    timestamp: '10 daqiqa oldin',
-  },
-  {
-    id: 2,
-    type: 'info',
-    title: 'Yangilanish mavjud',
-    message: 'SCORM engine uchun yangilanish',
-    timestamp: '2 soat oldin',
-  },
-  {
-    id: 3,
-    type: 'success',
-    title: 'Backup yakunlandi',
-    message: 'Ma\'lumotlar bazasi backup muvaffaqiyatli',
-    timestamp: '4 soat oldin',
-  },
-];
-
-// ─── Role meta ────────────────────────────────────────────────────────────────
 const ROLE_CONFIG: Record<string, {
-  title: string;
-  description: string;
-  showUsers: boolean;
-  showSystem: boolean;
-  showSecurity: boolean;
-  showUptimeCard: boolean;
+  title: string; description: string;
+  showUsers: boolean; showSystem: boolean; showSecurity: boolean; showUptimeCard: boolean;
 }> = {
   SUPER_ADMIN: {
-    title: 'Super Admin Dashboard',
-    description: 'Tizim boshqaruvi, foydalanuvchilar va xavfsizlik',
+    title: 'Super Admin Dashboard', description: 'Tizim boshqaruvi, foydalanuvchilar va xavfsizlik',
     showUsers: true, showSystem: true, showSecurity: true, showUptimeCard: true,
   },
   ADMIN: {
-    title: 'Admin Dashboard',
-    description: "Foydalanuvchilar va ta'lim jarayonini boshqarish",
+    title: 'Admin Dashboard', description: "Foydalanuvchilar va ta'lim jarayonini boshqarish",
     showUsers: true, showSystem: false, showSecurity: false, showUptimeCard: false,
   },
   METODIST: {
-    title: 'Metodist Dashboard',
-    description: "O'quv dasturi va talabalar monitoringi",
+    title: 'Metodist Dashboard', description: "O'quv dasturi va talabalar monitoringi",
     showUsers: false, showSystem: false, showSecurity: false, showUptimeCard: false,
   },
 };
-
 const DEFAULT_CONFIG = ROLE_CONFIG['ADMIN'];
+
+function DashSkeleton() {
+  return (
+    <div className="p-6 space-y-6">
+      <Skeleton className="h-9 w-72" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-8 w-16" /></CardContent></Card>)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[1,2].map(i => <Card key={i}><CardContent className="pt-6 space-y-3">{[1,2,3].map(j => <Skeleton key={j} className="h-10 w-full" />)}</CardContent></Card>)}
+      </div>
+    </div>
+  );
+}
+
+function activityIcon(type: string) {
+  if (type === 'success') return <CheckCircle className="h-4 w-4 text-green-600" />;
+  if (type === 'warning') return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+  return <Activity className="h-4 w-4 text-blue-600" />;
+}
+
+function alertBorderCls(type: string) {
+  if (type === 'warning') return 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20';
+  if (type === 'success') return 'border-l-green-500 bg-green-50 dark:bg-green-900/20';
+  if (type === 'error')   return 'border-l-red-500 bg-red-50 dark:bg-red-900/20';
+  return 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/20';
+}
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState('overview');
 
-  // Derive role
-  const rawRole = user?.role?.name || user?.roles?.[0]?.name || '';
+  const rawRole = (user as any)?.role?.name || user?.roles?.[0]?.name || '';
   const normRole = rawRole.replace(/^ROLE_/i, '').toUpperCase();
   const cfg = ROLE_CONFIG[normRole] ?? DEFAULT_CONFIG;
-
   const isSuperAdmin = normRole === 'SUPER_ADMIN';
   const isAdmin      = normRole === 'ADMIN';
   const isMetodist   = normRole === 'METODIST';
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      case 'info':
-        return <Activity className="h-4 w-4 text-blue-600" />;
-      default:
-        return <Activity className="h-4 w-4" />;
-    }
-  };
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch } = useQuery({
+    queryKey: qk.adminStats.system(),
+    queryFn: adminStatsApi.getSystemStats,
+    staleTime: 60_000,
+  });
 
-  const getAlertColor = (type: string) => {
-    switch (type) {
-      case 'warning':
-        return 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20';
-      case 'info':
-        return 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/20';
-      case 'success':
-        return 'border-l-green-500 bg-green-50 dark:bg-green-900/20';
-      default:
-        return 'border-l-gray-500 bg-gray-50 dark:bg-gray-900/20';
-    }
-  };
+  const { data: activities = [], isLoading: activitiesLoading } = useQuery({
+    queryKey: qk.adminStats.activity(),
+    queryFn: adminStatsApi.getRecentActivities,
+    staleTime: 30_000,
+  });
+
+  const { data: monthlyMetrics = [], isLoading: metricsLoading } = useQuery({
+    queryKey: qk.adminStats.users(),
+    queryFn: adminStatsApi.getMonthlyMetrics,
+    staleTime: 300_000,
+  });
+
+  const { data: topInstructors = [], isLoading: instructorsLoading } = useQuery({
+    queryKey: qk.teachers(),
+    queryFn: adminStatsApi.getTopInstructors,
+    staleTime: 300_000,
+  });
+
+  const isLoading = statsLoading || activitiesLoading;
+
+  if (isLoading) return <DashSkeleton />;
+
+  if (statsError) {
+    return (
+      <div className="p-6 space-y-4">
+        <h1 className="text-3xl font-bold">{cfg.title}</h1>
+        <Card className="border-destructive/50">
+          <CardContent className="pt-6 text-center space-y-3">
+            <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
+            <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
+            <p className="text-sm text-muted-foreground">{(statsError as Error).message}</p>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />Qayta urinish
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const tabCount = 2 + (cfg.showUsers ? 1 : 0) + (cfg.showSystem ? 1 : 0) + (cfg.showSecurity ? 1 : 0);
 
@@ -220,43 +131,38 @@ export function AdminDashboard() {
           <h1 className="text-3xl font-bold">{cfg.title}</h1>
           <p className="text-muted-foreground">{cfg.description}</p>
         </div>
-
         <div className="flex items-center gap-2">
           {isSuperAdmin && (
             <Button variant="outline" className="gap-2" onClick={() => navigate('/admin/settings')}>
-              <Settings className="h-4 w-4" />
-              Sozlamalar
+              <Settings className="h-4 w-4" />Sozlamalar
             </Button>
           )}
           {(isSuperAdmin || isAdmin) && (
             <Button className="gap-2" onClick={() => navigate('/admin/users')}>
-              <Plus className="h-4 w-4" />
-              Yangi Foydalanuvchi
+              <Plus className="h-4 w-4" />Yangi Foydalanuvchi
             </Button>
           )}
           {isMetodist && (
             <Button className="gap-2" onClick={() => navigate('/admin/courses')}>
-              <BookOpen className="h-4 w-4" />
-              Yangi Kurs
+              <BookOpen className="h-4 w-4" />Yangi Kurs
             </Button>
           )}
         </div>
       </div>
 
-      {/* Asosiy metrikalar — 4 ta karta */}
+      {/* 4 ta asosiy metrika */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <GraduationCap className="h-4 w-4 text-blue-500" />
-              Jami Talabalar
+              <GraduationCap className="h-4 w-4 text-blue-500" />Jami Talabalar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.totalStudents.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{(stats?.totalStudents ?? 0).toLocaleString()}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
               <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-green-600">+2.4%</span> o'tgan oydan
+              <span className="text-green-600">Faol tizim</span>
             </div>
           </CardContent>
         </Card>
@@ -264,14 +170,13 @@ export function AdminDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <UserCog className="h-4 w-4 text-purple-500" />
-              Jami O'qituvchilar
+              <UserCog className="h-4 w-4 text-purple-500" />Jami O'qituvchilar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.totalTeachers}</div>
+            <div className="text-2xl font-bold">{stats?.totalTeachers ?? 0}</div>
             <div className="text-xs text-muted-foreground mt-1">
-              {systemStats.totalUsers - systemStats.totalStudents - systemStats.totalTeachers} xodim
+              {(stats?.totalUsers ?? 0) - (stats?.totalStudents ?? 0) - (stats?.totalTeachers ?? 0)} xodim
             </div>
           </CardContent>
         </Card>
@@ -279,171 +184,132 @@ export function AdminDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-green-500" />
-              Faol Kurslar
+              <BookOpen className="h-4 w-4 text-green-500" />Faol Kurslar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.activeCourses}</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Jami {systemStats.totalCourses} ta kursdan
-            </div>
+            <div className="text-2xl font-bold">{stats?.activeCourses ?? 0}</div>
+            <div className="text-xs text-muted-foreground mt-1">Jami {stats?.totalCourses ?? 0} ta kursdan</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <FileText className="h-4 w-4 text-orange-500" />
-              Faol Testlar
+              <FileText className="h-4 w-4 text-orange-500" />Faol Testlar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.activeExams}</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Jami {systemStats.totalExams} ta imtihondan
-            </div>
+            <div className="text-2xl font-bold">{stats?.activeExams ?? 0}</div>
+            <div className="text-xs text-muted-foreground mt-1">Jami {stats?.totalExams ?? 0} ta imtihondan</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Kontent va o'zlashtirish ko'rsatkichlari */}
+      {/* Kontent va o'zlashtirish */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-blue-500" />
-              Kontent To'ldirilganlik Darajasi
+              <BarChart3 className="h-4 w-4 text-blue-500" />Kontent To'ldirilganlik Darajasi
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-end justify-between">
-              <span className="text-3xl font-bold">{systemStats.contentCompletion}%</span>
+              <span className="text-3xl font-bold">{stats?.contentCompletion ?? 0}%</span>
               <span className="text-xs text-muted-foreground">o'rtacha</span>
             </div>
-            <Progress value={systemStats.contentCompletion} className="h-2" />
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div>
-                <div className="font-semibold text-green-600">92%</div>
-                <div className="text-muted-foreground">Yakunlagan</div>
-              </div>
-              <div>
-                <div className="font-semibold text-blue-600">78%</div>
-                <div className="text-muted-foreground">Jarayonda</div>
-              </div>
-              <div>
-                <div className="font-semibold text-gray-400">8%</div>
-                <div className="text-muted-foreground">Boshlamagan</div>
-              </div>
-            </div>
+            <Progress value={stats?.contentCompletion ?? 0} className="h-2" />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Award className="h-4 w-4 text-yellow-500" />
-              O'zlashtirish Ko'rsatkichlari
+              <Award className="h-4 w-4 text-yellow-500" />O'zlashtirish Ko'rsatkichlari
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-end justify-between">
-              <span className="text-3xl font-bold">{systemStats.avgAchievement}%</span>
+              <span className="text-3xl font-bold">{stats?.avgAchievement ?? 0}%</span>
               <span className="text-xs text-muted-foreground">o'rtacha ball</span>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
                 <span>O'tish darajasi</span>
-                <span className="font-semibold text-green-600">{systemStats.passRate}%</span>
+                <span className="font-semibold text-green-600">{stats?.passRate ?? 0}%</span>
               </div>
-              <Progress value={systemStats.passRate} className="h-1.5" />
-              <div className="flex justify-between text-xs">
-                <span>A'lo (90-100)</span>
-                <span className="font-semibold">24%</span>
-              </div>
-              <Progress value={24} className="h-1.5" />
-              <div className="flex justify-between text-xs">
-                <span>Yaxshi (75-89)</span>
-                <span className="font-semibold">38%</span>
-              </div>
-              <Progress value={38} className="h-1.5" />
+              <Progress value={stats?.passRate ?? 0} className="h-1.5" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* System Status Cards — super admin uchun */}
+      {/* Super admin uptime cards */}
       {cfg.showUptimeCard && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Server className="h-4 w-4" /> Tizim Holati
+                <Server className="h-4 w-4" />Tizim Holati
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{systemStats.systemUptime}%</div>
+              <div className="text-2xl font-bold text-green-600">{stats?.systemUptime ?? 0}%</div>
               <div className="text-xs text-muted-foreground">Uptime</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Shield className="h-4 w-4" /> SCORM Paketlar
+                <Shield className="h-4 w-4" />SCORM Paketlar
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{systemStats.scormPackages}</div>
-              <div className="text-xs text-muted-foreground">98% uyg'un</div>
+              <div className="text-2xl font-bold">{stats?.scormPackages ?? 0}</div>
+              <div className="text-xs text-muted-foreground">Server yuklanishi: {stats?.serverLoad ?? 0}%</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Users className="h-4 w-4" /> Jami Foydalanuvchilar
+                <Users className="h-4 w-4" />Jami Foydalanuvchilar
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{systemStats.totalUsers.toLocaleString()}</div>
-              <div className="text-xs text-muted-foreground">{systemStats.activeUsers} faol</div>
+              <div className="text-2xl font-bold">{(stats?.totalUsers ?? 0).toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">{(stats?.activeUsers ?? 0).toLocaleString()} faol</div>
             </CardContent>
           </Card>
         </div>
       )}
 
-
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList
-          className="grid w-full"
-          style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(0, 1fr))` }}
-        >
+        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(0, 1fr))` }}>
           <TabsTrigger value="overview">Umumiy</TabsTrigger>
-          {cfg.showUsers && <TabsTrigger value="users">Foydalanuvchilar</TabsTrigger>}
-          {cfg.showSystem && <TabsTrigger value="system">Tizim</TabsTrigger>}
+          {cfg.showUsers    && <TabsTrigger value="users">Foydalanuvchilar</TabsTrigger>}
+          {cfg.showSystem   && <TabsTrigger value="system">Tizim</TabsTrigger>}
           <TabsTrigger value="analytics">Tahlil</TabsTrigger>
           {cfg.showSecurity && <TabsTrigger value="security">Xavfsizlik</TabsTrigger>}
         </TabsList>
 
-        {/* Overview Tab */}
+        {/* Overview */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* System Performance */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Monitor className="h-5 w-5" />
-                  Tizim Ishlashi
+                  <Monitor className="h-5 w-5" />Tizim Ishlashi
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Server yuklanganligi</span>
-                    <span className="text-sm">{systemStats.serverLoad}%</span>
+                    <span className="text-sm">{stats?.serverLoad ?? 0}%</span>
                   </div>
-                  <Progress value={systemStats.serverLoad} className="h-2" />
+                  <Progress value={stats?.serverLoad ?? 0} className="h-2" />
                 </div>
-                
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">SCORM Engine</span>
@@ -451,7 +317,6 @@ export function AdminDashboard() {
                   </div>
                   <Progress value={98} className="h-2" />
                 </div>
-                
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Proctoring AI</span>
@@ -462,198 +327,154 @@ export function AdminDashboard() {
               </CardContent>
             </Card>
 
-            {/* Recent Activities */}
             <Card>
               <CardHeader>
                 <CardTitle>So'nggi Faoliyatlar</CardTitle>
                 <CardDescription>Tizim faolligi va foydalanuvchi harakatlari</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentActivities.map((activity) => (
-                    <div key={activity.id} className="flex items-start gap-3">
-                      {activity.avatar ? (
+                {activities.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-6 text-sm">Faoliyat yo'q</p>
+                ) : (
+                  <div className="space-y-4">
+                    {activities.slice(0, 5).map(activity => (
+                      <div key={activity.id} className="flex items-start gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={activity.avatar} alt={activity.user} />
-                          <AvatarFallback>
-                            {activity.user.split(' ').map(n => n[0]).join('')}
+                          <AvatarFallback className="text-xs">
+                            {activity.username?.slice(0,2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                      ) : (
-                        <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                          <Settings className="h-4 w-4" />
+                        <div className="flex-1 space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            {activityIcon(activity.type)}
+                            <span className="font-medium text-sm">{activity.action}</span>
+                          </div>
+                          {activity.details && <p className="text-sm text-muted-foreground">{activity.details}</p>}
+                          <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
                         </div>
-                      )}
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          {getActivityIcon(activity.type)}
-                          <span className="font-medium text-sm">{activity.action}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{activity.details}</p>
-                        <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
-
-          {/* System Alerts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                Tizim Ogohlantirishlari
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {systemAlerts.map((alert) => (
-                  <div key={alert.id} className={`p-4 border-l-4 rounded-r-lg ${getAlertColor(alert.type)}`}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{alert.title}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">{alert.message}</p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{alert.timestamp}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
-        {/* Users Tab — admin + super_admin */}
-        {cfg.showUsers && <TabsContent value="users" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Foydalanuvchi Statistikasi</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span>Jami foydalanuvchilar</span>
-                  <span className="font-bold">{systemStats.totalUsers.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Faol foydalanuvchilar</span>
-                  <span className="font-bold text-green-600">{systemStats.activeUsers.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Administratorlar</span>
-                  <span className="font-bold">12</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>O'qituvchilar</span>
-                  <span className="font-bold">45</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Talabalar</span>
-                  <span className="font-bold">2,812</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Eng Yaxshi O'qituvchilar</CardTitle>
-                <CardDescription>Yuqori reytingli o'qituvchilar</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {topInstructors.map((instructor) => (
-                    <div key={instructor.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={instructor.avatar} alt={instructor.name} />
-                          <AvatarFallback>
-                            {instructor.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{instructor.name}</div>
-                          <div className="text-sm text-muted-foreground">{instructor.department}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1">
-                          <Award className="h-4 w-4 text-yellow-500" />
-                          <span className="font-medium">{instructor.rating}</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {instructor.students} talaba • {instructor.courses} kurs
-                        </div>
-                      </div>
+        {/* Users */}
+        {cfg.showUsers && (
+          <TabsContent value="users" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader><CardTitle className="text-lg">Foydalanuvchi Statistikasi</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    ['Jami foydalanuvchilar', (stats?.totalUsers ?? 0).toLocaleString()],
+                    ['Faol foydalanuvchilar', (stats?.activeUsers ?? 0).toLocaleString()],
+                    ["O'qituvchilar", stats?.totalTeachers ?? 0],
+                    ['Talabalar', (stats?.totalStudents ?? 0).toLocaleString()],
+                  ].map(([label, val]) => (
+                    <div key={label} className="flex justify-between items-center">
+                      <span className="text-sm">{label}</span>
+                      <span className="font-bold">{val}</span>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>}
+                </CardContent>
+              </Card>
 
-        {/* System Tab — super_admin only */}
-        {cfg.showSystem && <TabsContent value="system" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  Ma'lumotlar Bazasi
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span>Jami yozuvlar</span>
-                  <span className="font-bold">1,247,892</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Ma'lumotlar hajmi</span>
-                  <span className="font-bold">2.4 GB</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Oxirgi backup</span>
-                  <span className="font-bold text-green-600">4 soat oldin</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Holat</span>
-                  <Badge className="bg-green-100 text-green-800">Sog'lom</Badge>
-                </div>
-              </CardContent>
-            </Card>
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Eng Yaxshi O'qituvchilar</CardTitle>
+                  <CardDescription>Faol o'qituvchilar</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {instructorsLoading ? (
+                    <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+                  ) : topInstructors.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-6 text-sm">O'qituvchilar topilmadi</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {topInstructors.slice(0, 5).map(ins => (
+                        <div key={ins.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback>
+                                {ins.fullName?.split(' ').map(n => n[0]).join('').slice(0,2) ?? 'T'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium text-sm">{ins.fullName}</div>
+                              {ins.departmentName && (
+                                <div className="text-xs text-muted-foreground">{ins.departmentName}</div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right text-xs text-muted-foreground">
+                            {ins.totalStudents !== undefined && <div>{ins.totalStudents} talaba</div>}
+                            {ins.totalCourses  !== undefined && <div>{ins.totalCourses} kurs</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  SCORM Engine
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span>Versiya</span>
-                  <span className="font-bold">2004 4th Edition</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Faol paketlar</span>
-                  <span className="font-bold">{systemStats.scormPackages}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Uyg'unlik</span>
-                  <span className="font-bold text-green-600">98%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Holat</span>
-                  <Badge className="bg-green-100 text-green-800">Faol</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>}
+        {/* System — super_admin */}
+        {cfg.showSystem && (
+          <TabsContent value="system" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="h-5 w-5" />Ma'lumotlar Bazasi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Server yuklanishi</span>
+                    <span className="font-bold">{stats?.serverLoad ?? 0}%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Uptime</span>
+                    <span className="font-bold text-green-600">{stats?.systemUptime ?? 0}%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Holat</span>
+                    <Badge className="bg-green-100 text-green-800">Sog'lom</Badge>
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Analytics Tab */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />SCORM Engine
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Versiya</span>
+                    <span className="font-bold">2004 4th Edition</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Faol paketlar</span>
+                    <span className="font-bold">{stats?.scormPackages ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Holat</span>
+                    <Badge className="bg-green-100 text-green-800">Faol</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Analytics */}
         <TabsContent value="analytics" className="space-y-6">
           <Card>
             <CardHeader>
@@ -661,157 +482,93 @@ export function AdminDashboard() {
               <CardDescription>Oylik o'sish va faollik ko'rsatkichlari</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={systemMetrics}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line 
-                    type="monotone" 
-                    dataKey="users" 
-                    stroke="#3b82f6" 
-                    strokeWidth={2}
-                    name="Foydalanuvchilar"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="courses" 
-                    stroke="#10b981" 
-                    strokeWidth={2}
-                    name="Kurslar"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="exams" 
-                    stroke="#f59e0b" 
-                    strokeWidth={2}
-                    name="Imtihonlar"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {metricsLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : monthlyMetrics.length === 0 ? (
+                <p className="text-center text-muted-foreground py-12 text-sm">Statistika ma'lumoti yo'q</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={monthlyMetrics}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="users"   stroke="#3b82f6" strokeWidth={2} name="Foydalanuvchilar" />
+                    <Line type="monotone" dataKey="courses" stroke="#10b981" strokeWidth={2} name="Kurslar" />
+                    <Line type="monotone" dataKey="exams"   stroke="#f59e0b" strokeWidth={2} name="Imtihonlar" />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Oylik O'sish
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">+8.2%</div>
-                <div className="text-xs text-muted-foreground">Foydalanuvchilar</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Faollik Darajasi
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">96%</div>
-                <div className="text-xs text-muted-foreground">Kunlik faol</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Kurs Yakunlash
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-600">84%</div>
-                <div className="text-xs text-muted-foreground">O'rtacha</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Tizim Samaradorligi
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">99.8%</div>
-                <div className="text-xs text-muted-foreground">Uptime</div>
-              </CardContent>
-            </Card>
+            {[
+              { label: 'Jami talabalar',    value: (stats?.totalStudents ?? 0).toLocaleString(), cls: 'text-blue-600'   },
+              { label: "O'qituvchilar",     value: stats?.totalTeachers ?? 0,                    cls: 'text-purple-600' },
+              { label: 'Kurs yakunlash',    value: `${stats?.contentCompletion ?? 0}%`,          cls: 'text-green-600'  },
+              { label: "O'tish darajasi",   value: `${stats?.passRate ?? 0}%`,                   cls: 'text-orange-600' },
+            ].map(({ label, value, cls }) => (
+              <Card key={label}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${cls}`}>{value}</div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </TabsContent>
 
-        {/* Security Tab — super_admin only */}
-        {cfg.showSecurity && <TabsContent value="security" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Xavfsizlik Holati
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span>2FA yoqilgan</span>
-                  <span className="font-bold text-green-600">1,234 foydalanuvchi</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Faol sessiyalar</span>
-                  <span className="font-bold">2,156</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Muvaffaqiyatsiz kirish</span>
-                  <span className="font-bold text-red-600">23 (bugun)</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Oxirgi xavfsizlik skaneri</span>
-                  <span className="font-bold text-green-600">2 soat oldin</span>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Security — super_admin */}
+        {cfg.showSecurity && (
+          <TabsContent value="security" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />Xavfsizlik Holati
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    ['Faol sessiyalar',         (stats?.activeUsers ?? 0).toString()],
+                    ['Jami foydalanuvchilar',   (stats?.totalUsers ?? 0).toLocaleString()],
+                    ['Tizim uptime',            `${stats?.systemUptime ?? 0}%`],
+                  ].map(([label, val]) => (
+                    <div key={label} className="flex justify-between items-center">
+                      <span className="text-sm">{label}</span>
+                      <span className="font-bold">{val}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Xavfsizlik Loglar</CardTitle>
-                <CardDescription>So'nggi xavfsizlik hodisalari</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border-l-4 border-l-red-500">
-                    <div className="font-medium text-red-800 dark:text-red-400">
-                      Shubhali faollik aniqlandi
+              <Card>
+                <CardHeader>
+                  <CardTitle>Audit Loglar</CardTitle>
+                  <CardDescription>So'nggi tizim hodisalari</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {activities.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-6 text-sm">Log yo'q</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {activities.slice(0, 5).map(a => (
+                        <div key={a.id} className={`p-3 border-l-4 rounded-r-lg ${alertBorderCls(a.type)}`}>
+                          <div className="font-medium text-sm">{a.action}</div>
+                          {a.details && <div className="text-xs text-muted-foreground">{a.details}</div>}
+                          <div className="text-xs text-muted-foreground mt-0.5">{a.timestamp}</div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="text-sm text-red-700 dark:text-red-300">
-                      IP: 203.0.113.1 - 15 daqiqa oldin
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-l-yellow-500">
-                    <div className="font-medium text-yellow-800 dark:text-yellow-400">
-                      Ko'p muvaffaqiyatsiz kirish
-                    </div>
-                    <div className="text-sm text-yellow-700 dark:text-yellow-300">
-                      admin@test.com - 1 soat oldin
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-l-green-500">
-                    <div className="font-medium text-green-800 dark:text-green-400">
-                      Xavfsizlik yangilanishi
-                    </div>
-                    <div className="text-sm text-green-700 dark:text-green-300">
-                      Tizim yangilanishi o'rnatildi - 4 soat oldin
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>}
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
