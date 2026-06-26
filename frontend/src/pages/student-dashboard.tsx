@@ -2,43 +2,23 @@ import { useState } from 'react';
 import {
     BookOpen,
     Play,
-    Clock,
-    Award,
-    TrendingUp,
-    Calendar,
     CheckCircle,
     AlertCircle,
     User,
-    Star,
-    Download,
     Eye,
-    BarChart3,
     Target,
-    Activity,
     Users,
-    GraduationCap,
-    FileText,
     Video,
-    MessageCircle,
-    Home,
     Bell,
-    Settings,
-    Zap,
-    Bookmark,
-    Heart,
-    Share2,
-    Filter,
-    Search,
-    Plus,
-    ArrowRight,
-    ExternalLink,
-    Lightbulb,
-    Coffee,
-    Music,
-    Headphones,
-    Upload, 
+    Award,
+    AlertTriangle,
+    Calendar,
+    Upload,
+    Star,
     Shield,
-    AlertTriangle
+    Clock,
+    Activity,
+    GraduationCap
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Button } from '@/components/ui/button.tsx';
@@ -46,15 +26,6 @@ import { Badge } from '@/components/ui/badge.tsx';
 import { Progress } from '@/components/ui/progress.tsx';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
-import { Input } from '@/components/ui/input.tsx';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog.tsx';
 import {
   useDashboardStats,
   useRecentCourses,
@@ -65,42 +36,11 @@ import {
 } from '@/hooks/dashboard/useDashboard';
 import { useNotifications } from '@/hooks/notifications/useNotifications';
 import { DashboardStatsSkeleton } from '@/components/ui/skeletons/DashboardStatsSkeleton';
-import { handleApiError } from '@/utils/error-handler';
 import { useLoadingTransition } from '@/hooks/useLoadingTransition';
 import { ErrorBoundaryTest } from '@/components/error-boundary-test';
 import { useAuth } from '@/contexts/auth-context';
-
-const quickActions = [
-  { id: 1, title: 'Yangi Darsni Boshlash', icon: Play, color: 'bg-green-100 text-green-800', action: 'start-lesson' },
-  { id: 2, title: 'Topshiriq Yuborish', icon: Upload, color: 'bg-blue-100 text-blue-800', action: 'submit-assignment' },
-  { id: 3, title: 'O\'qituvchi bilan Bog\'lanish', icon: MessageCircle, color: 'bg-purple-100 text-purple-800', action: 'contact-teacher' },
-  { id: 4, title: 'Shaxsiy Kabinet', icon: User, color: 'bg-orange-100 text-orange-800', action: 'personal-cabinet' },
-];
-
-const studyTips = [
-  {
-    id: 1,
-    title: 'Kunlik o\'quv rejasi tuzing',
-    description: 'Har kuni ma\'lum vaqtni o\'qishga ajrating',
-    icon: Calendar,
-    category: 'Vaqt boshqaruvi',
-  },
-  {
-    id: 2,
-    title: 'Amaliy loyihalar yarating',
-    description: 'Nazariy bilimlarni amaliyotda qo\'llang',
-    icon: Lightbulb,
-    category: 'Amaliyot',
-  },
-  {
-    id: 3,
-    title: 'Tanaffus qiling',
-    description: 'Har 45 daqiqada 10-15 daqiqa tanaffus',
-    icon: Coffee,
-    category: 'Salomatlik',
-  },
-];
-
+// Import refactored components
+import { QuickActions, StudyTips, StatsCards, NotificationsList } from '@/components/dashboard';
 
 export function StudentDashboard() {
   const { user } = useAuth();
@@ -127,12 +67,12 @@ export function StudentDashboard() {
     name: displayName,
     studentId: user?.username || '—',
     avatar: user?.photo || '',
-    gpa: stats?.gpa || 0,
-    totalCredits: stats?.totalCredits || 0,
-    completedCourses: stats?.completedCourses || 0,
-    activeCourses: stats?.activeCourses || 0,
+    gpa: (stats as any)?.gpa || 0,
+    totalCredits: (stats as any)?.totalCredits || 0,
+    completedCourses: (stats as any)?.completedCourses || 0,
+    activeCourses: (stats as any)?.activeCourses || 0,
     achievements: ['JavaScript Master', 'Perfect Attendance'],
-    currentStreak: stats?.learningStreak || 0,
+    currentStreak: (stats as any)?.learningStreak || 0,
     totalHours: 120,
     thisWeekHours: 15,
     rank: 5,
@@ -252,110 +192,16 @@ export function StudentDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Faol Kurslar
-              </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
-                <BookOpen className="h-4 w-4 text-white" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600 mb-1">{studentData.activeCourses}</div>
-            <div className="text-xs text-muted-foreground">Davom etmoqda</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Yakunlangan
-              </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-md">
-                <CheckCircle className="h-4 w-4 text-white" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-emerald-600 mb-1">{studentData.completedCourses}</div>
-            <div className="text-xs text-muted-foreground">Kurslar</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Award className="h-4 w-4" />
-                Jami Kreditlar
-              </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
-                <Award className="h-4 w-4 text-white" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-600 mb-1">{studentData.totalCredits}</div>
-            <div className="text-xs text-muted-foreground">Kredit</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800 border-2 hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                GPA
-              </span>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 shadow-md">
-                <TrendingUp className="h-4 w-4 text-white" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-amber-600 mb-1">{studentData.gpa}</div>
-            <div className="text-xs text-muted-foreground">5.0 dan</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats Cards - Refactored Component */}
+      <StatsCards 
+        activeCourses={studentData.activeCourses}
+        completedCourses={studentData.completedCourses}
+        totalCredits={studentData.totalCredits}
+        gpa={studentData.gpa}
+      />
 
-      {/* Quick Actions */}
-      <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-indigo-600" />
-            Tezkor Amallar
-          </CardTitle>
-          <CardDescription>
-            Eng ko'p ishlatiladigan funksiyalar
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={action.id}
-                  variant="outline"
-                  className="h-20 flex-col gap-2 hover:scale-105 transition-all duration-200"
-                >
-                  <Icon className="h-6 w-6" />
-                  <span className="text-xs text-center">{action.title}</span>
-                </Button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Actions - Refactored Component */}
+      <QuickActions />
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
@@ -390,8 +236,8 @@ export function StudentDashboard() {
                   <div className="text-sm text-red-600 dark:text-red-400">
                     Ma'lumotlarni yuklab bo'lmadi
                   </div>
-                ) : courses && courses.length > 0 ? (
-                  courses.filter(course => course.status === 'active').map((course) => (
+                ) : courses && (courses as any).length > 0 ? (
+                  (courses as any).filter((course: any) => course.status === 'active').map((course: any) => (
                     <div key={course.id} className="space-y-2 animate-fade-in">
                       <div className="flex justify-between items-center">
                         <span className="font-medium">{course.title}</span>
@@ -454,73 +300,10 @@ export function StudentDashboard() {
             </Card>
           </div>
 
-          {/* Study Tips & Notifications */}
+          {/* Study Tips & Notifications - Refactored Components */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-yellow-600" />
-                  O'quv Maslahatlari
-                </CardTitle>
-                <CardDescription>Samarali o'qish uchun tavsiyalar</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {studyTips.map((tip) => {
-                    const Icon = tip.icon;
-                    return (
-                      <div key={tip.id} className="p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors">
-                        <div className="flex items-start gap-3">
-                          <Icon className="h-5 w-5 text-blue-600 mt-1" />
-                          <div>
-                            <h4 className="font-medium text-sm">{tip.title}</h4>
-                            <p className="text-xs text-muted-foreground">{tip.description}</p>
-                            <Badge variant="outline" className="text-xs mt-1">{tip.category}</Badge>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-blue-600" />
-                  Bildirishnomalar
-                </CardTitle>
-                <CardDescription>So'nggi xabarlar va yangilanishlar</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {notificationsList.length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-4">Bildirishnomalar yo'q</p>
-                  ) : (
-                    notificationsList.slice(0, 3).map((notification) => (
-                      <div key={notification.id} className={`p-3 rounded-lg border-l-4 ${
-                        notification.type === 'course' ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/20' :
-                        notification.type === 'assignment' ? 'border-l-orange-500 bg-orange-50 dark:bg-orange-900/20' :
-                        'border-l-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                      } ${!notification.isRead ? 'font-medium' : ''}`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="text-sm font-medium">{notification.title}</h4>
-                            <p className="text-xs text-muted-foreground">{notification.message}</p>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{notification.createdAt ? new Date(notification.createdAt).toLocaleDateString('uz') : ''}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  <Button variant="outline" className="w-full gap-2 mt-4">
-                    <Bell className="h-4 w-4" />
-                    Barcha Bildirishnomalar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <StudyTips />
+            <NotificationsList notifications={notificationsList} />
           </div>
 
           {/* Upcoming Deadlines */}
@@ -544,8 +327,8 @@ export function StudentDashboard() {
                   <div className="text-sm text-red-600 dark:text-red-400">
                     Ma'lumotlarni yuklab bo'lmadi
                   </div>
-                ) : assignments && assignments.length > 0 ? (
-                  assignments.filter(a => a.status !== 'submitted' && a.status !== 'graded').map((assignment) => (
+                ) : assignments && (assignments as any).length > 0 ? (
+                  (assignments as any).filter((a: any) => a.status !== 'submitted' && a.status !== 'graded').map((assignment: any) => (
                     <div key={assignment.id} className={`p-4 border-l-4 ${getPriorityColor(assignment.priority)} bg-muted/50 rounded-r-lg animate-fade-in`}>
                       <div className="flex justify-between items-start">
                         <div>
@@ -603,9 +386,9 @@ export function StudentDashboard() {
                 <p className="text-red-600 dark:text-red-400">Kurslarni yuklab bo'lmadi</p>
               </CardContent>
             </Card>
-          ) : courses && courses.length > 0 ? (
+          ) : courses && (courses as any).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {courses.map((course) => (
+              {(courses as any).map((course: any) => (
                 <Card key={course.id} className="hover:shadow-lg transition-all duration-200 hover:scale-105 overflow-hidden">
                   <div className="relative">
                     <img 
@@ -730,9 +513,9 @@ export function StudentDashboard() {
                   <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
                   <p className="text-red-600 dark:text-red-400">Topshiriqlarni yuklab bo'lmadi</p>
                 </div>
-              ) : assignments && assignments.length > 0 ? (
+              ) : assignments && (assignments as any).length > 0 ? (
                 <div className="space-y-4">
-                  {assignments.map((assignment) => (
+                  {(assignments as any).map((assignment: any) => (
                     <div key={assignment.id} className={`p-4 border-l-4 ${getPriorityColor(assignment.priority)} bg-muted/50 rounded-r-lg`}>
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
@@ -827,9 +610,9 @@ export function StudentDashboard() {
                 <p className="text-red-600 dark:text-red-400">Imtihonlarni yuklab bo'lmadi</p>
               </CardContent>
             </Card>
-          ) : tests && tests.length > 0 ? (
+          ) : tests && (tests as any).length > 0 ? (
             <div className="space-y-6">
-              {tests.map((exam) => (
+              {(tests as any).map((exam: any) => (
                 <Card key={exam.id} className="hover:shadow-lg transition-all duration-200">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">

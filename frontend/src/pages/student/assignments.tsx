@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   Clock, Upload, CheckCircle2, AlertCircle,
-  Circle, Search, Filter, ChevronDown, FileText, Paperclip,
+  Circle, Search, Filter, ChevronDown, FileText, Paperclip, ClipboardList,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,11 +123,7 @@ export function StudentAssignments() {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      toast({ 
-        title: "Xatolik", 
-        description: `Fayl hajmi ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(0)}MB dan kichik bo'lishi kerak`,
-        variant: "destructive"
-      });
+      toast.error(`Fayl hajmi ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(0)}MB dan kichik bo'lishi kerak`);
       e.target.value = "";
       return;
     }
@@ -135,21 +131,13 @@ export function StudentAssignments() {
     // Validate file extension
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
     if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
-      toast({ 
-        title: "Xatolik", 
-        description: `Faqat ${ALLOWED_EXTENSIONS.join(', ')} formatdagi fayllar qabul qilinadi`,
-        variant: "destructive"
-      });
+      toast.error(`Faqat ${ALLOWED_EXTENSIONS.join(', ')} formatdagi fayllar qabul qilinadi`);
       e.target.value = "";
       return;
     }
 
     setSubmissionFile(file);
-    toast({ 
-      title: "Muvaffaqiyatli", 
-      description: `${file.name} yuklandi`,
-      variant: "default"
-    });
+    toast.success(`${file.name} yuklandi`);
   };
 
   const handleSubmitAssignment = () => {
