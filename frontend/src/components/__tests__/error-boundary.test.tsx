@@ -144,16 +144,16 @@ describe('ErrorBoundary', () => {
       // Change shouldThrow to false
       shouldThrow = false;
 
-      // Click retry button
-      const retryButton = screen.getByRole('button', { name: /qayta urinish/i });
-      fireEvent.click(retryButton);
-
-      // Re-render with no error
+      // Update the boundary's children while it is still showing the fallback.
       rerender(
         <ErrorBoundary>
           <ThrowError shouldThrow={shouldThrow} />
         </ErrorBoundary>
       );
+
+      // Click retry button
+      const retryButton = screen.getByRole('button', { name: /qayta urinish/i });
+      fireEvent.click(retryButton);
 
       // Should show normal content now
       expect(screen.getByText('No error')).toBeInTheDocument();

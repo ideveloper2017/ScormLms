@@ -124,9 +124,10 @@ class JwtService(
         (extractAllClaims(token)["roles"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
 
     fun isTokenValid(token: String, userDetails: UserDetails): Boolean {
-        val username = extractUsername(token)
-        val expiration = extractAllClaims(token).expiration
-        return (username == userDetails.username) && expiration.after(Date())
+        val claims = extractAllClaims(token)
+        return claims.subject == userDetails.username &&
+            claims.expiration.after(Date()) &&
+            claims["type"] != "refresh"
     }
 
     private fun extractAllClaims(token: String): Claims = Jwts.parserBuilder()

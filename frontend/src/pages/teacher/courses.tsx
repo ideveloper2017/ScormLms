@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen, Plus, Search, Users, BarChart3, Eye,
   Edit, Trash2, MoreHorizontal, TrendingUp, Clock,
@@ -21,11 +21,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { qk } from "@/lib/query-keys";
-import { teacherPortalApi, type TeacherCourse } from "@/services/api/teacher-portal-api";
+import { teacherPortalApi } from "@/services/api/teacher-portal-api";
+import { useToast } from "@/hooks/use-toast";
 
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  active:    { label: "Faol",       cls: "bg-green-100  text-green-800  dark:bg-green-900/30  dark:text-green-300"  },
+  published: { label: "Faol",       cls: "bg-green-100  text-green-800  dark:bg-green-900/30  dark:text-green-300"  },
   draft:     { label: "Qoralama",   cls: "bg-slate-100  text-slate-600  dark:bg-slate-800/40  dark:text-slate-400"  },
   archived:  { label: "Arxivlangan",cls: "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300"   },
   completed: { label: "Yakunlangan",cls: "bg-gray-100   text-gray-800   dark:bg-gray-800/40   dark:text-gray-300"   },
@@ -33,6 +34,8 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 
 export function TeacherCourses() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -40,6 +43,25 @@ export function TeacherCourses() {
     queryKey: qk.teacher.courses(),
     queryFn: teacherPortalApi.getCourses,
     staleTime: 60_000,
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' }) =>
+      teacherPortalApi.updateCourseStatus(id, status),
+    onSuccess: async (course) => {
+      await queryClient.invalidateQueries({ queryKey: qk.teacher.courses() });
+      toast({ title: "Kurs holati yangilandi", description: course.title });
+    },
+    onError: (cause) => toast({ variant: "destructive", title: "Holat yangilanmadi", description: cause instanceof Error ? cause.message : undefined }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: teacherPortalApi.deleteCourse,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: qk.teacher.courses() });
+      toast({ title: "Kurs o'chirildi" });
+    },
+    onError: (cause) => toast({ variant: "destructive", title: "Kurs o'chirilmadi", description: cause instanceof Error ? cause.message : undefined }),
   });
 
   const filtered = courses.filter((c) => {
@@ -51,8 +73,8 @@ export function TeacherCourses() {
   });
 
   const stats = {
-    active:   courses.filter((c) => c.status === "active").length,
-    students: courses.filter((c) => c.status === "active").reduce((s, c) => s + c.students, 0),
+    active:   courses.filter((c) => c.status === "published").length,
+    students: courses.filter((c) => c.status === "published").reduce((s, c) => s + c.students, 0),
     avgScore: (() => { const scored = courses.filter(c => (c.avgScore ?? 0) > 0); return scored.length ? Math.round(scored.reduce((s, c) => s + (c.avgScore ?? 0), 0) / scored.length) : 0; })(),
   };
 
@@ -115,7 +137,7 @@ export function TeacherCourses() {
           <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Holat" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Barchasi</SelectItem>
-            <SelectItem value="active">Faol</SelectItem>
+            <SelectItem value="published">Faol</SelectItem>
             <SelectItem value="draft">Qoralama</SelectItem>
             <SelectItem value="archived">Arxiv</SelectItem>
           </SelectContent>
@@ -128,7 +150,7 @@ export function TeacherCourses() {
           <div className="col-span-3 text-center py-12 text-muted-foreground">Kurs topilmadi</div>
         )}
         {filtered.map((course) => {
-          const meta = STATUS_META[course.status];
+          const meta = STATUS_META[course.status] ?? STATUS_META.draft;
           return (
             <Card key={course.id} className="flex flex-col hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
@@ -154,11 +176,30 @@ export function TeacherCourses() {
                         <DropdownMenuItem onClick={() => navigate(`/teacher/courses/${course.id}`)} className="gap-2">
                           <Eye className="h-4 w-4" />Ko'rish
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
+                        <DropdownMenuItem onClick={() => navigate(`/teacher/courses/${course.id}`)} className="gap-2">
                           <Edit className="h-4 w-4" />Tahrirlash
                         </DropdownMenuItem>
+                        {course.status === "draft" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: course.id, status: 'PUBLISHED' })} className="gap-2">
+                            <BookOpen className="h-4 w-4" />Nashr qilish
+                          </DropdownMenuItem>
+                        )}
+                        {course.status === "published" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: course.id, status: 'ARCHIVED' })} className="gap-2">
+                            <Clock className="h-4 w-4" />Arxivlash
+                          </DropdownMenuItem>
+                        )}
+                        {course.status === "archived" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: course.id, status: 'DRAFT' })} className="gap-2">
+                            <Edit className="h-4 w-4" />Qoralamaga qaytarish
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+                        <DropdownMenuItem
+                          disabled={course.status === "published" || deleteMutation.isPending}
+                          onClick={() => deleteMutation.mutate(course.id)}
+                          className="gap-2 text-destructive focus:text-destructive"
+                        >
                           <Trash2 className="h-4 w-4" />O'chirish
                         </DropdownMenuItem>
                       </DropdownMenuContent>

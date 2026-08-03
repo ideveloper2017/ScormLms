@@ -117,10 +117,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                   <summary className="cursor-pointer font-medium text-muted-foreground">
                     Texnik ma'lumotlar (faqat development rejimida)
                   </summary>
-                  <pre className="mt-2 overflow-auto text-foreground">
-                    {this.state.error?.message}
-                  </pre>
-                  <pre className="mt-1 overflow-auto text-muted-foreground">
+                  <pre className="mt-2 overflow-auto text-muted-foreground">
                     {this.state.errorInfo.componentStack}
                   </pre>
                 </details>

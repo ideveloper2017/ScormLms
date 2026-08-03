@@ -50,7 +50,7 @@ export function AdminGroups() {
   const groups   = useCrudData<GroupRecord>(qk.groups(), listGroups);
   const { data: programs = [] } = useQuery({
     queryKey: qk.programs(),
-    queryFn: listPrograms,
+    queryFn: () => listPrograms(),
     staleTime: 60_000,
   });
 

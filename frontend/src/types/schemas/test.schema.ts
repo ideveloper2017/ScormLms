@@ -60,7 +60,7 @@ export const TestHistoryItemSchema = z.object({
   testId: z.string().min(1),
   testTitle: z.string().min(1),
   courseName: z.string().min(1),
-  date: z.coerce.date(),
+  completedAt: z.coerce.date(),
   score: z.number().min(0),
   totalPoints: z.number().min(0),
   percentage: z.number().min(0).max(100),

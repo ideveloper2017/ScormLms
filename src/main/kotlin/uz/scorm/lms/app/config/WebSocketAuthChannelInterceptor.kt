@@ -7,6 +7,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.messaging.support.MessageHeaderAccessor
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.stereotype.Component
 import uz.scorm.lms.app.security.JwtService
@@ -37,14 +38,20 @@ class WebSocketAuthChannelInterceptor(
                                 userDetails, null, userDetails.authorities
                             )
                             logger.debug { "WebSocket autentifikatsiya muvaffaqiyatli: $username" }
+                        } else {
+                            throw AccessDeniedException("WebSocket JWT yaroqsiz")
                         }
                     }
                 } catch (e: Exception) {
                     logger.warn { "WebSocket JWT tekshirishda xatolik: ${e.message}" }
+                    throw AccessDeniedException("WebSocket autentifikatsiyasi rad etildi", e)
                 }
             } else {
                 logger.warn { "WebSocket ulanishi JWT tokensiz keldi" }
+                throw AccessDeniedException("WebSocket uchun JWT token majburiy")
             }
+        } else if (accessor.command in setOf(StompCommand.SEND, StompCommand.SUBSCRIBE) && accessor.user == null) {
+            throw AccessDeniedException("Autentifikatsiyasiz WebSocket amali bloklandi")
         }
         return message
     }

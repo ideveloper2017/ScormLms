@@ -5,6 +5,7 @@ import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.web.bind.annotation.*
 import uz.scorm.lms.app.common.ApiResponse
 import uz.scorm.lms.app.security.JwtService
+import uz.scorm.lms.app.v1.auth.service.RefreshTokenService
 import uz.scorm.lms.app.v1.hemis.dto.HemisLoginResponse
 import uz.scorm.lms.app.v1.hemis.dto.HemisLoginUser
 import uz.scorm.lms.app.v1.hemis.service.HemisService
@@ -24,6 +25,7 @@ class HemisAuthController(
     private val studentRepository: StudentRepository,
     private val userDetailsService: UserDetailsService,
     private val jwtService: JwtService,
+    private val refreshTokenService: RefreshTokenService,
 ) {
     data class HemisLoginRequest(
         val login: String? = null,
@@ -72,8 +74,8 @@ class HemisAuthController(
 
         // 3. JWT juftini generatsiya qilamiz
         val userDetails  = userDetailsService.loadUserByUsername(user.username)
-        val accessToken  = jwtService.generateAccessToken(userDetails)
-        val refreshToken = jwtService.generateRefreshToken(userDetails)
+        val accessToken  = jwtService.generateToken(userDetails)
+        val refreshToken = refreshTokenService.create(user).token
         val roles        = userDetails.authorities.map { it.authority }
 
         return ResponseEntity.ok(

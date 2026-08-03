@@ -90,6 +90,52 @@ data class StudentCourseDto(
     val imageUrl: String? = null,
 )
 
+data class StudentStudyPlanDto(
+    val studentId: Long,
+    val studentNumber: String,
+    val studentName: String,
+    val academicYear: String,
+    val totalCredits: Int,
+    val completedCredits: Int,
+    val overallProgress: Int,
+    val courses: List<StudentStudyPlanCourseDto>,
+)
+
+data class StudentStudyPlanCourseDto(
+    val enrollmentId: Long,
+    val courseId: Long,
+    val title: String,
+    val subjectName: String,
+    val instructor: String,
+    val academicYear: String,
+    val semester: Int,
+    val credits: Int,
+    val required: Boolean,
+    val status: String,
+    val progress: Int,
+    val completedContents: Int,
+    val totalContents: Int,
+    val completedScormPackages: Int,
+    val totalScormPackages: Int,
+    val startDate: LocalDate?,
+    val endDate: LocalDate?,
+)
+
+data class StudentCourseProgressDto(
+    val courseId: Long,
+    val progress: Int,
+    val completedContents: Int,
+    val totalContents: Int,
+    val completedScormPackages: Int,
+    val totalScormPackages: Int,
+    val status: String,
+    val updatedAt: Instant?,
+)
+
+data class ContentProgressRequest(
+    val progress: Int = 100,
+)
+
 // ─── Schedule ────────────────────────────────────────────────────────────────
 
 data class StudentScheduleItemDto(
@@ -240,6 +286,7 @@ data class StudentAssignmentDto(
     val maxScore: Int = 100,
     val submittedAt: String? = null,
     val grade: Int? = null,
+    val feedback: String? = null,
 )
 
 // ─── Test (for dashboard) ────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 package uz.scorm.lms.app.config
 
 import org.springframework.context.annotation.Configuration
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.messaging.simp.config.ChannelRegistration
 import org.springframework.messaging.simp.config.MessageBrokerRegistry
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker
@@ -11,7 +12,9 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 class WebSocketConfig(
     private val authChannelInterceptor: WebSocketAuthChannelInterceptor,
+    @Value("\${app.cors.allowed-origins}") allowedOriginsValue: String,
 ) : WebSocketMessageBrokerConfigurer {
+    private val allowedOrigins = allowedOriginsValue.split(',').map(String::trim).filter(String::isNotBlank)
 
     override fun configureMessageBroker(config: MessageBrokerRegistry) {
         // Foydalanuvchiga xabar yuborish uchun /topic va /queue yo'llari
@@ -25,7 +28,7 @@ class WebSocketConfig(
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
         // Native WebSocket endpoint — SockJS ishlatilmaydi (zamonaviy brauzerlar uchun)
         registry.addEndpoint("/ws")
-            .setAllowedOriginPatterns("*")
+            .setAllowedOriginPatterns(*allowedOrigins.toTypedArray())
     }
 
     override fun configureClientInboundChannel(registration: ChannelRegistration) {

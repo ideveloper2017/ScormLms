@@ -7,12 +7,16 @@ import uz.scorm.lms.app.common.ApiResponse
 import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.service.StudentPortalService
+import uz.scorm.lms.app.v1.courses.service.StudyPlanService
 import uz.scorm.lms.app.v1.user.model.User
 
 @RestController
 @RequestMapping("/api/v1/students/me")
 @PreAuthorize("hasAuthority('STUDENT_READ')")
-class StudentPortalController(private val svc: StudentPortalService) {
+class StudentPortalController(
+    private val svc: StudentPortalService,
+    private val studyPlanService: StudyPlanService,
+) {
 
     // ─── Profile ─────────────────────────────────────────────────────────────
 
@@ -59,6 +63,34 @@ class StudentPortalController(private val svc: StudentPortalService) {
     @GetMapping("/courses")
     fun getCourses(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentCourseDto>>> =
         ResponseEntity.ok(ApiResponse.success(svc.getCourses(user)))
+
+    @GetMapping("/study-plan")
+    fun getStudyPlan(
+        @CurrentUser user: User,
+        @RequestParam(required = false) academicYear: String?,
+    ): ResponseEntity<ApiResponse<StudentStudyPlanDto>> = ResponseEntity.ok(ApiResponse.success(
+        studyPlanService.studyPlan(requireNotNull(user.id), academicYear)
+    ))
+
+    @GetMapping("/courses/{courseId}/progress")
+    fun getCourseProgress(
+        @CurrentUser user: User,
+        @PathVariable courseId: Long,
+    ): ResponseEntity<ApiResponse<StudentCourseProgressDto>> = ResponseEntity.ok(ApiResponse.success(
+        studyPlanService.courseProgress(courseId, requireNotNull(user.id))
+    ))
+
+    @PostMapping("/courses/{courseId}/contents/{contentId}/progress")
+    @PreAuthorize("hasAuthority('STUDENT_WRITE')")
+    fun recordContentProgress(
+        @CurrentUser user: User,
+        @PathVariable courseId: Long,
+        @PathVariable contentId: Long,
+        @RequestBody request: ContentProgressRequest,
+    ): ResponseEntity<ApiResponse<StudentCourseProgressDto>> = ResponseEntity.ok(ApiResponse.success(
+        "Kontent progressi saqlandi",
+        studyPlanService.recordContentProgress(courseId, contentId, request.progress, requireNotNull(user.id)),
+    ))
 
     // ─── Schedule ────────────────────────────────────────────────────────────
 
@@ -113,7 +145,13 @@ class StudentPortalController(private val svc: StudentPortalService) {
         @RequestParam(required = false) endDate: String?,
         @RequestParam(required = false) status: String?,
     ): ResponseEntity<ApiResponse<List<StudentAttendanceRecordDto>>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getAttendance(user, courseId)))
+        ResponseEntity.ok(ApiResponse.success(svc.getAttendance(
+            user,
+            courseId,
+            startDate?.let(java.time.LocalDate::parse),
+            endDate?.let(java.time.LocalDate::parse),
+            status,
+        )))
 
     @GetMapping("/attendance/stats")
     fun getAttendanceStats(@CurrentUser user: User): ResponseEntity<ApiResponse<StudentAttendanceStatsDto>> =
@@ -125,7 +163,7 @@ class StudentPortalController(private val svc: StudentPortalService) {
 
     @GetMapping("/attendance/percentage")
     fun getAttendancePercentage(@CurrentUser user: User): ResponseEntity<ApiResponse<AttendancePercentageDto>> =
-        ResponseEntity.ok(ApiResponse.success(AttendancePercentageDto(0.0)))
+        ResponseEntity.ok(ApiResponse.success(svc.getAttendancePercentage(user)))
 
     @GetMapping("/courses/{courseId}/attendance")
     fun getCourseAttendance(
@@ -139,7 +177,7 @@ class StudentPortalController(private val svc: StudentPortalService) {
         @CurrentUser user: User,
         @PathVariable courseId: String,
     ): ResponseEntity<ApiResponse<AttendancePercentageDto>> =
-        ResponseEntity.ok(ApiResponse.success(AttendancePercentageDto(0.0)))
+        ResponseEntity.ok(ApiResponse.success(svc.getAttendancePercentage(user, courseId)))
 
     @GetMapping("/courses/{courseId}/grades")
     fun getCourseGrades(
@@ -184,7 +222,7 @@ class StudentPortalController(private val svc: StudentPortalService) {
         @RequestParam(required = false) courseId: String?,
         @RequestParam(required = false) priority: String?,
     ): ResponseEntity<ApiResponse<List<StudentAssignmentDto>>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getAssignments(user)))
+        ResponseEntity.ok(ApiResponse.success(svc.getAssignments(user, status, courseId?.toLongOrNull(), priority)))
 
     // ─── Tests ───────────────────────────────────────────────────────────────
 

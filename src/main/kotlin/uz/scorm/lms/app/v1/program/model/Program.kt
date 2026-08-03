@@ -26,6 +26,21 @@ class Program(
     @Column(nullable = false)
     var active: Boolean = true,
 
+    @Column(name = "distance_enabled", nullable = false)
+    var distanceEnabled: Boolean = false,
+
+    @Column(name = "information_technology_program", nullable = false)
+    var informationTechnologyProgram: Boolean = false,
+
+    @Column(name = "education_language", nullable = false, length = 10)
+    var educationLanguage: String = "uz",
+
+    @Column(name = "distance_admission_limit")
+    var distanceAdmissionLimit: Int? = null,
+
+    @Column(name = "license_reference", length = 200)
+    var licenseReference: String? = null,
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "department_id")
     var department: Department? = null,

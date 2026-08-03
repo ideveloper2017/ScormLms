@@ -6,4 +6,5 @@ import uz.scorm.lms.app.v1.program.model.Program
 interface ProgramRepository : JpaRepository<Program, Long> {
     fun existsByCode(code: String): Boolean
     fun findAllByDepartmentId(departmentId: Long): List<Program>
+    fun findAllByDistanceEnabledTrue(): List<Program>
 }

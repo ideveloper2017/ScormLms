@@ -63,6 +63,7 @@ class SecurityConfig(
         http
             .cors { }
             .csrf { it.disable() }
+            .headers { headers -> headers.frameOptions { frameOptions -> frameOptions.disable() } }
             .exceptionHandling { it.authenticationEntryPoint(jwtAuthenticationEntryPoint) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
@@ -80,6 +81,7 @@ class SecurityConfig(
                     "/swagger-ui.html",
                     "/webjars/**",
                     "/public/**",
+                    "/scorm-content/**",
                     "/api/v1/auth/login",
                     "/api/v1/auth/refresh",
                     "/api/v1/auth/refresh-token",

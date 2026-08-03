@@ -213,10 +213,8 @@ describe('courseApi', () => {
       await courseApi.markContentAsViewed('course-1', 'content-1');
 
       expect(api.post).toHaveBeenCalledWith(
-        '/courses/course-1/content/content-1/view',
-        expect.objectContaining({
-          viewedAt: expect.any(Date),
-        })
+        '/students/me/courses/course-1/contents/content-1/progress',
+        { progress: 100 }
       );
     });
 
@@ -232,11 +230,8 @@ describe('courseApi', () => {
       });
 
       expect(api.post).toHaveBeenCalledWith(
-        '/courses/course-1/content/content-1/view',
-        {
-          viewedAt: customDate,
-          progress: 100,
-        }
+        '/students/me/courses/course-1/contents/content-1/progress',
+        { progress: 100 }
       );
     });
 
@@ -253,22 +248,20 @@ describe('courseApi', () => {
 
   describe('fetchCourseProgress', () => {
     it('should fetch course progress successfully', async () => {
-      const mockProgress: CourseProgress = {
-        completedLessons: 5,
-        totalLessons: 10,
-        completedAssignments: 3,
-        totalAssignments: 5,
-        averageScore: 85.5,
-      };
-
       vi.mocked(api.get).mockResolvedValue({
-        data: { success: true, data: mockProgress },
+        data: { success: true, data: {
+          progress: 75,
+          completedContents: 4,
+          totalContents: 6,
+          completedScormPackages: 1,
+          totalScormPackages: 1,
+        } },
       });
 
       const result = await courseApi.fetchCourseProgress('course-1');
 
-      expect(api.get).toHaveBeenCalledWith('/courses/course-1/progress');
-      expect(result).toEqual(mockProgress);
+      expect(api.get).toHaveBeenCalledWith('/students/me/courses/course-1/progress');
+      expect(result).toEqual({ completedLessons: 5, totalLessons: 7, completedAssignments: 0, totalAssignments: 0, averageScore: 75 });
     });
 
     it('should handle API errors', async () => {
@@ -296,21 +289,13 @@ describe('courseApi', () => {
 
       await courseApi.updateCourseProgress('course-1', payload);
 
-      expect(api.post).toHaveBeenCalledWith('/courses/course-1/progress', payload);
+      expect(api.post).toHaveBeenCalledWith('/students/me/courses/course-1/contents/content-1/progress', { progress: 75 });
     });
 
-    it('should update course progress with minimal payload', async () => {
-      vi.mocked(api.post).mockResolvedValue({
-        data: { success: true },
-      });
-
-      const payload = {
-        progress: 100,
-      };
-
-      await courseApi.updateCourseProgress('course-1', payload);
-
-      expect(api.post).toHaveBeenCalledWith('/courses/course-1/progress', payload);
+    it('should reject manual course progress without a content id', async () => {
+      await expect(courseApi.updateCourseProgress('course-1', { progress: 100 }))
+        .rejects.toThrow("Kontent identifikatorisiz fan progressini qo'lda o'zgartirib bo'lmaydi");
+      expect(api.post).not.toHaveBeenCalled();
     });
 
     it('should handle API errors', async () => {
@@ -318,7 +303,7 @@ describe('courseApi', () => {
       vi.mocked(api.post).mockRejectedValue(error);
 
       await expect(
-        courseApi.updateCourseProgress('course-1', { progress: 50 })
+        courseApi.updateCourseProgress('course-1', { contentId: 'content-1', progress: 50 })
       ).rejects.toThrow();
       expect(handleApiError).toHaveBeenCalled();
     });
@@ -329,7 +314,7 @@ describe('courseApi', () => {
       });
 
       await expect(
-        courseApi.updateCourseProgress('course-1', { progress: 50 })
+        courseApi.updateCourseProgress('course-1', { contentId: 'content-1', progress: 50 })
       ).rejects.toThrow('Update failed');
     });
   });

@@ -12,6 +12,7 @@ export interface Assignment {
   maxScore: number;
   submittedAt?: Date;
   grade?: number;
+  feedback?: string;
 }
 
 export interface AttachmentFile {
@@ -51,4 +52,7 @@ export interface AssignmentSubmission {
   grade?: number;
   feedback?: string;
   status: 'submitted' | 'graded' | 'returned';
+  fileName?: string;
+  attemptNumber?: number;
+  late?: boolean;
 }

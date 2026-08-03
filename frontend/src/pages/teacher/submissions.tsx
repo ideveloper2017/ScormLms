@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft, Search, Clock, Star, Eye, AlertTriangle, RefreshCw,
+  ArrowLeft, Search, Clock, Star, Eye, AlertTriangle, RefreshCw, Download, FileText,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 
 export function TeacherSubmissions() {
   const navigate = useNavigate();
+  const { id: assignmentId } = useParams();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -38,8 +39,8 @@ export function TeacherSubmissions() {
   const [saving, setSaving] = useState(false);
 
   const { data: submissions = [], isLoading, error, refetch } = useQuery({
-    queryKey: qk.teacher.submissions(),
-    queryFn: teacherPortalApi.getSubmissions,
+    queryKey: [...qk.teacher.submissions(), assignmentId ?? "all"],
+    queryFn: () => teacherPortalApi.getSubmissions(assignmentId),
     staleTime: 60_000,
   });
 
@@ -61,16 +62,27 @@ export function TeacherSubmissions() {
   const openGrade = (s: TeacherSubmission) => {
     setGrading(s);
     setScore(s.score?.toString() ?? "");
-    setFeedback("");
+    setFeedback(s.feedback ?? "");
   };
 
   const handleGrade = async () => {
-    if (!score) { toast({ variant: "destructive", title: "Ball kiriting" }); return; }
+    if (!score || !grading) { toast({ variant: "destructive", title: "Ball kiriting" }); return; }
+    const numericScore = Number(score);
+    if (!Number.isFinite(numericScore) || numericScore < 0 || numericScore > grading.maxScore) {
+      toast({ variant: "destructive", title: `Ball 0–${grading.maxScore} oralig'ida bo'lishi kerak` });
+      return;
+    }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    toast({ title: "Baholandi", description: `${grading?.studentName} — ${score} ball` });
-    setGrading(null);
-    setSaving(false);
+    try {
+      await teacherPortalApi.gradeSubmission(grading.id, numericScore, feedback.trim() || undefined);
+      await refetch();
+      toast({ title: "Baholandi", description: `${grading.studentName} — ${score} ball` });
+      setGrading(null);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Baholash saqlanmadi", description: (e as Error).message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (isLoading) return (
@@ -165,7 +177,7 @@ export function TeacherSubmissions() {
                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                   <span className="text-muted-foreground">{s.courseTitle}</span>
                   <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />{s.submittedAt}
+                    <Clock className="h-3 w-3" />{new Date(s.submittedAt).toLocaleString("uz-Latn")}
                   </span>
                   {s.score !== undefined && (
                     <span className="flex items-center gap-1 text-green-600 font-semibold">
@@ -173,6 +185,21 @@ export function TeacherSubmissions() {
                     </span>
                   )}
                 </div>
+                {(s.answer || s.fileName) && (
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    {s.answer && <span className="flex items-center gap-1 text-muted-foreground"><FileText className="h-3 w-3" />{s.answer}</span>}
+                    {s.fileName && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => teacherPortalApi.downloadSubmissionFile(s.id, s.fileName!)}
+                      >
+                        <Download className="h-3 w-3 mr-1" />{s.fileName}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 shrink-0">
                 {s.status !== "graded" ? (
@@ -198,9 +225,9 @@ export function TeacherSubmissions() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label>Ball (0–100)</Label>
+              <Label>Ball (0–{grading?.maxScore ?? 100})</Label>
               <Input
-                type="number" min={0} max={100}
+                type="number" min={0} max={grading?.maxScore ?? 100}
                 value={score}
                 onChange={(e) => setScore(e.target.value)}
                 placeholder="Masalan: 85"

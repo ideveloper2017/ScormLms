@@ -48,7 +48,7 @@ export function TeacherDashboard() {
 
   const { data: submissions = [], isLoading: subsLoading } = useQuery({
     queryKey: qk.teacher.submissions(),
-    queryFn: teacherPortalApi.getSubmissions,
+    queryFn: () => teacherPortalApi.getSubmissions(),
     staleTime: 30_000,
   });
 

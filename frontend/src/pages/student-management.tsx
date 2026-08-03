@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ColumnDef } from '@tanstack/react-table';
 import { qk } from '@/lib/query-keys';
-import { ColumnDef } from '@tanstack/react-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -10,211 +10,265 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { listStudents, graduateStudent, archiveStudent, reinstateStudent, promoteStudent, editStudent, createStudent } from '@/lib/student-api';
-import { StudentDto } from '@/types/student.types';
 import { AcademicSelect } from '@/components/admin/academic-select';
+import {
+  archiveStudent,
+  createStudent,
+  getStudent,
+  graduateStudent,
+  listStudents,
+  promoteStudent,
+  reinstateStudent,
+  updateStudent,
+} from '@/lib/student-api';
+import type { Gender, StudentDto, StudentSummaryDto } from '@/types/student.types';
 import { Loader2, ArrowUpCircle, GraduationCap, Archive, UserCheck, Edit, Upload, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const emptyForm = () => ({
+  firstName: '',
+  lastName: '',
+  pinfl: '',
+  studentNumber: '',
+  birthDate: '',
+  gender: 'MALE' as Gender,
+  email: '',
+  groupId: '',
+  facultyId: '',
+  programId: '',
+  course: '1',
+  language: 'uz',
+});
+
 export function StudentManagement() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: students = [], isLoading } = useQuery({
     queryKey: qk.students(),
     queryFn: listStudents,
   });
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.students() });
-
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    studentIdNumber: '',
-    email: '',
-    groupName: '',
-    faculty: '',
-    educationPath: '',
-    course: '1',
-    semester: '1',
-    language: 'uz'
-  });
+  const [formData, setFormData] = useState(emptyForm);
 
-  const { toast } = useToast();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.students() });
+  const optionalId = (value: string) => value ? Number(value) : null;
 
-
-  const resetForm = () => {
-    setFormData({
-      firstName: '', lastName: '', studentIdNumber: '', email: '',
-      groupName: '', faculty: '', educationPath: '', course: '1', semester: '1', language: 'uz'
-    });
+  const closeDialog = () => {
+    setIsAdding(false);
+    setEditingStudent(null);
+    setFormData(emptyForm());
   };
 
   const handleSave = async () => {
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.pinfl.trim()
+      || !formData.studentNumber.trim() || !formData.birthDate) {
+      toast({
+        title: 'Majburiy maydonlar',
+        description: "Ism, familiya, JSHSHIR, talaba raqami va tug'ilgan sanani kiriting",
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const commonPayload = {
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      email: formData.email.trim() || null,
+      facultyId: optionalId(formData.facultyId),
+      programId: optionalId(formData.programId),
+      groupId: optionalId(formData.groupId),
+      courseNumber: Number(formData.course),
+      educationLanguage: formData.language,
+    };
+
     try {
-      const payload: StudentDto = {
-        fullName: `${formData.firstName} ${formData.lastName}`,
-        firstName: formData.firstName,
-        thirdName: formData.lastName,
-        studentIdNumber: formData.studentIdNumber,
-        email: formData.email,
-        group: { name: formData.groupName, educationLang: { code: formData.language } },
-        level: { code: formData.course },
-        semester: { code: formData.semester },
-        faculty: { name: formData.faculty },
-        specialty: { name: formData.educationPath }
-      };
-
-      if (editingStudent?.username) {
-        await editStudent(editingStudent.username, payload);
-        toast({ title: "Muvaffaqiyatli", description: "Talaba ma'lumotlari yangilandi" });
+      if (editingStudent?.id != null) {
+        await updateStudent(editingStudent.id, commonPayload);
+        toast({ title: 'Muvaffaqiyatli', description: "Talaba ma'lumotlari yangilandi" });
       } else {
-        await createStudent(payload);
-        toast({ title: "Muvaffaqiyatli", description: "Yangi talaba qo'shildi" });
+        await createStudent({
+          ...commonPayload,
+          pinfl: formData.pinfl.trim(),
+          studentNumber: formData.studentNumber.trim(),
+          birthDate: formData.birthDate,
+          gender: formData.gender,
+          citizenship: 'UZBEKISTAN',
+        });
+        toast({ title: 'Muvaffaqiyatli', description: "Yangi talaba qo'shildi" });
       }
-
-      setEditingStudent(null);
-      setIsAdding(false);
-      resetForm();
+      closeDialog();
       await invalidate();
-    } catch (e) {
-      toast({ title: "Xatolik", description: "Amalni bajarib bo'lmadi", variant: "destructive" });
+    } catch {
+      toast({ title: 'Xatolik', description: "Amalni bajarib bo'lmadi", variant: 'destructive' });
     }
   };
 
-  const handleEditClick = (s: StudentDto) => {
-    setEditingStudent(s);
-    setFormData({
-      firstName: s.firstName || '',
-      lastName: s.thirdName || '',
-      studentIdNumber: s.studentIdNumber || '',
-      email: s.email || '',
-      groupName: s.group?.name || '',
-      faculty: s.faculty?.name || '',
-      educationPath: s.specialty?.name || '',
-      course: s.level?.code || '1',
-      semester: s.semester?.code || '1',
-      language: s.group?.educationLang?.code || 'uz'
-    });
+  const handleEditClick = async (summary: StudentSummaryDto) => {
+    if (summary.id == null) return;
+    try {
+      const student = await getStudent(summary.id);
+      setEditingStudent(student);
+      setFormData({
+        firstName: student.firstName || '',
+        lastName: student.lastName || '',
+        pinfl: student.pinfl || '',
+        studentNumber: student.studentNumber || '',
+        birthDate: student.birthDate || '',
+        gender: student.gender || 'MALE',
+        email: student.email || '',
+        groupId: student.groupId == null ? '' : String(student.groupId),
+        facultyId: student.facultyId == null ? '' : String(student.facultyId),
+        programId: student.programId == null ? '' : String(student.programId),
+        course: String(student.courseNumber || 1),
+        language: student.educationLanguage || 'uz',
+      });
+    } catch {
+      toast({ title: 'Xatolik', description: "Talaba ma'lumotlarini yuklab bo'lmadi", variant: 'destructive' });
+    }
   };
 
-  const columns = useMemo<ColumnDef<StudentDto>[]>(() => [
+  const runStudentAction = async (studentId: number | null, action: (id: number) => Promise<StudentDto>) => {
+    if (studentId == null) return;
+    try {
+      await action(studentId);
+      await invalidate();
+    } catch {
+      toast({ title: 'Xatolik', description: "Amalni bajarib bo'lmadi", variant: 'destructive' });
+    }
+  };
+
+  const columns: ColumnDef<StudentSummaryDto>[] = [
     {
       accessorKey: 'fullName',
       header: 'Ism',
       cell: ({ row }) => <span className="font-medium">{row.original.fullName}</span>,
     },
+    { accessorKey: 'studentNumber', header: 'Talaba raqami' },
+    { accessorKey: 'pinfl', header: 'JSHSHIR' },
+    { accessorKey: 'groupId', header: 'Guruh ID' },
     {
-      accessorKey: 'studentIdNumber',
-      header: 'ID / JSHSHIR',
+      accessorKey: 'courseNumber',
+      header: 'Kurs',
+      cell: ({ row }) => row.original.courseNumber ?? '—',
     },
     {
-      accessorFn: (s) => s.group?.name ?? '',
-      id: 'group',
-      header: 'Guruh',
-    },
-    {
-      id: 'kurs',
-      header: 'Kurs/Semestr',
-      enableSorting: false,
-      cell: ({ row: { original: s } }) => `${s.level?.code ?? '—'}/${s.semester?.code ?? '—'}`,
-    },
-    {
-      accessorFn: (s) => s.studentStatus?.code ?? '',
-      id: 'status',
+      accessorKey: 'studentStatus',
       header: 'Holat',
-      cell: ({ getValue }) => <Badge variant="secondary">{getValue<string>()}</Badge>,
+      cell: ({ row }) => <Badge variant="secondary">{row.original.studentStatus ?? '—'}</Badge>,
     },
     {
       id: 'actions',
       header: () => <div className="text-right">Amallar</div>,
       enableSorting: false,
-      cell: ({ row: { original: s } }) => (
+      cell: ({ row: { original: student } }) => (
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" onClick={() => handleEditClick(s)} title="Tahrirlash">
+          <Button size="sm" variant="ghost" onClick={() => handleEditClick(student)} title="Tahrirlash">
             <Edit className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => s.username && promoteStudent(s.username).then(invalidate)} title="Kursdan o'tkazish">
+          <Button size="sm" variant="ghost" onClick={() => runStudentAction(student.id, promoteStudent)} title="Kursdan o'tkazish">
             <ArrowUpCircle className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => s.username && graduateStudent(s.username).then(invalidate)} title="Bitiruvchi">
+          <Button size="sm" variant="ghost" onClick={() => runStudentAction(student.id, graduateStudent)} title="Bitiruvchi">
             <GraduationCap className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => s.username && archiveStudent(s.username).then(invalidate)} title="Arxivlash">
+          <Button size="sm" variant="ghost" onClick={() => runStudentAction(student.id, archiveStudent)} title="Arxivlash">
             <Archive className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => s.username && reinstateStudent(s.username).then(invalidate)} title="Qayta tiklash">
+          <Button size="sm" variant="ghost" onClick={() => runStudentAction(student.id, reinstateStudent)} title="Qayta tiklash">
             <UserCheck className="h-4 w-4" />
           </Button>
         </div>
       ),
     },
-  ], []);
+  ];
 
-  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
+  if (isLoading) {
+    return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
+  }
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Talabalar Boshqaruvi</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Talabalar boshqaruvi</h1>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2"><Upload className="h-4 w-4" /> Excel Import</Button>
-          <Button className="gap-2" onClick={() => { resetForm(); setIsAdding(true); }}>
-            <UserPlus className="h-4 w-4" /> Yangi Talaba
+          <Button variant="outline" className="gap-2" disabled title="Excel import keyingi bosqichda ulanadi">
+            <Upload className="h-4 w-4" /> Excel Import
+          </Button>
+          <Button className="gap-2" onClick={() => { setFormData(emptyForm()); setIsAdding(true); }}>
+            <UserPlus className="h-4 w-4" /> Yangi talaba
           </Button>
         </div>
       </div>
+
       <Card>
-        <CardHeader>
-          <CardTitle>Barcha Talabalar</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Barcha talabalar</CardTitle></CardHeader>
         <CardContent>
           <DataTable
             columns={columns}
             data={students}
-            searchPlaceholder="Ism, ID yoki guruh bo'yicha qidirish..."
+            searchPlaceholder="Ism, talaba raqami yoki JSHSHIR bo'yicha qidirish..."
             showColumnToggle
             emptyText="Talabalar topilmadi"
           />
         </CardContent>
       </Card>
 
-      <Dialog open={isAdding || !!editingStudent} onOpenChange={(o) => !o && (setIsAdding(false), setEditingStudent(null))}>
+      <Dialog open={isAdding || !!editingStudent} onOpenChange={(open) => { if (!open) closeDialog(); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingStudent ? "Talabani tahrirlash" : "Yangi talaba qo'shish"}</DialogTitle>
+            <DialogTitle>{editingStudent ? 'Talabani tahrirlash' : "Yangi talaba qo'shish"}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
-              <Label>Ism</Label>
-              <Input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} placeholder="Ism" />
+              <Label>Ism *</Label>
+              <Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
             </div>
             <div className="space-y-2">
-              <Label>Familiya</Label>
-              <Input value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} placeholder="Familiya" />
+              <Label>Familiya *</Label>
+              <Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
             </div>
             <div className="space-y-2">
-              <Label>JSHSHIR / ID</Label>
-              <Input value={formData.studentIdNumber} onChange={e => setFormData({...formData, studentIdNumber: e.target.value})} placeholder="JSHSHIR" />
+              <Label>JSHSHIR *</Label>
+              <Input value={formData.pinfl} onChange={(e) => setFormData({...formData, pinfl: e.target.value})} disabled={!!editingStudent} />
+            </div>
+            <div className="space-y-2">
+              <Label>Talaba raqami *</Label>
+              <Input value={formData.studentNumber} onChange={(e) => setFormData({...formData, studentNumber: e.target.value})} disabled={!!editingStudent} />
+            </div>
+            <div className="space-y-2">
+              <Label>Tug'ilgan sana *</Label>
+              <Input type="date" value={formData.birthDate} onChange={(e) => setFormData({...formData, birthDate: e.target.value})} disabled={!!editingStudent} />
+            </div>
+            <div className="space-y-2">
+              <Label>Jinsi *</Label>
+              <Select value={formData.gender} onValueChange={(value: Gender) => setFormData({...formData, gender: value})} disabled={!!editingStudent}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MALE">Erkak</SelectItem>
+                  <SelectItem value="FEMALE">Ayol</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Email" />
+              <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
             </div>
             <div className="space-y-2">
               <Label>Fakultet</Label>
-              <AcademicSelect kind="faculty" value={formData.faculty} onChange={v => setFormData({...formData, faculty: v})} />
+              <AcademicSelect kind="faculty" valueMode="id" value={formData.facultyId} onChange={(value) => setFormData({...formData, facultyId: value})} />
             </div>
             <div className="space-y-2">
               <Label>Yo'nalish</Label>
-              <AcademicSelect kind="program" value={formData.educationPath} onChange={v => setFormData({...formData, educationPath: v})} />
+              <AcademicSelect kind="program" valueMode="id" value={formData.programId} onChange={(value) => setFormData({...formData, programId: value})} />
             </div>
             <div className="space-y-2">
               <Label>Guruh</Label>
-              <AcademicSelect kind="group" value={formData.groupName} onChange={v => setFormData({...formData, groupName: v})} />
+              <AcademicSelect kind="group" valueMode="id" value={formData.groupId} onChange={(value) => setFormData({...formData, groupId: value})} />
             </div>
             <div className="space-y-2">
               <Label>Ta'lim tili</Label>
-              <Select value={formData.language} onValueChange={v => setFormData({...formData, language: v})}>
+              <Select value={formData.language} onValueChange={(value) => setFormData({...formData, language: value})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="uz">O'zbek</SelectItem>
@@ -225,15 +279,11 @@ export function StudentManagement() {
             </div>
             <div className="space-y-2">
               <Label>Kurs</Label>
-              <Input type="number" value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} min="1" max="6" />
-            </div>
-            <div className="space-y-2">
-              <Label>Semestr</Label>
-              <Input type="number" value={formData.semester} onChange={e => setFormData({...formData, semester: e.target.value})} min="1" max="12" />
+              <Input type="number" min="1" max="6" value={formData.course} onChange={(e) => setFormData({...formData, course: e.target.value})} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => (setIsAdding(false), setEditingStudent(null))}>Bekor qilish</Button>
+            <Button variant="outline" onClick={closeDialog}>Bekor qilish</Button>
             <Button onClick={handleSave}>Saqlash</Button>
           </DialogFooter>
         </DialogContent>

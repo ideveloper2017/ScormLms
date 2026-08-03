@@ -4,7 +4,8 @@
 # farq qiladigan qiymatlarni o'z ichiga oladi.
 # Maxfiy qiymatlar env variable orqali beriladi:
 #   DB_URL, DB_USERNAME, DB_PASSWORD, JWT_SECRET,
-#   HEMIS_CLIENT_ID, HEMIS_CLIENT_SECRET, CORS_ALLOWED_ORIGINS
+#   HEMIS_HOST, HEMIS_ADMIN_LOGIN, HEMIS_ADMIN_PASSWORD,
+#   CORS_ALLOWED_ORIGINS, FILE_UPLOAD_DIR, SCORM_STORAGE_DIR
 # ===================================================================
 
 logging:
@@ -30,7 +31,7 @@ server:
     include-message: always
     include-binding-errors: never
   tomcat:
-    max-http-form-post-size: 20MB
+    max-http-form-post-size: 210MB
     threads:
       max: 200
       min-spare: 10
@@ -69,15 +70,14 @@ spring:
 
   jpa:
     hibernate:
-      # TODO: Flyway kiritilgach 'validate' ga o'tkazilsin
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     open-in-view: false
 
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 20MB
+      max-file-size: 200MB
+      max-request-size: 210MB
       location: ${FILE_UPLOAD_DIR:./uploads}
 
 # Actuator: faqat kerakli endpointlar ochiladi (health/info permitAll,
@@ -107,3 +107,9 @@ springdoc:
     enabled: ${SWAGGER_ENABLED:true}
   swagger-ui:
     enabled: ${SWAGGER_ENABLED:true}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  scorm:
+    secure-cookie: ${SCORM_SECURE_COOKIE:true}

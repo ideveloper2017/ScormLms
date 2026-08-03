@@ -18,10 +18,14 @@ export const StudentProfileSchema = z.object({
 
 export const DashboardStatsSchema = z.object({
   activeCourses: z.number().min(0),
+  completedCourses: z.number().min(0).optional(),
   pendingAssignments: z.number().min(0),
   upcomingTests: z.number().min(0),
   averageGrade: z.number().min(0).max(100),
   attendancePercentage: z.number().min(0).max(100),
+  gpa: z.number().min(0).max(5),
+  totalCredits: z.number().min(0),
+  learningStreak: z.number().min(0),
 });
 
 export const ActivityItemSchema = z.object({

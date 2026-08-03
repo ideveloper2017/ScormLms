@@ -252,11 +252,8 @@ export const courseApi = {
   ): Promise<void> => {
     try {
       const response = await api.post<ApiResponse<void>>(
-        `/courses/${courseId}/content/${contentId}/view`,
-        {
-          viewedAt: payload.viewedAt || new Date(),
-          progress: payload.progress,
-        }
+        `/students/me/courses/${courseId}/contents/${contentId}/progress`,
+        { progress: payload.progress ?? 100 }
       );
 
       if (!response.data.success) {
@@ -285,8 +282,14 @@ export const courseApi = {
    */
   fetchCourseProgress: async (courseId: string): Promise<CourseProgress> => {
     try {
-      const response = await api.get<ApiResponse<CourseProgress>>(
-        `/courses/${courseId}/progress`
+      const response = await api.get<ApiResponse<{
+        progress: number;
+        completedContents: number;
+        totalContents: number;
+        completedScormPackages: number;
+        totalScormPackages: number;
+      }>>(
+        `/students/me/courses/${courseId}/progress`
       );
 
       if (!response.data.success || !response.data.data) {
@@ -294,9 +297,15 @@ export const courseApi = {
       }
 
       // Validate response data with Zod schema
+      const item = response.data.data;
       const validatedProgress = validateDataOrThrow(
-        CourseProgressSchema,
-        response.data.data,
+        CourseProgressSchema, {
+          completedLessons: item.completedContents + item.completedScormPackages,
+          totalLessons: item.totalContents + item.totalScormPackages,
+          completedAssignments: 0,
+          totalAssignments: 0,
+          averageScore: item.progress,
+        },
         { context: 'courseApi.fetchCourseProgress', logErrors: true }
       );
 
@@ -334,9 +343,12 @@ export const courseApi = {
     payload: UpdateProgressPayload
   ): Promise<void> => {
     try {
+      if (!payload.contentId) {
+        throw new Error("Kontent identifikatorisiz fan progressini qo'lda o'zgartirib bo'lmaydi");
+      }
       const response = await api.post<ApiResponse<void>>(
-        `/courses/${courseId}/progress`,
-        payload
+        `/students/me/courses/${courseId}/contents/${payload.contentId}/progress`,
+        { progress: payload.progress }
       );
 
       if (!response.data.success) {

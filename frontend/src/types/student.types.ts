@@ -174,6 +174,12 @@ export interface StudentProfileResponse {
     birthDate: string | null;
     gender: Gender | null;
     citizenship: Citizenship | null;
+    passportType: PassportType | null;
+    passportSeries: string | null;
+    passportNumber: string | null;
+    passportIssuedDate: string | null;
+    passportExpiryDate: string | null;
+    passportIssuedBy: string | null;
     photoUrl: string | null;
     phoneNumber: string | null;
     email: string | null;
@@ -184,14 +190,19 @@ export interface StudentProfileResponse {
     currentDistrict: string | null;
     currentAddress: string | null;
     studentNumber: string;
+    facultyId: number | null;
     degreeLevel: DegreeLevel | null;
     educationForm: EducationForm | null;
     educationLanguage: string | null;
     courseNumber: number | null;
     groupId: number | null;
     academicYear: string | null;
+    admissionDate: string | null;
+    admissionOrderNumber: string | null;
     studentStatus: StudentStatus | null;
     paymentType: PaymentType | null;
+    contractNumber: string | null;
+    contractAmount: number | null;
     username: string;
     lastLoginAt: string | null;
 }

@@ -21,6 +21,11 @@ interface ProgramForm {
   degreeLevel: string;
   departmentId: number | null;
   active: boolean;
+  distanceEnabled: boolean;
+  informationTechnologyProgram: boolean;
+  educationLanguage: string;
+  distanceAdmissionLimit: number | null;
+  licenseReference: string;
 }
 
 const DEGREES = [
@@ -108,25 +113,50 @@ export function AdminPrograms() {
           { header: "Kodi",    cell: (p) => p.code ?? "—" },
           { header: "Daraja",  cell: (p) => <DegreeBadge level={p.degreeLevel} /> },
           { header: "Kafedra", cell: (p) => p.departmentName ?? "—" },
+          { header: "Ta'lim shakli", cell: (p) => p.distanceEnabled ? <Badge variant="outline">Masofaviy</Badge> : <Badge variant="secondary">Kunduzgi</Badge> },
+          { header: "Qabul limiti", cell: (p) => p.distanceEnabled ? (p.informationTechnologyProgram ? "AKT istisnosi" : p.distanceAdmissionLimit ?? "—") : "—" },
           { header: "Holat",   cell: (p) => <ActiveBadge active={p.active} /> },
         ]}
-        blankForm={() => ({ name: "", code: "", degreeLevel: "BACHELOR", departmentId: null, active: true })}
+        blankForm={() => ({
+          name: "", code: "", degreeLevel: "BACHELOR", departmentId: null, active: true,
+          distanceEnabled: false, informationTechnologyProgram: false,
+          educationLanguage: "uz", distanceAdmissionLimit: 300, licenseReference: "",
+        })}
         toForm={(p) => ({
           name: p.name, code: p.code ?? "",
           degreeLevel: p.degreeLevel ?? "BACHELOR",
           departmentId: p.departmentId ?? null, active: p.active,
+          distanceEnabled: p.distanceEnabled ?? false,
+          informationTechnologyProgram: p.informationTechnologyProgram ?? false,
+          educationLanguage: p.educationLanguage ?? "uz",
+          distanceAdmissionLimit: p.distanceAdmissionLimit ?? (p.degreeLevel === "MASTER" ? 30 : 300),
+          licenseReference: p.licenseReference ?? "",
         })}
-        validate={(f) => (f.name.trim() ? null : "Nomi majburiy")}
+        validate={(f) => {
+          if (!f.name.trim()) return "Nomi majburiy";
+          if (f.distanceEnabled && !f.licenseReference.trim()) return "Masofaviy yo'nalish uchun litsenziya rekviziti majburiy";
+          const max = f.degreeLevel === "MASTER" ? 30 : 300;
+          if (f.distanceEnabled && !f.informationTechnologyProgram && (!f.distanceAdmissionLimit || f.distanceAdmissionLimit > max)) return `Qabul limiti 1..${max} oralig'ida bo'lishi kerak`;
+          return null;
+        }}
         onCreate={(f) =>
           createProgram({
             name: f.name.trim(), code: f.code.trim() || null,
             degreeLevel: f.degreeLevel, departmentId: f.departmentId, active: f.active,
+            distanceEnabled: f.distanceEnabled, informationTechnologyProgram: f.informationTechnologyProgram,
+            educationLanguage: f.educationLanguage,
+            distanceAdmissionLimit: f.distanceEnabled && !f.informationTechnologyProgram ? f.distanceAdmissionLimit : null,
+            licenseReference: f.licenseReference.trim() || null,
           }).then(() => undefined)
         }
         onUpdate={(id, f) =>
           updateProgram(id, {
             name: f.name.trim(), code: f.code.trim() || null,
             degreeLevel: f.degreeLevel, departmentId: f.departmentId, active: f.active,
+            distanceEnabled: f.distanceEnabled, informationTechnologyProgram: f.informationTechnologyProgram,
+            educationLanguage: f.educationLanguage,
+            distanceAdmissionLimit: f.distanceEnabled && !f.informationTechnologyProgram ? f.distanceAdmissionLimit : null,
+            licenseReference: f.licenseReference.trim() || null,
           }).then(() => undefined)
         }
         onDelete={(id) => deleteProgram(id)}
@@ -155,7 +185,7 @@ export function AdminPrograms() {
                 <Label>Daraja</Label>
                 <Select
                   value={form.degreeLevel}
-                  onValueChange={(v) => set({ degreeLevel: v })}
+                  onValueChange={(v) => set({ degreeLevel: v, distanceAdmissionLimit: v === "MASTER" ? 30 : 300 })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -188,6 +218,32 @@ export function AdminPrograms() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div><Label>Masofaviy ta'lim</Label><p className="text-xs text-muted-foreground">559-son qaror talablari qo'llanadi</p></div>
+                <Switch checked={form.distanceEnabled} onCheckedChange={(v) => set({ distanceEnabled: v })} />
+              </div>
+              {form.distanceEnabled && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Ta'lim tili</Label>
+                      <Select value={form.educationLanguage} onValueChange={(v) => set({ educationLanguage: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="uz">O'zbek</SelectItem><SelectItem value="ru">Rus</SelectItem><SelectItem value="en">Ingliz</SelectItem></SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Qabul limiti</Label>
+                      <Input type="number" min={1} max={form.degreeLevel === "MASTER" ? 30 : 300} disabled={form.informationTechnologyProgram} value={form.distanceAdmissionLimit ?? ""} onChange={(e) => set({ distanceAdmissionLimit: e.target.value ? Number(e.target.value) : null })} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5"><Label>Litsenziya rekviziti</Label><Input value={form.licenseReference} onChange={(e) => set({ licenseReference: e.target.value })} placeholder="Litsenziya raqami va sanasi" /></div>
+                  <div className="flex items-center gap-2"><Switch checked={form.informationTechnologyProgram} onCheckedChange={(v) => set({ informationTechnologyProgram: v })} /><Label>Axborot-kommunikatsiya texnologiyalari yo'nalishi</Label></div>
+                  <p className="text-xs text-muted-foreground">AKT yo'nalishlariga 300/30 qabul cheklovi tatbiq etilmaydi.</p>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.active} onCheckedChange={(v) => set({ active: v })} />

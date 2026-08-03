@@ -10,6 +10,10 @@ export interface Course {
   grade?: string; // "A", "B+", etc.
   status: 'active' | 'completed' | 'draft';
   imageUrl?: string;
+  image?: string;
+  students?: number;
+  rating?: number;
+  videoLessons?: number;
   nextLesson?: {
     title: string;
     date: Date;

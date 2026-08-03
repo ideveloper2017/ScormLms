@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:scorm_lms_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+  devtools:
+    restart:
+      enabled: false
+
+app:
+  seed:
+    admin-password: ""
+

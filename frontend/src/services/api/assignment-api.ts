@@ -26,6 +26,9 @@ export interface AssignmentSubmission {
   grade?: number;
   feedback?: string;
   status: 'submitted' | 'graded' | 'returned';
+  fileName?: string;
+  attemptNumber?: number;
+  late?: boolean;
 }
 
 /**
@@ -35,6 +38,8 @@ export interface AssignmentFilters {
   status?: 'pending' | 'submitted' | 'graded' | 'overdue';
   courseId?: string;
   priority?: 'low' | 'medium' | 'high';
+  page?: number;
+  pageSize?: number;
 }
 
 /**
@@ -51,7 +56,7 @@ export const assignmentApi = {
    */
   fetchAssignments: async (filters?: AssignmentFilters): Promise<Assignment[]> => {
     try {
-      const response = await api.get<{ success: boolean; data: Assignment[] }>(
+      const response = await api.get<{ success: boolean; data: Assignment[]; message?: string }>(
         '/students/me/assignments',
         { params: filters }
       );
@@ -92,7 +97,7 @@ export const assignmentApi = {
    */
   fetchAssignmentById: async (id: string): Promise<AssignmentDetails> => {
     try {
-      const response = await api.get<{ success: boolean; data: AssignmentDetails }>(
+      const response = await api.get<{ success: boolean; data: AssignmentDetails; message?: string }>(
         `/assignments/${id}`
       );
 
@@ -206,7 +211,7 @@ export const assignmentApi = {
    */
   fetchSubmissionHistory: async (id: string): Promise<AssignmentSubmission[]> => {
     try {
-      const response = await api.get<{ success: boolean; data: AssignmentSubmission[] }>(
+      const response = await api.get<{ success: boolean; data: AssignmentSubmission[]; message?: string }>(
         `/assignments/${id}/submissions`
       );
 

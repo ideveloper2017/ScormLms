@@ -29,10 +29,13 @@ const PRIORITY_META: Record<Notification['priority'], { icon: React.ElementType;
   urgent:  { icon: AlertTriangle, cls: "border-l-red-400 bg-red-50/60 dark:bg-red-950/20", dot: "bg-red-400" },
 };
 
-const ALL_TYPES = ["all", ...Object.keys(TYPE_META)] as const;
+type NotificationTypeFilter = "all" | Notification['type'];
+const ALL_TYPES: NotificationTypeFilter[] = [
+  "all", "course", "assignment", "test", "grade", "attendance", "system",
+];
 
 export function StudentNotifications() {
-  const [filter, setFilter] = useState<"all" | Notification['type']>("all");
+  const [filter, setFilter] = useState<NotificationTypeFilter>("all");
   const [showRead, setShowRead] = useState(true);
 
   // Fetch notifications from API

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="uz">
+<head><meta charset="utf-8"><title>SCORM 2004 E2E</title></head>
+<body>
+  <h1>SCORM 2004 E2E kursi</h1>
+  <button id="commit" type="button">Natijani saqlash</button>
+  <button id="finish" type="button">Kursni yakunlash</button>
+  <script>
+    const api = window.parent.API_1484_11;
+    api.Initialize("");
+    document.getElementById("commit").addEventListener("click", () => {
+      api.SetValue("cmi.completion_status", "incomplete");
+      api.SetValue("cmi.progress_measure", "0.65");
+      api.SetValue("cmi.score.raw", "84");
+      api.SetValue("cmi.session_time", "PT2M15S");
+      api.Commit("");
+    });
+    document.getElementById("finish").addEventListener("click", () => {
+      api.SetValue("cmi.completion_status", "completed");
+      api.SetValue("cmi.success_status", "passed");
+      api.Terminate("");
+    });
+  </script>
+</body>
+</html>
+

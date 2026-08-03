@@ -23,6 +23,7 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { ScormPackageManager } from "@/components/scorm/package-manager";
 
 interface ContentItem {
   id: number;
@@ -100,7 +101,7 @@ export function TeacherContent() {
         <CardContent className="py-3 px-4 flex items-center gap-3">
           <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
           <p className="text-sm text-yellow-800 dark:text-yellow-300">
-            Kontent xizmati hali real API ga ulanmagan. Ko'rsatilgan ma'lumotlar namunavirus.
+            Video, PDF va boshqa materiallar hozircha namuna. SCORM bo'limi real API orqali ishlaydi.
           </p>
         </CardContent>
       </Card>
@@ -118,6 +119,8 @@ export function TeacherContent() {
           </Button>
         </div>
       </div>
+
+      <ScormPackageManager />
 
       <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
         {[

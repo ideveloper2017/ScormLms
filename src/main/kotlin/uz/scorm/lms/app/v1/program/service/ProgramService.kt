@@ -9,6 +9,7 @@ import uz.scorm.lms.app.v1.program.dto.ProgramUpdateRequest
 import uz.scorm.lms.app.v1.program.mapper.ProgramMapper
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
+import uz.scorm.lms.app.v1.compliance.Decision559Rules
 
 @Service
 class ProgramService(
@@ -37,6 +38,13 @@ class ProgramService(
         if (request.code != null && programRepository.existsByCode(request.code)) {
             throw IllegalArgumentException("Program code already exists: ${request.code}")
         }
+        val admissionLimit = Decision559Rules.validateProgramSettings(
+            degreeLevel = request.degreeLevel,
+            distanceEnabled = request.distanceEnabled,
+            informationTechnologyProgram = request.informationTechnologyProgram,
+            requestedLimit = request.distanceAdmissionLimit,
+            licenseReference = request.licenseReference,
+        )
         return programMapper.toDto(
             programRepository.save(
                 Program(
@@ -44,6 +52,11 @@ class ProgramService(
                     code = request.code,
                     degreeLevel = request.degreeLevel,
                     active = request.active,
+                    distanceEnabled = request.distanceEnabled,
+                    informationTechnologyProgram = request.informationTechnologyProgram,
+                    educationLanguage = request.educationLanguage.lowercase(),
+                    distanceAdmissionLimit = admissionLimit,
+                    licenseReference = request.licenseReference,
                     department = request.departmentId?.let { departmentService.getEntity(it) }
                 )
             )
@@ -57,7 +70,18 @@ class ProgramService(
         request.code?.let { program.code = it }
         request.degreeLevel?.let { program.degreeLevel = it }
         request.active?.let { program.active = it }
+        request.distanceEnabled?.let { program.distanceEnabled = it }
+        request.informationTechnologyProgram?.let { program.informationTechnologyProgram = it }
+        request.educationLanguage?.let { program.educationLanguage = it.lowercase() }
+        request.licenseReference?.let { program.licenseReference = it }
         request.departmentId?.let { program.department = departmentService.getEntity(it) }
+        program.distanceAdmissionLimit = Decision559Rules.validateProgramSettings(
+            degreeLevel = program.degreeLevel,
+            distanceEnabled = program.distanceEnabled,
+            informationTechnologyProgram = program.informationTechnologyProgram,
+            requestedLimit = request.distanceAdmissionLimit ?: program.distanceAdmissionLimit,
+            licenseReference = program.licenseReference,
+        )
         return programMapper.toDto(programRepository.save(program))
     }
 

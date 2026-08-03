@@ -5,7 +5,13 @@ import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.model.StudentStatus
+import uz.scorm.lms.app.v1.student.model.Citizenship
+import uz.scorm.lms.app.v1.student.model.EducationForm
+import uz.scorm.lms.app.v1.student.model.PaymentType
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
+import uz.scorm.lms.app.v1.program.repository.ProgramRepository
+import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
+import uz.scorm.lms.app.v1.compliance.Decision559Rules
 import uz.scorm.lms.app.v1.user.model.UserStatus
 import uz.scorm.lms.app.v1.user.service.UserService
 
@@ -13,6 +19,8 @@ import uz.scorm.lms.app.v1.user.service.UserService
 class StudentService(
     private val studentRepository: StudentRepository,
     private val userService: UserService,
+    private val programRepository: ProgramRepository,
+    private val teacherRepository: TeacherRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -34,6 +42,8 @@ class StudentService(
             throw IllegalArgumentException("Bu PINFL allaqachon ro'yxatdan o'tgan: ${req.pinfl}")
         if (studentRepository.existsByStudentNumber(req.studentNumber))
             throw IllegalArgumentException("Bu talaba raqami band: ${req.studentNumber}")
+
+        validateDistanceAdmission(req)
 
         val user = userService.register(req.studentNumber, req.password, "student")
         user.email = req.email
@@ -84,10 +94,62 @@ class StudentService(
         return toDto(studentRepository.save(student))
     }
 
+    private fun validateDistanceAdmission(req: StudentCreateRequest) {
+        if (req.educationForm != EducationForm.DISTANCE) return
+
+        val programId = requireNotNull(req.programId) {
+            "Masofaviy ta'lim uchun yo'nalish tanlanishi shart"
+        }
+        val program = programRepository.findById(programId)
+            .orElseThrow { IllegalArgumentException("Yo'nalish topilmadi: $programId") }
+
+        require(program.distanceEnabled) {
+            "${program.name} yo'nalishida masofaviy ta'limga ruxsat berilmagan"
+        }
+        require(program.degreeLevel.equals(req.degreeLevel.name, ignoreCase = true)) {
+            "Talabaning ta'lim darajasi yo'nalish darajasiga mos emas"
+        }
+        require(req.paymentType == PaymentType.CONTRACT) {
+            "559-son qarorning 13-bandiga ko'ra masofaviy ta'lim to'lov-kontrakt asosida amalga oshiriladi"
+        }
+        require(program.educationLanguage.equals(req.educationLanguage, ignoreCase = true)) {
+            "Ta'lim kontenti tili talabaning ta'lim tiliga mos bo'lishi shart"
+        }
+
+        if (!program.informationTechnologyProgram && req.citizenship == Citizenship.UZBEKISTAN) {
+            val current = studentRepository.countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
+                programId,
+                EducationForm.DISTANCE,
+                StudentStatus.ACTIVE,
+                Citizenship.UZBEKISTAN,
+            )
+            val limit = program.distanceAdmissionLimit
+                ?: Decision559Rules.regulatoryLimit(program.degreeLevel)
+                ?: throw IllegalArgumentException("Yo'nalish uchun masofaviy qabul limiti aniqlanmagan")
+            require(current < limit) {
+                "${program.name} yo'nalishi bo'yicha masofaviy qabul limiti ($limit) to'lgan"
+            }
+        }
+
+        val activeTeachers = teacherRepository.countByActiveTrue()
+        require(activeTeachers > 0) {
+            "Masofaviy talabani qabul qilishdan oldin kamida bitta faol o'qituvchi ro'yxatdan o'tkazilishi kerak"
+        }
+        val activeDistanceStudents = studentRepository.countByEducationFormAndStudentStatus(
+            EducationForm.DISTANCE,
+            StudentStatus.ACTIVE,
+        )
+        require(activeDistanceStudents + 1 <= activeTeachers * Decision559Rules.MAX_STUDENTS_PER_TEACHER) {
+            "559-son qarordagi 1:${Decision559Rules.MAX_STUDENTS_PER_TEACHER} o'qituvchi-talaba normasi buziladi"
+        }
+    }
+
     @Transactional
     fun update(id: Long, req: StudentUpdateRequest): StudentDto {
         val student = studentRepository.findById(id)
             .orElseThrow { NoSuchElementException("Talaba topilmadi: $id") }
+
+        validateDistanceUpdate(student, req)
 
         req.lastName?.let       { student.lastName = it }
         req.firstName?.let      { student.firstName = it }
@@ -122,6 +184,43 @@ class StudentService(
         req.contractAmount?.let    { student.contractAmount = it }
 
         return toDto(studentRepository.save(student))
+    }
+
+    private fun validateDistanceUpdate(student: StudentProfile, req: StudentUpdateRequest) {
+        val futureForm = req.educationForm ?: student.educationForm
+        if (futureForm != EducationForm.DISTANCE) return
+
+        val futureProgramId = req.programId ?: student.programId
+        val programId = requireNotNull(futureProgramId) { "Masofaviy ta'lim uchun yo'nalish tanlanishi shart" }
+        val program = programRepository.findById(programId)
+            .orElseThrow { IllegalArgumentException("Yo'nalish topilmadi: $programId") }
+        val futureDegree = req.degreeLevel ?: student.degreeLevel
+        val futureLanguage = req.educationLanguage ?: student.educationLanguage
+        val futurePayment = req.paymentType ?: student.paymentType
+        val futureStatus = req.studentStatus ?: student.studentStatus
+
+        require(program.distanceEnabled) { "${program.name} yo'nalishida masofaviy ta'limga ruxsat berilmagan" }
+        require(program.degreeLevel.equals(futureDegree.name, ignoreCase = true)) { "Talabaning ta'lim darajasi yo'nalish darajasiga mos emas" }
+        require(futurePayment == PaymentType.CONTRACT) { "Masofaviy ta'lim to'lov-kontrakt asosida amalga oshiriladi" }
+        require(program.educationLanguage.equals(futureLanguage, ignoreCase = true)) { "Ta'lim kontenti tili talabaning ta'lim tiliga mos bo'lishi shart" }
+
+        val entersTargetProgram = student.educationForm != EducationForm.DISTANCE || student.programId != programId || student.studentStatus != StudentStatus.ACTIVE
+        if (!program.informationTechnologyProgram && student.citizenship == Citizenship.UZBEKISTAN && futureStatus == StudentStatus.ACTIVE) {
+            val current = studentRepository.countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
+                programId, EducationForm.DISTANCE, StudentStatus.ACTIVE, Citizenship.UZBEKISTAN,
+            )
+            val limit = program.distanceAdmissionLimit ?: Decision559Rules.regulatoryLimit(program.degreeLevel)
+                ?: throw IllegalArgumentException("Yo'nalish uchun masofaviy qabul limiti aniqlanmagan")
+            require(current + (if (entersTargetProgram) 1 else 0) <= limit) { "${program.name} yo'nalishi bo'yicha masofaviy qabul limiti ($limit) to'lgan" }
+        }
+
+        if (futureStatus == StudentStatus.ACTIVE && (student.educationForm != EducationForm.DISTANCE || student.studentStatus != StudentStatus.ACTIVE)) {
+            val teachers = teacherRepository.countByActiveTrue()
+            val current = studentRepository.countByEducationFormAndStudentStatus(EducationForm.DISTANCE, StudentStatus.ACTIVE)
+            require(teachers > 0 && current + 1 <= teachers * Decision559Rules.MAX_STUDENTS_PER_TEACHER) {
+                "559-son qarordagi 1:${Decision559Rules.MAX_STUDENTS_PER_TEACHER} o'qituvchi-talaba normasi buziladi"
+            }
+        }
     }
 
     @Transactional

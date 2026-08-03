@@ -3,6 +3,11 @@ package uz.scorm.lms.app.v1.student.service
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.notification.service.NotificationService
+import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
+import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
+import uz.scorm.lms.app.v1.courses.service.StudyPlanService
+import uz.scorm.lms.app.v1.attendance.service.AttendanceService
+import uz.scorm.lms.app.v1.assignment.service.AssignmentService
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
@@ -15,6 +20,10 @@ class StudentPortalService(
     private val studentRepository: StudentRepository,
     private val userRepository: UserRepository,
     private val notificationService: NotificationService,
+    private val enrollmentRepository: CourseEnrollmentRepository,
+    private val studyPlanService: StudyPlanService,
+    private val attendanceService: AttendanceService,
+    private val assignmentService: AssignmentService,
 ) {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -45,26 +54,51 @@ class StudentPortalService(
 
     // ─── Dashboard stats ─────────────────────────────────────────────────────
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun getDashboardStats(user: User): StudentDashboardStatsDto {
-        val s = profile(user)
+        val plan = studyPlanService.studyPlan(requireNotNull(user.id), null)
+        val attendance = attendanceService.studentStats(requireNotNull(user.id))
         return StudentDashboardStatsDto(
-            activeCourses        = 0,
-            completedCourses     = 0,
-            pendingAssignments   = 0,
+            activeCourses        = plan.courses.count { it.status == "active" },
+            completedCourses     = plan.courses.count { it.status == "completed" },
+            pendingAssignments   = assignmentService.studentAssignments(requireNotNull(user.id))
+                .count { it.status == "pending" || it.status == "overdue" },
             upcomingTests        = 0,
             averageGrade         = 0.0,
-            attendancePercentage = 0.0,
+            attendancePercentage = attendance.attendancePercentage,
             gpa                  = 0.0,
-            totalCredits         = 0,
+            totalCredits         = plan.completedCredits,
             learningStreak       = 0,
         )
     }
 
     // ─── Courses ─────────────────────────────────────────────────────────────
 
-    @Transactional(readOnly = true)
-    fun getCourses(user: User): List<StudentCourseDto> = emptyList()
+    @Transactional
+    fun getCourses(user: User): List<StudentCourseDto> {
+        val student = profileOrThrow(user)
+        return enrollmentRepository.findAllByStudentIdAndStatusInAndDeletedFalseOrderByEnrolledAtDesc(
+            requireNotNull(student.id),
+            setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED),
+        ).map { enrollment ->
+            val course = enrollment.course
+            val calculated = studyPlanService.courseProgress(requireNotNull(course.id), requireNotNull(user.id))
+            StudentCourseDto(
+                id = requireNotNull(course.id).toString(),
+                title = course.title.orEmpty(),
+                description = course.description ?: course.shortDescription.orEmpty(),
+                instructor = course.userId?.let { ownerId ->
+                    userRepository.findById(ownerId).orElse(null)?.let {
+                        it.fullName?.takeIf(String::isNotBlank) ?: it.username
+                    }
+                } ?: "O'qituvchi",
+                progress = calculated.progress,
+                status = calculated.status,
+                credits = enrollment.credits,
+                imageUrl = course.thumbnail,
+            )
+        }
+    }
 
     // ─── Schedule ────────────────────────────────────────────────────────────
 
@@ -74,14 +108,32 @@ class StudentPortalService(
     // ─── Attendance ──────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getAttendance(user: User, courseId: String? = null): List<StudentAttendanceRecordDto> =
-        emptyList()
+    fun getAttendance(
+        user: User,
+        courseId: String? = null,
+        startDate: LocalDate? = null,
+        endDate: LocalDate? = null,
+        status: String? = null,
+    ): List<StudentAttendanceRecordDto> = attendanceService.studentRecords(
+        requireNotNull(user.id), attendanceCourseId(courseId), startDate, endDate, status,
+    )
 
     @Transactional(readOnly = true)
-    fun getAttendanceStats(user: User): StudentAttendanceStatsDto = StudentAttendanceStatsDto()
+    fun getAttendanceStats(user: User): StudentAttendanceStatsDto =
+        attendanceService.studentStats(requireNotNull(user.id))
 
     @Transactional(readOnly = true)
-    fun getAttendanceSummary(user: User): StudentAttendanceSummaryDto = StudentAttendanceSummaryDto()
+    fun getAttendanceSummary(user: User): StudentAttendanceSummaryDto =
+        attendanceService.studentSummary(requireNotNull(user.id))
+
+    @Transactional(readOnly = true)
+    fun getAttendancePercentage(user: User, courseId: String? = null): AttendancePercentageDto =
+        attendanceService.studentPercentage(requireNotNull(user.id), attendanceCourseId(courseId))
+
+    private fun attendanceCourseId(courseId: String?): Long? = courseId?.let {
+        it.toLongOrNull()?.takeIf { value -> value > 0 }
+            ?: throw IllegalArgumentException("Kurs identifikatori noto'g'ri")
+    }
 
     // ─── Grades ──────────────────────────────────────────────────────────────
 
@@ -121,7 +173,17 @@ class StudentPortalService(
     // ─── Assignments ─────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getAssignments(user: User): List<StudentAssignmentDto> = emptyList()
+    fun getAssignments(
+        user: User,
+        status: String? = null,
+        courseId: Long? = null,
+        priority: String? = null,
+    ): List<StudentAssignmentDto> = assignmentService.studentAssignments(
+        requireNotNull(user.id),
+        status,
+        courseId,
+        priority,
+    )
 
     // ─── Tests ───────────────────────────────────────────────────────────────
 

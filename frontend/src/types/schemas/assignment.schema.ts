@@ -16,6 +16,7 @@ export const AssignmentSchema = z.object({
   maxScore: z.number().min(0, 'Max score must be non-negative'),
   submittedAt: z.coerce.date().optional(),
   grade: z.number().min(0).optional(),
+  feedback: z.string().optional(),
 });
 
 export const AttachmentFileSchema = z.object({
@@ -43,12 +44,15 @@ export const AssignmentSubmissionSchema = z.object({
   id: z.string().min(1),
   assignmentId: z.string().min(1),
   studentId: z.string().min(1),
-  fileUrl: z.string().url('Invalid file URL').optional(),
+  fileUrl: z.string().min(1).optional(),
+  fileName: z.string().optional(),
   answer: z.string().optional(),
   submittedAt: z.coerce.date(),
   grade: z.number().min(0).optional(),
   feedback: z.string().optional(),
   status: z.enum(['submitted', 'graded', 'returned']),
+  attemptNumber: z.number().int().positive().optional(),
+  late: z.boolean().optional(),
 });
 
 // Array schemas

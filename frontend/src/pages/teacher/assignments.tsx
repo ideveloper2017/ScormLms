@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ClipboardList, Plus, Search, Eye, Edit, Trash2,
+  ClipboardList, Plus, Search, Eye, Trash2,
   MoreHorizontal, Clock, Users, CheckCircle2, AlertCircle,
   AlertTriangle, RefreshCw,
 } from "lucide-react";
@@ -28,16 +28,6 @@ import { useToast } from "@/hooks/use-toast";
 import { qk } from "@/lib/query-keys";
 import { teacherPortalApi } from "@/services/api/teacher-portal-api";
 
-const TYPE_META: Record<string, string> = {
-  homework: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  project:  "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
-  lab:      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  practice: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-};
-const TYPE_LABEL: Record<string, string> = {
-  homework: "Uy vazifasi", project: "Loyiha", lab: "Laboratoriya", practice: "Amaliyot",
-};
-
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   active: { label: "Faol",     cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
   draft:  { label: "Qoralama", cls: "bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400" },
@@ -55,12 +45,18 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
   const [createOpen, setCreateOpen] = useState(openCreate);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    title: "", course: "", dueDate: "", maxScore: "100", description: "", type: "homework",
+    title: "", course: "", dueDate: "", maxScore: "100", description: "",
+    priority: "MEDIUM", submissionType: "BOTH",
   });
 
   const { data: assignments = [], isLoading, error, refetch } = useQuery({
     queryKey: qk.teacher.assignments(),
     queryFn: teacherPortalApi.getAssignments,
+    staleTime: 60_000,
+  });
+  const { data: courses = [] } = useQuery({
+    queryKey: qk.teacher.courses(),
+    queryFn: teacherPortalApi.getCourses,
     staleTime: 60_000,
   });
 
@@ -78,12 +74,51 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
   };
 
   const handleCreate = async () => {
-    if (!form.title.trim()) { toast({ variant: "destructive", title: "Nomi majburiy" }); return; }
+    if (!form.title.trim() || !form.course || !form.dueDate) {
+      toast({ variant: "destructive", title: "Nomi, kursi va muddati majburiy" });
+      return;
+    }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 500));
-    toast({ title: "Topshiriq yaratildi", description: form.title });
-    setCreateOpen(false);
-    setSaving(false);
+    try {
+      await teacherPortalApi.createAssignment({
+        courseId: Number(form.course),
+        title: form.title.trim(),
+        description: form.description.trim(),
+        instructions: form.description.trim(),
+        dueDate: new Date(form.dueDate).toISOString(),
+        maxScore: Number(form.maxScore),
+        priority: form.priority as 'LOW' | 'MEDIUM' | 'HIGH',
+        submissionType: form.submissionType as 'FILE' | 'TEXT' | 'BOTH',
+        status: 'PUBLISHED',
+      });
+      await refetch();
+      toast({ title: "Topshiriq yaratildi", description: form.title });
+      setCreateOpen(false);
+      setForm({ title: "", course: "", dueDate: "", maxScore: "100", description: "", priority: "MEDIUM", submissionType: "BOTH" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Topshiriq yaratilmadi", description: (e as Error).message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changeStatus = async (id: string, current: string) => {
+    try {
+      await teacherPortalApi.updateAssignmentStatus(id, current === 'active' ? 'CLOSED' : 'PUBLISHED');
+      await refetch();
+    } catch (e) {
+      toast({ variant: "destructive", title: "Holat o'zgarmadi", description: (e as Error).message });
+    }
+  };
+
+  const removeAssignment = async (id: string) => {
+    try {
+      await teacherPortalApi.deleteAssignment(id);
+      await refetch();
+      toast({ title: "Topshiriq o'chirildi" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "O'chirib bo'lmadi", description: (e as Error).message });
+    }
   };
 
   if (isLoading) return (
@@ -180,11 +215,11 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
                       >
                         <Eye className="h-4 w-4" />Topshiriqlarni ko'rish
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2">
-                        <Edit className="h-4 w-4" />Tahrirlash
+                      <DropdownMenuItem className="gap-2" onClick={() => changeStatus(a.id, a.status)}>
+                        <CheckCircle2 className="h-4 w-4" />{a.status === 'active' ? 'Yopish' : 'Nashr qilish'}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+                      <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => removeAssignment(a.id)}>
                         <Trash2 className="h-4 w-4" />O'chirish
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -240,11 +275,11 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Turi</Label>
-                <Select value={form.type} onValueChange={(v) => set("type", v)}>
+                <Label>Kurs</Label>
+                <Select value={form.course} onValueChange={(v) => set("course", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(TYPE_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    {courses.map((course) => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -255,7 +290,31 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
             </div>
             <div className="space-y-1.5">
               <Label>Muddat</Label>
-              <Input type="date" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
+              <Input type="datetime-local" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Muhimlik</Label>
+                <Select value={form.priority} onValueChange={(v) => set("priority", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOW">Past</SelectItem>
+                    <SelectItem value="MEDIUM">O'rta</SelectItem>
+                    <SelectItem value="HIGH">Yuqori</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Javob turi</Label>
+                <Select value={form.submissionType} onValueChange={(v) => set("submissionType", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BOTH">Fayl yoki matn</SelectItem>
+                    <SelectItem value="FILE">Faqat fayl</SelectItem>
+                    <SelectItem value="TEXT">Faqat matn</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Tavsif</Label>

@@ -236,7 +236,9 @@ export function StudentGrades() {
                             {grade.assignmentName || grade.testName || "Boshqa baholash"}
                           </span>
                           {grade.scorePercentage >= 90 && (
-                            <Trophy className="h-4 w-4 text-yellow-500" title="A'lo natija!" />
+                            <span title="A'lo natija!">
+                              <Trophy className="h-4 w-4 text-yellow-500" />
+                            </span>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">

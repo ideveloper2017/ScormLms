@@ -26,5 +26,15 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/__tests__/**",
+    "src/**/*.example.ts",
+    "src/**/*.example.tsx",
+    "src/**/*-example.tsx",
+    "src/**/usage-example.tsx",
+    "src/types/VALIDATION_USAGE_EXAMPLE.ts"
+  ]
 }

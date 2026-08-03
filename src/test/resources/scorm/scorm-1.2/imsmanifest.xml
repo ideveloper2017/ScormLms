@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="scorm-lms-e2e-12"
+          version="1.0"
+          xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+          xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata>
+    <schema>ADL SCORM</schema>
+    <schemaversion>1.2</schemaversion>
+  </metadata>
+  <organizations default="e2e-org-12">
+    <organization identifier="e2e-org-12">
+      <title>SCORM 1.2 E2E kursi</title>
+      <item identifier="e2e-item-12" identifierref="e2e-resource-12">
+        <title>SCORM 1.2 amaliy modul</title>
+      </item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="e2e-resource-12" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <file href="index.html"/>
+    </resource>
+  </resources>
+</manifest>
+

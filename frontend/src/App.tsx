@@ -53,6 +53,7 @@ import { AdminStudyPlans } from "@/pages/admin/study-plans";
 import { AdminCalendar } from "@/pages/admin/calendar";
 import { AdminIntegrations } from "@/pages/admin/integrations";
 import { AdminAuditLogs } from "@/pages/admin/audit-logs";
+import { AdminCompliance559 } from "@/pages/admin/compliance-559";
 
 // Student pages
 import { StudentSchedule } from "@/pages/student/schedule";
@@ -63,6 +64,8 @@ import { TestResults } from "@/pages/student/test-results";
 import { StudentGrades } from "@/pages/student/grades";
 import { StudentAttendance } from "@/pages/student/attendance";
 import { StudentNotifications } from "@/pages/student/notifications";
+import { StudentStudyPlan } from "@/pages/student/study-plan";
+import { StudentCourseLearning } from "@/pages/student/course-learning";
 
 // Teacher pages
 import { TeacherDashboard } from "@/pages/teacher/dashboard";
@@ -229,6 +232,8 @@ function App() {
         {/* ── /student/* ───────────────────────────────────────────────────── */}
         <Route path="/student/dashboard"     element={<P roles={[R_STU]}><StudentDashboard /></P>} />
         <Route path="/student/courses"       element={<P roles={[R_STU]}><Courses /></P>} />
+        <Route path="/student/study-plan"    element={<P roles={[R_STU]}><StudentStudyPlan /></P>} />
+        <Route path="/student/courses/:id/learn" element={<P roles={[R_STU]}><StudentCourseLearning /></P>} />
         <Route path="/student/schedule"      element={<P roles={[R_STU]}><StudentSchedule /></P>} />
         <Route path="/student/assignments"   element={<P roles={[R_STU]}><StudentAssignments /></P>} />
         <Route path="/student/tests"         element={<P roles={[R_STU]}><StudentTests /></P>} />
@@ -287,6 +292,7 @@ function App() {
         <Route path="/admin/reports"      element={<P roles={REPORTING_ROLES}><Reports /></P>} />
         <Route path="/admin/integrations" element={<P roles={ADMIN_ROLES}><AdminIntegrations /></P>} />
         <Route path="/admin/audit-logs"   element={<P roles={ADMIN_ROLES}><AdminAuditLogs /></P>} />
+        <Route path="/admin/compliance-559" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminCompliance559 /></P>} />
         <Route path="/admin/settings"          element={<P roles={ADMIN_ROLES}><Settings /></P>} />
         <Route path="/admin/notifications"     element={<P roles={STAFF_ROLES}><StudentNotifications /></P>} />
 

@@ -33,14 +33,18 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
-const renderLoginForm = () => {
-  return render(
+const renderLoginForm = async () => {
+  const result = render(
     <BrowserRouter>
       <AuthProvider>
         <LoginForm onSuccess={vi.fn()} />
       </AuthProvider>
     </BrowserRouter>
   );
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: /^kirish$/i })).toBeEnabled();
+  });
+  return result;
 };
 
 describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
@@ -79,12 +83,12 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
         uploadedAt: new Date(),
       });
 
-      renderLoginForm();
+      await renderLoginForm();
 
       // Fill in login form
-      const usernameInput = screen.getByPlaceholderText(/email yoki login/i);
+      const usernameInput = screen.getByLabelText(/^login$/i);
       const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /kirish/i });
+      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
 
       fireEvent.change(usernameInput, { target: { value: 'student' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -116,11 +120,11 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
         uploadedAt: new Date(),
       });
 
-      renderLoginForm();
+      await renderLoginForm();
 
-      const usernameInput = screen.getByPlaceholderText(/email yoki login/i);
+      const usernameInput = screen.getByLabelText(/^login$/i);
       const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /kirish/i });
+      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
 
       fireEvent.change(usernameInput, { target: { value: 'student' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -155,11 +159,11 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       // Mock that user DOES NOT have a face photo
       vi.mocked(faceRecognitionApi.getFacePhotoUrl).mockResolvedValue(null);
 
-      renderLoginForm();
+      await renderLoginForm();
 
-      const usernameInput = screen.getByPlaceholderText(/email yoki login/i);
+      const usernameInput = screen.getByLabelText(/^login$/i);
       const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /kirish/i });
+      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
 
       fireEvent.change(usernameInput, { target: { value: 'student' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -194,11 +198,11 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
         new Error('Network error')
       );
 
-      renderLoginForm();
+      await renderLoginForm();
 
-      const usernameInput = screen.getByPlaceholderText(/email yoki login/i);
+      const usernameInput = screen.getByLabelText(/^login$/i);
       const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /kirish/i });
+      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
 
       fireEvent.change(usernameInput, { target: { value: 'student' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -229,11 +233,11 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       };
       vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
 
-      renderLoginForm();
+      await renderLoginForm();
 
-      const usernameInput = screen.getByPlaceholderText(/email yoki login/i);
+      const usernameInput = screen.getByLabelText(/^login$/i);
       const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /kirish/i });
+      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
 
       fireEvent.change(usernameInput, { target: { value: 'admin' } });
       fireEvent.change(passwordInput, { target: { value: 'admin123' } });
@@ -263,11 +267,11 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       };
       vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
 
-      renderLoginForm();
+      await renderLoginForm();
 
-      const usernameInput = screen.getByPlaceholderText(/email yoki login/i);
+      const usernameInput = screen.getByLabelText(/^login$/i);
       const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /kirish/i });
+      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
 
       fireEvent.change(usernameInput, { target: { value: 'instructor' } });
       fireEvent.change(passwordInput, { target: { value: 'instructor123' } });
@@ -302,7 +306,7 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
         uploadedAt: new Date(),
       });
 
-      renderLoginForm();
+      await renderLoginForm();
 
       // Click quick login student button
       const studentQuickLogin = screen.getByRole('button', { name: /talaba/i });
@@ -329,7 +333,7 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       };
       vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
 
-      renderLoginForm();
+      await renderLoginForm();
 
       // Click quick login admin button
       const adminQuickLogin = screen.getByRole('button', { name: /admin/i });
@@ -361,11 +365,11 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
       vi.mocked(faceRecognitionApi.getFacePhotoUrl).mockResolvedValue(null);
 
-      renderLoginForm();
+      await renderLoginForm();
 
-      const usernameInput = screen.getByPlaceholderText(/email yoki login/i);
+      const usernameInput = screen.getByLabelText(/^login$/i);
       const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /kirish/i });
+      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
 
       fireEvent.change(usernameInput, { target: { value: 'student' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -390,11 +394,11 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       };
       vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
 
-      renderLoginForm();
+      await renderLoginForm();
 
-      const usernameInput = screen.getByPlaceholderText(/email yoki login/i);
+      const usernameInput = screen.getByLabelText(/^login$/i);
       const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /kirish/i });
+      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
 
       fireEvent.change(usernameInput, { target: { value: 'student' } });
       fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } });

@@ -36,7 +36,7 @@ export function AdminSubjects() {
   const subjects = useCrudData<SubjectRecord>(qk.subjects(), listSubjects);
   const { data: programs = [] } = useQuery({
     queryKey: qk.programs(),
-    queryFn: listPrograms,
+    queryFn: () => listPrograms(),
     staleTime: 60_000,
   });
 

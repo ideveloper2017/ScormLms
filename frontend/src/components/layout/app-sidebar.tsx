@@ -6,7 +6,7 @@ import {
   Sparkles, Building2, Layers3, NotebookText, UserCog,
   LayoutDashboard, Shield, Building, FolderTree, Calendar,
   Plug, ScrollText, BookMarked, CalendarDays, FileQuestion,
-  Star, Bell, CircleUser, Video, Megaphone,
+  Star, Bell, CircleUser, Video, Megaphone, Scale,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
@@ -62,6 +62,7 @@ const ITEMS = {
   // ── Talaba navigatsiyasi (/student/*) ──────────────────────────────────
   sDashboard:     { name: "Dashboard",           href: "/student/dashboard",     icon: LayoutDashboard },
   sCourses:       { name: "Mening kurslarim",    href: "/student/courses",       icon: BookOpen        },
+  sStudyPlan:     { name: "O'quv rejam",         href: "/student/study-plan",    icon: BookMarked      },
   sSchedule:      { name: "Dars jadvali",        href: "/student/schedule",      icon: CalendarDays    },
   sAssignments:   { name: "Topshiriqlar",        href: "/student/assignments",   icon: ClipboardList   },
   sTests:         { name: "Testlar",             href: "/student/tests",         icon: FileQuestion    },
@@ -90,6 +91,7 @@ const ITEMS = {
   aReports:      { name: "Hisobotlar",          href: "/admin/reports",      icon: BarChart3       },
   aIntegrations: { name: "Integratsiyalar",     href: "/admin/integrations", icon: Plug            },
   aAuditLogs:     { name: "Audit log",            href: "/admin/audit-logs",       icon: ScrollText      },
+  aCompliance559: { name: "559-son qaror",        href: "/admin/compliance-559",   icon: Scale           },
   aSettings:      { name: "Sozlamalar",          href: "/admin/settings",         icon: Settings        },
   aNotifications: { name: "Bildirishnomalar",    href: "/admin/notifications",     icon: Bell            },
   tNotifications: { name: "Bildirishnomalar",    href: "/teacher/notifications",   icon: Bell            },
@@ -104,7 +106,7 @@ function buildNav(role: string): NavGroup[] {
     { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aTeachers, ITEMS.aRoles] },
     { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aGroups, ITEMS.aSubjects] },
     { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aCourses, ITEMS.aCalendar] },
-    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.aSettings] },
+    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aCompliance559, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.aSettings] },
   ];
 
   const groups: Record<string, NavGroup[]> = {
@@ -127,7 +129,7 @@ function buildNav(role: string): NavGroup[] {
     ],
     STUDENT: [
       { label: "Asosiy",    items: [ITEMS.sDashboard] },
-      { label: "Ta'lim",    items: [ITEMS.sCourses, ITEMS.sSchedule, ITEMS.sAssignments, ITEMS.sTests, ITEMS.sExams] },
+      { label: "Ta'lim",    items: [ITEMS.sStudyPlan, ITEMS.sCourses, ITEMS.sSchedule, ITEMS.sAssignments, ITEMS.sTests, ITEMS.sExams] },
       { label: "Natijalar", items: [ITEMS.sGrades, ITEMS.sAttendance] },
       { label: "Aloqa",     items: [ITEMS.sMessages, ITEMS.sNotifications] },
       { label: "Boshqa",    items: [ITEMS.sCalendar, ITEMS.sProfile] },

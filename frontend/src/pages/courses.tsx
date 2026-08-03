@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
   Plus, 
@@ -74,6 +75,7 @@ const contentTypes = [
 ];
 
 export function Courses() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Barcha kategoriyalar');
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'completed' | 'draft'>('all');
@@ -478,7 +480,7 @@ export function Courses() {
                     </div>
                     
                     <div className="flex gap-2">
-                      <Button className="flex-1 gap-2" size="sm">
+                      <Button className="flex-1 gap-2" size="sm" onClick={() => navigate(`/student/courses/${course.id}/learn`)}>
                         <Eye className="h-4 w-4" />
                         Ko'rish
                       </Button>

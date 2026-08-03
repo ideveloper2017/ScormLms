@@ -1,14 +1,10 @@
 package uz.scorm.lms.app.v1.courses.model
 
-import org.springframework.data.annotation.CreatedDate
-import org.springframework.data.annotation.LastModifiedDate
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
-import java.time.LocalDateTime
 import jakarta.persistence.*
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
-import org.springframework.stereotype.Indexed
 import uz.scorm.lms.app.common.BaseEntity
+import java.time.Instant
+import java.time.LocalDate
 
 @Entity
 @Table(name = "courses",indexes = [
@@ -16,76 +12,94 @@ import uz.scorm.lms.app.common.BaseEntity
     Index(name = "idx_course_category_id", columnList = "category_id")
 ])
 @EntityListeners(AuditingEntityListener::class)
-data class Course(
+class Course(
 
     @Column
-    val title: String? = null,
+    var title: String? = null,
 
     @Column
-    val slug: String? = null,
+    var slug: String? = null,
 
     @Column(name = "short_description", columnDefinition = "TEXT")
-    val shortDescription: String? = null,
+    var shortDescription: String? = null,
 
     @Column(name = "user_id")
-    val userId: Long? = null,
+    var userId: Long? = null,
 
     @Column(name = "category_id")
-    val categoryId: Long? = null,
+    var categoryId: Long? = null,
 
     @Column(name = "course_type")
-    val courseType: String? = null,
+    var courseType: String? = null,
 
     @Column
-    val status: String? = null,
+    var status: String? = CourseStatus.DRAFT.name,
 
     @Column
-    val level: String? = null,
+    var level: String? = null,
 
     @Column
-    val language: String? = null,
+    var language: String? = null,
+
+    @Column(name = "subject_name")
+    var subjectName: String? = null,
+
+    @Column(name = "group_name")
+    var groupName: String? = null,
+
+    @Column(name = "start_date")
+    var startDate: LocalDate? = null,
+
+    @Column(name = "end_date")
+    var endDate: LocalDate? = null,
+
+    @Column(name = "published_at")
+    var publishedAt: Instant? = null,
+
+    @Column(name = "archived_at")
+    var archivedAt: Instant? = null,
 
     @Column(name = "is_paid")
-    val isPaid: Int? = null,
+    var isPaid: Int? = null,
 
     @Column
-    val price: Double? = null,
+    var price: Double? = null,
 
     @Column(name = "discount_flag")
-    val discountFlag: Int? = null,
+    var discountFlag: Int? = null,
 
     @Column(name = "discounted_price")
-    val discountedPrice: Double? = null,
+    var discountedPrice: Double? = null,
 
     @Column(name = "meta_keywords", columnDefinition = "TEXT")
-    val metaKeywords: String? = null,
+    var metaKeywords: String? = null,
 
     @Column(name = "meta_description", columnDefinition = "TEXT")
-    val metaDescription: String? = null,
+    var metaDescription: String? = null,
 
     @Column
-    val thumbnail: String? = null,
+    var thumbnail: String? = null,
 
     @Column
-    val banner: String? = null,
+    var banner: String? = null,
 
     @Column
-    val preview: String? = null,
+    var preview: String? = null,
 
     @Column(columnDefinition = "TEXT")
-    val description: String? = null,
+    var description: String? = null,
 
     @Column(columnDefinition = "TEXT")
-    val requirements: String? = null,
+    var requirements: String? = null,
 
     @Column(columnDefinition = "TEXT")
-    val outcomes: String? = null,
+    var outcomes: String? = null,
 
     @Column(columnDefinition = "TEXT")
-    val faqs: String? = null,
+    var faqs: String? = null,
 
     @Column(name = "instructor_ids", columnDefinition = "TEXT")
-    val instructorIds: String? = null,
+    var instructorIds: String? = null,
 
 //    @CreatedDate
 //    @Column(name = "created_at", nullable = false, updatable = false)
@@ -96,4 +110,10 @@ data class Course(
 //    var updatedAt: LocalDateTime = LocalDateTime.now()
 ): BaseEntity() {
 
+}
+
+enum class CourseStatus {
+    DRAFT,
+    PUBLISHED,
+    ARCHIVED,
 }

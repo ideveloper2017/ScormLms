@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="scorm-lms-e2e-2004"
+          version="1.0"
+          xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
+          xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_v1p3"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata>
+    <schema>ADL SCORM</schema>
+    <schemaversion>2004 4th Edition</schemaversion>
+  </metadata>
+  <organizations default="e2e-org-2004">
+    <organization identifier="e2e-org-2004">
+      <title>SCORM 2004 E2E kursi</title>
+      <item identifier="e2e-item-2004" identifierref="e2e-resource-2004">
+        <title>SCORM 2004 amaliy modul</title>
+      </item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="e2e-resource-2004" type="webcontent" adlcp:scormType="sco" href="index.html">
+      <file href="index.html"/>
+    </resource>
+  </resources>
+</manifest>
+

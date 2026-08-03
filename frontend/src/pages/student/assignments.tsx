@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import {
-  Clock, Upload, CheckCircle2, AlertCircle,
+  Clock, Upload, CheckCircle2, AlertCircle, ClipboardList,
   Circle, Search, Filter, ChevronDown, FileText, Paperclip,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,10 +123,8 @@ export function StudentAssignments() {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      toast({ 
-        title: "Xatolik", 
+      toast.error("Xatolik", {
         description: `Fayl hajmi ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(0)}MB dan kichik bo'lishi kerak`,
-        variant: "destructive"
       });
       e.target.value = "";
       return;
@@ -135,21 +133,15 @@ export function StudentAssignments() {
     // Validate file extension
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
     if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
-      toast({ 
-        title: "Xatolik", 
+      toast.error("Xatolik", {
         description: `Faqat ${ALLOWED_EXTENSIONS.join(', ')} formatdagi fayllar qabul qilinadi`,
-        variant: "destructive"
       });
       e.target.value = "";
       return;
     }
 
     setSubmissionFile(file);
-    toast({ 
-      title: "Muvaffaqiyatli", 
-      description: `${file.name} yuklandi`,
-      variant: "default"
-    });
+    toast.success("Muvaffaqiyatli", { description: `${file.name} yuklandi` });
   };
 
   const handleSubmitAssignment = () => {
@@ -346,7 +338,7 @@ export function StudentAssignments() {
                         </span>
                       </span>
                     )}
-                    {isPending && (
+                    {(isPending || isOverdue) && (
                       <Button 
                         size="sm" 
                         className="gap-1.5 h-8"
@@ -354,7 +346,7 @@ export function StudentAssignments() {
                         disabled={submitAssignment.isPending}
                       >
                         <Upload className="h-3.5 w-3.5" />
-                        Topshirish
+                        {isOverdue ? "Kechikib topshirish" : "Topshirish"}
                       </Button>
                     )}
                     {a.status === "submitted" && (
@@ -371,6 +363,11 @@ export function StudentAssignments() {
                     )}
                   </div>
                 </div>
+                {a.status === "graded" && a.feedback && (
+                  <div className="rounded-md bg-muted/50 p-3 text-sm">
+                    <span className="font-medium">O'qituvchi izohi:</span> {a.feedback}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

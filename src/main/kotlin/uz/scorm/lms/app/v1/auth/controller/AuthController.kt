@@ -156,70 +156,23 @@ class AuthController(
     )
     fun refreshToken(@RequestHeader("Authorization") refreshToken: String): ResponseEntity<CommonApiResponse<JwtResponse>> {
         return try {
-            // Remove 'Bearer ' prefix if present
             val token = refreshToken.substringAfter("Bearer ").trim()
+            val storedToken = refreshTokenService.validate(token)
+            val username = storedToken.user?.username
+                ?: throw IllegalStateException("Refresh token foydalanuvchisi topilmadi")
+            val userDetails = userDetailsService.loadUserByUsername(username)
+            val newAccessToken = jwtService.generateToken(userDetails)
+            val rotatedToken = refreshTokenService.rotate(token)
 
-            // First, try to validate the token with JWT service
-            if (!jwtService.isRefreshToken(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(CommonApiResponse.error(message = "Invalid token type"))
-            }
-
-            // Get username from token
-            val username =
-                jwtService.getUsernameFromToken(token) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(CommonApiResponse.error(message = "Invalid token"))
-
-            // Verify token is not expired
-            if (jwtService.isTokenExpired(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(CommonApiResponse.error(message = "Token expired"))
-            }
-
-            // Load user details
-            val userDetails = try {
-                userDetailsService.loadUserByUsername(username)
-            } catch (e: Exception) {
-                logger.error("User not found: $username", e)
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(CommonApiResponse.error(message = "User not found"))
-            }
-
-            // Generate new tokens
-            try {
-                val newAccessToken = jwtService.generateAccessToken(userDetails)
-                val newRefreshToken = jwtService.generateRefreshToken(userDetails)
-
-                // Revoke the old refresh token
-                try {
-                    refreshTokenService.revoke(token)
-                } catch (e: Exception) {
-                    logger.warn("Failed to revoke old refresh token: ${e.message}")
-                    // Continue even if revocation fails
-                }
-
-                ResponseEntity.ok(
-                    CommonApiResponse.success(
-                        JwtResponse(
-                            accessToken = newAccessToken,
-                            refreshToken = newRefreshToken,
-                            expiresIn = jwtService.getExpirationInSeconds(newAccessToken)
-                        )
-                    )
-                )
-            } catch (e: Exception) {
-                logger.error("Failed to generate new tokens: ${e.message}", e)
-                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(CommonApiResponse.error(message = "Failed to generate tokens"))
-            }
+            ResponseEntity.ok(CommonApiResponse.success(JwtResponse(
+                accessToken = newAccessToken,
+                refreshToken = rotatedToken.token,
+                expiresIn = jwtService.getExpirationInSeconds(newAccessToken),
+            )))
         } catch (e: Exception) {
             logger.error("Token refresh failed: ${e.message}", e)
-            val errorMessage = when (e) {
-                is IllegalStateException -> e.message ?: "Invalid token"
-                else -> "Failed to refresh token"
-            }
             ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(CommonApiResponse.error(message = errorMessage))
+                .body(CommonApiResponse.error(message = e.message ?: "Refresh token yaroqsiz"))
         }
     }
 

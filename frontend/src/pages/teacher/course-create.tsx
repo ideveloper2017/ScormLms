@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { teacherPortalApi } from "@/services/api/teacher-portal-api";
 
 const SUBJECTS = [
   "Dasturlash", "Web dasturlash", "Backend", "Ma'lumotlar bazasi",
@@ -32,11 +33,32 @@ export function TeacherCourseCreate() {
   const handleSave = async () => {
     if (!form.title.trim()) { toast({ variant: "destructive", title: "Kurs nomi majburiy" }); return; }
     if (!form.subject) { toast({ variant: "destructive", title: "Fan majburiy" }); return; }
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      toast({ variant: "destructive", title: "Tugash sanasi boshlanish sanasidan oldin bo'lmaydi" });
+      return;
+    }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    toast({ title: "Kurs yaratildi", description: form.title });
-    navigate("/teacher/courses");
-    setSaving(false);
+    try {
+      const created = await teacherPortalApi.createCourse({
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        subjectName: form.subject,
+        groupName: form.group || undefined,
+        startDate: form.startDate || undefined,
+        endDate: form.endDate || undefined,
+        language: "uz",
+      });
+      toast({ title: "Kurs qoralama sifatida yaratildi", description: created.title });
+      navigate(`/teacher/courses/${created.id}`);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Kurs yaratilmadi",
+        description: error instanceof Error ? error.message : undefined,
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

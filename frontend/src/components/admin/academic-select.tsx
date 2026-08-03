@@ -6,11 +6,12 @@ import { listFaculties, listGroups, listPrograms } from "@/lib/academic-api";
 import { qk } from "@/lib/query-keys";
 
 type Kind = "faculty" | "program" | "group";
+type AcademicOption = { id?: number; name: string };
 
-const QUERY_CONFIG: Record<Kind, { key: () => readonly string[]; fn: () => Promise<{ name: string }[]> }> = {
-  faculty: { key: qk.faculties, fn: listFaculties as () => Promise<{ name: string }[]> },
-  program: { key: qk.programs,  fn: listPrograms  as () => Promise<{ name: string }[]> },
-  group:   { key: qk.groups,    fn: listGroups    as () => Promise<{ name: string }[]> },
+const QUERY_CONFIG: Record<Kind, { key: () => readonly string[]; fn: () => Promise<AcademicOption[]> }> = {
+  faculty: { key: qk.faculties, fn: listFaculties },
+  program: { key: qk.programs,  fn: () => listPrograms() },
+  group:   { key: qk.groups,    fn: () => listGroups() },
 };
 
 /**
@@ -20,12 +21,13 @@ const QUERY_CONFIG: Record<Kind, { key: () => readonly string[]; fn: () => Promi
  * Ro'yxatda yo'q eski qiymatlar ham ko'rsatiladi (ma'lumot yo'qolmasligi uchun).
  */
 export function AcademicSelect({
-  kind, value, onChange, placeholder,
+  kind, value, onChange, placeholder, valueMode = "name",
 }: {
   kind: Kind;
   value: string;
-  onChange: (name: string) => void;
+  onChange: (value: string) => void;
   placeholder?: string;
+  valueMode?: "name" | "id";
 }) {
   const cfg = QUERY_CONFIG[kind];
   const { data = [] } = useQuery({
@@ -34,16 +36,21 @@ export function AcademicSelect({
     staleTime: 60_000,
   });
 
-  const names = (data as { name: string }[]).map((r) => r.name).filter(Boolean) as string[];
-  const options = value && !names.includes(value) ? [value, ...names] : names;
+  const options = data.map((record) => ({
+    value: valueMode === "id" ? String(record.id ?? "") : record.name,
+    label: record.name,
+  })).filter((option) => option.value);
+  const visibleOptions = value && !options.some((option) => option.value === value)
+    ? [{ value, label: value }, ...options]
+    : options;
 
   return (
     <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)}>
       <SelectTrigger><SelectValue placeholder={placeholder ?? "Tanlang"} /></SelectTrigger>
       <SelectContent>
         <SelectItem value="none">— Tanlanmagan —</SelectItem>
-        {options.map((n) => (
-          <SelectItem key={n} value={n}>{n}</SelectItem>
+        {visibleOptions.map((option) => (
+          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
         ))}
       </SelectContent>
     </Select>

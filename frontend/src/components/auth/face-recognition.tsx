@@ -250,7 +250,7 @@ export default function FaceRecognition({ onSuccess, onSkip }: Props) {
                                 onClick={onSkip}
                                 className="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all hover:shadow-lg"
                             >
-                                <span>Yuz rasmini ro'yxatdan o'tkazish</span>
+                                <span>Ro'yxatdan o'tishga o'tish</span>
                             </button>
                             <button
                                 onClick={() => {

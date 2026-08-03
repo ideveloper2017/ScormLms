@@ -31,11 +31,11 @@ import type { ActivityItem } from '@/types/dashboard.types';
 /**
  * Cache configuration for dashboard data
  * - staleTime: How long data is considered fresh (5 minutes)
- * - cacheTime: How long unused data stays in cache (10 minutes)
+ * - gcTime: How long unused data stays in cache (10 minutes)
  */
 const DASHBOARD_CACHE_CONFIG = {
   staleTime: 5 * 60 * 1000, // 5 minutes
-  cacheTime: 10 * 60 * 1000, // 10 minutes
+  gcTime: 10 * 60 * 1000, // 10 minutes
 };
 
 /**
@@ -65,7 +65,7 @@ export const useDashboardStats = () => {
     queryKey: qk.dashboard.stats(),
     queryFn: fetchDashboardStats,
     staleTime: DASHBOARD_CACHE_CONFIG.staleTime,
-    cacheTime: DASHBOARD_CACHE_CONFIG.cacheTime,
+    gcTime: DASHBOARD_CACHE_CONFIG.gcTime,
   });
 };
 
@@ -94,10 +94,10 @@ export const useDashboardStats = () => {
  */
 export const useRecentCourses = () => {
   return useQuery<Course[], Error>({
-    queryKey: qk.dashboard.root().concat('recentCourses'),
+    queryKey: [...qk.dashboard.root(), 'recentCourses'] as const,
     queryFn: fetchRecentCourses,
     staleTime: DASHBOARD_CACHE_CONFIG.staleTime,
-    cacheTime: DASHBOARD_CACHE_CONFIG.cacheTime,
+    gcTime: DASHBOARD_CACHE_CONFIG.gcTime,
   });
 };
 
@@ -126,10 +126,10 @@ export const useRecentCourses = () => {
  */
 export const useUpcomingAssignments = () => {
   return useQuery<Assignment[], Error>({
-    queryKey: qk.dashboard.root().concat('upcomingAssignments'),
+    queryKey: [...qk.dashboard.root(), 'upcomingAssignments'] as const,
     queryFn: fetchUpcomingAssignments,
     staleTime: DASHBOARD_CACHE_CONFIG.staleTime,
-    cacheTime: DASHBOARD_CACHE_CONFIG.cacheTime,
+    gcTime: DASHBOARD_CACHE_CONFIG.gcTime,
   });
 };
 
@@ -158,10 +158,10 @@ export const useUpcomingAssignments = () => {
  */
 export const useUpcomingTests = () => {
   return useQuery<Test[], Error>({
-    queryKey: qk.dashboard.root().concat('upcomingTests'),
+    queryKey: [...qk.dashboard.root(), 'upcomingTests'] as const,
     queryFn: fetchUpcomingTests,
     staleTime: DASHBOARD_CACHE_CONFIG.staleTime,
-    cacheTime: DASHBOARD_CACHE_CONFIG.cacheTime,
+    gcTime: DASHBOARD_CACHE_CONFIG.gcTime,
   });
 };
 
@@ -192,10 +192,10 @@ export const useUpcomingTests = () => {
  */
 export const useRecentActivity = () => {
   return useQuery<ActivityItem[], Error>({
-    queryKey: qk.dashboard.root().concat('recentActivity'),
+    queryKey: [...qk.dashboard.root(), 'recentActivity'] as const,
     queryFn: fetchRecentActivity,
     staleTime: DASHBOARD_CACHE_CONFIG.staleTime,
-    cacheTime: DASHBOARD_CACHE_CONFIG.cacheTime,
+    gcTime: DASHBOARD_CACHE_CONFIG.gcTime,
   });
 };
 
@@ -222,9 +222,9 @@ export const useRecentActivity = () => {
  */
 export const useNotificationSummary = () => {
   return useQuery<NotificationSummary, Error>({
-    queryKey: qk.dashboard.root().concat('notificationSummary'),
+    queryKey: [...qk.dashboard.root(), 'notificationSummary'] as const,
     queryFn: fetchNotificationSummary,
     staleTime: DASHBOARD_CACHE_CONFIG.staleTime,
-    cacheTime: DASHBOARD_CACHE_CONFIG.cacheTime,
+    gcTime: DASHBOARD_CACHE_CONFIG.gcTime,
   });
 };

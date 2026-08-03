@@ -14,11 +14,15 @@ spring:
   application:
     name: SCORM-LMS
   profiles:
-    active: postgresql-prod
+    active: ${SPRING_PROFILES_ACTIVE:postgresql-dev}
   main:
     allow-bean-definition-overriding: false
   jmx:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 210MB
   data:
     jpa:
       repositories:
@@ -40,6 +44,13 @@ spring:
       hibernate.order_updates: true
       hibernate.query.fail_on_pagination_over_collection_fetch: true
       hibernate.query.in_clause_parameter_padding: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
+    out-of-order: false
 #  security:
 #    oauth2:
 #      client:
@@ -86,7 +97,7 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://172.16.10.159:8080,http://localhost:5173,http://localhost:4173,http://localhost:8080}
   seed:
-        admin-password: admin
+    admin-password: ${APP_SEED_ADMIN_PASSWORD:}
   jwt:
     # HS512 uchun kamida 64 baytlik secret talab qilinadi.
     # Prod muhitda JWT_SECRET env variable orqali beriladi; default faqat lokal dev uchun.
@@ -99,6 +110,13 @@ app:
 
   upload:
     dir: ./uploads
+  scorm:
+    storage-dir: ${SCORM_STORAGE_DIR:./private/scorm}
+    max-package-bytes: ${SCORM_MAX_PACKAGE_BYTES:209715200}
+    secure-cookie: ${SCORM_SECURE_COOKIE:false}
+  assignment:
+    storage-dir: ${ASSIGNMENT_STORAGE_DIR:./private/assignments}
+    max-file-bytes: ${ASSIGNMENT_MAX_FILE_BYTES:10485760}
 
 hemis:
   host: ${HEMIS_HOST:https://student.namdtu.uz}

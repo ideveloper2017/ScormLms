@@ -48,6 +48,11 @@ export interface ProgramRecord {
   code?: string | null;
   degreeLevel?: string | null;
   active: boolean;
+  distanceEnabled: boolean;
+  informationTechnologyProgram: boolean;
+  educationLanguage: string;
+  distanceAdmissionLimit?: number | null;
+  licenseReference?: string | null;
   departmentId?: number | null;
   departmentName?: string | null;
 }
@@ -56,6 +61,11 @@ export interface ProgramCreateRequest {
   code?: string | null;
   degreeLevel?: string | null;
   active?: boolean;
+  distanceEnabled?: boolean;
+  informationTechnologyProgram?: boolean;
+  educationLanguage?: string;
+  distanceAdmissionLimit?: number | null;
+  licenseReference?: string | null;
   departmentId?: number | null;
 }
 export type ProgramUpdateRequest = Partial<ProgramCreateRequest>;

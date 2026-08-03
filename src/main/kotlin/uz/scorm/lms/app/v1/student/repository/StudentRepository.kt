@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.model.StudentStatus
+import uz.scorm.lms.app.v1.student.model.Citizenship
+import uz.scorm.lms.app.v1.student.model.EducationForm
 
 interface StudentRepository : JpaRepository<StudentProfile, Long> {
     fun findByUserUsername(username: String): StudentProfile?
@@ -22,4 +24,16 @@ interface StudentRepository : JpaRepository<StudentProfile, Long> {
 
     @Query("SELECT s FROM StudentProfile s WHERE s.groupId = :groupId")
     fun findByGroupId(groupId: Long): List<StudentProfile>
+
+    fun countByEducationFormAndStudentStatus(
+        educationForm: EducationForm,
+        studentStatus: StudentStatus,
+    ): Long
+
+    fun countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
+        programId: Long,
+        educationForm: EducationForm,
+        studentStatus: StudentStatus,
+        citizenship: Citizenship,
+    ): Long
 }
