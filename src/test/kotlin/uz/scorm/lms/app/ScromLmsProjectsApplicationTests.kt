@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("6", flyway.info().current()?.version?.toString())
+        assertEquals("7", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -37,6 +37,11 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "learning_activity_events", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_assignments", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "assignment_submissions", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "quiz_questions", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "course_quizzes", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "course_quiz_questions", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "quiz_attempts", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "quiz_answers", arrayOf("TABLE")).use { it.next() })
 
             val programColumns = buildSet {
                 metadata.getColumns(null, null, "programs", null).use { columns ->

@@ -207,10 +207,7 @@ function TestCard({ test }: { test: any }) {
     }
   };
 
-  const handleContinueTest = () => {
-    // For in-progress tests, navigate directly to session
-    navigate(`/student/tests/${test.id}/session`);
-  };
+  const handleContinueTest = handleStartTest;
 
   const handleViewResults = () => {
     // Navigate to test results page

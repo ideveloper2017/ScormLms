@@ -32,7 +32,11 @@ class LearningActivityService(
             setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED),
         ) ?: return null
         val enrollmentId = requireNotNull(enrollment.id)
-        if (eventType in setOf(LearningActivityType.CONTENT_COMPLETED, LearningActivityType.SCORM_FINISHED) &&
+        if (eventType in setOf(
+                LearningActivityType.CONTENT_COMPLETED,
+                LearningActivityType.SCORM_FINISHED,
+                LearningActivityType.QUIZ_SUBMITTED,
+            ) &&
             eventRepository.existsByEnrollmentIdAndEventTypeAndSourceTypeAndSourceIdAndDeletedFalse(
                 enrollmentId, eventType, sourceType, sourceId,
             )

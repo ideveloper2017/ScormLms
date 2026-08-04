@@ -168,6 +168,64 @@ export interface TeacherTest {
   status: 'upcoming' | 'active' | 'completed' | 'draft';
   avgScore?: number;
   participants?: number;
+  totalPoints: number;
+  allowedAttempts: number;
+  passingPercentage: number;
+}
+
+export interface TeacherQuizPayload {
+  courseId: number;
+  title: string;
+  instructions: string;
+  opensAt: string;
+  closesAt: string;
+  durationMinutes: number;
+  allowedAttempts: number;
+  passingPercentage: number;
+  shuffleQuestions: boolean;
+  showResult: boolean;
+  proctoring: boolean;
+  questionIds: number[];
+  status: 'DRAFT' | 'PUBLISHED' | 'CLOSED';
+}
+
+export interface TeacherQuizQuestion {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  text: string;
+  type: 'SINGLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  points: number;
+  options: string[];
+  correctAnswer: string;
+  explanation?: string;
+}
+
+export interface TeacherQuizQuestionPayload {
+  courseId: number;
+  text: string;
+  type: 'SINGLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  points: number;
+  options: string[];
+  correctAnswer: string;
+  explanation?: string;
+}
+
+export interface TeacherQuizAttempt {
+  id: string;
+  quizId: string;
+  studentName: string;
+  attemptNumber: number;
+  status: 'in_progress' | 'submitted' | 'timed_out';
+  score: number;
+  totalPoints: number;
+  percentage: number;
+  passed: boolean;
+  startedAt: string;
+  submittedAt?: string;
+  durationSeconds: number;
 }
 
 export interface TeacherAttendance {
@@ -347,6 +405,38 @@ export const teacherPortalApi = {
   getAttendance: async (): Promise<TeacherAttendance[]> => {
     const res = await api.get<TeacherAttendance[]>('/teachers/me/attendance');
     return res.data;
+  },
+  createTest: async (payload: TeacherQuizPayload): Promise<TeacherTest> => {
+    const res = await api.post<TeacherTest>('/teachers/me/tests', payload);
+    return res.data;
+  },
+  updateTestStatus: async (testId: string, status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'): Promise<TeacherTest> => {
+    const res = await api.patch<TeacherTest>(`/teachers/me/tests/${testId}/status`, { status });
+    return res.data;
+  },
+  deleteTest: async (testId: string): Promise<void> => {
+    await api.delete(`/teachers/me/tests/${testId}`);
+  },
+  getTestAttempts: async (testId: string): Promise<TeacherQuizAttempt[]> => {
+    const res = await api.get<TeacherQuizAttempt[]>(`/teachers/me/tests/${testId}/attempts`);
+    return res.data;
+  },
+  getQuestions: async (courseId?: string): Promise<TeacherQuizQuestion[]> => {
+    const res = await api.get<TeacherQuizQuestion[]>('/teachers/me/questions', {
+      params: courseId ? { courseId } : undefined,
+    });
+    return res.data;
+  },
+  createQuestion: async (payload: TeacherQuizQuestionPayload): Promise<TeacherQuizQuestion> => {
+    const res = await api.post<TeacherQuizQuestion>('/teachers/me/questions', payload);
+    return res.data;
+  },
+  updateQuestion: async (questionId: string, payload: TeacherQuizQuestionPayload): Promise<TeacherQuizQuestion> => {
+    const res = await api.put<TeacherQuizQuestion>(`/teachers/me/questions/${questionId}`, payload);
+    return res.data;
+  },
+  deleteQuestion: async (questionId: string): Promise<void> => {
+    await api.delete(`/teachers/me/questions/${questionId}`);
   },
   createAttendanceSession: async (payload: AttendanceSessionPayload): Promise<TeacherAttendance> => {
     const res = await api.post<TeacherAttendance>('/teachers/me/attendance/sessions', payload);

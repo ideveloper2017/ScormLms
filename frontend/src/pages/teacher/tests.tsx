@@ -1,44 +1,41 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  FileQuestion, Plus, Search, Eye, Edit, Trash2,
-  MoreHorizontal, Clock, Users, BarChart3,
-  AlertTriangle, RefreshCw,
-} from "lucide-react";
+import { FileQuestion, Plus, Search, Trash2, Clock, Users, BarChart3, AlertTriangle, RefreshCw, Eye, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { qk } from "@/lib/query-keys";
-import { teacherPortalApi } from "@/services/api/teacher-portal-api";
+import { teacherPortalApi, type TeacherQuizAttempt, type TeacherTest } from "@/services/api/teacher-portal-api";
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  active:    { label: "Faol",      cls: "bg-green-100  text-green-800  dark:bg-green-900/30  dark:text-green-300"  },
-  upcoming:  { label: "Rejalangan",cls: "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300"   },
-  completed: { label: "Tugagan",   cls: "bg-slate-100  text-slate-600  dark:bg-slate-800/40  dark:text-slate-400"  },
-  draft:     { label: "Qoralama",  cls: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  active: { label: "Faol", cls: "bg-green-100 text-green-800" },
+  upcoming: { label: "Rejalangan", cls: "bg-blue-100 text-blue-800" },
+  completed: { label: "Tugagan", cls: "bg-slate-100 text-slate-700" },
+  draft: { label: "Qoralama", cls: "bg-yellow-100 text-yellow-800" },
 };
 
-const CAT_META: Record<string, { label: string; cls: string }> = {
-  quiz:     { label: "Quiz",    cls: "bg-blue-100   text-blue-800"   },
-  midterm:  { label: "Oraliq", cls: "bg-orange-100 text-orange-800" },
-  final:    { label: "Yakuniy",cls: "bg-red-100    text-red-800"    },
-  practice: { label: "Amaliy", cls: "bg-green-100  text-green-800"  },
+const initialForm = {
+  title: "",
+  courseId: "",
+  instructions: "",
+  opensAt: "",
+  closesAt: "",
+  duration: "30",
+  allowedAttempts: "1",
+  passingPercentage: "60",
+  shuffleQuestions: true,
+  showResult: true,
+  proctoring: false,
+  questionIds: [] as string[],
 };
 
 export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
@@ -46,216 +43,148 @@ export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(openCreate);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    title: "", category: "quiz", questions: "20", duration: "30",
-    shuffleQ: true, showResult: true,
-  });
-  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
+  const [form, setForm] = useState(initialForm);
+  const [attemptsFor, setAttemptsFor] = useState<TeacherTest | null>(null);
 
   const { data: tests = [], isLoading, error, refetch } = useQuery({
     queryKey: qk.teacher.tests(),
     queryFn: teacherPortalApi.getTests,
+    staleTime: 30_000,
+  });
+  const { data: courses = [] } = useQuery({
+    queryKey: qk.teacher.courses(),
+    queryFn: teacherPortalApi.getCourses,
     staleTime: 60_000,
   });
-
-  const filtered = tests.filter((t) => {
-    const q = search.toLowerCase();
-    return !q || t.title.toLowerCase().includes(q) || t.courseTitle.toLowerCase().includes(q);
+  const { data: questions = [] } = useQuery({
+    queryKey: qk.teacher.questions(form.courseId || undefined),
+    queryFn: () => teacherPortalApi.getQuestions(form.courseId || undefined),
+    enabled: !!form.courseId,
+  });
+  const { data: attempts = [], isLoading: attemptsLoading } = useQuery({
+    queryKey: [...qk.teacher.tests(), "attempts", attemptsFor?.id],
+    queryFn: () => teacherPortalApi.getTestAttempts(attemptsFor!.id),
+    enabled: !!attemptsFor,
   });
 
-  const stats = {
-    total:  tests.length,
-    active: tests.filter((t) => t.status === "active").length,
-    avgScore: (() => {
-      const scored = tests.filter(t => (t.avgScore ?? 0) > 0);
-      return scored.length ? Math.round(scored.reduce((s, t) => s + (t.avgScore ?? 0), 0) / scored.length) : 0;
-    })(),
-  };
+  const filtered = tests.filter((test) => {
+    const query = search.toLowerCase();
+    return !query || test.title.toLowerCase().includes(query) || test.courseTitle.toLowerCase().includes(query);
+  });
+  const set = (key: keyof typeof form, value: string | boolean | string[]) =>
+    setForm((current) => ({ ...current, [key]: value } as typeof current));
 
-  const handleCreate = async () => {
-    if (!form.title.trim()) { toast({ variant: "destructive", title: "Test nomi majburiy" }); return; }
+  const toggleQuestion = (id: string) => set(
+    "questionIds",
+    form.questionIds.includes(id) ? form.questionIds.filter((item) => item !== id) : [...form.questionIds, id],
+  );
+
+  const create = async () => {
+    if (!form.title.trim() || !form.courseId || !form.opensAt || !form.closesAt || form.questionIds.length === 0) {
+      toast({ variant: "destructive", title: "Nomi, kursi, vaqt oynasi va kamida bitta savol majburiy" });
+      return;
+    }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    toast({ title: "Test yaratildi", description: form.title });
-    setCreateOpen(false);
-    setSaving(false);
+    try {
+      await teacherPortalApi.createTest({
+        courseId: Number(form.courseId),
+        title: form.title.trim(),
+        instructions: form.instructions.trim(),
+        opensAt: new Date(form.opensAt).toISOString(),
+        closesAt: new Date(form.closesAt).toISOString(),
+        durationMinutes: Number(form.duration),
+        allowedAttempts: Number(form.allowedAttempts),
+        passingPercentage: Number(form.passingPercentage),
+        shuffleQuestions: form.shuffleQuestions,
+        showResult: form.showResult,
+        proctoring: form.proctoring,
+        questionIds: form.questionIds.map(Number),
+        status: "PUBLISHED",
+      });
+      await refetch();
+      toast({ title: "Test yaratildi", description: form.title });
+      setForm(initialForm);
+      setCreateOpen(false);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Test yaratilmadi", description: (e as Error).message });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (isLoading) return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <Skeleton className="h-9 w-40" />
-      <div className="grid grid-cols-3 gap-3">
-        {[1,2,3].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-10 w-16" /></CardContent></Card>)}
-      </div>
-      <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24 w-full" />)}</div>
-    </div>
-  );
+  const changeStatus = async (test: TeacherTest) => {
+    try {
+      await teacherPortalApi.updateTestStatus(test.id, test.status === "active" ? "CLOSED" : "PUBLISHED");
+      await refetch();
+    } catch (e) {
+      toast({ variant: "destructive", title: "Holat o'zgarmadi", description: (e as Error).message });
+    }
+  };
 
-  if (error) return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4">
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Testlar</h1>
-      <Card className="border-destructive/50">
-        <CardContent className="pt-6 text-center space-y-3">
-          <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
-          <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
-          <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
-          <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const remove = async (id: string) => {
+    try {
+      await teacherPortalApi.deleteTest(id);
+      await refetch();
+      toast({ title: "Test o'chirildi" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Test o'chirilmadi", description: (e as Error).message });
+    }
+  };
+
+  if (isLoading) return <div className="p-6 space-y-4"><Skeleton className="h-9 w-40" />{[1, 2, 3].map((id) => <Skeleton key={id} className="h-24 w-full" />)}</div>;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Testlar</h1>
-          <p className="text-muted-foreground">Kurs testlari va imtihonlari boshqaruvi</p>
-        </div>
-        <Button className="gap-2" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />Test yaratish
-        </Button>
+    <div className="p-3 sm:p-4 md:p-6 space-y-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div><h1 className="text-2xl md:text-3xl font-bold">Testlar</h1><p className="text-muted-foreground">Serverda baholanadigan kurs testlari</p></div>
+        <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 mr-2" />Test yaratish</Button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Jami testlar",    value: stats.total,          cls: "" },
-          { label: "Faol",            value: stats.active,         cls: "text-green-600" },
-          { label: "O'rtacha ball",   value: `${stats.avgScore}%`, cls: "text-blue-600" },
-        ].map(({ label, value, cls }) => (
-          <Card key={label}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
-            </CardHeader>
-            <CardContent><div className={`text-2xl font-bold ${cls}`}>{value}</div></CardContent>
-          </Card>
-        ))}
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">Jami</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{tests.length}</CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">Faol</CardTitle></CardHeader><CardContent className="text-2xl font-bold text-green-600">{tests.filter((item) => item.status === "active").length}</CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">Urinishlar</CardTitle></CardHeader><CardContent className="text-2xl font-bold text-blue-600">{tests.reduce((sum, item) => sum + (item.participants ?? 0), 0)}</CardContent></Card>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Test yoki kurs nomi..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {filtered.length === 0 && (
-        <p className="text-center text-muted-foreground py-8">Test topilmadi</p>
-      )}
+      <div className="relative max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" placeholder="Test yoki kurs..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+      {error && <Card className="border-destructive"><CardContent className="py-6 text-center"><AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-2" /><Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button></CardContent></Card>}
 
       <div className="space-y-3">
-        {filtered.map((t) => {
-          const sm = STATUS_META[t.status] ?? STATUS_META['draft'];
-          return (
-            <Card key={t.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <FileQuestion className="h-5 w-5 mt-0.5 shrink-0 text-muted-foreground" />
-                    <div>
-                      <CardTitle className="text-base leading-tight">{t.title}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">{t.courseTitle}</CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge className={sm.cls + " text-xs"}>{sm.label}</Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2"><Eye className="h-4 w-4" />Natijalar</DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2"><Edit className="h-4 w-4" />Tahrirlash</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
-                          <Trash2 className="h-4 w-4" />O'chirish
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <FileQuestion className="h-3.5 w-3.5" />{t.questions} savol
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />{t.duration} daqiqa
-                  </span>
-                  {t.participants !== undefined && (
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5" />{t.participants} ishtirokchi
-                    </span>
-                  )}
-                  {(t.avgScore ?? 0) > 0 && (
-                    <span className="flex items-center gap-1">
-                      <BarChart3 className="h-3.5 w-3.5" />O'rtacha: {t.avgScore}%
-                    </span>
-                  )}
-                  <span className="text-muted-foreground">{t.date}</span>
-                </div>
-              </CardContent>
-            </Card>
-          );
+        {filtered.map((test) => {
+          const status = STATUS_META[test.status] ?? STATUS_META.draft;
+          return <Card key={test.id}>
+            <CardHeader className="pb-2"><div className="flex justify-between gap-3"><div className="flex gap-3"><FileQuestion className="h-5 w-5 mt-1 text-muted-foreground" /><div><CardTitle className="text-base">{test.title}</CardTitle><CardDescription>{test.courseTitle}</CardDescription></div></div><Badge className={status.cls}>{status.label}</Badge></div></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                <span>{test.questions} savol / {test.totalPoints} ball</span><span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{test.duration} daqiqa</span><span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{test.participants ?? 0} ishtirokchi</span>{test.avgScore != null && <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" />{test.avgScore}%</span>}<span>{new Date(test.date).toLocaleString("uz-Latn")}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setAttemptsFor(test)}><Eye className="h-4 w-4 mr-1" />Natijalar</Button>
+                <Button size="sm" variant="outline" onClick={() => changeStatus(test)}><CheckCircle2 className="h-4 w-4 mr-1" />{test.status === "active" ? "Yopish" : "Nashr qilish"}</Button>
+                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => remove(test.id)}><Trash2 className="h-4 w-4 mr-1" />O'chirish</Button>
+              </div>
+            </CardContent>
+          </Card>;
         })}
       </div>
 
-      <Dialog open={createOpen} onOpenChange={(o) => { if (!o) setCreateOpen(false); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Yangi Test</DialogTitle>
-            <DialogDescription>Test sozlamalarini kiriting</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label>Test nomi <span className="text-destructive">*</span></Label>
-              <Input
-                placeholder="Masalan: JS Oraliq nazorat"
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Kategoriya</Label>
-                <Select value={form.category} onValueChange={(v) => set("category", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CAT_META).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Savollar soni</Label>
-                <Input type="number" value={form.questions} onChange={(e) => set("questions", e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Vaqt (daqiqa)</Label>
-              <Input type="number" value={form.duration} onChange={(e) => set("duration", e.target.value)} />
-            </div>
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between">
-                <Label>Savollarni aralashtirib berish</Label>
-                <Switch checked={form.shuffleQ} onCheckedChange={(v) => set("shuffleQ", v)} />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Natijani darhol ko'rsatish</Label>
-                <Switch checked={form.showResult} onCheckedChange={(v) => set("showResult", v)} />
-              </div>
-            </div>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Yangi test</DialogTitle><DialogDescription>Vaqt, urinish va baholash qoidalarini belgilang.</DialogDescription></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid md:grid-cols-2 gap-3"><div><Label>Test nomi</Label><Input value={form.title} onChange={(e) => set("title", e.target.value)} /></div><div><Label>Kurs</Label><Select value={form.courseId} onValueChange={(v) => { setForm((current) => ({ ...current, courseId: v, questionIds: [] })); }}><SelectTrigger><SelectValue placeholder="Kursni tanlang" /></SelectTrigger><SelectContent>{courses.map((course) => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select></div></div>
+            <div><Label>Ko'rsatma</Label><Textarea value={form.instructions} onChange={(e) => set("instructions", e.target.value)} /></div>
+            <div className="grid md:grid-cols-2 gap-3"><div><Label>Ochilish vaqti</Label><Input type="datetime-local" value={form.opensAt} onChange={(e) => set("opensAt", e.target.value)} /></div><div><Label>Yopilish vaqti</Label><Input type="datetime-local" value={form.closesAt} onChange={(e) => set("closesAt", e.target.value)} /></div></div>
+            <div className="grid grid-cols-3 gap-3"><div><Label>Davomiylik</Label><Input type="number" min={1} value={form.duration} onChange={(e) => set("duration", e.target.value)} /></div><div><Label>Urinishlar</Label><Input type="number" min={1} max={20} value={form.allowedAttempts} onChange={(e) => set("allowedAttempts", e.target.value)} /></div><div><Label>O'tish foizi</Label><Input type="number" min={0} max={100} value={form.passingPercentage} onChange={(e) => set("passingPercentage", e.target.value)} /></div></div>
+            <div className="space-y-2"><Label>Savollar</Label>{!form.courseId && <p className="text-sm text-muted-foreground">Avval kursni tanlang.</p>}{form.courseId && questions.length === 0 && <p className="text-sm text-muted-foreground">Bu kursda savol yo'q. Savollar bankidan qo'shing.</p>}{questions.map((question) => <label key={question.id} className="flex items-start gap-3 rounded border p-3 cursor-pointer"><Checkbox checked={form.questionIds.includes(question.id)} onCheckedChange={() => toggleQuestion(question.id)} /><span className="text-sm flex-1">{question.text}<span className="block text-xs text-muted-foreground">{question.points} ball · {question.difficulty}</span></span></label>)}</div>
+            <div className="grid md:grid-cols-3 gap-3"><label className="flex items-center justify-between border rounded p-3"><Label>Aralashtirish</Label><Switch checked={form.shuffleQuestions} onCheckedChange={(value) => set("shuffleQuestions", value)} /></label><label className="flex items-center justify-between border rounded p-3"><Label>Natijani ko'rsatish</Label><Switch checked={form.showResult} onCheckedChange={(value) => set("showResult", value)} /></label><label className="flex items-center justify-between border rounded p-3"><Label>Proktoring</Label><Switch checked={form.proctoring} onCheckedChange={(value) => set("proctoring", value)} /></label></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Bekor qilish</Button>
-            <Button onClick={handleCreate} disabled={saving}>{saving ? "Yaratilmoqda..." : "Test yaratish"}</Button>
-          </DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setCreateOpen(false)}>Bekor qilish</Button><Button onClick={create} disabled={saving}>{saving ? "Yaratilmoqda..." : "Yaratish"}</Button></DialogFooter>
         </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!attemptsFor} onOpenChange={(open) => { if (!open) setAttemptsFor(null); }}>
+        <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{attemptsFor?.title} — natijalar</DialogTitle><DialogDescription>Har bir urinish server vaqti va balli bilan audit qilinadi.</DialogDescription></DialogHeader><div className="max-h-[60vh] overflow-y-auto space-y-2">{attemptsLoading && <p>Yuklanmoqda...</p>}{attempts.length === 0 && !attemptsLoading && <p className="text-muted-foreground">Hali urinish yo'q</p>}{attempts.map((attempt: TeacherQuizAttempt) => <Card key={attempt.id}><CardContent className="p-3 flex justify-between gap-3"><div><p className="font-medium">{attempt.studentName} · #{attempt.attemptNumber}</p><p className="text-xs text-muted-foreground">{new Date(attempt.startedAt).toLocaleString("uz-Latn")} · {Math.round(attempt.durationSeconds / 60)} daqiqa</p></div><div className="text-right"><p className="font-semibold">{attempt.score}/{attempt.totalPoints} ({attempt.percentage.toFixed(1)}%)</p><Badge className={attempt.passed ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>{attempt.passed ? "O'tdi" : "O'tmadi"}</Badge></div></CardContent></Card>)}</div></DialogContent>
       </Dialog>
     </div>
   );

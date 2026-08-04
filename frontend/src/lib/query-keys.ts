@@ -106,6 +106,7 @@ export const qk = {
     assignments: () => [...qk.teacher.root(), 'assignments'] as const,
     submissions: () => [...qk.teacher.root(), 'submissions'] as const,
     tests: () => [...qk.teacher.root(), 'tests'] as const,
+    questions: (courseId?: string) => [...qk.teacher.root(), 'questions', courseId] as const,
     attendance: () => [...qk.teacher.root(), 'attendance'] as const,
     gradebook: (courseId: string) => [...qk.teacher.root(), 'gradebook', courseId] as const,
     todaySchedule: () => [...qk.teacher.root(), 'today-schedule'] as const,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Clock, AlertCircle, CheckCircle, Circle, ChevronLeft, ChevronRight,
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useTest, useSubmitTest } from "@/hooks/tests/useTests";
+import { useTest, useSubmitTest, useStartTest } from "@/hooks/tests/useTests";
 import { TestSession as TestSessionType, TestQuestion } from "@/types/test.types";
 import { format, differenceInSeconds } from "date-fns";
 import { uz } from "date-fns/locale";
@@ -30,11 +30,20 @@ export function TestSession() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const session = location.state?.session as TestSessionType | undefined;
+  const initialSession = location.state?.session as TestSessionType | undefined;
 
   // Fetch test details
   const { data: test, isLoading } = useTest(testId!);
   const submitTestMutation = useSubmitTest();
+  const startTestMutation = useStartTest();
+  const [session, setSession] = useState<TestSessionType | undefined>(initialSession);
+  const resumeRequested = useRef(false);
+
+  useEffect(() => {
+    if (session || !testId || resumeRequested.current) return;
+    resumeRequested.current = true;
+    startTestMutation.mutateAsync(testId).then(setSession).catch(() => undefined);
+  }, [session, testId]);
 
   // Test state
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -136,7 +145,7 @@ export function TestSession() {
   };
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || (!session && startTestMutation.isPending)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">

@@ -232,11 +232,11 @@ class StudentPortalController(
         @RequestParam(required = false) status: String?,
         @RequestParam(required = false) courseId: String?,
     ): ResponseEntity<ApiResponse<List<StudentTestDto>>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getTests(user)))
+        ResponseEntity.ok(ApiResponse.success(svc.getTests(user, status, courseId?.toLongOrNull())))
 
     @GetMapping("/tests/history")
-    fun getTestHistory(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentTestDto>>> =
-        ResponseEntity.ok(ApiResponse.success(emptyList()))
+    fun getTestHistory(@CurrentUser user: User) =
+        ResponseEntity.ok(ApiResponse.success(svc.getTestHistory(user)))
 
     // ─── Exams (raw response — frontend uses res.data directly) ──────────────
 

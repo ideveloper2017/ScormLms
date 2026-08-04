@@ -60,7 +60,7 @@ Maqsad: 11 va 24-bandlarda sanab o'tilgan kurs, kontent, topshiriq, nazorat va i
 | EDU-03 | 11 | Individual o'quv reja va fanlar kesimidagi progress | BAJARILDI | Enrollmentdagi o'quv yili, semestr, kredit va fan turi asosida individual reja ko'rinadi; progress nashrdagi oddiy kontent va oxirgi SCORM paketidan avtomatik hisoblanadi |
 | EDU-04 | 11, 24 | Resursdan foydalanish asosidagi davomat hodisalari | BAJARILDI | O'qituvchi belgilagan vaqt oynasidagi oddiy kontent va SCORM hodisalaridan present/late/absent hisoblanadi; login hodisasi davomat hisoblanmaydi |
 | EDU-05 | 11, 24 | Topshiriq, fayl topshirish, deadline va baholash | BAJARILDI | Teacher kurs topshirig'ini nashr qiladi; enrolled talaba matn/fayl topshiradi; server deadline va urinishni audit qiladi; o'qituvchi maksimal ball doirasida baholaydi, talaba natija va feedbackni ko'radi |
-| EDU-06 | 11, 24 | Test savollari banki, urinishlar va baholash qoidalari | REJADA | Test natijasi audit izi bilan saqlanadi |
+| EDU-06 | 11, 24 | Test savollari banki, urinishlar va baholash qoidalari | BAJARILDI | O'qituvchi kurs savollari bankidan vaqt, urinish va o'tish qoidali test nashr qiladi; enrolled talaba javob kalitisiz test ishlaydi; server urinish, javob, ball va natijani audit izi bilan saqlaydi |
 | EDU-07 | 11 | Sinxron va asinxron mashg'ulotlarni kursga bog'lash | REJADA | Video, yozuv va havolalar dars jadvalida mavjud |
 | EDU-08 | 21 | Semestr yakuniy nazoratini shaxsan qatnashish bilan qayd etish | REJADA | Joy, vaqt, tekshiruvchi va qatnashish tasdig'i saqlanadi |
 | EDU-09 | 21 | Davlat attestatsiyasi va bitiruv nazorat jurnali | REJADA | Shaxsan qatnashish va komissiya qarori audit qilinadi |
@@ -131,8 +131,9 @@ Quyidagi ketma-ketlik keyingi implementatsiya uchun tavsiya etiladi:
 8. ~~`EDU-03` - individual o'quv reja va fanlar kesimidagi progressni joriy qilish.~~ BAJARILDI.
 9. ~~`EDU-04` - resursdan foydalanish hodisalari asosida davomatni hisoblash.~~ BAJARILDI.
 10. ~~`EDU-05` - topshiriq, fayl topshirish, deadline va baholash oqimini yaratish.~~ BAJARILDI.
-11. `EDU-06` - test savollari banki, urinishlar va baholash qoidalarini yaratish.
-12. `MON-01` - compliance panelini real dalillar bilan dinamik qilish.
+11. ~~`EDU-06` - test savollari banki, urinishlar va baholash qoidalarini yaratish.~~ BAJARILDI.
+12. `EDU-07` - sinxron va asinxron mashg'ulotlarni kurs hamda dars jadvaliga bog'lash.
+13. `MON-01` - compliance panelini real dalillar bilan dinamik qilish.
 
 ## Release darvozalari
 
@@ -180,6 +181,11 @@ Productionga chiqarishdan oldin quyidagilarning barchasi bajarilishi shart:
 | 2026-08-04 | Topshiriqning topshirilgan vaqti klientdan olinmaydi; server vaqti bilan yoziladi va har qayta topshirish alohida attempt sifatida saqlanadi | Deadline hamda akademik natijaning o'zgartirib bo'lmaydigan audit izini ta'minlash |
 | 2026-08-04 | Baholangan submission o'chirilmaydi yoki qayta topshirilmaydi; ball topshiriqning maksimal ballidan oshmaydi | Baho, feedback va topshirilgan dalil orasidagi bog'lanishni saqlash |
 | 2026-08-04 | Assignment fayllari va SCORM kontenti public `/uploads/**` ildizidan tashqaridagi private katalogda saqlanadi | Statik URL orqali autentifikatsiya va IDOR tekshiruvini aylanib o'tishni bloklash; fayl faqat vakolatli download/content endpointidan beriladi |
+| 2026-08-04 | Testning to'g'ri javoblari faqat teacher DTOlarida beriladi, student test sessiyasi va natija DTOlaridan chiqarib tashlanadi | Javob kalitining brauzer orqali sizib chiqishini oldini olish va baholash yaxlitligini saqlash |
+| 2026-08-04 | Nashrdagi yoki yopilgan testda ishlatilgan savol tahrirlanmaydi va o'chirilmaydi | Oldingi urinishlarning savol, javob va ball auditini keyingi tahrirlardan himoyalash |
+| 2026-08-04 | Test boshlanishi, tugashi, topshirish va baholash server vaqti hamda server qoidalari bilan boshqariladi; klient yuborgan vaqt ishonchli manba emas | Deadline, duration, urinish limiti va akademik natijani klient manipulyatsiyasidan himoyalash |
+| 2026-08-04 | Har urinish uchun savollar tartibi bir marta saqlanadi va qayta ochilganda o'sha tartib tiklanadi | Shuffle ishlatilganda ham davom ettirilgan sessiya va audit natijasini barqaror saqlash |
+| 2026-08-04 | `showResult=false` test natijasini test yopilguncha studentdan yashiradi | Javob va natijalar boshqa talabalarning hali davom etayotgan nazoratiga ta'sir qilmasligini ta'minlash |
 
 ### Qoldiq dependency riski
 
@@ -208,6 +214,7 @@ Productionga chiqarishdan oldin quyidagilarning barchasi bajarilishi shart:
 | 2026-08-04 | EDU-03 individual o'quv reja va fan progressi yakunlandi | V4 migratsiya, enrollmentga o'quv yili/semestr/kredit/reja turi, kontent progress auditi, SCORM+kontentdan avtomatik hisob, student reja/kurs materiallari UI va teacher biriktirish formasi qo'shildi; backend 27 passed/1 skipped, frontend build va 364/364 test o'tdi | EDU-04 faollik asosidagi davomat |
 | 2026-08-04 | EDU-04 resursdan foydalanishga asoslangan davomat yakunlandi | V5 migratsiya, teacher-defined attendance session, kontent/SCORM activity auditi, present/late/absent/pending hisoblash, student ko'rsatkichlari va teacher boshqaruv UI qo'shildi; backend 30 passed/1 skipped, frontend build va 367/367 test o'tdi | EDU-05 topshiriq va baholash oqimi |
 | 2026-08-04 | EDU-05 topshiriq, submission va baholash oqimi yakunlandi | V6 migratsiya, assignment CRUD/status, text/file attempt, deadline/late auditi, private download vakolati, maksimal ball va feedback, student/teacher real UI qo'shildi; backend 33 passed/1 skipped, frontend build va 371/371 test o'tdi | EDU-06 test banki va urinishlar |
+| 2026-08-04 | EDU-06 test savollari banki, urinishlar va server-side baholash yakunlandi | V7 migratsiya, teacher savol/test CRUD va attempt auditi, student uchun sanitizatsiyalangan barqaror sessiya, server vaqti, urinish limiti, avtomatik ball/pass hisoblash hamda test faolligi davomat auditiga qo'shildi; backend 35 passed/1 skipped, frontend build va 376/376 test o'tdi | EDU-07 sinxron/asinxron mashg'ulotlar |
 
 ## Yangilab borish qoidasi
 

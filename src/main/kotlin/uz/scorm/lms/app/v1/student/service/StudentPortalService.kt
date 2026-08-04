@@ -8,6 +8,7 @@ import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.service.StudyPlanService
 import uz.scorm.lms.app.v1.attendance.service.AttendanceService
 import uz.scorm.lms.app.v1.assignment.service.AssignmentService
+import uz.scorm.lms.app.v1.quiz.service.QuizService
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
@@ -24,6 +25,7 @@ class StudentPortalService(
     private val studyPlanService: StudyPlanService,
     private val attendanceService: AttendanceService,
     private val assignmentService: AssignmentService,
+    private val quizService: QuizService,
 ) {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -63,7 +65,7 @@ class StudentPortalService(
             completedCourses     = plan.courses.count { it.status == "completed" },
             pendingAssignments   = assignmentService.studentAssignments(requireNotNull(user.id))
                 .count { it.status == "pending" || it.status == "overdue" },
-            upcomingTests        = 0,
+            upcomingTests        = quizService.studentQuizzes(requireNotNull(user.id)).count { it.status == "upcoming" },
             averageGrade         = 0.0,
             attendancePercentage = attendance.attendancePercentage,
             gpa                  = 0.0,
@@ -188,7 +190,11 @@ class StudentPortalService(
     // ─── Tests ───────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getTests(user: User): List<StudentTestDto> = emptyList()
+    fun getTests(user: User, status: String? = null, courseId: Long? = null): List<StudentTestDto> =
+        quizService.studentQuizzes(requireNotNull(user.id), status, courseId)
+
+    @Transactional(readOnly = true)
+    fun getTestHistory(user: User) = quizService.history(requireNotNull(user.id))
 
     // ─── Activity ────────────────────────────────────────────────────────────
 
