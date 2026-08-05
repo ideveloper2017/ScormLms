@@ -63,7 +63,7 @@ Maqsad: 11 va 24-bandlarda sanab o'tilgan kurs, kontent, topshiriq, nazorat va i
 | EDU-06 | 11, 24 | Test savollari banki, urinishlar va baholash qoidalari | BAJARILDI | O'qituvchi kurs savollari bankidan vaqt, urinish va o'tish qoidali test nashr qiladi; enrolled talaba javob kalitisiz test ishlaydi; server urinish, javob, ball va natijani audit izi bilan saqlaydi |
 | EDU-07 | 11 | Sinxron va asinxron mashg'ulotlarni kursga bog'lash | REJADA | Video, yozuv va havolalar dars jadvalida mavjud |
 | EDU-08 | 21 | Semestr yakuniy nazoratini shaxsan qatnashish bilan qayd etish | JARAYONDA | V8 migratsiya, model va repository yaratildi; service va controller ishlanmoqda |
-| EDU-09 | 21 | Davlat attestatsiyasi va bitiruv nazorat jurnali | REJADA | Shaxsan qatnashish va komissiya qarori audit qilinadi |
+| EDU-09 | 21 | Davlat attestatsiyasi va bitiruv nazorat jurnali | JARAYONDA | V9 migratsiya, 6 ta entity model, 6 ta repository, 3 ta DTO, 4 ta service va 3 ta controller yaratildi; testlar ishlanmoqda |
 
 ### 3-bosqich. Avtoproktoring va biometrik boshqaruv - P0
 
@@ -216,6 +216,7 @@ Productionga chiqarishdan oldin quyidagilarning barchasi bajarilishi shart:
 | 2026-08-04 | EDU-05 topshiriq, submission va baholash oqimi yakunlandi | V6 migratsiya, assignment CRUD/status, text/file attempt, deadline/late auditi, private download vakolati, maksimal ball va feedback, student/teacher real UI qo'shildi; backend 33 passed/1 skipped, frontend build va 371/371 test o'tdi | EDU-06 test banki va urinishlar |
 | 2026-08-04 | EDU-06 test savollari banki, urinishlar va server-side baholash yakunlandi | V7 migratsiya, teacher savol/test CRUD va attempt auditi, student uchun sanitizatsiyalangan barqaror sessiya, server vaqti, urinish limiti, avtomatik ball/pass hisoblash hamda test faolligi davomat auditiga qo'shildi; backend 35 passed/1 skipped, frontend build va 376/376 test o'tdi | EDU-07 sinxron/asinxron mashg'ulotlar |
 | 2026-08-05 | EDU-08 semestr yakuniy nazorati (imtihon sessiyalari) boshlandi | V8 migratsiya (exam_sessions, exam_attendance, exam_results, exam_appeals jadvalidari), 4 ta Kotlin entity model, 4 ta repository, 3 ta DTO fayl va ExamSessionService yaratildi; attendance va result servicelari ishlanmoqda | EDU-08 servicelari va controllerlari |
+| 2026-08-05 | EDU-09 davlat attestatsiyasi (bitiruv imtihonlari) boshlandi | V9 migratsiya (7 ta jadval), 6 ta Kotlin entity model yaratildi; repository, DTO, service va controller ishlanmoqda | EDU-09 repository va servicelar |
 
 ## Yangilab borish qoidasi
 
