@@ -80,7 +80,7 @@ Maqsad: 11 va 24-bandlarda sanab o'tilgan kurs, kontent, topshiriq, nazorat va i
 | ID | Band | Ish | Holat | Qabul mezoni |
 |---|---:|---|---|---|
 | CONT-01 | 8-9 | Kontent metadata, til, muallif, versiya va amal qilish davri | BAJARILDI | V17 har materialga til, muallif, noyob versiya, manba va amal qilish davrini majburiy qiladi; o'zgarmas revision tarixi saqlanadi, student va progress faqat amaldagi kontentni ko'radi |
-| CONT-02 | 8-9 | Ekspertiza va tasdiqlash workflow | REJADA | Kontent tasdiqlanmasdan publish qilinmaydi |
+| CONT-02 | 8-9 | Ekspertiza va tasdiqlash workflow | BAJARILDI | V18 revisionga bog'langan ekspertiza navbati, mustaqil `ACADEMIC_WRITE` qarori, asosli tuzatishga qaytarish va immutable tarixni saqlaydi; faqat tasdiqlangan joriy revision publish qilinadi |
 | CONT-03 | 8-9 | O'zDSt checklist va tasdiqlovchi hujjatlar reestri | BLOKLANGAN | Standartning rasmiy to'liq nusxasi va tashkilot checklisti kerak |
 | CONT-04 | 8 | Har fan bo'yicha yillik kontent to'liqligi hisoboti | REJADA | Fanlar kesimida yetishmayotgan materiallar ko'rsatiladi |
 | CONT-05 | 18 | Kontent tili va ta'lim dasturi mosligini tekshirish | REJADA | Noto'g'ri til/dasturdagi kontent publish qilinmaydi |
@@ -148,7 +148,9 @@ Quyidagi ketma-ketlik keyingi implementatsiya uchun tavsiya etiladi:
 25. `PROC-04` - biometrik rozilik, saqlash muddati va o'chirish siyosatini joriy qilish. BLOKLANGAN: universitetning yuridik va axborot xavfsizligi tasdiqlagan siyosati kerak.
 26. ~~`PROC-05` - proktoring hodisalari bo'yicha apellyatsiya va qo'lda qayta ko'rib chiqish oqimini yaratish.~~ BAJARILDI.
 27. ~~`CONT-01` - kontent metadata, til, muallif, versiya va amal qilish davrini real modelga qo'shish.~~ BAJARILDI.
-28. `CONT-02` - kontent ekspertizasi va tasdiqlash workflowini joriy qilish. NAVBATDA.
+28. ~~`CONT-02` - kontent ekspertizasi va tasdiqlash workflowini joriy qilish.~~ BAJARILDI.
+29. `CONT-03` - O'zDSt checklist va tasdiqlovchi hujjatlar reestri. BLOKLANGAN: `DEP-03` rasmiy checklisti kerak.
+30. `CONT-04` - har fan bo'yicha yillik kontent to'liqligi hisobotini yaratish. NAVBATDA.
 
 ## Release darvozalari
 
@@ -250,6 +252,9 @@ Productionga chiqarishdan oldin quyidagilarning barchasi bajarilishi shart:
 | 2026-08-06 | Kontentning har bir tahriri avval ishlatilmagan yangi `contentVersion` talab qiladi va oldingi holat o'zgarmas revision sifatida saqlanadi | Materialning qaysi muallif, manba va amal qilish davridagi versiyasi ishlatilganini keyin audit qilish; eski natijalarni ustidan yozib yubormaslik |
 | 2026-08-06 | Legacy kontent V17da `legacy-{id}` versiyasi, aniq legacy manbasi va mavjud kurs tili yoki `und` bilan backfill qilinadi; keyingi tahrirda `und` qabul qilinmaydi | Eski yozuvlar kelib chiqishini uydirmasdan saqlash va ularni birinchi boshqaruv tahririda to'liq metadata bilan tuzatishga majburlash |
 | 2026-08-06 | Talaba ro'yxati, to'g'ridan-to'g'ri progress yozuvi va fan progressi faqat `validFrom <= bugun <= validUntil` bo'lgan kontentni hisobga oladi | Kelajak uchun rejalashtirilgan yoki muddati tugagan materialdan foydalanish va u orqali progressni sun'iy oshirishni bloklash |
+| 2026-08-06 | Ekspertiza qarori kontent IDga emas, aniq revision raqami va versiyasiga bog'lanadi; kontent egasi/yuboruvchisi o'z materialini tasdiqlay olmaydi | Keyingi tahrirni eski tasdiq bilan nashr qilishni va manfaatlar to'qnashuvidagi self-approvalni bloklash |
+| 2026-08-06 | `CHANGES_REQUESTED` kamida 10 belgili asos talab qiladi; tahrir yangi revision yaratadi va qayta ekspertizadan o'tadi | Rad etish sababini audit qilinadigan qilish va bir xil rad etilgan snapshotni o'zgartirmasdan qayta yuborishni cheklash |
+| 2026-08-06 | V18gacha ekspert qarori bo'lmagan nashrdagi legacy kontent migratsiyada qoralamaga qaytariladi | Tasdiqlovchi dalilsiz eski materialni avtomatik “tasdiqlangan” deb belgilamaslik va yangi publish gate'ini barcha kontentga bir xil qo'llash |
 
 ### Qoldiq dependency riski
 
@@ -300,6 +305,7 @@ Productionga chiqarishdan oldin quyidagilarning barchasi bajarilishi shart:
 | 2026-08-06 | PROC-03 vakolatli proktor monitoringi va attempt dalillari yakunlandi | V15 `course_quiz_proctors`, teacher uchun proktor nomzodi/biriktirish API va UI, minimal-scope stats/sessiya/risk endpointlari, identity similarity, movement, SHA-256 kadr izlari va 200 eventli dalil timeline'i qo'shildi. Begona proktorning ro'yxat/dalil kirishi integratsion testda bloklandi, assignment o'zgarishi darhol scope'ni almashtiradi; `camera=(self)` policy real kamera oqimiga moslashtirildi; backend 63 passed/1 Docker skip, frontend 37 fayl 404/404 test va production build o'tdi | PROC-05 proktoring apellyatsiyasi va qo'lda qayta ko'rib chiqish; PROC-04 siyosat tasdig'ini kutadi |
 | 2026-08-06 | PROC-05 proktoring apellyatsiyasi va manual review yakunlandi | V16 `proctoring_appeals`/event referenslari, 10 kunlik va bir attemptga bitta appeal gate'i, student ownership/event validation, biriktirilgan proktor/kurs egasi scope'i, o'zgarmas yakuniy review va audit qo'shildi. Talaba natija UIida event/izoh bilan murojaat qiladi, proktor dalilni ochib `APPROVED/PARTIAL/REJECTED` qaror beradi; begona student/proktor, faol attempt, soxta event, duplicate va ikkinchi review bloklanishi hamda score/event o'zgarmasligi testlandi; backend 63 passed/1 Docker skip, frontend 39 fayl 407/407 test va production build o'tdi | CONT-01 kontent metadata va versiyalash; PROC-04 siyosat tasdig'ini kutadi |
 | 2026-08-06 | CONT-01 kontent provenance, versiyalash va amal qilish nazorati yakunlandi | V17 metadata/revision modeli, server validatsiyasi, noyob versiya va immutable tarix, teacher metadata/history UI hamda student provenance ko'rinishi qo'shildi; kelajakdagi/muddati tugagan kontent visibility va progressdan chiqarildi. Backend 64 passed/1 Docker skip, frontend 40 fayl 411/411 test va production build o'tdi | CONT-02 ekspertiza va tasdiqlash workflowi; CONT-03 rasmiy checklistni kutadi |
+| 2026-08-06 | CONT-02 revisionga bog'langan mustaqil ekspertiza va publish gate yakunlandi | V18 `course_content_reviews`, pending queue, ownerdan ajratilgan metodist/admin qarori, majburiy rejection asosi, immutable history va legacy unpublish gate'i qo'shildi; teacher submit/status/history UI hamda metodist review paneli ishlaydi. Backend 67 passed/1 Docker skip, frontend 40 fayl 413/413 test va production build o'tdi | CONT-04 yillik kontent to'liqligi hisoboti; CONT-03 `DEP-03`ni kutadi |
 
 ## Yangilab borish qoidasi
 

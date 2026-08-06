@@ -7,7 +7,7 @@ UPDATE course_contents
 SET status = 'DRAFT', published_at = NULL, review_status = 'DRAFT', approved_revision_number = NULL
 WHERE status = 'PUBLISHED';
 
-ALTER TABLE course_contents ADD CONSTRAINT IF NOT EXISTS ck_course_content_review_status
+ALTER TABLE course_contents ADD CONSTRAINT ck_course_content_review_status
     CHECK (review_status IN ('DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED'));
 
 CREATE TABLE IF NOT EXISTS course_content_reviews (

@@ -1,6 +1,6 @@
 {
     "schemaVersion":  1,
-    "generatedAt":  "2026-08-06T08:30:05.8075592Z",
+    "generatedAt":  "2026-08-06T08:49:23.9951680Z",
     "manifestPath":  "docs/uat/decision-559-uat-evidence.json",
     "bandCoverage":  {
                          "from":  8,
@@ -36,7 +36,7 @@
                          "band":  9,
                          "status":  "BLOCKED_EXTERNAL",
                          "owner":  "Metodika va yuridik bo\u0027lim",
-                         "note":  "Muallif, til, manba, noyob versiya, amal qilish davri va immutable revision tarixi ishlaydi; rasmiy standart va tashkilot checklisti olinmagan."
+                         "note":  "Metadata/revision tarixi, ownerdan mustaqil ekspertiza, rejection/re-review va current-revision publish gate ishlaydi; rasmiy standart va tashkilot checklisti olinmagan."
                      },
                      {
                          "id":  "UAT-559-10",

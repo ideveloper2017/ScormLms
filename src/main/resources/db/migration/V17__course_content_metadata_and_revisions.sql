@@ -37,7 +37,7 @@ ALTER TABLE course_contents ALTER COLUMN source_name SET NOT NULL;
 ALTER TABLE course_contents ALTER COLUMN valid_from SET NOT NULL;
 ALTER TABLE course_contents ALTER COLUMN metadata_updated_at SET NOT NULL;
 
-ALTER TABLE course_contents ADD CONSTRAINT IF NOT EXISTS ck_course_content_validity
+ALTER TABLE course_contents ADD CONSTRAINT ck_course_content_validity
     CHECK (valid_until IS NULL OR valid_until >= valid_from);
 
 CREATE TABLE IF NOT EXISTS course_content_revisions (
