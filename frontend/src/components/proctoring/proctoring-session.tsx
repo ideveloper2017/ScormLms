@@ -1,323 +1,182 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-import { 
-  Monitor, 
-  Camera, 
-  Mic, 
-  Shield, 
-  AlertTriangle, 
-  Eye,
-  Volume2,
-  Wifi,
-  Battery,
-  Clock
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Camera, CheckCircle2, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { startTest } from '@/services/test-api';
+import {
+  issueProctoringChallenge,
+  verifyProctoringChallenge,
+  type ProctoringChallenge,
+} from '@/services/proctoring-api';
+
+type Step = 'camera' | 'center' | 'movement' | 'verifying';
 
 export function ProctoringSession() {
-  const { id } = useParams();
+  const params = useParams();
+  const testId = params.testId ?? params.id;
+  const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(5400); // 90 minutes
-  const [violations, setViolations] = useState<string[]>([]);
-  const [systemStatus, setSystemStatus] = useState({
-    camera: true,
-    microphone: true,
-    screen: true,
-    network: true,
-    battery: 85,
-  });
-
-  const examData = {
-    title: 'JavaScript Yakuniy Imtihon',
-    duration: 90,
-    questions: 50,
-    currentQuestion: 1,
-  };
+  const streamRef = useRef<MediaStream | null>(null);
+  const [step, setStep] = useState<Step>('camera');
+  const [challenge, setChallenge] = useState<ProctoringChallenge | null>(null);
+  const [centerFrame, setCenterFrame] = useState<Blob | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initialize camera and microphone
-    const initializeMedia = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true 
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-        setIsRecording(true);
-      } catch (error) {
-        console.error('Media access denied:', error);
-        setViolations(prev => [...prev, 'Kamera yoki mikrofon ruxsati berilmadi']);
+    let active = true;
+    navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      audio: false,
+    }).then((stream) => {
+      if (!active) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
       }
-    };
-
-    initializeMedia();
-
-    // Timer
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 0) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Simulate AI monitoring
-    const monitoringInterval = setInterval(() => {
-      // Simulate random violations for demo
-      const randomViolations = [
-        'Yuzdan uzoqlashish aniqlandi',
-        'Ikkinchi shaxs aniqlandi',
-        'Noto\'g\'ri harakat aniqlandi',
-        'Ovoz o\'zgarishi aniqlandi',
-      ];
-      
-      if (Math.random() < 0.1) { // 10% chance
-        const violation = randomViolations[Math.floor(Math.random() * randomViolations.length)];
-        setViolations(prev => [...prev.slice(-4), violation]); // Keep last 5 violations
-      }
-    }, 10000);
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setCameraReady(true);
+    }).catch(() => setError("Kameraga ruxsat berilmadi. Brauzer sozlamasidan kamerani yoqing."));
 
     return () => {
-      clearInterval(timer);
-      clearInterval(monitoringInterval);
+      active = false;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const capture = async (): Promise<Blob> => {
+    const video = videoRef.current;
+    if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth) {
+      throw new Error('Kamera kadri hali tayyor emas');
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Kadrni tayyorlab bo‘lmadi');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    if (!blob) throw new Error('Kadrni JPEG formatiga o‘tkazib bo‘lmadi');
+    return blob;
   };
 
-  const getStatusColor = (status: boolean) => {
-    return status ? 'text-green-600' : 'text-red-600';
+  const begin = async () => {
+    if (!testId) return setError('Test identifikatori topilmadi');
+    setError(null);
+    try {
+      setChallenge(await issueProctoringChallenge(testId));
+      setCenterFrame(null);
+      setStep('center');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Challenge yaratilmadi');
+    }
   };
+
+  const saveCenter = async () => {
+    setError(null);
+    try {
+      setCenterFrame(await capture());
+      setStep('movement');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Markaziy kadr olinmadi');
+    }
+  };
+
+  const verifyAndStart = async () => {
+    if (!testId || !challenge || !centerFrame) return;
+    setStep('verifying');
+    setError(null);
+    try {
+      const movementFrame = await capture();
+      await verifyProctoringChallenge(testId, challenge, centerFrame, movementFrame);
+      const session = await startTest(testId);
+      navigate(`/student/tests/${testId}/session`, { replace: true, state: { session } });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Proktoring tekshiruvi bajarilmadi');
+      setChallenge(null);
+      setCenterFrame(null);
+      setStep('camera');
+    }
+  };
+
+  const directionLabel = challenge?.direction === 'left' ? 'chapga' : 'o‘ngga';
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6 text-blue-600" />
-            Proctoring Session
-          </h1>
-          <p className="text-muted-foreground">{examData.title}</p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <Badge variant="secondary" className="gap-1">
-            <Clock className="h-3 w-3" />
-            {formatTime(timeRemaining)}
-          </Badge>
-          <Badge variant={isRecording ? "default" : "destructive"} className="gap-1">
-            <Monitor className="h-3 w-3" />
-            {isRecording ? 'Yozilmoqda' : 'To\'xtatilgan'}
-          </Badge>
-        </div>
+    <div className="mx-auto max-w-3xl p-4 md:p-6 space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <ShieldCheck className="h-6 w-6 text-blue-600" /> Shaxsni tasdiqlash
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Proktorli test boshlanishidan oldin server yuz mosligini va bir martalik faol harakatni tekshiradi.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Exam Area */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* Exam Progress */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Imtihon jarayoni</span>
-                <span className="text-sm font-normal">
-                  Savol {examData.currentQuestion} / {examData.questions}
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Progress 
-                value={(examData.currentQuestion / examData.questions) * 100} 
-                className="h-2" 
-              />
-            </CardContent>
-          </Card>
+      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
-          {/* Question Area */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Savol {examData.currentQuestion}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-6 bg-muted/50 rounded-lg">
-                <h3 className="font-medium mb-4">
-                  JavaScript-da qaysi operator mantiqiy "VA" amalini bajaradi?
-                </h3>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="question1" value="a" />
-                    <span>A) ||</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="question1" value="b" />
-                    <span>B) &&</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="question1" value="c" />
-                    <span>C) !</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="question1" value="d" />
-                    <span>D) ==</span>
-                  </label>
-                </div>
-              </div>
-              
-              <div className="flex justify-between">
-                <Button variant="outline">Oldingi savol</Button>
-                <Button>Keyingi savol</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle>Kamera tekshiruvi</CardTitle>
+              <CardDescription>Xom kadrlar tekshiruv uchun yuboriladi; ushbu oqim ularni fayl sifatida saqlamaydi.</CardDescription>
+            </div>
+            <Badge variant={cameraReady ? 'secondary' : 'outline'}>
+              {cameraReady ? 'Kamera tayyor' : 'Kutilmoqda'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative overflow-hidden rounded-lg bg-black aspect-video">
+            <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
+            <div className="pointer-events-none absolute inset-[12%] rounded-[45%] border-2 border-dashed border-white/70" />
+          </div>
 
-        {/* Proctoring Panel */}
-        <div className="space-y-4">
-          {/* Camera Feed */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Camera className="h-4 w-4" />
-                Kamera
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  className="w-full h-32 bg-black rounded-lg object-cover"
-                />
-                {isRecording && (
-                  <div className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border p-4 text-sm">
+            {step === 'camera' && <p>Yuzingiz yorug‘ va aniq ko‘rinsin. Ko‘zoynak yoki yuzni to‘suvchi buyumlarni olib tashlang.</p>}
+            {step === 'center' && <p>Yuzingizni oval markaziga joylashtiring va birinchi kadrni oling.</p>}
+            {step === 'movement' && (
+              <p className="font-medium">Endi boshingizni va yuzingizni kadr ichida <span className="text-blue-600">{directionLabel}</span> siljiting, so‘ng tekshirishni bosing.</p>
+            )}
+            {step === 'verifying' && <p>Server kadrlar, foydalanuvchi mosligi va so‘ralgan harakatni tekshirmoqda…</p>}
+          </div>
 
-          {/* System Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Tizim holati</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Camera className={`h-4 w-4 ${getStatusColor(systemStatus.camera)}`} />
-                  <span className="text-sm">Kamera</span>
-                </div>
-                <Badge variant={systemStatus.camera ? "secondary" : "destructive"}>
-                  {systemStatus.camera ? 'Faol' : 'Xato'}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Mic className={`h-4 w-4 ${getStatusColor(systemStatus.microphone)}`} />
-                  <span className="text-sm">Mikrofon</span>
-                </div>
-                <Badge variant={systemStatus.microphone ? "secondary" : "destructive"}>
-                  {systemStatus.microphone ? 'Faol' : 'Xato'}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Monitor className={`h-4 w-4 ${getStatusColor(systemStatus.screen)}`} />
-                  <span className="text-sm">Ekran</span>
-                </div>
-                <Badge variant={systemStatus.screen ? "secondary" : "destructive"}>
-                  {systemStatus.screen ? 'Yozilmoqda' : 'Xato'}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Wifi className={`h-4 w-4 ${getStatusColor(systemStatus.network)}`} />
-                  <span className="text-sm">Internet</span>
-                </div>
-                <Badge variant={systemStatus.network ? "secondary" : "destructive"}>
-                  {systemStatus.network ? 'Barqaror' : 'Xato'}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Battery className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Batareya</span>
-                </div>
-                <span className="text-sm font-medium">{systemStatus.battery}%</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* AI Monitoring */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                AI Monitoring
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span>Yuz tanish: Faol</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span>Ko'z kuzatuvi: Faol</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span>Tovush tahlili: Faol</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span>Harakat aniqlash: Faol</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Violations */}
-          {violations.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2 text-orange-600">
-                  <AlertTriangle className="h-4 w-4" />
-                  Ogohlantirishlar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {violations.slice(-3).map((violation, index) => (
-                  <Alert key={index} className="py-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription className="text-sm">
-                      {violation}
-                    </AlertDescription>
-                  </Alert>
-                ))}
-              </CardContent>
-            </Card>
+          {challenge && (
+            <p className="text-xs text-muted-foreground">
+              Challenge {challenge.expiresAt.toLocaleTimeString('uz-UZ')} gacha amal qiladi.
+            </p>
           )}
-        </div>
-      </div>
+
+          <div className="flex flex-wrap gap-2">
+            {step === 'camera' && (
+              <Button onClick={begin} disabled={!cameraReady} className="gap-2">
+                <Camera className="h-4 w-4" /> Tekshiruvni boshlash
+              </Button>
+            )}
+            {step === 'center' && (
+              <Button onClick={saveCenter} className="gap-2"><Camera className="h-4 w-4" /> Markaziy kadrni olish</Button>
+            )}
+            {step === 'movement' && (
+              <Button onClick={verifyAndStart} className="gap-2"><CheckCircle2 className="h-4 w-4" /> Tekshirish va testni boshlash</Button>
+            )}
+            {step === 'verifying' && (
+              <Button disabled className="gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Tekshirilmoqda</Button>
+            )}
+            {step !== 'camera' && step !== 'verifying' && (
+              <Button variant="outline" onClick={begin} className="gap-2"><RefreshCw className="h-4 w-4" /> Qayta boshlash</Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Alert>
+        <AlertDescription>
+          Bu bosqich faqat test oldi identifikatsiya va faol harakat challenge’idir; u uzluksiz ko‘z, ovoz yoki ekran monitoringi sifatida talqin qilinmaydi.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

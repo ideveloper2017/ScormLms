@@ -285,68 +285,6 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
     });
   });
 
-  describe('Quick Login Integration', () => {
-    it('should check face photo when quick login as student', async () => {
-      const mockLoginResponse = {
-        data: {
-          success: true,
-          data: {
-            token: 'mock-jwt-token',
-            user: {
-              id: '1',
-              username: 'student',
-              roles: [{ name: 'ROLE_STUDENT' }],
-            },
-          },
-        },
-      };
-      vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
-      vi.mocked(faceRecognitionApi.getFacePhotoUrl).mockResolvedValue({
-        photoUrl: 'https://example.com/face.jpg',
-        uploadedAt: new Date(),
-      });
-
-      await renderLoginForm();
-
-      // Click quick login student button
-      const studentQuickLogin = screen.getByRole('button', { name: /talaba/i });
-      fireEvent.click(studentQuickLogin);
-
-      await waitFor(() => {
-        expect(faceRecognitionApi.getFacePhotoUrl).toHaveBeenCalled();
-      }, { timeout: 3000 });
-    });
-
-    it('should not check face photo when quick login as admin', async () => {
-      const mockLoginResponse = {
-        data: {
-          success: true,
-          data: {
-            token: 'mock-jwt-token',
-            user: {
-              id: '1',
-              username: 'admin',
-              roles: [{ name: 'ROLE_ADMIN' }],
-            },
-          },
-        },
-      };
-      vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
-
-      await renderLoginForm();
-
-      // Click quick login admin button
-      const adminQuickLogin = screen.getByRole('button', { name: /admin/i });
-      fireEvent.click(adminQuickLogin);
-
-      await waitFor(() => {
-        expect(api.login).toHaveBeenCalled();
-      }, { timeout: 3000 });
-
-      expect(faceRecognitionApi.getFacePhotoUrl).not.toHaveBeenCalled();
-    });
-  });
-
   describe('LocalStorage Integration', () => {
     it('should initialize faceRecognitionCompleted flag in localStorage', async () => {
       const mockLoginResponse = {

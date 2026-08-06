@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly ScormLms backup timer
+
+[Timer]
+OnCalendar=*-*-* 01:00:00
+Persistent=true
+RandomizedDelaySec=15m
+Unit=scorm-lms-backup.service
+
+[Install]
+WantedBy=timers.target

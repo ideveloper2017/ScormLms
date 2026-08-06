@@ -4,7 +4,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.*
+import java.util.UUID
 
 @Service
 class EmailService {
@@ -15,12 +15,13 @@ class EmailService {
     fun expiration(hours: Long = 24): Instant = Instant.now().plus(hours, ChronoUnit.HOURS)
 
     fun sendVerificationEmail(email: String, token: String) {
-        log.info("[EMAIL] Verification → {} | token={}", email, token)
+        log.info("[EMAIL] Verification requested for {} (provider integration required)", masked(email))
     }
 
     fun sendPasswordResetEmail(email: String, token: String) {
-        // TODO: real SMTP/SES integratsiyasiga almashtiring
-        log.info("[EMAIL] Password reset → {} | token={}", email, token)
-        log.info("[EMAIL] Reset link: /reset-password?token={}", token)
+        log.info("[EMAIL] Password reset requested for {} (provider integration required)", masked(email))
     }
+
+    private fun masked(email: String): String =
+        email.substringBefore('@').take(2) + "***@" + email.substringAfter('@', "unknown")
 }

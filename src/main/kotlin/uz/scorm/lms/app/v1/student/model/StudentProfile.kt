@@ -158,7 +158,15 @@ class StudentProfile(
     @Column(name = "contract_amount", precision = 14, scale = 2)
     var contractAmount: BigDecimal? = null,
 
-) : DateAudit()
+) : DateAudit() {
+    @get:Transient
+    val fullName: String
+        get() = listOf(lastName, firstName, middleName).filterNotNull().filter(String::isNotBlank).joinToString(" ")
+
+    @get:Transient
+    val username: String
+        get() = user.username
+}
 
 enum class StudentStatus {
     ACTIVE, SUSPENDED, EXPELLED, GRADUATED

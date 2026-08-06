@@ -19,6 +19,7 @@ import uz.scorm.lms.app.v1.attestation.dto.VerifyCertificateRequest
 import uz.scorm.lms.app.v1.attestation.service.GraduationCertificateService
 import uz.scorm.lms.app.v1.security.CustomUserDetails
 import org.springframework.security.core.Authentication
+import org.springframework.security.access.prepost.PreAuthorize
 
 @RestController
 @RequestMapping("/api/v1/certificates")
@@ -31,6 +32,7 @@ class GraduationCertificateController(
      * POST /api/v1/certificates/generate
      */
     @PostMapping("/generate")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun generateCertificate(
         @RequestBody request: GenerateCertificateRequest,
         authentication: Authentication,
@@ -45,6 +47,7 @@ class GraduationCertificateController(
      * POST /api/v1/certificates/{certificateId}/issue
      */
     @PostMapping("/{certificateId}/issue")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun issueCertificate(
         @PathVariable certificateId: Long,
         @RequestBody(required = false) request: IssueCertificateRequest?,
@@ -60,6 +63,7 @@ class GraduationCertificateController(
      * POST /api/v1/certificates/bulk-generate
      */
     @PostMapping("/bulk-generate")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun bulkGenerateCertificates(
         @RequestBody request: BulkGenerateCertificatesRequest,
         authentication: Authentication,
@@ -74,6 +78,7 @@ class GraduationCertificateController(
      * GET /api/v1/certificates/{certificateId}
      */
     @GetMapping("/{certificateId}")
+    @PreAuthorize("hasAnyAuthority('STUDENT_READ', 'COURSE_WRITE')")
     fun getCertificate(
         @PathVariable certificateId: Long,
         authentication: Authentication,
@@ -88,6 +93,7 @@ class GraduationCertificateController(
      * GET /api/v1/certificates/enrollment/{enrollmentId}
      */
     @GetMapping("/enrollment/{enrollmentId}")
+    @PreAuthorize("hasAnyAuthority('STUDENT_READ', 'COURSE_WRITE')")
     fun getStudentCertificate(
         @PathVariable enrollmentId: Long,
         authentication: Authentication,
@@ -106,6 +112,7 @@ class GraduationCertificateController(
      * POST /api/v1/certificates/verify
      */
     @PostMapping("/verify")
+    @PreAuthorize("permitAll()")
     fun verifyCertificate(
         @RequestBody request: VerifyCertificateRequest,
     ): ResponseEntity<CertificateVerificationResultDto> {
@@ -118,6 +125,7 @@ class GraduationCertificateController(
      * GET /api/v1/certificates/stats/course/{courseId}
      */
     @GetMapping("/stats/course/{courseId}")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun getStatistics(
         @PathVariable courseId: Long,
         authentication: Authentication,

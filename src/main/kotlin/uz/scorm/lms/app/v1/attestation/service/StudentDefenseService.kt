@@ -17,6 +17,10 @@ import uz.scorm.lms.app.v1.attestation.model.DefenseStatus
 import uz.scorm.lms.app.v1.attestation.model.StudentDefense
 import uz.scorm.lms.app.v1.attestation.repository.AttestationGradeRepository
 import uz.scorm.lms.app.v1.attestation.repository.StudentDefenseRepository
+import uz.scorm.lms.app.v1.attestation.repository.CommissionMemberRepository
+import uz.scorm.lms.app.v1.attestation.repository.GraduationCertificateRepository
+import uz.scorm.lms.app.v1.attestation.dto.StudentAttestationSessionDto
+import uz.scorm.lms.app.v1.attestation.model.AttestationSessionStatus
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
@@ -28,6 +32,8 @@ import java.time.Instant
 class StudentDefenseService(
     private val defenseRepository: StudentDefenseRepository,
     private val gradeRepository: AttestationGradeRepository,
+    private val memberRepository: CommissionMemberRepository,
+    private val certificateRepository: GraduationCertificateRepository,
     private val enrollmentRepository: CourseEnrollmentRepository,
     private val userRepository: UserRepository,
     private val courseAccessService: CourseAccessService,
@@ -44,7 +50,7 @@ class StudentDefenseService(
             ?: throw IllegalArgumentException("Himoya topilmadi")
 
         val enrollment = defense.enrollment
-        courseAccessService.requireView(enrollment.course.id, userId, false)
+        require(enrollment.student.user.id == userId) { "Faqat o'z himoyangizni rejalashtira olasiz" }
 
         request.defenseDate?.let {
             require(it >= defense.attestationSession.examDate) { "Himoya sanasi sessiya sanasidan ertaroq bo'lishi mumkin emas" }
@@ -69,6 +75,7 @@ class StudentDefenseService(
             ?: throw IllegalArgumentException("Himoya topilmadi")
 
         courseAccessService.requireManage(defense.attestationSession.course.id, userId, mayManageAll)
+        require(defense.attestationSession.status == AttestationSessionStatus.ONGOING) { "Himoya faqat davom etayotgan sessiyada qayd etiladi" }
 
         request.defenseDate?.let { defense.defenseDate = it }
         request.defenseTime?.let { defense.defenseTime = it }
@@ -98,7 +105,11 @@ class StudentDefenseService(
         val defense = defenseRepository.findByIdAndDeletedFalse(defenseId)
             ?: throw IllegalArgumentException("Himoya topilmadi")
 
-        courseAccessService.requireManage(defense.attestationSession.course.id, userId, mayManageAll)
+        require(defense.attestationSession.status == AttestationSessionStatus.ONGOING) { "Baho faqat davom etayotgan sessiyada beriladi" }
+        require(defense.defenseStatus == DefenseStatus.DEFENDED) { "Avval himoya o'tkazilgan deb qayd etilishi kerak" }
+        require(mayManageAll || memberRepository.findBySessionIdAndUserIdAndDeletedFalse(defense.attestationSession.id!!, userId) != null) {
+            "Faqat komissiya a'zosi baho bera oladi"
+        }
         require(request.score >= BigDecimal.ZERO && request.score <= BigDecimal("100")) {
             "Ball 0 dan 100 gacha bo'lishi kerak"
         }
@@ -136,6 +147,9 @@ class StudentDefenseService(
         }
         defense.commissionScore = avgScore
         defense.totalGraders = allGrades.size
+        if (allGrades.size >= defense.attestationSession.minCommissionMembers) {
+            defense.commissionDecision = if (avgScore.toDouble() >= defense.attestationSession.minPassScore) DefenseDecision.PASS else DefenseDecision.FAIL
+        }
         defenseRepository.save(defense)
 
         auditService.logAction("GRADE_SUBMITTED", userId, "Ball berildi: ${defense.enrollment.student.fullName} - ${request.score}")
@@ -143,7 +157,7 @@ class StudentDefenseService(
         return DefenseGradeDto(
             id = saved.id.toString(),
             gradedByName = grader.fullName ?: grader.username,
-            gradedByEmail = grader.email,
+            gradedByEmail = grader.email.orEmpty(),
             score = saved.score.toDouble(),
             criteriaScores = saved.criteriaScores,
             comments = saved.comments,
@@ -181,7 +195,7 @@ class StudentDefenseService(
             ?: throw IllegalArgumentException("Himoya topilmadi")
 
         val enrollment = defense.enrollment
-        courseAccessService.requireView(enrollment.course.id, userId, false)
+        require(enrollment.student.user.id == userId) { "Faqat o'z himoyangizni qayta rejalashtira olasiz" }
 
         require(request.newDefenseDate >= defense.attestationSession.examDate) {
             "Yangi himoya sanasi sessiya sanasidan ertaroq bo'lishi mumkin emas"
@@ -206,8 +220,10 @@ class StudentDefenseService(
             ?: throw IllegalArgumentException("Himoya topilmadi")
 
         return if (isTeacher) {
+            courseAccessService.requireManage(defense.attestationSession.course.id, userId, false)
             toTeacherStudentDefenseDto(defense)
         } else {
+            require(defense.enrollment.student.user.id == userId) { "Boshqa talabaning himoyasini ko'ra olmaysiz" }
             toStudentDefenseDetailsDto(defense)
         }
     }
@@ -218,6 +234,10 @@ class StudentDefenseService(
         userId: Long,
     ): List<StudentDefenseHistoryDto> {
         val defenses = defenseRepository.findAllByEnrollmentIdAndDeletedFalseOrderByAttestationSessionIdDesc(enrollmentId)
+        val enrollment = enrollmentRepository.findById(enrollmentId).orElseThrow { IllegalArgumentException("Biriktiruv topilmadi") }
+        if (enrollment.student.user.id != userId) {
+            courseAccessService.requireManage(enrollment.course.id, userId, false)
+        }
 
         return defenses.map { defense ->
             StudentDefenseHistoryDto(
@@ -233,6 +253,28 @@ class StudentDefenseService(
         }
     }
 
+    @Transactional(readOnly = true)
+    fun getMyAttestations(userId: Long): List<StudentAttestationSessionDto> = defenseRepository
+        .findAllByEnrollmentStudentUserIdAndDeletedFalseOrderByAttestationSessionExamDateDesc(userId)
+        .filter { it.attestationSession.status != AttestationSessionStatus.DRAFT }
+        .map { defense ->
+            val session = defense.attestationSession
+            val certificate = certificateRepository.findByStudentDefenseIdAndDeletedFalse(defense.id!!)
+            val published = session.status == AttestationSessionStatus.COMPLETED && session.resultPublishedAt != null
+            StudentAttestationSessionDto(
+                id = session.id!!.toString(), courseId = session.course.id!!.toString(), courseTitle = session.course.name,
+                title = session.title, description = session.description, examDate = session.examDate, examTime = session.examTime,
+                location = session.location, defenseType = session.defenseType.name,
+                chairName = session.commissionChair.fullName ?: session.commissionChair.username, status = session.status.name,
+                myDefenseStatus = defense.defenseStatus.name,
+                myDefenseDecision = defense.commissionDecision?.name?.takeIf { published },
+                myScore = defense.commissionScore.toDouble().takeIf { published },
+                myAverageScore = defense.commissionScore.toDouble().takeIf { published },
+                certificateIssued = certificate != null, certificateNumber = certificate?.certificateNumber,
+                resultPublished = published,
+            )
+        }
+
     private fun toTeacherStudentDefenseDto(defense: StudentDefense): uz.scorm.lms.app.v1.attestation.dto.TeacherStudentDefenseDto {
         val grades = gradeRepository.findAllByStudentDefenseIdAndDeletedFalseOrderByGradingDateDesc(defense.id!!)
 
@@ -243,7 +285,7 @@ class StudentDefenseService(
             enrollmentId = defense.enrollment.id.toString(),
             studentId = defense.enrollment.student.id.toString(),
             studentName = defense.enrollment.student.fullName ?: defense.enrollment.student.username,
-            studentEmail = defense.enrollment.student.email,
+            studentEmail = defense.enrollment.student.email.orEmpty(),
             defenseStatus = defense.defenseStatus.name,
             defenseDate = defense.defenseDate,
             defenseTime = defense.defenseTime,
@@ -259,7 +301,7 @@ class StudentDefenseService(
                 DefenseGradeDto(
                     id = it.id.toString(),
                     gradedByName = it.gradedBy.fullName ?: it.gradedBy.username,
-                    gradedByEmail = it.gradedBy.email,
+                    gradedByEmail = it.gradedBy.email.orEmpty(),
                     score = it.score.toDouble(),
                     criteriaScores = it.criteriaScores,
                     comments = it.comments,
@@ -299,7 +341,7 @@ class StudentDefenseService(
             myGrades = grades.map {
                 StudentGradeDto(
                     gradedByName = it.gradedBy.fullName ?: it.gradedBy.username,
-                    gradedByEmail = it.gradedBy.email,
+                    gradedByEmail = it.gradedBy.email.orEmpty(),
                     score = it.score.toDouble(),
                     comments = it.comments,
                     gradingDate = it.gradingDate,

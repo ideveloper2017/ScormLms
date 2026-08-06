@@ -21,12 +21,16 @@ enum class LearningActivityType {
     SCORM_FINISHED,
     QUIZ_STARTED,
     QUIZ_SUBMITTED,
+    LIVE_SESSION_JOINED,
+    SESSION_RECORDING_OPENED,
+    SESSION_RESOURCE_OPENED,
 }
 
 enum class LearningActivitySource {
     COURSE_CONTENT,
     SCORM_PACKAGE,
     QUIZ,
+    LEARNING_SESSION,
 }
 
 @Entity

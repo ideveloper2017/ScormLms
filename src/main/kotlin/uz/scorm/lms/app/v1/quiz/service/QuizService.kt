@@ -53,6 +53,8 @@ class QuizService(
     private val courseAccessService: CourseAccessService,
     private val objectMapper: ObjectMapper,
     private val learningActivityService: LearningActivityService,
+    private val proctoringService: ProctoringService,
+    private val quizProctorAssignmentService: QuizProctorAssignmentService,
 ) {
     private val listType = object : TypeReference<List<String>>() {}
 
@@ -141,6 +143,7 @@ class QuizService(
         quizQuestionRepository.saveAll(questions.mapIndexed { index, question ->
             CourseQuizQuestion(quiz, question, index + 1)
         })
+        quizProctorAssignmentService.assignAtCreation(quiz, request.proctorIds)
         return teacherQuizDto(quiz)
     }
 
@@ -217,7 +220,7 @@ class QuizService(
         if (inProgress != null && now.isBefore(inProgress.expiresAt) && now.isBefore(quiz.closesAt)) {
             return sessionDto(inProgress)
         }
-        if (inProgress != null) finalizeAttempt(inProgress, timedOut = true)
+        if (inProgress != null) proctoringService.completeAttempt(finalizeAttempt(inProgress, timedOut = true))
 
         val attempts = attemptRepository.findAllByQuizIdAndEnrollmentIdAndDeletedFalseOrderByAttemptNumberDesc(
             quizId,
@@ -237,6 +240,7 @@ class QuizService(
             questionOrder = ids.joinToString(","),
             totalPoints = links.sumOf { it.question.points },
         ))
+        proctoringService.consumeRequiredSession(quiz, enrollment, attempt)
         learningActivityService.recordIfEnrolled(
             courseId = quiz.course.id!!,
             userId = userId,
@@ -268,6 +272,7 @@ class QuizService(
             saveAnswer(attempt, questionId, item.answer)
         }
         val finalized = finalizeAttempt(attempt, timedOut = Instant.now().isAfter(attempt.expiresAt))
+        proctoringService.completeAttempt(finalized)
         learningActivityService.recordIfEnrolled(
             courseId = quiz.course.id!!,
             userId = userId,
@@ -356,6 +361,7 @@ class QuizService(
         require(request.allowedAttempts in 1..20) { "Urinishlar soni 1 va 20 oralig'ida bo'lishi kerak" }
         require(request.passingPercentage in 0..100) { "O'tish foizi 0 va 100 oralig'ida bo'lishi kerak" }
         require(request.questionIds.isNotEmpty()) { "Testga kamida bitta savol tanlang" }
+        require(request.proctoring || request.proctorIds.isEmpty()) { "Proktorlar faqat proktoring yoqilganda tanlanadi" }
     }
 
     private fun question(id: Long): QuizQuestion = questionRepository.findByIdAndDeletedFalse(id)
@@ -466,6 +472,8 @@ class QuizService(
             totalPoints = links.sumOf { it.question.points },
             allowedAttempts = quiz.allowedAttempts,
             passingPercentage = quiz.passingPercentage,
+            proctoring = quiz.proctoring,
+            proctorIds = quizProctorAssignmentService.assignedUserIds(requireNotNull(quiz.id)).map(Long::toString).toSet(),
             status = when {
                 quiz.status == QuizStatus.DRAFT -> "draft"
                 quiz.status == QuizStatus.CLOSED || !now.isBefore(quiz.closesAt) -> "completed"
@@ -574,6 +582,7 @@ class QuizService(
             percentage = if (hidden) 0.0 else attempt.percentage,
             passed = !hidden && attempt.passed,
             submittedAt = requireNotNull(attempt.submittedAt),
+            proctoring = attempt.quiz.proctoring,
             feedback = if (hidden) "Natija test oynasi yopilgandan keyin ko'rsatiladi" else null,
         )
     }

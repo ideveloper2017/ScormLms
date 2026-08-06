@@ -25,6 +25,7 @@ interface QuizQuestionRepository : JpaRepository<QuizQuestion, Long> {
 }
 
 interface CourseQuizRepository : JpaRepository<CourseQuiz, Long> {
+    fun countByDeletedFalse(): Long
     @EntityGraph(attributePaths = ["course"])
     fun findAllByCourseUserIdAndDeletedFalseOrderByOpensAtDesc(userId: Long): List<CourseQuiz>
 

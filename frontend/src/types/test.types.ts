@@ -51,7 +51,8 @@ export interface TestResult {
   score: number;
   totalPoints: number;
   percentage: number;
-  passed: boolean;
-  submittedAt: Date;
-  feedback?: string;
+    passed: boolean;
+    submittedAt: Date;
+    proctoring?: boolean;
+    feedback?: string;
 }

@@ -56,6 +56,31 @@ describe('studyPlanApi', () => {
     expect(api.post).toHaveBeenCalledWith('/students/me/courses/3/contents/9/progress', { progress: 100 });
   });
 
+  it("talabaga kontentning muallif, manba, versiya va amal qilish metadata sini qaytaradi", async () => {
+    const content = {
+      id: 9,
+      courseId: 3,
+      moduleId: 5,
+      moduleTitle: 'Kirish',
+      title: 'Algoritmlar videosi',
+      contentType: 'video' as const,
+      position: 1,
+      languageCode: 'uz',
+      authorName: "Test O'qituvchi",
+      contentVersion: '2.0.0',
+      sourceName: 'Universitet media markazi',
+      sourceUrl: 'https://university.example/source',
+      validFrom: '2026-08-01',
+      validUntil: '2027-07-31',
+      effective: true,
+      metadataUpdatedAt: '2026-08-06T08:00:00Z',
+    };
+    vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: [content] } });
+
+    await expect(studyPlanApi.getCourseContents(3)).resolves.toEqual([content]);
+    expect(api.get).toHaveBeenCalledWith('/courses/3/contents');
+  });
+
   it("muvaffaqiyatsiz javobni xato sifatida qaytaradi", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { success: false, message: "O'quv reja topilmadi" } });
     await expect(studyPlanApi.getMyPlan()).rejects.toThrow("O'quv reja topilmadi");

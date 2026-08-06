@@ -1,7 +1,9 @@
 package uz.scorm.lms.app.v1.courses.repository
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 
@@ -24,6 +26,14 @@ interface CourseEnrollmentRepository : JpaRepository<CourseEnrollment, Long> {
         statuses: Collection<CourseEnrollmentStatus>,
     ): CourseEnrollment?
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = ["student", "student.user", "course"])
+    fun findFirstByCourseIdAndStudentUserIdAndStatusInAndDeletedFalse(
+        courseId: Long,
+        userId: Long,
+        statuses: Collection<CourseEnrollmentStatus>,
+    ): CourseEnrollment?
+
     fun existsByCourseIdAndStudentUserIdAndStatusInAndDeletedFalse(
         courseId: Long,
         userId: Long,
@@ -31,4 +41,9 @@ interface CourseEnrollmentRepository : JpaRepository<CourseEnrollment, Long> {
     ): Boolean
 
     fun countByCourseIdAndStatusAndDeletedFalse(courseId: Long, status: CourseEnrollmentStatus): Long
+
+    fun findAllByCourseLazyDelete(courseId: Long?): List<CourseEnrollment> =
+        findAllByCourseIdAndDeletedFalseOrderByEnrolledAtDesc(
+            requireNotNull(courseId) { "Kurs IDsi mavjud emas" },
+        )
 }

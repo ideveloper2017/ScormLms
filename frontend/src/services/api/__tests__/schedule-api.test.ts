@@ -13,6 +13,16 @@ describe('scheduleApi', () => {
     vi.clearAllMocks();
   });
 
+  describe('accessSession', () => {
+    it('server auditidan keyin jonli dars havolasini qaytaradi', async () => {
+      const access = { url: 'https://meet.example.edu/live', type: 'live_join', occurredAt: '2026-08-06T09:00:00Z' };
+      vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: access } });
+
+      await expect(scheduleApi.accessSession('15', 'LIVE_JOIN')).resolves.toEqual(access);
+      expect(api.post).toHaveBeenCalledWith('/learning-sessions/15/access', { type: 'LIVE_JOIN' });
+    });
+  });
+
   describe('fetchSchedule', () => {
     it('should fetch schedule with filters successfully', async () => {
       const mockSchedule: ScheduleItem[] = [

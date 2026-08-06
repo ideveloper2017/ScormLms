@@ -15,7 +15,7 @@ data class CreateExamSessionRequest(
     val examTime: LocalTime,
     val location: String,
     val maxCapacity: Int? = null,
-    val examinerId: Long,
+    val examinerId: Long? = null,
     val secondaryExaminerId: Long? = null,
     val examType: ExamType = ExamType.WRITTEN,
     val durationMinutes: Int = 120,

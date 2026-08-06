@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
+import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
@@ -17,6 +18,8 @@ import uz.scorm.lms.app.v1.exam.dto.UpdateExamSessionRequest
 import uz.scorm.lms.app.v1.exam.model.AttendanceStatus
 import uz.scorm.lms.app.v1.exam.model.ExamSession
 import uz.scorm.lms.app.v1.exam.model.ExamSessionStatus
+import uz.scorm.lms.app.v1.exam.model.ExamAttendance
+import uz.scorm.lms.app.v1.exam.model.ExamResult
 import uz.scorm.lms.app.v1.exam.repository.ExamAttendanceRepository
 import uz.scorm.lms.app.v1.exam.repository.ExamResultRepository
 import uz.scorm.lms.app.v1.exam.repository.ExamSessionRepository
@@ -46,7 +49,7 @@ class ExamSessionService(
         val course = courseAccessService.requireManage(request.courseId, userId, mayManageAll)
         require(course.status != CourseStatus.ARCHIVED.name) { "Arxivlangan kurs uchun imtihon sessiyasi yaratilmaydi" }
 
-        val examiner = userRepository.findById(request.examinerId)
+        val examiner = userRepository.findById(request.examinerId ?: userId)
             .orElseThrow { IllegalArgumentException("Imtihonchi topilmadi") }
 
         val secondaryExaminer = request.secondaryExaminerId?.let {
@@ -90,7 +93,7 @@ class ExamSessionService(
 
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
 
-        require(session.status != ExamSessionStatus.COMPLETED) { "Tugatilgan imtihon sessiyasi o'zgartirilmaydi" }
+        require(session.status == ExamSessionStatus.DRAFT) { "Faqat DRAFT sessiyasi o'zgartiriladi" }
 
         request.title?.let { session.title = it.trim() }
         request.description?.let { session.description = it }
@@ -128,11 +131,36 @@ class ExamSessionService(
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
         require(session.status == ExamSessionStatus.DRAFT) { "Faqat DRAFT sessiyalari nashr etilishi mumkin" }
 
+        val enrollments = courseEnrollmentRepository
+            .findAllByCourseIdAndDeletedFalseOrderByEnrolledAtDesc(requireNotNull(session.course.id))
+            .filter { it.status in setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED) }
+        require(enrollments.isNotEmpty()) { "Imtihonga biriktiriladigan talaba yo'q" }
+        session.maxCapacity?.let { require(enrollments.size <= it) { "Talabalar soni sig'imdan oshib ketgan" } }
+
         session.status = ExamSessionStatus.PUBLISHED
-        session.publishedAt = request?.publishAt ?: Instant.now()
+        session.publishedAt = Instant.now()
+        examSessionRepository.save(session)
+        enrollments.forEach { enrollment ->
+            if (examAttendanceRepository.findByExamSessionIdAndEnrollmentIdAndDeletedFalse(sessionId, requireNotNull(enrollment.id)) == null) {
+                examAttendanceRepository.save(ExamAttendance(session, enrollment))
+            }
+        }
 
         val updated = examSessionRepository.save(session)
         auditService.logAction("EXAM_SESSION_PUBLISHED", userId, "Imtihon sessiyasi nashr etildi: ${session.title}")
+        return toTeacherDto(updated)
+    }
+
+    @Transactional
+    fun startExamSession(sessionId: Long, userId: Long, mayManageAll: Boolean): TeacherExamSessionDto {
+        val session = examSessionRepository.findByIdAndDeletedFalse(sessionId)
+            ?: throw IllegalArgumentException("Imtihon sessiyasi topilmadi")
+        courseAccessService.requireManage(session.course.id, userId, mayManageAll)
+        require(session.status == ExamSessionStatus.PUBLISHED) { "Faqat e'lon qilingan sessiya boshlanadi" }
+        require(session.examDate == LocalDate.now()) { "Imtihon faqat belgilangan sanada boshlanadi" }
+        session.status = ExamSessionStatus.ONGOING
+        val updated = examSessionRepository.save(session)
+        auditService.logAction("EXAM_SESSION_STARTED", userId, "Imtihon boshlandi: ${session.title}")
         return toTeacherDto(updated)
     }
 
@@ -147,12 +175,19 @@ class ExamSessionService(
             ?: throw IllegalArgumentException("Imtihon sessiyasi topilmadi")
 
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
-        require(session.status == ExamSessionStatus.PUBLISHED || session.status == ExamSessionStatus.ONGOING) {
-            "Faqat nashr etilgan yoki davom etayotgan sessiyalar tugatilishi mumkin"
+        require(session.status == ExamSessionStatus.ONGOING) { "Faqat davom etayotgan sessiya tugatiladi" }
+        val attendance = examAttendanceRepository.findAllByExamSessionIdAndDeletedFalseOrderByArrivalTimeAsc(sessionId)
+        require(attendance.none { it.attendanceStatus == AttendanceStatus.EXPECTED || it.attendanceStatus == AttendanceStatus.EXCUSE }) {
+            "Barcha talabalar davomati tasdiqlanishi kerak"
         }
+        val attendeeIds = attendance.filter { it.attendanceStatus in setOf(AttendanceStatus.PRESENT, AttendanceStatus.LATE) }
+            .map { requireNotNull(it.enrollment.id) }.toSet()
+        val resultIds = examResultRepository.findAllByExamSessionIdAndDeletedFalseOrderByScoreDesc(sessionId)
+            .map { requireNotNull(it.enrollment.id) }.toSet()
+        require(resultIds.containsAll(attendeeIds)) { "Qatnashgan barcha talabalar baholanishi kerak" }
 
         session.status = ExamSessionStatus.COMPLETED
-        session.heldAt = request?.completedAt ?: Instant.now()
+        session.heldAt = Instant.now()
 
         val updated = examSessionRepository.save(session)
         auditService.logAction("EXAM_SESSION_COMPLETED", userId, "Imtihon sessiyasi tugatildi: ${session.title}")
@@ -176,8 +211,17 @@ class ExamSessionService(
 
     @Transactional(readOnly = true)
     fun getTeacherSessions(userId: Long, mayManageAll: Boolean): List<TeacherExamSessionDto> {
-        val sessions = examSessionRepository.findAllByExaminerIdAndDeletedFalseOrderByExamDateDesc(userId)
-        return sessions.map { toTeacherDto(it) }
+        val sessions = if (mayManageAll) {
+            examSessionRepository.findAllByDeletedFalseOrderByExamDateDesc()
+        } else {
+            val ownedCourseIds = courseRepository.findAllByUserIdAndDeletedFalseOrderByCreatedAtDesc(userId)
+                .mapNotNull { it.id }.toSet()
+            (examSessionRepository.findAllByExaminerIdAndDeletedFalseOrderByExamDateDesc(userId) +
+                examSessionRepository.findAllBySecondaryExaminerIdAndDeletedFalseOrderByExamDateDesc(userId) +
+                ownedCourseIds.flatMap { examSessionRepository.findAllByCourseIdAndDeletedFalseOrderByExamDateDesc(it) })
+                .distinctBy { it.id }.sortedByDescending { it.examDate }
+        }
+        return sessions.map(::toTeacherDto)
     }
 
     @Transactional(readOnly = true)
@@ -185,16 +229,19 @@ class ExamSessionService(
         val sessions = mutableListOf<StudentExamSessionDto>()
         // Group enrollments by course and get exam sessions
         val enrollments = courseEnrollmentRepository.findAllById(enrollmentIds)
-        val courseIds = enrollments.map { it.course.id }.distinct()
+        val courseIds = enrollments.mapNotNull { it.course.id }.distinct()
 
         for (courseId in courseIds) {
             val courseSessions = examSessionRepository.findAllByCourseIdAndDeletedFalseOrderByExamDateDesc(courseId)
+                .filter { it.status != ExamSessionStatus.DRAFT }
             for (session in courseSessions) {
                 for (enrollment in enrollments.filter { it.course.id == courseId }) {
+                    val sessionId = requireNotNull(session.id)
+                    val enrollmentId = requireNotNull(enrollment.id)
                     val attendance = examAttendanceRepository
-                        .findByExamSessionIdAndEnrollmentIdAndDeletedFalse(session.id!!, enrollment.id!!)
+                        .findByExamSessionIdAndEnrollmentIdAndDeletedFalse(sessionId, enrollmentId)
                     val result = examResultRepository
-                        .findByExamSessionIdAndEnrollmentIdAndDeletedFalse(session.id, enrollment.id)
+                        .findByExamSessionIdAndEnrollmentIdAndDeletedFalse(sessionId, enrollmentId)
 
                     sessions.add(StudentExamSessionDto(
                         id = session.id.toString(),
@@ -271,26 +318,16 @@ class ExamSessionService(
     private fun toDetailDto(
         session: ExamSession,
         totalEnrolled: Int,
-        attendanceRecords: List<*>,
-        results: List<*>,
+        attendanceRecords: List<ExamAttendance>,
+        results: List<ExamResult>,
     ): ExamSessionDetailDto {
-        val presentCount = (attendanceRecords as? List<*>)?.count {
-            (it as? uz.scorm.lms.app.v1.exam.model.ExamAttendance)?.attendanceStatus == AttendanceStatus.PRESENT
-        } ?: 0
-        val lateCount = (attendanceRecords as? List<*>)?.count {
-            (it as? uz.scorm.lms.app.v1.exam.model.ExamAttendance)?.attendanceStatus == AttendanceStatus.LATE
-        } ?: 0
-        val absentCount = (attendanceRecords as? List<*>)?.count {
-            (it as? uz.scorm.lms.app.v1.exam.model.ExamAttendance)?.attendanceStatus == AttendanceStatus.ABSENT
-        } ?: 0
-        val excusedCount = (attendanceRecords as? List<*>)?.count {
-            (it as? uz.scorm.lms.app.v1.exam.model.ExamAttendance)?.attendanceStatus == AttendanceStatus.EXCUSED
-        } ?: 0
-
-        val resultsList = results as? List<uz.scorm.lms.app.v1.exam.model.ExamResult> ?: emptyList()
-        val averageScore = if (resultsList.isNotEmpty()) resultsList.map { it.percentage }.average() else null
-        val passedCount = resultsList.count { it.passed }
-        val failedCount = resultsList.count { !it.passed }
+        val presentCount = attendanceRecords.count { it.attendanceStatus == AttendanceStatus.PRESENT }
+        val lateCount = attendanceRecords.count { it.attendanceStatus == AttendanceStatus.LATE }
+        val absentCount = attendanceRecords.count { it.attendanceStatus == AttendanceStatus.ABSENT }
+        val excusedCount = attendanceRecords.count { it.attendanceStatus == AttendanceStatus.EXCUSED }
+        val averageScore = results.takeIf { it.isNotEmpty() }?.map { it.percentage }?.average()
+        val passedCount = results.count { it.passed }
+        val failedCount = results.count { !it.passed }
 
         return ExamSessionDetailDto(
             id = session.id.toString(),

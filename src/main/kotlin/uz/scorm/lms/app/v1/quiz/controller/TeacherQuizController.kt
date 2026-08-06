@@ -19,9 +19,13 @@ import uz.scorm.lms.app.v1.quiz.dto.QuizQuestionDto
 import uz.scorm.lms.app.v1.quiz.dto.QuizQuestionRequest
 import uz.scorm.lms.app.v1.quiz.dto.QuizRequest
 import uz.scorm.lms.app.v1.quiz.dto.QuizStatusRequest
+import uz.scorm.lms.app.v1.quiz.dto.QuizProctorAssignmentDto
+import uz.scorm.lms.app.v1.quiz.dto.QuizProctorAssignmentRequest
+import uz.scorm.lms.app.v1.quiz.dto.QuizProctorCandidateDto
 import uz.scorm.lms.app.v1.quiz.dto.TeacherQuizAttemptDto
 import uz.scorm.lms.app.v1.quiz.dto.TeacherQuizDto
 import uz.scorm.lms.app.v1.quiz.service.QuizService
+import uz.scorm.lms.app.v1.quiz.service.QuizProctorAssignmentService
 import uz.scorm.lms.app.v1.user.model.User
 
 @RestController
@@ -29,7 +33,11 @@ import uz.scorm.lms.app.v1.user.model.User
 @PreAuthorize("hasAuthority('COURSE_WRITE')")
 class TeacherQuizController(
     private val quizService: QuizService,
+    private val quizProctorAssignmentService: QuizProctorAssignmentService,
 ) {
+    @GetMapping("/proctors")
+    fun proctorCandidates(): List<QuizProctorCandidateDto> = quizProctorAssignmentService.candidates()
+
     @GetMapping("/questions")
     fun questions(
         @RequestParam(required = false) courseId: Long?,
@@ -116,6 +124,30 @@ class TeacherQuizController(
         authentication: Authentication,
     ): List<TeacherQuizAttemptDto> = quizService.teacherAttempts(
         quizId,
+        requireNotNull(user.id),
+        mayManageAll(authentication),
+    )
+
+    @GetMapping("/tests/{quizId}/proctors")
+    fun assignedProctors(
+        @PathVariable quizId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): QuizProctorAssignmentDto = quizProctorAssignmentService.assignments(
+        quizId,
+        requireNotNull(user.id),
+        mayManageAll(authentication),
+    )
+
+    @PutMapping("/tests/{quizId}/proctors")
+    fun updateProctors(
+        @PathVariable quizId: Long,
+        @RequestBody request: QuizProctorAssignmentRequest,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): QuizProctorAssignmentDto = quizProctorAssignmentService.update(
+        quizId,
+        request.userIds,
         requireNotNull(user.id),
         mayManageAll(authentication),
     )

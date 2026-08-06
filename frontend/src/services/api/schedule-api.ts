@@ -1,6 +1,6 @@
 import api from '@/lib/api';
 import { handleApiError } from '@/utils/error-handler';
-import { ScheduleItem, WeeklySchedule } from '@/types/schedule.types';
+import { ScheduleItem, WeeklySchedule, type ScheduleAccessResponse, type ScheduleAccessType } from '@/types/schedule.types';
 import { ApiResponse } from '@/lib/api';
 import {
   ScheduleItemSchema,
@@ -23,6 +23,16 @@ export interface ScheduleFilters {
  * Handles viewing class schedules, today's classes, weekly view, and upcoming sessions
  */
 export const scheduleApi = {
+  accessSession: async (sessionId: string, type: ScheduleAccessType): Promise<ScheduleAccessResponse> => {
+    const response = await api.post<ApiResponse<ScheduleAccessResponse>>(
+      `/learning-sessions/${sessionId}/access`,
+      { type },
+    );
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.message || 'Mashg\'ulot havolasi ochilmadi');
+    }
+    return response.data.data;
+  },
   /**
    * Fetches the complete schedule for the authenticated student
    * Supports optional date filters to narrow down results

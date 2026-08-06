@@ -6,6 +6,7 @@ import uz.scorm.lms.app.v1.courses.model.CourseContentProgress
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
+import uz.scorm.lms.app.v1.courses.model.isEffective
 import uz.scorm.lms.app.v1.courses.repository.CourseContentProgressRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
@@ -122,7 +123,8 @@ class StudyPlanService(
             .filter {
                 !it.deleted && it.module.course.id == courseId &&
                     it.status == LearningItemStatus.PUBLISHED.name &&
-                    it.module.status == LearningItemStatus.PUBLISHED.name
+                    it.module.status == LearningItemStatus.PUBLISHED.name &&
+                    it.isEffective()
             }
             .orElseThrow { NoSuchElementException("Nashr qilingan kontent topilmadi: $contentId") }
         val now = Instant.now()
@@ -164,7 +166,8 @@ class StudyPlanService(
             .findAllByModuleCourseIdAndDeletedFalseOrderByModulePositionAscPositionAsc(courseId)
             .filter {
                 it.status == LearningItemStatus.PUBLISHED.name &&
-                    it.module.status == LearningItemStatus.PUBLISHED.name
+                    it.module.status == LearningItemStatus.PUBLISHED.name &&
+                    it.isEffective()
             }
         val contentProgress = contentProgressRepository
             .findAllByEnrollmentIdAndDeletedFalse(requireNotNull(enrollment.id))

@@ -6,23 +6,23 @@ import uz.scorm.lms.app.v1.exam.model.AttendanceStatus
 import uz.scorm.lms.app.v1.exam.model.ExamAttendance
 
 interface ExamAttendanceRepository : JpaRepository<ExamAttendance, Long> {
-    @EntityGraph(attributePaths = ["examSession", "enrollment", "attendanceVerifiedBy"])
+    @EntityGraph(attributePaths = ["examSession", "enrollment", "enrollment.student", "enrollment.student.user", "enrollment.course", "attendanceVerifiedBy"])
     fun findAllByExamSessionIdAndDeletedFalseOrderByArrivalTimeAsc(
         examSessionId: Long,
     ): List<ExamAttendance>
 
-    @EntityGraph(attributePaths = ["examSession", "enrollment", "attendanceVerifiedBy"])
+    @EntityGraph(attributePaths = ["examSession", "enrollment", "enrollment.student", "enrollment.student.user", "enrollment.course", "attendanceVerifiedBy"])
     fun findAllByEnrollmentIdAndDeletedFalseOrderByExamSessionIdDesc(
         enrollmentId: Long,
     ): List<ExamAttendance>
 
-    @EntityGraph(attributePaths = ["examSession", "enrollment", "attendanceVerifiedBy"])
+    @EntityGraph(attributePaths = ["examSession", "enrollment", "enrollment.student", "enrollment.student.user", "enrollment.course", "attendanceVerifiedBy"])
     fun findAllByExamSessionIdAndAttendanceStatusAndDeletedFalse(
         examSessionId: Long,
         status: AttendanceStatus,
     ): List<ExamAttendance>
 
-    @EntityGraph(attributePaths = ["examSession", "enrollment", "attendanceVerifiedBy"])
+    @EntityGraph(attributePaths = ["examSession", "enrollment", "enrollment.student", "enrollment.student.user", "enrollment.course", "attendanceVerifiedBy"])
     fun findByExamSessionIdAndEnrollmentIdAndDeletedFalse(
         examSessionId: Long,
         enrollmentId: Long,

@@ -14,6 +14,28 @@ export interface ScheduleItem {
   color?: string; // For UI color coding
   isOnline: boolean;
   meetingLink?: string;
+  title?: string;
+  description?: string;
+  date?: string;
+  startsAt?: string;
+  endsAt?: string;
+  format?: 'synchronous' | 'asynchronous';
+  status?: 'published' | 'completed';
+  recordingUrl?: string;
+  resourceUrl?: string;
+  hasRecording?: boolean;
+  hasResource?: boolean;
+  canJoin?: boolean;
+  canOpenResources?: boolean;
+  accessed?: boolean;
+}
+
+export type ScheduleAccessType = 'LIVE_JOIN' | 'RECORDING_OPEN' | 'RESOURCE_OPEN';
+
+export interface ScheduleAccessResponse {
+  url: string;
+  type: string;
+  occurredAt: string;
 }
 
 export interface WeeklySchedule {

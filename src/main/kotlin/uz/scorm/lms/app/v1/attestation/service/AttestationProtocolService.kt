@@ -12,6 +12,10 @@ import uz.scorm.lms.app.v1.courses.service.CourseAccessService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.LocalDate
 import java.time.Instant
+import java.util.UUID
+import uz.scorm.lms.app.v1.attestation.dto.AttestationProtocolDto
+import uz.scorm.lms.app.v1.attestation.model.AttestationSessionStatus
+import uz.scorm.lms.app.v1.attestation.model.DefenseStatus
 
 @Service
 class AttestationProtocolService(
@@ -28,16 +32,19 @@ class AttestationProtocolService(
         sessionId: Long,
         userId: Long,
         mayManageAll: Boolean,
-    ): uz.scorm.lms.app.v1.attestation.dto.AttestationSessionStatsDto {
+    ): AttestationProtocolDto {
         val session = sessionRepository.findByIdAndDeletedFalse(sessionId)
             ?: throw IllegalArgumentException("Attestatsiya sessiyasi topilmadi")
 
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
+        require(session.status == AttestationSessionStatus.COMPLETED) { "Protokol faqat yakunlangan attestatsiya uchun yaratiladi" }
 
         val existingProtocol = protocolRepository.findByAttestationSessionIdAndDeletedFalse(sessionId)
         require(existingProtocol == null) { "Bu sessiya uchun protocol allaqachon yaratilgan" }
 
         val defenses = defenseRepository.findAllByAttestationSessionIdAndDeletedFalseOrderByDefenseDateAsc(sessionId)
+        require(defenses.all { it.defenseStatus in setOf(DefenseStatus.DEFENDED, DefenseStatus.CANCELLED) }) { "Barcha himoyalar yakunlanmagan" }
+        require(defenses.filter { it.defenseStatus == DefenseStatus.DEFENDED }.all { it.commissionDecision != null }) { "Komissiya qarorlari to'liq emas" }
         val passedCount = defenses.count { it.commissionDecision == DefenseDecision.PASS }
         val failedCount = defenses.count { it.commissionDecision == DefenseDecision.FAIL }
         val retakeCount = defenses.count { it.commissionDecision == DefenseDecision.RETAKE }
@@ -54,31 +61,14 @@ class AttestationProtocolService(
             retakeCount = retakeCount,
         )
 
-        protocolRepository.save(protocol)
+        val saved = protocolRepository.save(protocol)
         auditService.logAction(
             "PROTOCOL_GENERATED",
             userId,
             "Attestatsiya protokoli yaratildi: $protocolNumber"
         )
 
-        return uz.scorm.lms.app.v1.attestation.dto.AttestationSessionStatsDto(
-            sessionId = sessionId.toString(),
-            totalEnrolled = defenses.size,
-            defenseScheduled = 0,
-            defenseCompleted = defenses.size,
-            defenceCancelled = 0,
-            passedCount = passedCount,
-            failedCount = failedCount,
-            retakeCount = retakeCount,
-            passPercentage = if (defenses.isNotEmpty()) (passedCount.toDouble() / defenses.size) * 100 else 0.0,
-            averageScore = defenses.map { it.commissionScore.toDouble() }.average().takeIf { it.isFinite() },
-            highestScore = defenses.maxOfOrNull { it.commissionScore.toDouble() },
-            lowestScore = defenses.minOfOrNull { it.commissionScore.toDouble() },
-            certificatesIssued = 0,
-            certificatesPending = passedCount,
-            protocolApproved = false,
-            resultPublished = false,
-        )
+        return toDto(saved)
     }
 
     @Transactional
@@ -90,7 +80,8 @@ class AttestationProtocolService(
         val protocol = protocolRepository.findByIdAndDeletedFalse(protocolId)
             ?: throw IllegalArgumentException("Protocol topilmadi")
 
-        courseAccessService.requireManage(protocol.attestationSession.course.id, userId, mayManageAll)
+        require(mayManageAll) { "Attestatsiya protokolini faqat akademik administrator tasdiqlaydi" }
+        require(protocol.approvedAt == null) { "Protokol allaqachon tasdiqlangan" }
 
         val approver = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("Foydalanuvchi topilmadi") }
@@ -111,34 +102,20 @@ class AttestationProtocolService(
         protocolId: Long,
         userId: Long,
         mayManageAll: Boolean,
-    ): uz.scorm.lms.app.v1.attestation.dto.AttestationSessionStatsDto {
+    ): AttestationProtocolDto {
         val protocol = protocolRepository.findByIdAndDeletedFalse(protocolId)
             ?: throw IllegalArgumentException("Protocol topilmadi")
 
         courseAccessService.requireView(protocol.attestationSession.course.id, userId, mayManageAll)
 
-        return uz.scorm.lms.app.v1.attestation.dto.AttestationSessionStatsDto(
-            sessionId = protocol.attestationSession.id.toString(),
-            totalEnrolled = protocol.totalStudents,
-            defenseScheduled = 0,
-            defenseCompleted = protocol.totalStudents,
-            defenceCancelled = 0,
-            passedCount = protocol.passedCount,
-            failedCount = protocol.failedCount,
-            retakeCount = protocol.retakeCount,
-            passPercentage = if (protocol.totalStudents > 0) {
-                (protocol.passedCount.toDouble() / protocol.totalStudents) * 100
-            } else {
-                0.0
-            },
-            averageScore = null,
-            highestScore = null,
-            lowestScore = null,
-            certificatesIssued = 0,
-            certificatesPending = protocol.passedCount,
-            protocolApproved = protocol.approver != null,
-            resultPublished = false,
-        )
+        return toDto(protocol)
+    }
+
+    @Transactional(readOnly = true)
+    fun getBySession(sessionId: Long, userId: Long, mayManageAll: Boolean): AttestationProtocolDto? {
+        val session = sessionRepository.findByIdAndDeletedFalse(sessionId) ?: throw IllegalArgumentException("Attestatsiya sessiyasi topilmadi")
+        courseAccessService.requireView(session.course.id, userId, mayManageAll)
+        return protocolRepository.findByAttestationSessionIdAndDeletedFalse(sessionId)?.let(::toDto)
     }
 
     @Transactional(readOnly = true)
@@ -146,6 +123,7 @@ class AttestationProtocolService(
         userId: Long,
         mayManageAll: Boolean,
     ): List<uz.scorm.lms.app.v1.attestation.dto.AttestationSessionStatsDto> {
+        require(mayManageAll) { "Kutilayotgan protokollar faqat akademik administrator uchun" }
         val pendingProtocols = protocolRepository.findAllByApproverIdIsNullAndDeletedFalseOrderByProtocolDateDesc()
 
         return pendingProtocols.map { protocol ->
@@ -228,10 +206,15 @@ class AttestationProtocolService(
         )
     }
 
-    private fun generateProtocolNumber(year: Int): String {
-        val yearPrefix = "$year-"
-        // In production, this would get the highest number for the year
-        val sequenceNumber = String.format("%05d", 1)
-        return "$yearPrefix$sequenceNumber"
-    }
+    private fun generateProtocolNumber(year: Int) = "DAK-$year-${UUID.randomUUID().toString().replace("-", "").take(10).uppercase()}"
+
+    private fun toDto(protocol: AttestationProtocol) = AttestationProtocolDto(
+        id = protocol.id!!.toString(), sessionId = protocol.attestationSession.id!!.toString(),
+        protocolNumber = protocol.protocolNumber, protocolDate = protocol.protocolDate,
+        totalStudents = protocol.totalStudents, passedCount = protocol.passedCount,
+        failedCount = protocol.failedCount, retakeCount = protocol.retakeCount,
+        approved = protocol.approvedAt != null,
+        approverName = protocol.approver?.fullName ?: protocol.approver?.username,
+        approvedAt = protocol.approvedAt,
+    )
 }

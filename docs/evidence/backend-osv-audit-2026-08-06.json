@@ -1,0 +1,18 @@
+{
+    "schemaVersion":  1,
+    "generatedAt":  "2026-08-06T06:31:37.7514678Z",
+    "source":  "https://osv.dev",
+    "ecosystem":  "Maven",
+    "inventoryCount":  172,
+    "findingCount":  0,
+    "totals":  {
+                   "critical":  0,
+                   "high":  0,
+                   "moderate":  0,
+                   "low":  0,
+                   "unknown":  0
+               },
+    "findings":  [
+
+                 ]
+}

@@ -195,6 +195,10 @@ function TestCard({ test }: { test: any }) {
   const isMissed = test.status === "missed";
 
   const handleStartTest = async () => {
+    if (test.proctoring && !isInProgress) {
+      navigate(`/student/tests/${test.id}/proctoring`);
+      return;
+    }
     try {
       const session = await startTestMutation.mutateAsync(test.id);
       // Navigate to test session page with session ID

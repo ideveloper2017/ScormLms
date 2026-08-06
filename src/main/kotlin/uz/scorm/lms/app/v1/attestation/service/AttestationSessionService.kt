@@ -17,12 +17,14 @@ import uz.scorm.lms.app.v1.attestation.model.CommissionRole
 import uz.scorm.lms.app.v1.attestation.model.DefenseDecision
 import uz.scorm.lms.app.v1.attestation.model.DefenseStatus
 import uz.scorm.lms.app.v1.attestation.model.StateAttestationSession
+import uz.scorm.lms.app.v1.attestation.model.StudentDefense
 import uz.scorm.lms.app.v1.attestation.repository.AttestationSessionRepository
 import uz.scorm.lms.app.v1.attestation.repository.CommissionMemberRepository
 import uz.scorm.lms.app.v1.attestation.repository.GraduationCertificateRepository
 import uz.scorm.lms.app.v1.attestation.repository.StudentDefenseRepository
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
+import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
@@ -76,6 +78,10 @@ class AttestationSessionService(
         )
 
         val saved = sessionRepository.save(session)
+        memberRepository.save(AttestationCommissionMember(
+            session = saved, user = commissionChair, role = CommissionRole.CHAIR,
+            appointedBy = userRepository.findById(userId).orElseThrow(), appointedAt = Instant.now(),
+        ))
         auditService.logAction("ATTESTATION_SESSION_CREATED", userId, "Attestatsiya sessiyasi yaratildi: ${saved.title}")
         return toTeacherDto(saved, 0, 0, 0)
     }
@@ -91,7 +97,7 @@ class AttestationSessionService(
             ?: throw IllegalArgumentException("Attestatsiya sessiyasi topilmadi")
 
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
-        require(session.status != AttestationSessionStatus.COMPLETED) { "Tugatilgan sessiya o'zgartirilmaydi" }
+        require(session.status == AttestationSessionStatus.DRAFT) { "Faqat DRAFT sessiyasi o'zgartiriladi" }
 
         request.title?.let { session.title = it.trim() }
         request.description?.let { session.description = it }
@@ -136,13 +142,36 @@ class AttestationSessionService(
             "Kam uchun ${session.minCommissionMembers} ta komissiya azosi talab qilinadi"
         }
 
+        val enrollments = enrollmentRepository.findAllByCourseIdAndDeletedFalseOrderByEnrolledAtDesc(session.course.id!!)
+            .filter { it.status in setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED) }
+        require(enrollments.isNotEmpty()) { "Himoyaga biriktiriladigan talaba yo'q" }
         session.status = AttestationSessionStatus.PUBLISHED
-        session.publishedAt = request?.publishAt ?: Instant.now()
+        session.publishedAt = Instant.now()
+        sessionRepository.save(session)
+        enrollments.forEach { enrollment ->
+            if (defenseRepository.findByAttestationSessionIdAndEnrollmentIdAndDeletedFalse(sessionId, enrollment.id!!) == null) {
+                defenseRepository.save(StudentDefense(session, enrollment, defenseDate = session.examDate, defenseTime = session.examTime))
+            }
+        }
 
         val updated = sessionRepository.save(session)
         val stats = getSessionStats(sessionId)
         auditService.logAction("ATTESTATION_SESSION_PUBLISHED", userId, "Attestatsiya sessiyasi nashr etildi: ${session.title}")
         return toTeacherDto(updated, stats.passedCount, stats.failedCount, stats.retakeCount)
+    }
+
+    @Transactional
+    fun startSession(sessionId: Long, userId: Long, mayManageAll: Boolean): TeacherAttestationSessionDto {
+        val session = sessionRepository.findByIdAndDeletedFalse(sessionId)
+            ?: throw IllegalArgumentException("Attestatsiya sessiyasi topilmadi")
+        courseAccessService.requireManage(session.course.id, userId, mayManageAll)
+        require(session.status == AttestationSessionStatus.PUBLISHED) { "Faqat e'lon qilingan sessiya boshlanadi" }
+        require(session.examDate == LocalDate.now()) { "Attestatsiya faqat belgilangan sanada boshlanadi" }
+        session.status = AttestationSessionStatus.ONGOING
+        val saved = sessionRepository.save(session)
+        val stats = getSessionStats(sessionId)
+        auditService.logAction("ATTESTATION_SESSION_STARTED", userId, "Attestatsiya boshlandi: ${session.title}")
+        return toTeacherDto(saved, stats.passedCount, stats.failedCount, stats.retakeCount)
     }
 
     @Transactional
@@ -156,12 +185,14 @@ class AttestationSessionService(
             ?: throw IllegalArgumentException("Attestatsiya sessiyasi topilmadi")
 
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
-        require(session.status in listOf(AttestationSessionStatus.PUBLISHED, AttestationSessionStatus.ONGOING)) {
-            "Faqat nashr etilgan yoki davom etayotgan sessiyalar tugatilishi mumkin"
-        }
+        require(session.status == AttestationSessionStatus.ONGOING) { "Faqat davom etayotgan sessiya tugatiladi" }
+        val defenses = defenseRepository.findAllByAttestationSessionIdAndDeletedFalseOrderByDefenseDateAsc(sessionId)
+        require(defenses.all { it.defenseStatus in setOf(DefenseStatus.DEFENDED, DefenseStatus.CANCELLED) }) { "Barcha himoyalar yakunlanishi kerak" }
+        require(defenses.filter { it.defenseStatus == DefenseStatus.DEFENDED }.all { it.commissionDecision != null }) { "Barcha himoyalar bo'yicha komissiya qarori kerak" }
 
         session.status = AttestationSessionStatus.COMPLETED
-        session.heldAt = request?.completedAt ?: Instant.now()
+        session.heldAt = Instant.now()
+        session.resultPublishedAt = Instant.now()
 
         val updated = sessionRepository.save(session)
         val stats = getSessionStats(sessionId)
@@ -180,6 +211,7 @@ class AttestationSessionService(
             ?: throw IllegalArgumentException("Attestatsiya sessiyasi topilmadi")
 
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
+        require(session.status == AttestationSessionStatus.DRAFT) { "Komissiya faqat DRAFT sessiyada o'zgartiriladi" }
 
         val user = userRepository.findById(request.userId)
             .orElseThrow { IllegalArgumentException("Foydalanuvchi topilmadi") }
@@ -216,6 +248,7 @@ class AttestationSessionService(
             ?: throw IllegalArgumentException("Attestatsiya sessiyasi topilmadi")
 
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
+        require(session.status == AttestationSessionStatus.DRAFT) { "Komissiya faqat DRAFT sessiyada o'zgartiriladi" }
 
         val member = memberRepository.findByIdAndDeletedFalse(request.memberId)
             ?: throw IllegalArgumentException("Komissiya azosi topilmadi")
@@ -256,13 +289,13 @@ class AttestationSessionService(
             commission = uz.scorm.lms.app.v1.attestation.dto.CommissionDetailsDto(
                 sessionId = session.id.toString(),
                 chairName = session.commissionChair.fullName ?: session.commissionChair.username,
-                chairEmail = session.commissionChair.email,
+                chairEmail = session.commissionChair.email.orEmpty(),
                 members = members.map {
                     uz.scorm.lms.app.v1.attestation.dto.CommissionMemberDto(
                         id = it.id.toString(),
                         userId = it.user.id.toString(),
                         userName = it.user.fullName ?: it.user.username,
-                        userEmail = it.user.email,
+                        userEmail = it.user.email.orEmpty(),
                         role = it.role.name,
                         appointedBy = it.appointedBy.fullName ?: it.appointedBy.username,
                         appointedAt = it.appointedAt,
@@ -277,7 +310,7 @@ class AttestationSessionService(
                     defenseId = it.id.toString(),
                     studentId = it.enrollment.student.id.toString(),
                     studentName = it.enrollment.student.fullName ?: it.enrollment.student.username,
-                    studentEmail = it.enrollment.student.email,
+                    studentEmail = it.enrollment.student.email.orEmpty(),
                     defenseStatus = it.defenseStatus.name,
                     defenseDate = it.defenseDate,
                     defenseTime = it.defenseTime,
@@ -373,11 +406,12 @@ class AttestationSessionService(
         retakeCount: Int,
     ): TeacherAttestationSessionDto {
         val memberCount = memberRepository.countBySessionIdAndDeletedFalse(session.id!!)
+        val sessionId = requireNotNull(session.id)
         val defenseCount = defenseRepository.countByAttestationSessionIdAndDefenseStatusAndDeletedFalse(
-            session.id,
+            sessionId,
             DefenseStatus.DEFENDED,
         )
-        val certificateCount = certificateRepository.countByAttestationSessionId(session.id)
+        val certificateCount = certificateRepository.countByAttestationSessionId(sessionId)
 
         return TeacherAttestationSessionDto(
             id = session.id.toString(),

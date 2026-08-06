@@ -14,6 +14,10 @@ export interface Exam {
   avgScore?: number;
   passRate?: number;
   type: 'test' | 'written' | 'oral' | 'practical';
+  time?: string;
+  location?: string;
+  attendanceStatus?: string;
+  resultPublished?: boolean;
 }
 
 export interface ExamResult {
@@ -28,6 +32,13 @@ export interface ExamResult {
   passed: boolean;
   duration: number;
   rank?: number;
+  grade?: string;
+  attendanceStatus?: string;
+}
+
+export interface StudentExamAppeal {
+  id: string; examResultId: string; studentName: string; appealDate: string; reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PARTIAL'; decision?: string; newScore?: number;
 }
 
 export interface ExamStats {
@@ -51,4 +62,7 @@ export const examApi = {
     const res = await api.get<ExamStats>('/students/me/exams/stats');
     return res.data;
   },
+  getAppeals: async (): Promise<StudentExamAppeal[]> => (await api.get<StudentExamAppeal[]>('/students/me/exam-appeals')).data,
+  createAppeal: async (examResultId: string, reason: string): Promise<StudentExamAppeal> =>
+    (await api.post<StudentExamAppeal>('/students/me/exam-appeals', { examResultId: Number(examResultId), reason })).data,
 };

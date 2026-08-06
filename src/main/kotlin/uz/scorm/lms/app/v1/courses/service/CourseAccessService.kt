@@ -16,21 +16,25 @@ class CourseAccessService(
         .filter { !it.deleted }
         .orElseThrow { NoSuchElementException("Kurs topilmadi: $courseId") }
 
-    fun requireManage(courseId: Long, userId: Long, mayManageAll: Boolean): Course {
-        val course = course(courseId)
+    fun requireManage(courseId: Long?, userId: Long, mayManageAll: Boolean): Course {
+        val course = course(requireNotNull(courseId) { "Kurs IDsi mavjud emas" })
         require(mayManageAll || course.userId == userId) { "Kursni boshqarish ruxsati yo'q" }
         return course
     }
 
-    fun requireRead(courseId: Long, userId: Long, mayManageAll: Boolean): Course {
-        val course = course(courseId)
+    fun requireRead(courseId: Long?, userId: Long, mayManageAll: Boolean): Course {
+        val resolvedCourseId = requireNotNull(courseId) { "Kurs IDsi mavjud emas" }
+        val course = course(resolvedCourseId)
         if (mayManageAll || course.userId == userId) return course
         require(course.status == CourseStatus.PUBLISHED.name && enrollmentRepository
             .existsByCourseIdAndStudentUserIdAndStatusInAndDeletedFalse(
-                courseId,
+                resolvedCourseId,
                 userId,
                 setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED),
             )) { "Kursga kirish uchun faol biriktirish talab qilinadi" }
         return course
     }
+
+    fun requireView(courseId: Long?, userId: Long, mayManageAll: Boolean): Course =
+        requireRead(courseId, userId, mayManageAll)
 }

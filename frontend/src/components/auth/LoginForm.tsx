@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldGroup, FieldLabel, FieldSeparator } from '@/components/ui/field';
-import { Eye, EyeOff, Camera, Shield, CheckCircle, AlertCircle, Loader2, LogIn, Droplets, User, GraduationCap, UserCheck, Monitor, Settings, Mail, Lock, BookOpen, Play } from 'lucide-react';
+import { Eye, EyeOff, Camera, Shield, CheckCircle, AlertCircle, Loader2, LogIn, Droplets, GraduationCap, Mail, Lock, BookOpen, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -94,76 +94,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     };
 
     const handleSkipFaceRecognition = () => handleLoginSuccess();
-
-    // Quick login handlers
-    const handleQuickLogin = async (role: 'admin' | 'instructor' | 'student' | 'proctor' | 'monitor') => {
-        const quickLoginCredentials = {
-            admin: { username: 'admin', password: 'admin' },
-            instructor: { username: 'a.karimov', password: 'Teacher@123' },
-            student: { username: 'std_DT220101', password: 'Student@123' },
-            proctor: { username: 'admin', password: 'admin' },
-            monitor: { username: 'admin', password: 'admin' }
-        };
-
-        const credentials = quickLoginCredentials[role];
-        setFormData(credentials);
-
-        // Simulate form submission
-        setIsSubmitting(true);
-        setErrors({});
-
-        try {
-            const result = await authLogin(credentials.username, credentials.password);
-
-            if (result?.success) {
-                const userRoles = result.data?.user?.roles || [];
-                const roles = Array.isArray(userRoles)
-                    ? userRoles.map((r: any) => typeof r === 'string' ? r : r.code || r.name)
-                    : [];
-                const isStudent = roles.some((role) => normalizeRole(role) === 'STUDENT');
-                ensureFaceRecognitionFlag();
-
-                if (isStudent) {
-                    // Check if user has face photo in backend
-                    try {
-                        const facePhoto = await faceRecognitionApi.getFacePhotoUrl();
-
-                        if (facePhoto && facePhoto.photoUrl) {
-                            // User has face photo → redirect to face verification
-                            setFaceRecognitionRequired(true);
-                            handleLoginSuccess();
-                        } else {
-                            // No face photo → optional first-time setup, allow skip
-                            setFaceRecognitionRequired(false);
-                            handleLoginSuccess();
-                        }
-                    } catch (error) {
-                        console.error('Error checking face photo:', error);
-                        // On error, allow login without face recognition
-                        setFaceRecognitionRequired(false);
-                        handleLoginSuccess();
-                    }
-                } else {
-                    handleLoginSuccess();
-                }
-
-                if (result?.message) {
-                    toast({ title: 'Success', description: result?.message, variant: 'default' });
-                }
-            } else {
-                const errorMessage = result?.message || 'Login failed. Please try again.';
-                setErrors({ general: errorMessage });
-                toast({ title: 'Login Failed', description: errorMessage, variant: 'destructive' });
-            }
-        } catch (error: any) {
-            console.error('Quick login error:', error);
-            const errorMessage = error.response?.data?.message || error.message || 'An error occurred during login';
-            setErrors({ general: errorMessage });
-            toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -440,62 +370,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                                 onSuccess={() => handleLoginSuccess()}
                             />
 
-                            {/* ── Tezkor kirish (Dev Mode) — funksiya saqlab qolingan ── */}
-                            <div className="space-y-3 rounded-lg border border-dashed border-border p-3">
-                                <p className="text-center text-xs text-muted-foreground">Tezkor kirish (Dev Mode)</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="w-full gap-2 text-xs"
-                                        onClick={() => handleQuickLogin('student')}
-                                        disabled={isSubmitting || isAuthLoading}
-                                    >
-                                        <GraduationCap className="h-4 w-4" />
-                                        Talaba
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="w-full gap-2 text-xs"
-                                        onClick={() => handleQuickLogin('instructor')}
-                                        disabled={isSubmitting || isAuthLoading}
-                                    >
-                                        <User className="h-4 w-4" />
-                                        O'qituvchi
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="w-full gap-2 text-xs"
-                                        onClick={() => handleQuickLogin('admin')}
-                                        disabled={isSubmitting || isAuthLoading}
-                                    >
-                                        <Settings className="h-4 w-4" />
-                                        Admin
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="w-full gap-2 text-xs"
-                                        onClick={() => handleQuickLogin('proctor')}
-                                        disabled={isSubmitting || isAuthLoading}
-                                    >
-                                        <UserCheck className="h-4 w-4" />
-                                        Proktor
-                                    </Button>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="w-full gap-2 text-xs"
-                                    onClick={() => handleQuickLogin('monitor')}
-                                    disabled={isSubmitting || isAuthLoading}
-                                >
-                                    <Monitor className="h-4 w-4" />
-                                    Monitor
-                                </Button>
-                            </div>
                         </form>
                     </div>
                 </div>

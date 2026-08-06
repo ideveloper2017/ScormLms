@@ -9,6 +9,10 @@ import uz.scorm.lms.app.v1.courses.service.StudyPlanService
 import uz.scorm.lms.app.v1.attendance.service.AttendanceService
 import uz.scorm.lms.app.v1.assignment.service.AssignmentService
 import uz.scorm.lms.app.v1.quiz.service.QuizService
+import uz.scorm.lms.app.v1.session.dto.StudentLearningSessionDto
+import uz.scorm.lms.app.v1.session.service.LearningSessionService
+import uz.scorm.lms.app.v1.exam.service.ExamSessionService
+import uz.scorm.lms.app.v1.exam.service.ExamResultService
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
@@ -26,6 +30,9 @@ class StudentPortalService(
     private val attendanceService: AttendanceService,
     private val assignmentService: AssignmentService,
     private val quizService: QuizService,
+    private val learningSessionService: LearningSessionService,
+    private val examSessionService: ExamSessionService,
+    private val examResultService: ExamResultService,
 ) {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -105,7 +112,15 @@ class StudentPortalService(
     // ─── Schedule ────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getSchedule(user: User): List<StudentScheduleItemDto> = emptyList()
+    fun getSchedule(
+        user: User,
+        startDate: LocalDate? = null,
+        endDate: LocalDate? = null,
+        courseId: Long? = null,
+        dayOfWeek: Int? = null,
+    ): List<StudentLearningSessionDto> = learningSessionService.studentSessions(
+        requireNotNull(user.id), startDate, endDate, courseId, dayOfWeek,
+    )
 
     // ─── Attendance ──────────────────────────────────────────────────────────
 
@@ -212,13 +227,52 @@ class StudentPortalService(
     // ─── Exams ───────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getExams(user: User): List<StudentExamDto> = emptyList()
+    fun getExams(user: User): List<StudentExamDto> {
+        val enrollmentIds = studentEnrollments(user).mapNotNull { it.id }
+        return examSessionService.getStudentSessions(enrollmentIds).map { session ->
+            StudentExamDto(
+                id = session.id, title = session.title, course = session.courseTitle, courseId = session.courseId,
+                date = session.examDate.toString(), duration = session.durationMinutes, maxScore = 100,
+                status = when (session.status) {
+                    "PUBLISHED" -> "upcoming"; "ONGOING" -> "active"; "COMPLETED" -> "completed"; else -> "upcoming"
+                },
+                type = when (session.examType) { "ORAL" -> "oral"; "PRACTICAL" -> "practical"; else -> "written" },
+                time = session.examTime.toString(), location = session.location,
+                attendanceStatus = session.myAttendanceStatus, resultPublished = session.resultPublished,
+            )
+        }
+    }
 
     @Transactional(readOnly = true)
-    fun getExamResults(user: User): List<StudentExamResultDto> = emptyList()
+    fun getExamResults(user: User): List<StudentExamResultDto> {
+        val sessions = getExams(user).associateBy { it.id }
+        return examResultService.studentResults(requireNotNull(user.id)).map { result ->
+            val session = sessions[result.examSessionId]
+            StudentExamResultDto(
+                id = result.id, examId = result.examSessionId, examTitle = result.examTitle,
+                course = session?.course.orEmpty(), date = result.examDate, score = result.score.toInt(),
+                maxScore = result.totalScore.toInt(), percentage = result.percentage, passed = result.passed,
+                duration = session?.duration ?: 0, grade = result.grade, attendanceStatus = result.attendanceStatus,
+            )
+        }
+    }
 
     @Transactional(readOnly = true)
-    fun getExamStats(user: User): StudentExamStatsDto = StudentExamStatsDto()
+    fun getExamStats(user: User): StudentExamStatsDto {
+        val exams = getExams(user)
+        val results = getExamResults(user)
+        return StudentExamStatsDto(
+            total = exams.size, upcoming = exams.count { it.status == "upcoming" || it.status == "active" },
+            completed = exams.count { it.status == "completed" },
+            avgScore = results.map { it.percentage }.let { if (it.isEmpty()) 0.0 else it.average() },
+            passRate = if (results.isEmpty()) 0.0 else results.count { it.passed } * 100.0 / results.size,
+        )
+    }
+
+    private fun studentEnrollments(user: User) = enrollmentRepository
+        .findAllByStudentIdAndStatusInAndDeletedFalseOrderByEnrolledAtDesc(
+            requireNotNull(profileOrThrow(user).id), setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED),
+        )
 
     // ─── Reports ─────────────────────────────────────────────────────────────
 

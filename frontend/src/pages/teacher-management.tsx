@@ -94,6 +94,7 @@ export function TeacherManagement() {
         validate={(f) => {
           if (!f.fullName.trim()) return "F.I.O majburiy";
           if (f.username.trim() && !f.password.trim()) return "Login uchun parol kiriting";
+          if (f.username.trim() && f.password.trim().length < 12) return "Parol kamida 12 ta belgi bo‘lishi kerak";
           if (!f.username.trim() && f.password.trim()) return "Parol uchun login kiriting";
           return null;
         }}

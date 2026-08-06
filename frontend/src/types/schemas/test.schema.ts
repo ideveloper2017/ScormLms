@@ -50,9 +50,10 @@ export const TestResultSchema = z.object({
   score: z.number().min(0),
   totalPoints: z.number().min(0),
   percentage: z.number().min(0).max(100),
-  passed: z.boolean(),
-  submittedAt: z.coerce.date(),
-  feedback: z.string().optional(),
+    passed: z.boolean(),
+    submittedAt: z.coerce.date(),
+    proctoring: z.boolean().optional().default(false),
+    feedback: z.string().optional(),
 });
 
 export const TestHistoryItemSchema = z.object({

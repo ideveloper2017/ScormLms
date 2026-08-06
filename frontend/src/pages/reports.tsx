@@ -1,286 +1,41 @@
-import { useQuery } from '@tanstack/react-query';
-import {
-  BarChart3, Download, Filter, TrendingUp, Users, BookOpen,
-  GraduationCap, AlertTriangle, RefreshCw,
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
-import { Button } from '@/components/ui/button.tsx';
-import { Badge } from '@/components/ui/badge.tsx';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell,
-} from 'recharts';
-import { qk } from '@/lib/query-keys';
-import { reportsApi } from '@/services/api/reports-api';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Activity, BarChart3, BookOpen, Download, GraduationCap, RefreshCw, Users } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { downloadInstitutionReport, getInstitutionReport, type ReportExportFormat } from "@/services/api/reports-api";
 
-const SCORE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280'];
-
-function DashSkeleton() {
-  return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <Skeleton className="h-9 w-48" />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1,2,3,4].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-10 w-16" /></CardContent></Card>)}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[1,2].map(i => <Card key={i}><CardContent className="pt-6"><Skeleton className="h-64 w-full" /></CardContent></Card>)}
-      </div>
-    </div>
-  );
-}
+const today = new Date().toISOString().slice(0, 10);
+const sixMonthsAgo = (() => { const value = new Date(); value.setMonth(value.getMonth() - 6); value.setDate(1); return value.toISOString().slice(0, 10); })();
+const metricIcons: Record<string, typeof Users> = { STUDENTS: Users, COURSES: BookOpen, COMPLETION_RATE: GraduationCap, AVERAGE_SCORE: BarChart3, ATTENDANCE_RATE: Activity };
 
 export function Reports() {
-  const { data: stats, isLoading: statsLoading, error: statsError, refetch } = useQuery({
-    queryKey: qk.reports.academic(),
-    queryFn: reportsApi.getAcademicStats,
-    staleTime: 300_000,
-  });
-
-  const { data: monthly = [], isLoading: monthlyLoading } = useQuery({
-    queryKey: qk.reports.monthly(),
-    queryFn: reportsApi.getMonthlyData,
-    staleTime: 300_000,
-  });
-
-  const { data: courseCompletion = [], isLoading: coursesLoading } = useQuery({
-    queryKey: qk.reports.courses(),
-    queryFn: reportsApi.getCourseCompletion,
-    staleTime: 300_000,
-  });
-
-  const { data: reports = [], isLoading: reportsLoading } = useQuery({
-    queryKey: qk.reports.list(),
-    queryFn: reportsApi.getReports,
-    staleTime: 120_000,
-  });
-
-  const isLoading = statsLoading || monthlyLoading || coursesLoading || reportsLoading;
-
-  if (isLoading) return <DashSkeleton />;
-
-  if (statsError) {
-    return (
-      <div className="p-3 sm:p-4 md:p-6 space-y-4">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Hisobotlar</h1>
-        <Card className="border-destructive/50">
-          <CardContent className="pt-6 text-center space-y-3">
-            <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
-            <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
-            <p className="text-sm text-muted-foreground">{(statsError as Error).message}</p>
-            <Button variant="outline" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 mr-2" />Qayta urinish
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // build pie chart data from monthly avg scores
-  const scoreRanges = [
-    { range: '90-100', count: 0, color: '#10b981' },
-    { range: '80-89',  count: 0, color: '#3b82f6' },
-    { range: '70-79',  count: 0, color: '#f59e0b' },
-    { range: '60-69',  count: 0, color: '#ef4444' },
-    { range: '<60',    count: 0, color: '#6b7280' },
-  ];
-  monthly.forEach(m => {
-    const s = m.avgScore;
-    if (s >= 90)      scoreRanges[0].count++;
-    else if (s >= 80) scoreRanges[1].count++;
-    else if (s >= 70) scoreRanges[2].count++;
-    else if (s >= 60) scoreRanges[3].count++;
-    else              scoreRanges[4].count++;
-  });
-
-  return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Hisobotlar</h1>
-          <p className="text-muted-foreground">LMS platformasi bo'yicha batafsil tahlil va statistika</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select defaultValue="last-month">
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Vaqt oralig'i" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="last-week">Oxirgi hafta</SelectItem>
-              <SelectItem value="last-month">Oxirgi oy</SelectItem>
-              <SelectItem value="last-quarter">Oxirgi chorak</SelectItem>
-              <SelectItem value="last-year">Oxirgi yil</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" className="gap-2"><Filter className="h-4 w-4" />Filter</Button>
-          <Button className="gap-2"><Download className="h-4 w-4" />Eksport</Button>
-        </div>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          { label: 'GPA',              value: stats?.gpa?.toFixed(2) ?? '—',            icon: GraduationCap, cls: 'text-cyan-600',   cardCls: 'border-cyan-200 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/20 dark:to-cyan-800/20'       },
-          { label: 'Faol kurslar',     value: stats?.coursesActive ?? 0,                icon: BookOpen,     cls: 'text-violet-600', cardCls: 'border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100 dark:from-violet-900/20 dark:to-violet-800/20' },
-          { label: 'Yakunlangan',      value: stats?.coursesCompleted ?? 0,             icon: GraduationCap, cls: 'text-pink-600',   cardCls: 'border-pink-200 bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20'         },
-          { label: "O'rtacha ball",    value: `${stats?.avgScore?.toFixed(1) ?? 0}%`,   icon: BarChart3,    cls: 'text-orange-600', cardCls: 'border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20' },
-        ].map(({ label, value, icon: Icon, cls, cardCls }) => (
-          <Card key={label} className={`border-2 hover:shadow-xl transition-all duration-300 hover:scale-105 ${cardCls}`}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                <span>{label}</span>
-                <Icon className={`h-4 w-4 ${cls}`} />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold mb-1 ${cls}`}>{value}</div>
-              <div className="flex items-center text-xs text-green-600 mt-1">
-                <TrendingUp className="h-3 w-3 mr-1" />Yangilangan
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Oylik O'zlashtirish</CardTitle>
-            <CardDescription>Ball va davomat statistikasi</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {monthly.length === 0 ? (
-              <p className="text-center text-muted-foreground py-12 text-sm">Ma'lumot yo'q</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={monthly}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="avgScore"   stroke="#3b82f6" strokeWidth={2} name="O'rtacha ball" />
-                  <Line type="monotone" dataKey="attendance" stroke="#10b981" strokeWidth={2} name="Davomat %" />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Kurs Yakunlash</CardTitle>
-            <CardDescription>Kurslar bo'yicha yakunlash statistikasi</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {courseCompletion.length === 0 ? (
-              <p className="text-center text-muted-foreground py-12 text-sm">Ma'lumot yo'q</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={courseCompletion}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="courseTitle" tick={{ fontSize: 10 }} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="completion" fill="#10b981" name="Yakunlash %" />
-                  <Bar dataKey="avgScore"   fill="#3b82f6" name="O'rtacha ball" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Bottom grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Score distribution pie */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ball Taqsimoti</CardTitle>
-            <CardDescription>Oylik natijalar</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {monthly.length === 0 ? (
-              <p className="text-center text-muted-foreground py-12 text-sm">Ma'lumot yo'q</p>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={scoreRanges} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="count">
-                      {scoreRanges.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1.5 mt-2">
-                  {scoreRanges.map(item => (
-                    <div key={item.range} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span>{item.range}</span>
-                      </div>
-                      <span className="font-medium">{item.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Course completion top */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Eng Yaxshi Kurslar</CardTitle>
-            <CardDescription>Yuqori o'zlashtirish</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {courseCompletion.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6 text-sm">Ma'lumot yo'q</p>
-            ) : courseCompletion.slice(0, 5).map((c, i) => (
-              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
-                <div>
-                  <div className="font-medium text-sm">{c.courseTitle}</div>
-                  <div className="text-xs text-muted-foreground">{c.students} talaba</div>
-                </div>
-                <Badge variant="secondary">{c.completion}%</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Ready reports */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tayyor Hisobotlar</CardTitle>
-            <CardDescription>Yuklab olish uchun tayyor</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {reports.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6 text-sm">Hisobot yo'q</p>
-            ) : reports.slice(0, 5).map(r => (
-              <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/50">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{r.title}</div>
-                  <div className="text-xs text-muted-foreground">{r.period}</div>
-                </div>
-                {r.status === 'ready' ? (
-                  <Button size="sm" variant="outline" className="shrink-0 h-7 gap-1">
-                    <Download className="h-3 w-3" />
-                  </Button>
-                ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    {r.status === 'generating' ? 'Tayyorlanmoqda' : 'Xato'}
-                  </Badge>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+  const { toast } = useToast();
+  const [from, setFrom] = useState(sixMonthsAgo);
+  const [to, setTo] = useState(today);
+  const [applied, setApplied] = useState({ from: sixMonthsAgo, to: today });
+  const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
+  const report = useQuery({ queryKey: ["reports", "institution", applied], queryFn: () => getInstitutionReport(applied.from, applied.to), staleTime: 60_000 });
+  const exportFile = async (format: ReportExportFormat) => {
+    try { setExporting(format); await downloadInstitutionReport(applied.from, applied.to, format); toast({ title: `${format} hisobot yuklandi` }); }
+    catch (error) { toast({ variant: "destructive", title: "Eksport bajarilmadi", description: (error as Error).message }); }
+    finally { setExporting(null); }
+  };
+  if (report.isLoading) return <div className="space-y-5 p-6"><Skeleton className="h-10 w-60" /><div className="grid gap-4 md:grid-cols-4">{[1,2,3,4].map((item) => <Skeleton key={item} className="h-28" />)}</div><Skeleton className="h-80" /></div>;
+  if (report.error || !report.data) return <div className="p-6"><Card className="border-destructive"><CardContent className="space-y-3 p-8 text-center"><p className="text-destructive">{(report.error as Error)?.message ?? "Hisobot yuklanmadi"}</p><Button variant="outline" onClick={() => report.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Qayta urinish</Button></CardContent></Card></div>;
+  const data = report.data;
+  const important = ["STUDENTS", "COURSES", "COMPLETION_RATE", "AVERAGE_SCORE", "ATTENDANCE_RATE", "ACTIVITY_EVENTS"];
+  return <div className="space-y-6 p-3 sm:p-6">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><h1 className="text-2xl font-bold">Tashkilot hisobotlari</h1><p className="text-sm text-muted-foreground">Kontingent, o'zlashtirish, kontent va haqiqiy o'quv faolligi.</p><Badge variant="outline" className="mt-2">{data.scope === "INSTITUTION" ? "Tashkilot kesimi" : "Faqat mening kurslarim"}</Badge></div><div className="flex flex-wrap items-end gap-2"><div><Label className="text-xs">Dan</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div><div><Label className="text-xs">Gacha</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div><Button variant="outline" disabled={!from || !to || from > to} onClick={() => setApplied({ from, to })}>Qo'llash</Button><Button variant="outline" disabled={exporting != null} onClick={() => exportFile("CSV")}><Download className="mr-1 h-4 w-4" />CSV</Button><Button disabled={exporting != null} onClick={() => exportFile("XLSX")}><Download className="mr-1 h-4 w-4" />XLSX</Button></div></div>
+    <p className="text-xs text-muted-foreground">Hisoblangan: {new Date(data.generatedAt).toLocaleString("uz-Latn")} · davr {data.from} — {data.to}</p>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">{data.metrics.filter((metric) => important.includes(metric.code)).map((metric) => { const Icon = metricIcons[metric.code] ?? BarChart3; return <Card key={metric.code}><CardHeader className="pb-2"><CardDescription className="flex items-center justify-between">{metric.label}<Icon className="h-4 w-4" /></CardDescription></CardHeader><CardContent><div className="text-2xl font-bold">{metric.value.toLocaleString("uz-Latn", { maximumFractionDigits: 2 })}<span className="ml-1 text-xs font-normal text-muted-foreground">{metric.unit}</span></div></CardContent></Card>; })}</div>
+    <Card><CardHeader><CardTitle>Kurslar bo'yicha o'zlashtirish</CardTitle><CardDescription>Yakunlash, baho va davomat foizi</CardDescription></CardHeader><CardContent>{data.courses.length === 0 ? <p className="py-12 text-center text-muted-foreground">Tanlangan davrda kurs topilmadi.</p> : <ResponsiveContainer width="100%" height={320}><BarChart data={data.courses.slice(0, 15)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="courseTitle" tick={{ fontSize: 10 }} /><YAxis domain={[0, 100]} /><Tooltip /><Bar dataKey="completionRate" name="Yakunlash %" fill="#8b5cf6" /><Bar dataKey="averageScore" name="Ball %" fill="#3b82f6" /><Bar dataKey="attendanceRate" name="Davomat %" fill="#10b981" /></BarChart></ResponsiveContainer>}</CardContent></Card>
+    <Card><CardHeader><CardTitle>Kurslar kesimi</CardTitle><CardDescription>Eksportdagi real yozuvlarning ekrandagi ko'rinishi</CardDescription></CardHeader><CardContent className="overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="p-2">Kurs</th><th>Mas'ul</th><th>Holat</th><th>Talaba</th><th>Yakunlash</th><th>Ball</th><th>Davomat</th><th>Kontent</th><th>SCORM</th><th>Faollik</th></tr></thead><tbody>{data.courses.map((row) => <tr key={row.courseId} className="border-b"><td className="p-2 font-medium">{row.courseTitle}</td><td>{row.ownerName || "—"}</td><td><Badge variant="outline">{row.status}</Badge></td><td>{row.enrolledStudents}</td><td>{row.completedStudents} · {row.completionRate}%</td><td>{row.averageScore}%</td><td>{row.attendanceRate}%</td><td>{row.contentCount}</td><td>{row.scormPackageCount}</td><td>{row.activityEventCount}</td></tr>)}</tbody></table></CardContent></Card>
+  </div>;
 }

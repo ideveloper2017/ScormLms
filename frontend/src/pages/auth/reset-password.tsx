@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) { setValidationError("Tiklash havolasi noto'g'ri. Emaildagi havolani qayta bosing."); return; }
-    if (newPassword.length < 6) { setValidationError("Parol kamida 6 ta belgidan iborat bo'lishi kerak"); return; }
+    if (newPassword.length < 12) { setValidationError("Parol kamida 12 ta belgidan iborat bo'lishi kerak"); return; }
     if (newPassword !== confirmPassword) { setValidationError("Parollar mos kelmadi"); return; }
     setValidationError(null);
     mutation.mutate({ token, password: newPassword });
@@ -170,7 +170,7 @@ export default function ResetPasswordPage() {
                     <Input
                       id="new-password"
                       type={showNew ? "text" : "password"}
-                      placeholder="Kamida 6 ta belgi"
+                      placeholder="Kamida 12 ta belgi"
                       className="pl-10 pr-10"
                       value={newPassword}
                       onChange={(e) => {

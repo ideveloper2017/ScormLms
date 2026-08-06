@@ -6,6 +6,11 @@ import uz.scorm.lms.app.v1.exam.model.AppealStatus
 import uz.scorm.lms.app.v1.exam.model.ExamAppeal
 
 interface ExamAppealRepository : JpaRepository<ExamAppeal, Long> {
+    @EntityGraph(attributePaths = ["examResult", "examResult.examSession", "examResult.examSession.course", "examResult.enrollment", "student", "reviewedBy"])
+    fun findAllByExamResultExamSessionIdAndDeletedFalseOrderByAppealDateAsc(examSessionId: Long): List<ExamAppeal>
+
+    fun existsByExamResultIdAndStatusAndDeletedFalse(examResultId: Long, status: AppealStatus): Boolean
+
     @EntityGraph(attributePaths = ["examResult", "student", "reviewedBy"])
     fun findAllByExamResultIdAndDeletedFalseOrderByAppealDateDesc(
         examResultId: Long,

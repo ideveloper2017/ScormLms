@@ -179,6 +179,20 @@ data class AttestationSessionStatsDto(
     val resultPublished: Boolean,
 )
 
+data class AttestationProtocolDto(
+    val id: String,
+    val sessionId: String,
+    val protocolNumber: String,
+    val protocolDate: LocalDate,
+    val totalStudents: Int,
+    val passedCount: Int,
+    val failedCount: Int,
+    val retakeCount: Int,
+    val approved: Boolean,
+    val approverName: String?,
+    val approvedAt: Instant?,
+)
+
 data class AttestationSessionDetailDto(
     val sessionId: String,
     val courseId: String,

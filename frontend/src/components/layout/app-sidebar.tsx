@@ -6,7 +6,7 @@ import {
   Sparkles, Building2, Layers3, NotebookText, UserCog,
   LayoutDashboard, Shield, Building, FolderTree, Calendar,
   Plug, ScrollText, BookMarked, CalendarDays, FileQuestion,
-  Star, Bell, CircleUser, Video, Megaphone, Scale,
+  Star, Bell, CircleUser, Video, Megaphone, Scale, Award, ClipboardCheck, FileCheck2,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
@@ -49,6 +49,9 @@ const ITEMS = {
   tDashboard:     { name: "Dashboard",          href: "/teacher/dashboard",     icon: LayoutDashboard },
   tCourses:       { name: "Mening kurslarim",   href: "/teacher/courses",       icon: BookOpen        },
   tContent:       { name: "Kontent",            href: "/teacher/content",       icon: Video           },
+  tSessions:      { name: "Dars jadvali",       href: "/teacher/sessions",      icon: CalendarDays    },
+  tExams:         { name: "Yakuniy nazorat",    href: "/teacher/exams",         icon: GraduationCap   },
+  tAttestations:  { name: "Davlat attestatsiyasi", href: "/teacher/attestations", icon: Award            },
   tAssignments:   { name: "Topshiriqlar",       href: "/teacher/assignments",   icon: ClipboardList   },
   tTests:         { name: "Testlar",            href: "/teacher/tests",         icon: FileQuestion    },
   tGradebook:     { name: "Baholash",           href: "/teacher/gradebook",     icon: Star            },
@@ -58,6 +61,7 @@ const ITEMS = {
   tAnnouncements: { name: "E'lonlar",           href: "/teacher/announcements", icon: Megaphone       },
   tReports:       { name: "Hisobotlar",         href: "/teacher/reports",       icon: BarChart3       },
   tProfile:       { name: "Profil",             href: "/teacher/profile",       icon: CircleUser      },
+  tSurveys:       { name: "Anonim so'rovlar",  href: "/teacher/surveys",       icon: ClipboardCheck  },
 
   // ── Talaba navigatsiyasi (/student/*) ──────────────────────────────────
   sDashboard:     { name: "Dashboard",           href: "/student/dashboard",     icon: LayoutDashboard },
@@ -67,12 +71,14 @@ const ITEMS = {
   sAssignments:   { name: "Topshiriqlar",        href: "/student/assignments",   icon: ClipboardList   },
   sTests:         { name: "Testlar",             href: "/student/tests",         icon: FileQuestion    },
   sExams:         { name: "Imtihonlar",          href: "/student/exams",         icon: GraduationCap   },
+  sAttestations:  { name: "Davlat attestatsiyasi", href: "/student/attestations", icon: Award            },
   sGrades:        { name: "Baholar",             href: "/student/grades",        icon: Star            },
   sAttendance:    { name: "Davomat",             href: "/student/attendance",    icon: UserCheck       },
   sMessages:      { name: "Xabarlar",            href: "/student/messages",      icon: MessageCircle   },
   sNotifications: { name: "Bildirishnomalar",    href: "/student/notifications", icon: Bell            },
   sCalendar:      { name: "Akademik kalendar",   href: "/student/calendar",      icon: Calendar        },
   sProfile:       { name: "Profil",              href: "/student/profile",       icon: CircleUser      },
+  sSurveys:       { name: "Anonim so'rovlar",    href: "/student/surveys",       icon: ClipboardCheck  },
 
   // ── Admin navigatsiyasi (/admin/*) ──────────────────────────────────────
   aDashboard:    { name: "Dashboard",           href: "/admin/dashboard",    icon: LayoutDashboard },
@@ -92,6 +98,8 @@ const ITEMS = {
   aIntegrations: { name: "Integratsiyalar",     href: "/admin/integrations", icon: Plug            },
   aAuditLogs:     { name: "Audit log",            href: "/admin/audit-logs",       icon: ScrollText      },
   aCompliance559: { name: "559-son qaror",        href: "/admin/compliance-559",   icon: Scale           },
+  aSurveys:       { name: "Anonim so'rovlar",     href: "/admin/surveys",          icon: ClipboardCheck  },
+  aContentReviews:{ name: "Kontent ekspertizasi", href: "/admin/content-reviews",  icon: FileCheck2       },
   aSettings:      { name: "Sozlamalar",          href: "/admin/settings",         icon: Settings        },
   aNotifications: { name: "Bildirishnomalar",    href: "/admin/notifications",     icon: Bell            },
   tNotifications: { name: "Bildirishnomalar",    href: "/teacher/notifications",   icon: Bell            },
@@ -105,8 +113,8 @@ function buildNav(role: string): NavGroup[] {
     { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
     { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aTeachers, ITEMS.aRoles] },
     { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aGroups, ITEMS.aSubjects] },
-    { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aCourses, ITEMS.aCalendar] },
-    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aCompliance559, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.aSettings] },
+    { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aCalendar] },
+    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aCompliance559, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.aSettings] },
   ];
 
   const groups: Record<string, NavGroup[]> = {
@@ -114,32 +122,32 @@ function buildNav(role: string): NavGroup[] {
     ADMIN:       ADMIN_NAV,
     METODIST: [
       { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-      { label: "Ta'lim",           items: [ITEMS.aCourses, ITEMS.resources, ITEMS.teaching, ITEMS.exams] },
+      { label: "Ta'lim",           items: [ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.resources, ITEMS.teaching, ITEMS.exams] },
       { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aGroups, ITEMS.aSubjects] },
       { label: "Boshqaruv",        items: [ITEMS.aStudents, ITEMS.aTeachers, ITEMS.contingent, ITEMS.comms] },
-      { label: "Tahlil",           items: [ITEMS.aReports, ITEMS.stats] },
+      { label: "Tahlil",           items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.stats] },
     ],
     TEACHER: [
       { label: "Asosiy",         items: [ITEMS.tDashboard] },
-      { label: "Kurslar",        items: [ITEMS.tCourses, ITEMS.tContent] },
-      { label: "Baholash",       items: [ITEMS.tAssignments, ITEMS.tTests, ITEMS.tGradebook] },
+      { label: "Kurslar",        items: [ITEMS.tCourses, ITEMS.tContent, ITEMS.tSessions] },
+      { label: "Baholash",       items: [ITEMS.tAssignments, ITEMS.tTests, ITEMS.tExams, ITEMS.tAttestations, ITEMS.tGradebook] },
       { label: "Talabalar",      items: [ITEMS.tStudents, ITEMS.tAttendance] },
       { label: "Kommunikatsiya", items: [ITEMS.tMessages, ITEMS.tAnnouncements, ITEMS.tNotifications] },
-      { label: "Boshqa",         items: [ITEMS.tReports, ITEMS.tProfile] },
+      { label: "Boshqa",         items: [ITEMS.tSurveys, ITEMS.tReports, ITEMS.tProfile] },
     ],
     STUDENT: [
       { label: "Asosiy",    items: [ITEMS.sDashboard] },
-      { label: "Ta'lim",    items: [ITEMS.sStudyPlan, ITEMS.sCourses, ITEMS.sSchedule, ITEMS.sAssignments, ITEMS.sTests, ITEMS.sExams] },
+      { label: "Ta'lim",    items: [ITEMS.sStudyPlan, ITEMS.sCourses, ITEMS.sSchedule, ITEMS.sAssignments, ITEMS.sTests, ITEMS.sExams, ITEMS.sAttestations] },
       { label: "Natijalar", items: [ITEMS.sGrades, ITEMS.sAttendance] },
       { label: "Aloqa",     items: [ITEMS.sMessages, ITEMS.sNotifications] },
-      { label: "Boshqa",    items: [ITEMS.sCalendar, ITEMS.sProfile] },
+      { label: "Boshqa",    items: [ITEMS.sSurveys, ITEMS.sCalendar, ITEMS.sProfile] },
     ],
     PROCTOR: [
       { label: "Asosiy", items: [ITEMS.home, ITEMS.exams, ITEMS.comms] },
     ],
     MONITORING: [
       { label: "Asosiy", items: [ITEMS.home] },
-      { label: "Tahlil", items: [ITEMS.stats, ITEMS.aReports, ITEMS.comms] },
+      { label: "Tahlil", items: [ITEMS.stats, ITEMS.aReports, ITEMS.aSurveys, ITEMS.comms] },
     ],
   };
   return groups[r] ?? [{ label: "Asosiy", items: [ITEMS.home, ITEMS.courses, ITEMS.comms] }];

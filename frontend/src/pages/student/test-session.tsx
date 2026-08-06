@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Clock, AlertCircle, CheckCircle, Circle, ChevronLeft, ChevronRight,
-  Send, AlertTriangle
+  Send, AlertTriangle, Camera, CameraOff
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { useTest, useSubmitTest, useStartTest } from "@/hooks/tests/useTests";
 import { TestSession as TestSessionType, TestQuestion } from "@/types/test.types";
 import { format, differenceInSeconds } from "date-fns";
 import { uz } from "date-fns/locale";
+import { useProctoringMonitor } from "@/hooks/tests/useProctoringMonitor";
 
 export function TestSession() {
   const { testId } = useParams<{ testId: string }>();
@@ -38,6 +39,12 @@ export function TestSession() {
   const startTestMutation = useStartTest();
   const [session, setSession] = useState<TestSessionType | undefined>(initialSession);
   const resumeRequested = useRef(false);
+  const submittingRef = useRef(false);
+  const proctoringMonitor = useProctoringMonitor({
+    enabled: Boolean(test?.proctoring && session),
+    testId,
+    attemptId: session?.id,
+  });
 
   useEffect(() => {
     if (session || !testId || resumeRequested.current) return;
@@ -115,9 +122,11 @@ export function TestSession() {
 
   // Submit test
   const handleSubmitTest = async () => {
-    if (!testId) return;
+    if (!testId || submittingRef.current) return;
+    submittingRef.current = true;
 
     try {
+      await proctoringMonitor.flush();
       const payload = {
         answers: questions.map(q => ({
           questionId: q.id,
@@ -134,6 +143,7 @@ export function TestSession() {
       });
     } catch (error) {
       console.error('Failed to submit test:', error);
+      submittingRef.current = false;
     }
   };
 
@@ -219,6 +229,32 @@ export function TestSession() {
             </div>
             <Progress value={progressPercent} className="h-2" />
           </div>
+          {test.proctoring && (
+            <div className={`mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs ${
+              proctoringMonitor.cameraStatus === 'active'
+                ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300'
+                : 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300'
+            }`}>
+              <span className="flex items-center gap-2">
+                {proctoringMonitor.cameraStatus === 'active'
+                  ? <Camera className="h-4 w-4" />
+                  : <CameraOff className="h-4 w-4" />}
+                {proctoringMonitor.cameraStatus === 'active'
+                  ? 'Proktoring kamerasi faol; fokus va tarmoq holati jurnal qilinmoqda.'
+                  : proctoringMonitor.cameraStatus === 'initializing'
+                    ? 'Proktoring kamerasi ishga tushirilmoqda…'
+                    : 'Kamera ishlamayapti. Hodisa server jurnaliga yuborildi.'}
+              </span>
+              <span className="flex items-center gap-2">
+                {proctoringMonitor.queuedEvents > 0 && `${proctoringMonitor.queuedEvents} hodisa yuborishni kutmoqda`}
+                {proctoringMonitor.cameraStatus !== 'active' && proctoringMonitor.cameraStatus !== 'initializing' && (
+                  <Button size="sm" variant="outline" className="h-7" onClick={proctoringMonitor.restartCamera}>
+                    Kamerani qayta yoqish
+                  </Button>
+                )}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

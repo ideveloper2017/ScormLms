@@ -15,6 +15,7 @@ import uz.scorm.lms.app.v1.attestation.model.DefenseDecision
 import uz.scorm.lms.app.v1.attestation.model.GraduationCertificate
 import uz.scorm.lms.app.v1.attestation.repository.GraduationCertificateRepository
 import uz.scorm.lms.app.v1.attestation.repository.StudentDefenseRepository
+import uz.scorm.lms.app.v1.attestation.repository.AttestationProtocolRepository
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
@@ -26,6 +27,7 @@ import java.util.UUID
 class GraduationCertificateService(
     private val certificateRepository: GraduationCertificateRepository,
     private val defenseRepository: StudentDefenseRepository,
+    private val protocolRepository: AttestationProtocolRepository,
     private val userRepository: UserRepository,
     private val courseAccessService: CourseAccessService,
     private val auditService: AuditService,
@@ -42,13 +44,15 @@ class GraduationCertificateService(
 
         courseAccessService.requireManage(defense.attestationSession.course.id, userId, mayManageAll)
         require(defense.commissionDecision == DefenseDecision.PASS) { "Faqat o'tgan talabalar uchun sertifikat berilishi mumkin" }
+        val protocol = protocolRepository.findByAttestationSessionIdAndDeletedFalse(defense.attestationSession.id!!)
+        require(protocol?.approvedAt != null) { "Sertifikat uchun attestatsiya protokoli tasdiqlangan bo'lishi kerak" }
 
         val existingCertificate = certificateRepository.findByStudentDefenseIdAndDeletedFalse(request.studentDefenseId)
         if (existingCertificate != null) {
             return toCertificateDetailsDto(existingCertificate)
         }
 
-        val issuer = userRepository.findById(request.issuedByUserId)
+        val issuer = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("Sertifikat beruvchi topilmadi") }
 
         val certificateNumber = generateCertificateNumber(request.issueDate.year)
@@ -147,8 +151,11 @@ class GraduationCertificateService(
             request.sessionId,
             DefenseDecision.PASS,
         )
+        val sessionCourseId = defenses.firstOrNull()?.attestationSession?.course?.id
+            ?: throw IllegalArgumentException("Sertifikat beriladigan himoya topilmadi")
+        courseAccessService.requireManage(sessionCourseId, userId, mayManageAll)
 
-        val issuer = userRepository.findById(request.issuedByUserId)
+        val issuer = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("Sertifikat beruvchi topilmadi") }
 
         var generated = 0
@@ -205,8 +212,10 @@ class GraduationCertificateService(
     ): GraduationCertificateDetailsDto {
         val certificate = certificateRepository.findByIdAndDeletedFalse(certificateId)
             ?: throw IllegalArgumentException("Sertifikat topilmadi")
-
-        courseAccessService.requireView(certificate.studentDefense.attestationSession.course.id, userId, false)
+        val enrollment = certificate.studentDefense.enrollment
+        if (enrollment.student.user.id != userId) {
+            courseAccessService.requireManage(certificate.studentDefense.attestationSession.course.id, userId, false)
+        }
         return toCertificateDetailsDto(certificate)
     }
 
@@ -215,7 +224,12 @@ class GraduationCertificateService(
         enrollmentId: Long,
         userId: Long,
     ): StudentCertificateDto? {
-        val defense = defenseRepository.findAllByEnrollmentIdAndDeletedFalseOrderByAttestationSessionIdDesc(enrollmentId)
+        val defensesForAccess = defenseRepository.findAllByEnrollmentIdAndDeletedFalseOrderByAttestationSessionIdDesc(enrollmentId)
+        val accessDefense = defensesForAccess.firstOrNull() ?: return null
+        if (accessDefense.enrollment.student.user.id != userId) {
+            courseAccessService.requireManage(accessDefense.attestationSession.course.id, userId, false)
+        }
+        val defense = defensesForAccess
             .firstOrNull { it.commissionDecision == DefenseDecision.PASS }
             ?: return null
 
@@ -237,6 +251,22 @@ class GraduationCertificateService(
             downloadUrl = "/api/certificates/${certificate.id}/download",
         )
     }
+
+    @Transactional(readOnly = true)
+    fun getMyCertificates(userId: Long): List<StudentCertificateDto> = certificateRepository
+        .findAllByStudentDefenseEnrollmentStudentUserIdAndDeletedFalseOrderByIssueDateDesc(userId)
+        .map { certificate ->
+            val defense = certificate.studentDefense
+            StudentCertificateDto(
+                id = certificate.id!!.toString(), certificateNumber = certificate.certificateNumber,
+                issueDate = certificate.issueDate, programName = defense.attestationSession.course.name,
+                specialization = certificate.specialization, gpaFinal = certificate.gpaFinal?.toDouble(),
+                courseTitle = defense.attestationSession.course.name, defenseScore = defense.commissionScore.toDouble(),
+                certificateFileUrl = certificate.certificateFileUrl, qrCodeUrl = certificate.qrCodeUrl,
+                verificationUrl = "/certificates/verify?token=${certificate.verificationToken}",
+                downloadUrl = certificate.certificateFileUrl,
+            )
+        }
 
     @Transactional(readOnly = true)
     fun getCertificateStatistics(
@@ -265,10 +295,10 @@ class GraduationCertificateService(
             certificateNumber = certificate.certificateNumber,
             issueDate = certificate.issueDate,
             issuedByName = certificate.issuedBy.fullName ?: certificate.issuedBy.username,
-            issuedByEmail = certificate.issuedBy.email,
+            issuedByEmail = certificate.issuedBy.email.orEmpty(),
             studentId = certificate.studentDefense.enrollment.student.id.toString(),
             studentName = certificate.studentDefense.enrollment.student.fullName ?: certificate.studentDefense.enrollment.student.username,
-            studentEmail = certificate.studentDefense.enrollment.student.email,
+            studentEmail = certificate.studentDefense.enrollment.student.email.orEmpty(),
             courseId = certificate.studentDefense.attestationSession.course.id.toString(),
             courseName = certificate.studentDefense.attestationSession.course.name,
             programName = certificate.studentDefense.attestationSession.course.name,
@@ -286,12 +316,6 @@ class GraduationCertificateService(
     }
 
     private fun generateCertificateNumber(year: Int): String {
-        val lastCertificate = certificateRepository.findDistinctYears().firstOrNull()
-        val yearPrefix = "$year-"
-
-        // In production, this would get the highest number for the year from database
-        // For now, we'll use a simple sequential number
-        val sequenceNumber = String.format("%05d", 1)
-        return "$yearPrefix$sequenceNumber"
+        return "$year-${UUID.randomUUID().toString().replace("-", "").take(12).uppercase()}"
     }
 }

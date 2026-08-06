@@ -1,0 +1,22 @@
+[Unit]
+Description=ScormLms PostgreSQL and persistent storage backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=scorm-backup
+Group=scorm-backup
+EnvironmentFile=/etc/scorm-lms/backup.env
+WorkingDirectory=/opt/scorm-lms
+ExecStart=/usr/bin/pwsh /opt/scorm-lms/ops/backup/backup-scorm-lms.ps1
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/var/lib/scorm-lms
+ReadWritePaths=/var/backups/scorm-lms
+
+[Install]
+WantedBy=multi-user.target

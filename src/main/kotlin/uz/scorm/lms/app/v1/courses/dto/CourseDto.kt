@@ -2,6 +2,7 @@ package uz.scorm.lms.app.v1.courses.dto
 
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.model.CourseContentType
+import uz.scorm.lms.app.v1.courses.model.ContentReviewDecision
 import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
 import java.time.Instant
 import java.time.LocalDate
@@ -107,6 +108,17 @@ data class CourseContentDto(
     val position: Int,
     val status: String,
     val publishedAt: Instant?,
+    val languageCode: String,
+    val authorName: String,
+    val contentVersion: String,
+    val sourceName: String,
+    val sourceUrl: String?,
+    val validFrom: LocalDate,
+    val validUntil: LocalDate?,
+    val effective: Boolean,
+    val metadataUpdatedAt: Instant,
+    val reviewStatus: String,
+    val approvedRevisionNumber: Int?,
 )
 
 data class CourseContentRequest(
@@ -116,6 +128,65 @@ data class CourseContentRequest(
     val contentUrl: String? = null,
     val durationMinutes: Int? = null,
     val position: Int? = null,
+    val languageCode: String,
+    val authorName: String,
+    val contentVersion: String,
+    val sourceName: String,
+    val sourceUrl: String? = null,
+    val validFrom: LocalDate,
+    val validUntil: LocalDate? = null,
+)
+
+data class CourseContentRevisionDto(
+    val id: Long,
+    val contentId: Long,
+    val revisionNumber: Int,
+    val title: String,
+    val description: String?,
+    val contentType: String,
+    val contentUrl: String?,
+    val durationMinutes: Int?,
+    val languageCode: String,
+    val authorName: String,
+    val contentVersion: String,
+    val sourceName: String,
+    val sourceUrl: String?,
+    val validFrom: LocalDate,
+    val validUntil: LocalDate?,
+    val changedAt: Instant,
+    val changedBy: Long,
+)
+
+data class CourseContentReviewDto(
+    val id: Long,
+    val courseId: Long,
+    val courseTitle: String,
+    val moduleId: Long,
+    val moduleTitle: String,
+    val contentId: Long,
+    val contentTitle: String,
+    val description: String?,
+    val contentType: String,
+    val contentUrl: String?,
+    val languageCode: String,
+    val authorName: String,
+    val sourceName: String,
+    val sourceUrl: String?,
+    val validFrom: LocalDate,
+    val validUntil: LocalDate?,
+    val revisionNumber: Int,
+    val contentVersion: String,
+    val status: String,
+    val submittedAt: Instant,
+    val submittedBy: Long,
+    val reviewedAt: Instant?,
+    val reviewedBy: Long?,
+    val decisionComment: String?,
+)
+
+data class ContentReviewDecisionRequest(
+    val decision: ContentReviewDecision,
+    val comment: String? = null,
 )
 
 data class LearningItemStatusRequest(

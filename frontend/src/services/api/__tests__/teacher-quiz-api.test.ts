@@ -20,6 +20,8 @@ const quiz: TeacherTest = {
   totalPoints: 3,
   allowedAttempts: 1,
   passingPercentage: 60,
+  proctoring: true,
+  proctorIds: ['20'],
   status: 'active',
   participants: 0,
 };
@@ -62,12 +64,24 @@ describe('teacher quiz API', () => {
       shuffleQuestions: true,
       showResult: true,
       proctoring: false,
+      proctorIds: [],
       questionIds: [10, 11],
       status: 'PUBLISHED',
     };
     vi.mocked(api.post).mockResolvedValue({ data: quiz });
     await expect(teacherPortalApi.createTest(payload)).resolves.toEqual(quiz);
     expect(api.post).toHaveBeenCalledWith('/teachers/me/tests', payload);
+  });
+
+  it('quiz proktorlarini yuklaydi va yangilaydi', async () => {
+    const assignment = { quizId: '7', proctors: [{ id: '20', username: 'proctor', fullName: 'Proktor' }] };
+    vi.mocked(api.get).mockResolvedValueOnce({ data: assignment.proctors }).mockResolvedValueOnce({ data: assignment });
+    vi.mocked(api.put).mockResolvedValue({ data: assignment });
+
+    await expect(teacherPortalApi.getProctorCandidates()).resolves.toEqual(assignment.proctors);
+    await expect(teacherPortalApi.getTestProctors('7')).resolves.toEqual(assignment);
+    await expect(teacherPortalApi.updateTestProctors('7', ['20'])).resolves.toEqual(assignment);
+    expect(api.put).toHaveBeenCalledWith('/teachers/me/tests/7/proctors', { userIds: [20] });
   });
 
   it('test urinishlari auditini yuklaydi', async () => {

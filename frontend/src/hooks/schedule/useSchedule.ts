@@ -41,7 +41,7 @@ import type { ScheduleItem, WeeklySchedule } from '@/types/schedule.types';
  */
 export const useSchedule = (filters?: ScheduleFilters) => {
   return useQuery<ScheduleItem[], Error>({
-    queryKey: qk.schedule.list(),
+    queryKey: qk.schedule.list(filters),
     queryFn: () => scheduleApi.fetchSchedule(filters),
     staleTime: 30 * 60 * 1000, // 30 minutes - schedules are relatively stable
   });

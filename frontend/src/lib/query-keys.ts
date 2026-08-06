@@ -41,7 +41,8 @@ export const qk = {
     root: () => ['tests'] as const,
     list: () => [...qk.tests.root(), 'list'] as const,
     upcoming: () => [...qk.tests.root(), 'upcoming'] as const,
-    detail: (id: string) => [...qk.tests.root(), 'detail', id] as const,
+      detail: (id: string) => [...qk.tests.root(), 'detail', id] as const,
+      proctoringAppeal: (attemptId: string) => [...qk.tests.root(), 'proctoring-appeal', attemptId] as const,
   },
 
   grades: {
@@ -62,7 +63,9 @@ export const qk = {
 
   schedule: {
     root: () => ['schedule'] as const,
-    list: () => [...qk.schedule.root(), 'list'] as const,
+    list: (filters?: unknown) => filters
+      ? [...qk.schedule.root(), 'list', filters] as const
+      : [...qk.schedule.root(), 'list'] as const,
     byWeek: (weekNumber: number) => [...qk.schedule.root(), 'byWeek', weekNumber] as const,
     upcoming: () => [...qk.schedule.root(), 'upcoming'] as const,
     today: () => [...qk.schedule.root(), 'today'] as const,
@@ -79,7 +82,10 @@ export const qk = {
     root: () => ['proctor'] as const,
     stats: () => [...qk.proctor.root(), 'stats'] as const,
     activeExams: () => [...qk.proctor.root(), 'active-exams'] as const,
-    violations: () => [...qk.proctor.root(), 'violations'] as const,
+    sessions: () => [...qk.proctor.root(), 'sessions'] as const,
+    evidence: (attemptId: string) => [...qk.proctor.sessions(), attemptId, 'evidence'] as const,
+      violations: () => [...qk.proctor.root(), 'violations'] as const,
+      appeals: () => [...qk.proctor.root(), 'appeals'] as const,
   },
 
   monitor: {
@@ -108,6 +114,14 @@ export const qk = {
     tests: () => [...qk.teacher.root(), 'tests'] as const,
     questions: (courseId?: string) => [...qk.teacher.root(), 'questions', courseId] as const,
     attendance: () => [...qk.teacher.root(), 'attendance'] as const,
+    sessions: (courseId?: string) => [...qk.teacher.root(), 'sessions', courseId] as const,
+    exams: () => [...qk.teacher.root(), 'exams'] as const,
+    examAttendance: (id: string) => [...qk.teacher.exams(), id, 'attendance'] as const,
+    examResults: (id: string) => [...qk.teacher.exams(), id, 'results'] as const,
+    examAppeals: (id: string) => [...qk.teacher.exams(), id, 'appeals'] as const,
+    attestations: () => [...qk.teacher.root(), 'attestations'] as const,
+    attestation: (id: string) => [...qk.teacher.attestations(), id] as const,
+    attestationProtocol: (id: string) => [...qk.teacher.attestation(id), 'protocol'] as const,
     gradebook: (courseId: string) => [...qk.teacher.root(), 'gradebook', courseId] as const,
     todaySchedule: () => [...qk.teacher.root(), 'today-schedule'] as const,
   },
@@ -117,6 +131,13 @@ export const qk = {
     list: () => [...qk.exams.root(), 'list'] as const,
     results: () => [...qk.exams.root(), 'results'] as const,
     stats: () => [...qk.exams.root(), 'stats'] as const,
+    appeals: () => [...qk.exams.root(), 'appeals'] as const,
+  },
+
+  attestations: {
+    root: () => ['attestations'] as const,
+    list: () => [...qk.attestations.root(), 'list'] as const,
+    certificates: () => [...qk.attestations.root(), 'certificates'] as const,
   },
 
   reports: {

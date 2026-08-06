@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-06T06:35:35.280Z",
+  "target": "http://127.0.0.1:18080/api/v1/users",
+  "method": "GET",
+  "requestCount": 1000,
+  "warmupRequests": 20,
+  "concurrency": 30,
+  "expectedStatus": 401,
+  "timeoutMs": 5000,
+  "thresholds": {
+    "maxP95Ms": 500,
+    "maxErrors": 0
+  },
+  "durationMs": 1070.62,
+  "requestsPerSecond": 934.04,
+  "latencyMs": {
+    "min": 10.99,
+    "p50": 29.18,
+    "p95": 51.42,
+    "p99": 61.93,
+    "max": 68.61
+  },
+  "statusCounts": {
+    "401": 1000
+  },
+  "transportErrors": 0,
+  "unexpectedStatuses": 0,
+  "passed": true
+}

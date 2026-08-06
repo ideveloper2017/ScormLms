@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
 import java.time.Instant
+import java.time.LocalDate
 
 @Entity
 @Table(
@@ -46,11 +47,56 @@ class CourseContent(
 
     @Column(name = "published_at")
     var publishedAt: Instant? = null,
+
+    @Column(name = "language_code", nullable = false, length = 35)
+    var languageCode: String,
+
+    @Column(name = "author_name", nullable = false)
+    var authorName: String,
+
+    @Column(name = "content_version", nullable = false, length = 64)
+    var contentVersion: String,
+
+    @Column(name = "source_name", nullable = false, length = 500)
+    var sourceName: String,
+
+    @Column(name = "source_url", length = 2000)
+    var sourceUrl: String? = null,
+
+    @Column(name = "valid_from", nullable = false)
+    var validFrom: LocalDate,
+
+    @Column(name = "valid_until")
+    var validUntil: LocalDate? = null,
+
+    @Column(name = "metadata_updated_at", nullable = false)
+    var metadataUpdatedAt: Instant,
+
+    @Column(name = "review_status", nullable = false, length = 30)
+    var reviewStatus: String = ContentReviewStatus.DRAFT.name,
+
+    @Column(name = "approved_revision_number")
+    var approvedRevisionNumber: Int? = null,
 ) : BaseEntity()
+
+fun CourseContent.isEffective(onDate: LocalDate = LocalDate.now()): Boolean =
+    !onDate.isBefore(validFrom) && (validUntil == null || !onDate.isAfter(validUntil))
 
 enum class CourseContentType {
     VIDEO,
     DOCUMENT,
     LINK,
     FILE,
+}
+
+enum class ContentReviewStatus {
+    DRAFT,
+    IN_REVIEW,
+    APPROVED,
+    CHANGES_REQUESTED,
+}
+
+enum class ContentReviewDecision {
+    APPROVED,
+    CHANGES_REQUESTED,
 }

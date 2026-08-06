@@ -23,6 +23,8 @@ import uz.scorm.lms.app.v1.user.mapper.UserMapper
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.model.UserStatus
 import uz.scorm.lms.app.v1.user.repository.UserRepository
+import uz.scorm.lms.app.security.PasswordPolicy
+import java.security.MessageDigest
 
 @Service
 class UserService(
@@ -32,9 +34,11 @@ class UserService(
     private val userMapper: UserMapper,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordResetTokenRepository: PasswordResetTokenRepository,
-    private val emailService: EmailService
+    private val emailService: EmailService,
+    private val passwordPolicy: PasswordPolicy,
 ) {
     fun register(username: String, rawPassword: String, roleName: String = "student"): User {
+        passwordPolicy.validate(rawPassword, username)
         if (userRepository.existsByUsername(username)) {
             throw IllegalArgumentException("Username already exists: $username")
         }
@@ -51,6 +55,7 @@ class UserService(
 
     @Transactional
     fun create(request: UserCreateRequest): UserDto {
+        passwordPolicy.validate(request.password, request.username)
         if (userRepository.existsByUsername(request.username)) {
             throw IllegalArgumentException("Username already exists: ${request.username}")
         }
@@ -79,6 +84,7 @@ class UserService(
         val results = mutableListOf<UserDto>()
         for (item in request.users) {
             if (userRepository.existsByUsername(item.username)) continue
+            passwordPolicy.validate(item.password, item.username)
             val role = try { roleService.getByName(item.roleCode) } catch (_: Exception) { continue }
             results += userMapper.toDto(
                 userRepository.save(
@@ -162,8 +168,10 @@ class UserService(
         if (!passwordEncoder.matches(request.currentPassword, user.password)) {
             throw IllegalArgumentException("Joriy parol noto'g'ri")
         }
+        passwordPolicy.validate(request.newPassword, username)
         user.password = passwordEncoder.encode(request.newPassword)
         userRepository.save(user)
+        refreshTokenRepository.deleteByUser(user)
     }
 
     @Transactional
@@ -172,11 +180,11 @@ class UserService(
 
         passwordResetTokenRepository.deleteAllByUser(user)
 
-        val token = UUID.randomUUID().toString().replace("-", "")
+        val token = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "")
         passwordResetTokenRepository.save(
             PasswordResetToken(
                 user = user,
-                token = token,
+                token = tokenHash(token),
                 expiresAt = Instant.now().plus(1, ChronoUnit.HOURS)
             )
         )
@@ -185,15 +193,17 @@ class UserService(
 
     @Transactional
     fun resetPasswordWithToken(request: ResetPasswordWithTokenRequest) {
-        val resetToken = passwordResetTokenRepository.findByToken(request.token)
+        val resetToken = passwordResetTokenRepository.findByToken(tokenHash(request.token))
             ?: throw IllegalArgumentException("Token noto'g'ri yoki muddati o'tgan")
 
         if (resetToken.used) throw IllegalArgumentException("Token allaqachon ishlatilgan")
         if (resetToken.expiresAt.isBefore(Instant.now())) throw IllegalArgumentException("Token muddati o'tgan")
 
+        passwordPolicy.validate(request.newPassword, resetToken.user.username)
         resetToken.user.password = passwordEncoder.encode(request.newPassword)
         resetToken.used = true
         userRepository.save(resetToken.user)
+        refreshTokenRepository.deleteByUser(resetToken.user)
         passwordResetTokenRepository.save(resetToken)
     }
 
@@ -201,7 +211,13 @@ class UserService(
     fun resetPassword(id: Long, request: PasswordResetRequest): UserDto {
         val user = userRepository.findById(id)
             .orElseThrow { NoSuchElementException("User not found: $id") }
+        passwordPolicy.validate(request.newPassword, user.username)
         user.password = passwordEncoder.encode(request.newPassword)
-        return userMapper.toDto(userRepository.save(user))
+        val saved = userRepository.save(user)
+        refreshTokenRepository.deleteByUser(saved)
+        return userMapper.toDto(saved)
     }
+
+    private fun tokenHash(token: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(token.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 }

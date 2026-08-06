@@ -41,6 +41,7 @@ data class QuizRequest(
     val shuffleQuestions: Boolean = true,
     val showResult: Boolean = true,
     val proctoring: Boolean = false,
+    val proctorIds: Set<Long> = emptySet(),
     val questionIds: List<Long>,
     val status: QuizStatus = QuizStatus.PUBLISHED,
 )
@@ -58,6 +59,8 @@ data class TeacherQuizDto(
     val totalPoints: Int,
     val allowedAttempts: Int,
     val passingPercentage: Int,
+    val proctoring: Boolean,
+    val proctorIds: Set<String>,
     val status: String,
     val avgScore: Int?,
     val participants: Int,
@@ -131,6 +134,7 @@ data class QuizResultDto(
     val percentage: Double,
     val passed: Boolean,
     val submittedAt: Instant,
+    val proctoring: Boolean,
     val feedback: String? = null,
 )
 

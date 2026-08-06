@@ -2,6 +2,7 @@ package uz.scorm.lms.app.v1.exam.dto
 
 import java.math.BigDecimal
 import java.time.Instant
+import uz.scorm.lms.app.v1.exam.model.AppealStatus
 
 data class RecordExamResultRequest(
     val enrollmentId: Long,
@@ -71,6 +72,12 @@ data class ExamResultsStatisticsDto(
 data class ExamAppealRequestDto(
     val examResultId: Long,
     val reason: String,
+)
+
+data class ReviewExamAppealRequest(
+    val status: AppealStatus,
+    val decision: String,
+    val newScore: BigDecimal? = null,
 )
 
 data class ExamAppealResponseDto(

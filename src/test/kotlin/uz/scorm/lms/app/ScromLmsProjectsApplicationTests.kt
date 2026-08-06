@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("7", flyway.info().current()?.version?.toString())
+        assertEquals("18", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -42,6 +42,20 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "course_quiz_questions", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "quiz_attempts", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "quiz_answers", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "exam_sessions", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "state_attestation_sessions", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "course_learning_sessions", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "learning_session_accesses", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "compliance_issues", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "surveys", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "survey_responses", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "proctoring_sessions", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "proctoring_events", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "course_quiz_proctors", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "proctoring_appeals", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "proctoring_appeal_events", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "course_content_revisions", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "course_content_reviews", arrayOf("TABLE")).use { it.next() })
 
             val programColumns = buildSet {
                 metadata.getColumns(null, null, "programs", null).use { columns ->

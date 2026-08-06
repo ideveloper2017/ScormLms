@@ -10,6 +10,7 @@ import uz.scorm.lms.app.v1.student.model.Citizenship
 import uz.scorm.lms.app.v1.student.model.EducationForm
 
 interface StudentRepository : JpaRepository<StudentProfile, Long> {
+    fun countByStudentStatus(status: StudentStatus): Long
     fun findByUserUsername(username: String): StudentProfile?
     fun findByUserId(userId: Long): StudentProfile?
     fun findByPinfl(pinfl: String): StudentProfile?

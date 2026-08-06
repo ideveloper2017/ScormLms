@@ -109,7 +109,9 @@ class Course(
 //    @Column(name = "updated_at")
 //    var updatedAt: LocalDateTime = LocalDateTime.now()
 ): BaseEntity() {
-
+    @get:Transient
+    val name: String
+        get() = title.orEmpty()
 }
 
 enum class CourseStatus {

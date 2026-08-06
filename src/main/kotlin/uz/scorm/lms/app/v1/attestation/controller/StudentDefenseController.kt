@@ -19,6 +19,7 @@ import uz.scorm.lms.app.v1.attestation.dto.SubmitGradeRequest
 import uz.scorm.lms.app.v1.attestation.service.StudentDefenseService
 import uz.scorm.lms.app.v1.security.CustomUserDetails
 import org.springframework.security.core.Authentication
+import org.springframework.security.access.prepost.PreAuthorize
 
 @RestController
 @RequestMapping("/api/v1/defenses")
@@ -31,6 +32,7 @@ class StudentDefenseController(
      * POST /api/v1/defenses/{defenseId}/schedule
      */
     @PostMapping("/{defenseId}/schedule")
+    @PreAuthorize("hasAuthority('STUDENT_READ')")
     fun scheduleDefense(
         @PathVariable defenseId: Long,
         @RequestBody request: ScheduleDefenseRequest,
@@ -46,6 +48,7 @@ class StudentDefenseController(
      * POST /api/v1/defenses/{defenseId}/record
      */
     @PostMapping("/{defenseId}/record")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun recordDefense(
         @PathVariable defenseId: Long,
         @RequestBody request: RecordDefenseRequest,
@@ -61,6 +64,7 @@ class StudentDefenseController(
      * POST /api/v1/defenses/{defenseId}/grade
      */
     @PostMapping("/{defenseId}/grade")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun submitGrade(
         @PathVariable defenseId: Long,
         @RequestBody request: SubmitGradeRequest,
@@ -76,6 +80,7 @@ class StudentDefenseController(
      * POST /api/v1/defenses/{defenseId}/cancel
      */
     @PostMapping("/{defenseId}/cancel")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun cancelDefense(
         @PathVariable defenseId: Long,
         @RequestBody request: CancelDefenseRequest,
@@ -91,6 +96,7 @@ class StudentDefenseController(
      * POST /api/v1/defenses/{defenseId}/reschedule
      */
     @PostMapping("/{defenseId}/reschedule")
+    @PreAuthorize("hasAuthority('STUDENT_READ')")
     fun rescheduleDefense(
         @PathVariable defenseId: Long,
         @RequestBody request: RescheduleDefenseRequest,
@@ -106,12 +112,13 @@ class StudentDefenseController(
      * GET /api/v1/defenses/{defenseId}
      */
     @GetMapping("/{defenseId}")
+    @PreAuthorize("hasAnyAuthority('STUDENT_READ', 'COURSE_WRITE')")
     fun getDefense(
         @PathVariable defenseId: Long,
         authentication: Authentication,
     ): ResponseEntity<Any> {
         val user = authentication.principal as CustomUserDetails
-        val isTeacher = user.mayManageAll // Simplified check; in production, check role properly
+        val isTeacher = authentication.authorities.any { it.authority == "COURSE_WRITE" }
         val result = defenseService.getDefenseDetails(defenseId, user.userId, isTeacher)
         return ResponseEntity.ok(result)
     }
@@ -121,6 +128,7 @@ class StudentDefenseController(
      * GET /api/v1/defenses/enrollment/{enrollmentId}/history
      */
     @GetMapping("/enrollment/{enrollmentId}/history")
+    @PreAuthorize("hasAnyAuthority('STUDENT_READ', 'COURSE_WRITE')")
     fun getDefenseHistory(
         @PathVariable enrollmentId: Long,
         authentication: Authentication,

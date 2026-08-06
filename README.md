@@ -37,7 +37,7 @@ Backend uchun majburiy qiymatlar:
 - `FILE_UPLOAD_DIR`, `SCORM_STORAGE_DIR` va `ASSIGNMENT_STORAGE_DIR` — backup qilinadigan persistent kataloglar
 - `SCORM_SECURE_COOKIE=true`
 
-HEMIS ishlatilsa `HEMIS_HOST`, `HEMIS_ADMIN_LOGIN`, `HEMIS_ADMIN_PASSWORD` ham beriladi. `APP_SEED_ADMIN_PASSWORD` faqat boshlang'ich admin seed kerak bo'lganda vaqtincha beriladi. Productionda `SWAGGER_ENABLED=false` tavsiya etiladi.
+HEMIS ishlatilsa `HEMIS_HOST`, `HEMIS_ADMIN_LOGIN`, `HEMIS_ADMIN_PASSWORD` ham beriladi. `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_TEACHER_PASSWORD` va `APP_SEED_STUDENT_PASSWORD` faqat tegishli boshlang'ich foydalanuvchi kerak bo'lganda vaqtincha beriladi; kod ichida standart parol yo'q. Productionda `SWAGGER_ENABLED=false` tavsiya etiladi.
 
 Frontend environment qiymatlari build vaqtida olinadi; ular [frontend/.env.example](frontend/.env.example) da ko'rsatilgan. `VITE_SCORM_CONTENT_ORIGIN` frontend originidan alohida bo'lishi kerak, masalan `https://scorm.example.uz`.
 
@@ -52,3 +52,5 @@ npm audit
 ```
 
 SCORM paketlari va upload kataloglari Git'ga kiritilmaydi; deploymentda alohida saqlash, backup va restore siyosati talab qilinadi.
+
+PostgreSQL, upload, SCORM va assignment storage uchun atomar backup, xavfsiz restore va disposable drill tartibi [backup/restore runbookida](docs/backup-restore-runbook.md) berilgan. Amaliy skriptlar `ops/backup` katalogida joylashgan.

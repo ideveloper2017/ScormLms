@@ -32,4 +32,12 @@ class UserDetailsImpl(user: User) : UserDetails {
     override fun isAccountNonLocked(): Boolean = true
 
     fun getId(): Long? = id
+
+    val userId: Long
+        get() = requireNotNull(id) { "Autentifikatsiya foydalanuvchi IDsi mavjud emas" }
+
+    val mayManageAll: Boolean
+        get() = authorities.any {
+            it.authority in setOf("ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_METODIST", "USER_MANAGE", "ACADEMIC_WRITE")
+        }
 }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.security.access.prepost.PreAuthorize
 import uz.scorm.lms.app.v1.attestation.dto.AddCommissionMemberRequest
 import uz.scorm.lms.app.v1.attestation.dto.CompleteAttestationSessionRequest
 import uz.scorm.lms.app.v1.attestation.dto.CreateAttestationSessionRequest
@@ -23,6 +24,7 @@ import org.springframework.security.core.Authentication
 
 @RestController
 @RequestMapping("/api/v1/attestation-sessions")
+@PreAuthorize("hasAuthority('COURSE_WRITE')")
 class AttestationSessionController(
     private val sessionService: AttestationSessionService,
 ) {
@@ -111,6 +113,12 @@ class AttestationSessionController(
         val user = authentication.principal as CustomUserDetails
         val result = sessionService.completeSession(sessionId, request, user.userId, user.mayManageAll)
         return ResponseEntity.ok(result)
+    }
+
+    @PostMapping("/{sessionId}/start")
+    fun startSession(@PathVariable sessionId: Long, authentication: Authentication): ResponseEntity<TeacherAttestationSessionDto> {
+        val user = authentication.principal as CustomUserDetails
+        return ResponseEntity.ok(sessionService.startSession(sessionId, user.userId, user.mayManageAll))
     }
 
     /**

@@ -21,9 +21,15 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserService
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
+import org.springframework.security.web.header.writers.StaticHeadersWriter
+import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter
+import org.springframework.security.web.util.matcher.RequestMatcher
 import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import org.springframework.web.filter.CorsFilter
+import uz.scorm.lms.app.security.AuthRateLimitFilter
 import uz.scorm.lms.app.security.JwtAuthFilter
 import uz.scorm.lms.app.security.CustomUserDetailsService
 import uz.scorm.lms.app.security.JwtAuthEntryPoint
@@ -39,6 +45,7 @@ class SecurityConfig(
     private val jwtAuthFilter: JwtAuthFilter,
     private val customUserDetailsService: CustomUserDetailsService,
     private val auditLoggingFilter: AuditLoggingFilter,
+    private val authRateLimitFilter: AuthRateLimitFilter,
     private val clientRegistrations: ObjectProvider<ClientRegistrationRepository>,
     @Value("\${app.cors.allowed-origins}") private val allowedOrigins: List<String>
 ) {
@@ -63,7 +70,15 @@ class SecurityConfig(
         http
             .cors { }
             .csrf { it.disable() }
-            .headers { headers -> headers.frameOptions { frameOptions -> frameOptions.disable() } }
+            .headers { headers ->
+                headers.frameOptions { it.disable() }
+                headers.referrerPolicy { it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER) }
+                headers.addHeaderWriter(StaticHeadersWriter("Permissions-Policy", "camera=(self), microphone=(), geolocation=()"))
+                headers.addHeaderWriter(DelegatingRequestMatcherHeaderWriter(
+                    RequestMatcher { !it.requestURI.startsWith("/scorm-content/") },
+                    XFrameOptionsHeaderWriter(),
+                ))
+            }
             .exceptionHandling { it.authenticationEntryPoint(jwtAuthenticationEntryPoint) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
@@ -83,12 +98,13 @@ class SecurityConfig(
                     "/public/**",
                     "/scorm-content/**",
                     "/api/v1/auth/login",
+                    "/api/v1/auth/forgot-password",
+                    "/api/v1/auth/reset-password",
                     "/api/v1/auth/refresh",
                     "/api/v1/auth/refresh-token",
                     "/api/v1/auth/logout",
                     "/auth/hemis/**",
                     "/auth/email/**",
-                    "/api/v1/users/register",
                     "/ws/**"       // WebSocket handshake — JWT STOMP da tekshiriladi
                 ).permitAll()
                 it.anyRequest().authenticated()
@@ -108,6 +124,7 @@ class SecurityConfig(
 
         http
             .authenticationProvider(authenticationProvider(passwordEncoder()))
+            .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterAfter(auditLoggingFilter, UsernamePasswordAuthenticationFilter::class.java)
 
@@ -129,15 +146,19 @@ class SecurityConfig(
     }
 
     @Bean
-    fun corsFilter(): CorsFilter {
+    fun corsConfigurationSource(): CorsConfigurationSource {
         val source = UrlBasedCorsConfigurationSource()
         val config = CorsConfiguration()
+        val origins = allowedOrigins.map(String::trim).filter(String::isNotBlank)
+        require(origins.isNotEmpty() && origins.none { it == "*" }) { "CORS originlar aniq ko'rsatilishi kerak" }
+        require(origins.all { it.startsWith("http://") || it.startsWith("https://") }) { "CORS origin HTTP/HTTPS bo'lishi kerak" }
         config.allowCredentials = true
-        config.allowedOrigins = allowedOrigins
+        config.allowedOrigins = origins
         config.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-        config.allowedHeaders = listOf("*")
-        config.addExposedHeader("Authorization")
+        config.allowedHeaders = listOf("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "X-Request-Id", "X-Correlation-Id")
+        config.exposedHeaders = listOf("Authorization", "Content-Disposition", "Retry-After")
+        config.maxAge = 3600
         source.registerCorsConfiguration("/**", config)
-        return CorsFilter(source)
+        return source
     }
 }

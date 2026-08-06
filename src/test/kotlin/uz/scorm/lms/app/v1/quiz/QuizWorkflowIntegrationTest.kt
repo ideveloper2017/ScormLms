@@ -19,10 +19,21 @@ import uz.scorm.lms.app.v1.courses.service.CourseService
 import uz.scorm.lms.app.v1.quiz.dto.QuizAnswerItemRequest
 import uz.scorm.lms.app.v1.quiz.dto.QuizQuestionRequest
 import uz.scorm.lms.app.v1.quiz.dto.QuizRequest
+import uz.scorm.lms.app.v1.quiz.dto.ProctoringClientEventRequest
+import uz.scorm.lms.app.v1.quiz.dto.ProctoringEventBatchRequest
 import uz.scorm.lms.app.v1.quiz.model.QuizDifficulty
 import uz.scorm.lms.app.v1.quiz.model.QuizQuestionType
 import uz.scorm.lms.app.v1.quiz.model.QuizStatus
+import uz.scorm.lms.app.v1.quiz.model.ProctoringChallengeDirection
+import uz.scorm.lms.app.v1.quiz.model.ProctoringSession
+import uz.scorm.lms.app.v1.quiz.model.ProctoringSessionStatus
+import uz.scorm.lms.app.v1.quiz.model.ProctoringEventSeverity
+import uz.scorm.lms.app.v1.quiz.model.ProctoringEventType
+import uz.scorm.lms.app.v1.quiz.repository.CourseQuizRepository
+import uz.scorm.lms.app.v1.quiz.repository.ProctoringSessionRepository
+import uz.scorm.lms.app.v1.quiz.repository.ProctoringEventRepository
 import uz.scorm.lms.app.v1.quiz.service.QuizService
+import uz.scorm.lms.app.v1.quiz.service.ProctoringEventService
 import uz.scorm.lms.app.v1.student.model.Gender
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
@@ -30,6 +41,7 @@ import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.Instant
 import java.time.LocalDate
+import java.util.UUID
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -42,6 +54,10 @@ class QuizWorkflowIntegrationTest {
     @Autowired private lateinit var activityRepository: LearningActivityEventRepository
     @Autowired private lateinit var userRepository: UserRepository
     @Autowired private lateinit var studentRepository: StudentRepository
+    @Autowired private lateinit var quizRepository: CourseQuizRepository
+    @Autowired private lateinit var proctoringSessionRepository: ProctoringSessionRepository
+    @Autowired private lateinit var proctoringEventRepository: ProctoringEventRepository
+    @Autowired private lateinit var proctoringEventService: ProctoringEventService
 
     @Test
     fun `savol bankidan test tuziladi server baholaydi va audit natija saqlanadi`() {
@@ -194,6 +210,135 @@ class QuizWorkflowIntegrationTest {
             listOf(QuizAnswerItemRequest(question.id, "5")),
         )
         assertFalse(result.passed)
+        assertThrows(IllegalArgumentException::class.java) {
+            quizService.start(quiz.id.toLong(), requireNotNull(student.user.id))
+        }
+    }
+
+    @Test
+    fun `proktorli test faqat bir martalik server tasdigidan keyin boshlanadi`() {
+        val teacher = user("proctor-teacher")
+        val student = student("30000000000004", "ST-QZ-004", "proctor-student")
+        student.user.faceDescriptor = "server-template"
+        userRepository.save(student.user)
+        val course = publishedCourse(teacher, "Proktorli kurs")
+        enrollmentService.enroll(
+            course.id,
+            CourseEnrollmentRequest(setOf(requireNotNull(student.id))),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val question = quizService.createQuestion(
+            QuizQuestionRequest(course.id, "Nazorat savoli", QuizQuestionType.SHORT_ANSWER, correctAnswer = "javob"),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val quizDto = quizService.createQuiz(
+            QuizRequest(
+                courseId = course.id,
+                title = "Proktorli nazorat",
+                opensAt = Instant.now().minusSeconds(30),
+                closesAt = Instant.now().plusSeconds(600),
+                durationMinutes = 10,
+                proctoring = true,
+                questionIds = listOf(question.id.toLong()),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val quizId = quizDto.id.toLong()
+        val userId = requireNotNull(student.user.id)
+        val quiz = requireNotNull(quizRepository.findByIdAndDeletedFalse(quizId))
+        val enrollment = requireNotNull(
+            enrollmentRepository.findByCourseIdAndStudentId(course.id, requireNotNull(student.id))
+        )
+        val verified = proctoringSessionRepository.save(
+            ProctoringSession(
+                quiz = quiz,
+                enrollment = enrollment,
+                status = ProctoringSessionStatus.VERIFIED,
+                challengeDirection = ProctoringChallengeDirection.LEFT,
+                nonceHash = "0".repeat(64),
+                expiresAt = Instant.now().plusSeconds(120),
+                verifiedAt = Instant.now(),
+            )
+        )
+
+        val started = quizService.start(quizId, userId)
+        val consumed = proctoringSessionRepository.findByIdAndDeletedFalse(requireNotNull(verified.id))!!
+        assertEquals(ProctoringSessionStatus.CONSUMED, consumed.status)
+        assertEquals(started.id.toLong(), consumed.attempt?.id)
+
+        // Active attempt can be resumed; a consumed preflight is not replayed to create a new attempt.
+        assertEquals(started.id, quizService.start(quizId, userId).id)
+
+        val clientEvents = ProctoringEventBatchRequest(listOf(
+            ProctoringClientEventRequest(UUID.randomUUID().toString(), ProctoringEventType.TAB_HIDDEN, Instant.now()),
+            ProctoringClientEventRequest(UUID.randomUUID().toString(), ProctoringEventType.NETWORK_OFFLINE, Instant.now()),
+        ))
+        val recorded = proctoringEventService.recordClientEvents(quizId, started.id.toLong(), userId, clientEvents)
+        assertEquals(2, recorded.accepted)
+        assertEquals(0, recorded.duplicates)
+        val replay = proctoringEventService.recordClientEvents(quizId, started.id.toLong(), userId, clientEvents)
+        assertEquals(0, replay.accepted)
+        assertEquals(2, replay.duplicates)
+        val eventsBeforeSubmit = proctoringEventRepository
+            .findAllByAttemptIdAndDeletedFalseOrderByOccurredAtAsc(started.id.toLong())
+        assertTrue(eventsBeforeSubmit.any {
+            it.type == ProctoringEventType.SESSION_STARTED && it.severity == ProctoringEventSeverity.INFO
+        })
+        assertTrue(eventsBeforeSubmit.any {
+            it.type == ProctoringEventType.TAB_HIDDEN && it.severity == ProctoringEventSeverity.HIGH
+        })
+        assertTrue(eventsBeforeSubmit.any {
+            it.type == ProctoringEventType.NETWORK_OFFLINE && it.severity == ProctoringEventSeverity.MEDIUM
+        })
+
+        quizService.submit(
+            quizId,
+            userId,
+            listOf(QuizAnswerItemRequest(question.id, "javob")),
+        )
+        assertEquals(
+            ProctoringSessionStatus.COMPLETED,
+            proctoringSessionRepository.findByIdAndDeletedFalse(requireNotNull(verified.id))!!.status,
+        )
+        assertTrue(proctoringEventRepository.findAllByAttemptIdAndDeletedFalseOrderByOccurredAtAsc(started.id.toLong())
+            .any { it.type == ProctoringEventType.SESSION_ENDED })
+        assertThrows(IllegalArgumentException::class.java) {
+            proctoringEventService.recordClientEvents(quizId, started.id.toLong(), userId, clientEvents)
+        }
+    }
+
+    @Test
+    fun `proktorli test tasdiqsiz yangi urinish yaratmaydi`() {
+        val teacher = user("proctor-gate-teacher")
+        val student = student("30000000000005", "ST-QZ-005", "proctor-gate-student")
+        val course = publishedCourse(teacher, "Proktoring gate kursi")
+        enrollmentService.enroll(
+            course.id,
+            CourseEnrollmentRequest(setOf(requireNotNull(student.id))),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val question = quizService.createQuestion(
+            QuizQuestionRequest(course.id, "Gate savoli", QuizQuestionType.SHORT_ANSWER, correctAnswer = "javob"),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val quiz = quizService.createQuiz(
+            QuizRequest(
+                courseId = course.id,
+                title = "Tasdiq talab qiluvchi test",
+                opensAt = Instant.now().minusSeconds(30),
+                closesAt = Instant.now().plusSeconds(600),
+                durationMinutes = 10,
+                proctoring = true,
+                questionIds = listOf(question.id.toLong()),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
         assertThrows(IllegalArgumentException::class.java) {
             quizService.start(quiz.id.toLong(), requireNotNull(student.user.id))
         }

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { Clock, MapPin, User, ChevronLeft, ChevronRight, Video } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { Clock, MapPin, User, ChevronLeft, ChevronRight, Video, FileVideo, Link2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useSchedule, useNextClass, useTodaySchedule } from "@/hooks/schedule/useSchedule";
 import type { ScheduleItem } from "@/types/schedule.types";
+import type { ScheduleAccessType } from "@/types/schedule.types";
+import { scheduleApi } from "@/services/api/schedule-api";
 import { toast } from "sonner";
 
 const DAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
@@ -37,11 +40,10 @@ const COURSE_COLORS = [
   "border-l-red-400    bg-red-50/60    dark:bg-red-950/20",
 ];
 
-const WEEKS_UZ = [
-  "2025-yil 9–13 iyun",
-  "2025-yil 16–20 iyun",
-  "2025-yil 23–27 iyun",
-];
+function localDateValue(date: Date) {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
 
 // Skeleton component for loading state
 function ScheduleSkeleton() {
@@ -98,12 +100,35 @@ function ScheduleSkeleton() {
 
 export function StudentSchedule() {
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedDay, setSelectedDay] = useState(() => new Date().getDay() - 1 || 0);
+  const [selectedDay, setSelectedDay] = useState(() => Math.max(0, new Date().getDay() - 1));
+
+  const weekRange = useMemo(() => {
+    const start = new Date();
+    const day = start.getDay();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() + (day === 0 ? -6 : 1 - day) + weekOffset * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const label = `${start.toLocaleDateString("uz-Latn", { day: "numeric", month: "short" })} — ${end.toLocaleDateString("uz-Latn", { day: "numeric", month: "short", year: "numeric" })}`;
+    return { startDate: localDateValue(start), endDate: localDateValue(end), label };
+  }, [weekOffset]);
 
   // Fetch schedule data from API
-  const { data: schedule, isLoading, error, refetch } = useSchedule();
+  const { data: schedule, isLoading, error, refetch } = useSchedule({
+    startDate: weekRange.startDate,
+    endDate: weekRange.endDate,
+  });
   const { data: nextClass } = useNextClass();
   const { data: todaySchedule } = useTodaySchedule();
+  const accessMutation = useMutation({
+    mutationFn: ({ id, type }: { id: string; type: ScheduleAccessType }) => scheduleApi.accessSession(id, type),
+    onSuccess: (result) => {
+      window.open(result.url, "_blank", "noopener,noreferrer");
+      toast.success("Mashg'ulot havolasi ochildi");
+      refetch();
+    },
+    onError: (cause: Error) => toast.error(cause.message || "Mashg'ulot havolasi ochilmadi"),
+  });
 
   // All hooks must be called before any conditional returns
   const courseColorMap = useMemo(() => {
@@ -177,7 +202,7 @@ export function StudentSchedule() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-xs sm:text-sm font-medium min-w-[120px] sm:min-w-[160px] text-center">
-            {WEEKS_UZ[(weekOffset % WEEKS_UZ.length + WEEKS_UZ.length) % WEEKS_UZ.length]}
+            {weekRange.label}
           </span>
           <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setWeekOffset((w) => w + 1)}>
             <ChevronRight className="h-4 w-4" />
@@ -236,12 +261,12 @@ export function StudentSchedule() {
                   </Badge>
                 )}
               </div>
-              {nextClass.isOnline && nextClass.meetingLink && (
+              {nextClass.isOnline && nextClass.canJoin && (
                 <Button 
                   variant="link" 
                   size="sm" 
                   className="p-0 h-auto"
-                  onClick={() => window.open(nextClass.meetingLink, '_blank')}
+                  onClick={() => accessMutation.mutate({ id: nextClass.id, type: "LIVE_JOIN" })}
                 >
                   Darsga qo'shilish
                 </Button>
@@ -321,6 +346,23 @@ export function StudentSchedule() {
                               <Video className="h-3 w-3" />
                               Online
                             </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {lesson.canJoin && (
+                            <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => accessMutation.mutate({ id: lesson.id, type: "LIVE_JOIN" })}>
+                              <Video className="h-3 w-3" />Jonli dars
+                            </Button>
+                          )}
+                          {lesson.hasRecording && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => accessMutation.mutate({ id: lesson.id, type: "RECORDING_OPEN" })}>
+                              <FileVideo className="h-3 w-3" />Yozuv
+                            </Button>
+                          )}
+                          {lesson.hasResource && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => accessMutation.mutate({ id: lesson.id, type: "RESOURCE_OPEN" })}>
+                              <Link2 className="h-3 w-3" />Resurs
+                            </Button>
                           )}
                         </div>
                       </div>

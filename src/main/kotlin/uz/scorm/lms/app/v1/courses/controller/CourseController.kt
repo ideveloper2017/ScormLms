@@ -23,6 +23,8 @@ import uz.scorm.lms.app.v1.courses.dto.CourseModuleDto
 import uz.scorm.lms.app.v1.courses.dto.CourseModuleRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentDto
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRequest
+import uz.scorm.lms.app.v1.courses.dto.CourseContentRevisionDto
+import uz.scorm.lms.app.v1.courses.dto.CourseContentReviewDto
 import uz.scorm.lms.app.v1.courses.dto.LearningItemStatusRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseStatusRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseUpdateRequest
@@ -30,6 +32,7 @@ import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
 import uz.scorm.lms.app.v1.courses.service.CourseService
 import uz.scorm.lms.app.v1.courses.service.CourseModuleService
 import uz.scorm.lms.app.v1.courses.service.CourseContentService
+import uz.scorm.lms.app.v1.courses.service.CourseContentReviewService
 import uz.scorm.lms.app.v1.user.model.User
 
 @RestController
@@ -39,6 +42,7 @@ class CourseController(
     private val enrollmentService: CourseEnrollmentService,
     private val moduleService: CourseModuleService,
     private val contentService: CourseContentService,
+    private val contentReviewService: CourseContentReviewService,
 ) {
     @GetMapping("/owned")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
@@ -249,6 +253,40 @@ class CourseController(
         contentService.delete(courseId, contentId, requireNotNull(user.id), mayManageAll(authentication))
         return ResponseEntity.noContent().build()
     }
+
+    @GetMapping("/{courseId}/contents/{contentId}/revisions")
+    @PreAuthorize("hasAuthority('COURSE_READ')")
+    fun contentRevisions(
+        @PathVariable courseId: Long,
+        @PathVariable contentId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<List<CourseContentRevisionDto>>> = ResponseEntity.ok(ApiResponse.success(
+        contentService.revisions(courseId, contentId, requireNotNull(user.id), mayManageAll(authentication))
+    ))
+
+    @PostMapping("/{courseId}/contents/{contentId}/submit-review")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun submitContentReview(
+        @PathVariable courseId: Long,
+        @PathVariable contentId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<CourseContentReviewDto>> = ResponseEntity.ok(ApiResponse.success(
+        "Kontent ekspertizaga yuborildi",
+        contentReviewService.submit(courseId, contentId, requireNotNull(user.id), mayManageAll(authentication)),
+    ))
+
+    @GetMapping("/{courseId}/contents/{contentId}/reviews")
+    @PreAuthorize("hasAuthority('COURSE_READ')")
+    fun contentReviewHistory(
+        @PathVariable courseId: Long,
+        @PathVariable contentId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<List<CourseContentReviewDto>>> = ResponseEntity.ok(ApiResponse.success(
+        contentReviewService.history(courseId, contentId, requireNotNull(user.id), mayManageAll(authentication)),
+    ))
 
     private fun mayManageAll(authentication: Authentication): Boolean = authentication.authorities.any {
         it.authority == "USER_MANAGE" || it.authority == "ACADEMIC_WRITE"

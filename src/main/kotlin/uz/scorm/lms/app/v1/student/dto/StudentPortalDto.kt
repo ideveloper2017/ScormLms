@@ -323,6 +323,10 @@ data class StudentExamDto(
     val participants: Int? = null,
     val avgScore: Double? = null,
     val passRate: Double? = null,
+    val time: String? = null,
+    val location: String? = null,
+    val attendanceStatus: String? = null,
+    val resultPublished: Boolean = false,
 )
 
 data class StudentExamResultDto(
@@ -337,6 +341,8 @@ data class StudentExamResultDto(
     val passed: Boolean,
     val duration: Int,
     val rank: Int? = null,
+    val grade: String? = null,
+    val attendanceStatus: String? = null,
 )
 
 data class StudentExamStatsDto(

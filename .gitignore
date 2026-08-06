@@ -29,6 +29,9 @@ out/
 # Local environment secrets
 .env
 !.env.example
+.backups/
+ops/backup/drill-work/
+ops/backup/drill-reports/
 
 ### NetBeans ###
 /nbproject/private/

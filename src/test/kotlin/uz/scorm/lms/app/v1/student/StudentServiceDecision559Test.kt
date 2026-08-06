@@ -178,6 +178,6 @@ class StudentServiceDecision559Test {
         educationForm = EducationForm.DISTANCE,
         educationLanguage = educationLanguage,
         paymentType = paymentType,
-        password = "Student@123",
+        password = "Student@12345",
     )
 }

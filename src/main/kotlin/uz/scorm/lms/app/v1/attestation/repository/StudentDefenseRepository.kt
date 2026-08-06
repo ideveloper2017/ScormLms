@@ -7,6 +7,9 @@ import uz.scorm.lms.app.v1.attestation.model.DefenseStatus
 import uz.scorm.lms.app.v1.attestation.model.StudentDefense
 
 interface StudentDefenseRepository : JpaRepository<StudentDefense, Long> {
+    @EntityGraph(attributePaths = ["attestationSession", "attestationSession.course", "attestationSession.commissionChair", "enrollment", "enrollment.student", "enrollment.student.user", "enrollment.course"])
+    fun findAllByEnrollmentStudentUserIdAndDeletedFalseOrderByAttestationSessionExamDateDesc(userId: Long): List<StudentDefense>
+
     @EntityGraph(attributePaths = ["attestationSession", "enrollment"])
     fun findAllByAttestationSessionIdAndDeletedFalseOrderByDefenseDateAsc(
         attestationSessionId: Long,

@@ -9,12 +9,8 @@ import org.bytedeco.opencv.global.opencv_imgcodecs.*
 import org.bytedeco.opencv.global.opencv_imgproc.*
 import org.bytedeco.opencv.opencv_core.*
 import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier
-import org.opencv.core.MatOfByte
-import org.opencv.imgcodecs.Imgcodecs.imdecode
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import uz.scorm.lms.app.v1.face.dto.*
-import uz.scorm.lms.app.security.CurrentUser
-import uz.scorm.lms.app.security.UserDetailsImpl
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.transaction.annotation.Transactional
 import java.io.File
@@ -51,28 +47,54 @@ class FaceService(
     }
 
     fun generateTemplate(imageBytes: ByteArray): String {
-        val face = extractAlignedFace(imageBytes) ?: return ""
-        val data = FloatArray(face.arraySize().toInt())
-        face.convertTo(face, CV_32F)
-        (face.createBuffer() as java.nio.FloatBuffer).get(data)
-        // L2 normalize
-        var norm = 0.0
-        for (f in data) norm += (f * f)
-        norm = Math.sqrt(norm)
-        val normalized = if (norm > 0) data.map { (it / norm).toFloat() } else data.asList()
-        val bb = java.nio.ByteBuffer.allocate(normalized.size * 4)
-        normalized.forEach { bb.putFloat(it) }
-        return Base64.getEncoder().encodeToString(bb.array())
+        return analyzeFrame(imageBytes).template
     }
 
     fun matches(storedTemplate: String, imageBytes: ByteArray, cosineThreshold: Double = 0.85): Boolean {
         if (storedTemplate.isBlank()) return false
-        val probe = extractAlignedFace(imageBytes) ?: return false
-        val probeVec = toNormalizedVector(probe)
-        val refVec = decodeTemplate(storedTemplate)
-        if (refVec.isEmpty() || probeVec.isEmpty()) return false
-        val sim = cosineSimilarity(refVec, probeVec)
-        return sim >= cosineThreshold
+        return templateSimilarity(storedTemplate, analyzeFrame(imageBytes).template) >= cosineThreshold
+    }
+
+    /**
+     * Decodes the image and requires exactly one server-detected face. The raw
+     * frame is never persisted by this method.
+     */
+    fun analyzeFrame(imageBytes: ByteArray): FaceFrameAnalysis {
+        require(imageBytes.isNotEmpty()) { "Yuz kadri bo'sh" }
+        val decoded = decodeImage(imageBytes)
+        val gray = Mat()
+        cvtColor(decoded, gray, COLOR_BGR2GRAY)
+        equalizeHist(gray, gray)
+
+        val classifier = cascade ?: throw IllegalStateException("Yuz aniqlash modeli yuklanmagan")
+        val faces = RectVector()
+        classifier.detectMultiScale(gray, faces)
+        require(faces.size() == 1L) { "Kadrda aynan bitta yuz ko'rinishi kerak" }
+
+        val rect = faces[0]
+        require(rect.width() > 0 && rect.height() > 0) { "Aniqlangan yuz o'lchami yaroqsiz" }
+        val face = Mat(gray, rect)
+        val resized = Mat()
+        resize(face, resized, targetSize)
+        val vector = toNormalizedVector(resized)
+        require(vector.isNotEmpty()) { "Yuz shablonini yaratib bo'lmadi" }
+        return FaceFrameAnalysis(
+            template = encodeTemplate(vector),
+            centerX = (rect.x() + rect.width() / 2.0) / decoded.cols().toDouble(),
+        )
+    }
+
+    fun templateSimilarity(firstTemplate: String, secondTemplate: String): Double {
+        val first = decodeTemplate(firstTemplate)
+        val second = decodeTemplate(secondTemplate)
+        if (first.isEmpty() || second.isEmpty() || first.size != second.size) return 0.0
+        return cosineSimilarity(first, second)
+    }
+
+    private fun encodeTemplate(values: FloatArray): String {
+        val buffer = java.nio.ByteBuffer.allocate(values.size * 4)
+        values.forEach(buffer::putFloat)
+        return Base64.getEncoder().encodeToString(buffer.array())
     }
 
     private fun toNormalizedVector(mat: Mat): FloatArray {
@@ -103,7 +125,8 @@ class FaceService(
     }
 
     private fun cosineSimilarity(a: FloatArray, b: FloatArray): Double {
-        val n = minOf(a.size, b.size)
+        if (a.size != b.size) return 0.0
+        val n = a.size
         var dot = 0.0
         var na = 0.0
         var nb = 0.0
@@ -118,46 +141,16 @@ class FaceService(
         return dot / (Math.sqrt(na) * Math.sqrt(nb))
     }
 
-    private fun extractAlignedFace(imageBytes: ByteArray): Mat? {
-//        val matOfByte = Mat(1, imageBytes.size, CV_8U)
-//        matOfByte.data().put(imageBytes.get(0))
-
-        // Rasmni dekodlash
-        val img = imdecode(Mat(BytePointer(imageBytes.toString())), IMREAD_COLOR)
-        val gray = Mat()
-        cvtColor(img, gray, COLOR_BGR2GRAY)
-        equalizeHist(gray, gray)
-
-        val faces = org.bytedeco.opencv.opencv_core.RectVector()
-        cascade?.detectMultiScale(gray, faces)
-
-        val faceRoi = if (faces.size() > 0) {
-            var maxArea = 0.0
-            var maxRect: Rect? = null
-            for (i in 0 until faces.size()) {
-                val r = faces[i]
-                val area = r.width() * r.height()
-                if (area > maxArea) {
-                    maxArea = area.toDouble()
-                    maxRect = r
-                }
-            }
-            maxRect
-        } else null
-
-        val faceMat = if (faceRoi != null) Mat(gray, faceRoi) else centerCrop(gray)
-        val resized = Mat()
-        resize(faceMat, resized, targetSize)
-        return resized
-    }
-
-    private fun centerCrop(gray: Mat): Mat {
-        val w = gray.cols()
-        val h = gray.rows()
-        val size = minOf(w, h)
-        val x = (w - size) / 2
-        val y = (h - size) / 2
-        return Mat(gray, Rect(x, y, size, size))
+    private fun decodeImage(imageBytes: ByteArray): Mat {
+        val pointer = BytePointer(*imageBytes)
+        try {
+            val encoded = Mat(1, imageBytes.size, CV_8UC1, pointer)
+            val decoded = imdecode(encoded, IMREAD_COLOR)
+            require(!decoded.isNull && decoded.cols() > 0 && decoded.rows() > 0) { "Rasm formati yaroqsiz" }
+            return decoded
+        } finally {
+            pointer.close()
+        }
     }
 
     /**
@@ -333,3 +326,8 @@ class FaceService(
         userRepository.save(user)
     }
 }
+
+data class FaceFrameAnalysis(
+    val template: String,
+    val centerX: Double,
+)

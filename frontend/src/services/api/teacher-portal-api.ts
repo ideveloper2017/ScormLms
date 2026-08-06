@@ -35,6 +35,7 @@ export interface TeacherCourse {
   startDate?: string;
   endDate?: string;
   avgScore?: number;
+  language?: string | null;
 }
 
 export interface CourseCreatePayload {
@@ -95,6 +96,79 @@ export interface CourseContent {
   position: number;
   status: 'draft' | 'published';
   publishedAt?: string | null;
+  languageCode: string;
+  authorName: string;
+  contentVersion: string;
+  sourceName: string;
+  sourceUrl?: string | null;
+  validFrom: string;
+  validUntil?: string | null;
+  effective: boolean;
+  metadataUpdatedAt: string;
+  reviewStatus: 'draft' | 'in_review' | 'approved' | 'changes_requested';
+  approvedRevisionNumber?: number | null;
+}
+
+export interface CourseContentRevision {
+  id: number;
+  contentId: number;
+  revisionNumber: number;
+  title: string;
+  description?: string | null;
+  contentType: CourseContent['contentType'];
+  contentUrl?: string | null;
+  durationMinutes?: number | null;
+  languageCode: string;
+  authorName: string;
+  contentVersion: string;
+  sourceName: string;
+  sourceUrl?: string | null;
+  validFrom: string;
+  validUntil?: string | null;
+  changedAt: string;
+  changedBy: number;
+}
+
+export interface CourseContentPayload {
+  title: string;
+  description?: string;
+  contentType: 'VIDEO' | 'DOCUMENT' | 'LINK' | 'FILE';
+  contentUrl?: string;
+  durationMinutes?: number;
+  languageCode: string;
+  authorName: string;
+  contentVersion: string;
+  sourceName: string;
+  sourceUrl?: string;
+  validFrom: string;
+  validUntil?: string;
+}
+
+export interface CourseContentReview {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  moduleId: number;
+  moduleTitle: string;
+  contentId: number;
+  contentTitle: string;
+  description?: string | null;
+  contentType: CourseContent['contentType'];
+  contentUrl?: string | null;
+  languageCode: string;
+  authorName: string;
+  sourceName: string;
+  sourceUrl?: string | null;
+  validFrom: string;
+  validUntil?: string | null;
+  revisionNumber: number;
+  contentVersion: string;
+  status: 'pending' | 'approved' | 'changes_requested';
+  submittedAt: string;
+  submittedBy: number;
+  reviewedAt?: string | null;
+  reviewedBy?: number | null;
+  decisionComment?: string | null;
 }
 
 function dataOf<T>(response: { data: ApiResponse<T> }, fallback: string): T {
@@ -171,6 +245,8 @@ export interface TeacherTest {
   totalPoints: number;
   allowedAttempts: number;
   passingPercentage: number;
+  proctoring: boolean;
+  proctorIds: string[];
 }
 
 export interface TeacherQuizPayload {
@@ -185,8 +261,20 @@ export interface TeacherQuizPayload {
   shuffleQuestions: boolean;
   showResult: boolean;
   proctoring: boolean;
+  proctorIds: number[];
   questionIds: number[];
   status: 'DRAFT' | 'PUBLISHED' | 'CLOSED';
+}
+
+export interface QuizProctorCandidate {
+  id: string;
+  username: string;
+  fullName: string;
+}
+
+export interface QuizProctorAssignment {
+  quizId: string;
+  proctors: QuizProctorCandidate[];
 }
 
 export interface TeacherQuizQuestion {
@@ -277,6 +365,41 @@ export interface TodaySchedule {
   students: number;
 }
 
+export interface TeacherLearningSession {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  title: string;
+  description: string;
+  format: 'synchronous' | 'asynchronous';
+  sessionType: 'lecture' | 'lab' | 'seminar' | 'tutorial';
+  startsAt: string;
+  endsAt: string;
+  room?: string;
+  building?: string;
+  liveUrl?: string;
+  recordingUrl?: string;
+  resourceUrl?: string;
+  status: 'draft' | 'published' | 'cancelled' | 'completed';
+  accessCount: number;
+}
+
+export interface TeacherLearningSessionPayload {
+  courseId: number;
+  title: string;
+  description: string;
+  format: 'SYNCHRONOUS' | 'ASYNCHRONOUS';
+  sessionType: 'LECTURE' | 'LAB' | 'SEMINAR' | 'TUTORIAL';
+  startsAt: string;
+  endsAt: string;
+  room?: string;
+  building?: string;
+  liveUrl?: string;
+  recordingUrl?: string;
+  resourceUrl?: string;
+  status: 'DRAFT' | 'PUBLISHED';
+}
+
 export const teacherPortalApi = {
   getProfile: async (): Promise<TeacherProfile> => {
     const res = await api.get<TeacherProfile>('/teachers/me');
@@ -336,20 +459,10 @@ export const teacherPortalApi = {
   getContents: async (courseId: string): Promise<CourseContent[]> => {
     return dataOf(await api.get<ApiResponse<CourseContent[]>>(`/courses/${courseId}/contents`), 'Kontentlar yuklanmadi');
   },
-  createContent: async (courseId: string, moduleId: number, payload: {
-    title: string;
-    contentType: 'VIDEO' | 'DOCUMENT' | 'LINK' | 'FILE';
-    contentUrl?: string;
-    durationMinutes?: number;
-  }): Promise<CourseContent> => {
+  createContent: async (courseId: string, moduleId: number, payload: CourseContentPayload): Promise<CourseContent> => {
     return dataOf(await api.post<ApiResponse<CourseContent>>(`/courses/${courseId}/modules/${moduleId}/contents`, payload), 'Kontent yaratilmadi');
   },
-  updateContent: async (courseId: string, contentId: number, payload: {
-    title: string;
-    contentType: 'VIDEO' | 'DOCUMENT' | 'LINK' | 'FILE';
-    contentUrl?: string;
-    durationMinutes?: number;
-  }): Promise<CourseContent> => {
+  updateContent: async (courseId: string, contentId: number, payload: CourseContentPayload): Promise<CourseContent> => {
     return dataOf(await api.put<ApiResponse<CourseContent>>(`/courses/${courseId}/contents/${contentId}`, payload), 'Kontent yangilanmadi');
   },
   updateContentStatus: async (courseId: string, contentId: number, status: 'DRAFT' | 'PUBLISHED'): Promise<CourseContent> => {
@@ -357,6 +470,21 @@ export const teacherPortalApi = {
   },
   deleteContent: async (courseId: string, contentId: number): Promise<void> => {
     await api.delete(`/courses/${courseId}/contents/${contentId}`);
+  },
+  getContentRevisions: async (courseId: string, contentId: number): Promise<CourseContentRevision[]> => {
+    return dataOf(await api.get<ApiResponse<CourseContentRevision[]>>(`/courses/${courseId}/contents/${contentId}/revisions`), 'Kontent versiyalari yuklanmadi');
+  },
+  submitContentReview: async (courseId: string, contentId: number): Promise<CourseContentReview> => {
+    return dataOf(await api.post<ApiResponse<CourseContentReview>>(`/courses/${courseId}/contents/${contentId}/submit-review`), 'Kontent ekspertizaga yuborilmadi');
+  },
+  getContentReviews: async (courseId: string, contentId: number): Promise<CourseContentReview[]> => {
+    return dataOf(await api.get<ApiResponse<CourseContentReview[]>>(`/courses/${courseId}/contents/${contentId}/reviews`), 'Ekspertiza tarixi yuklanmadi');
+  },
+  getPendingContentReviews: async (): Promise<CourseContentReview[]> => {
+    return dataOf(await api.get<ApiResponse<CourseContentReview[]>>('/content-reviews/pending'), 'Ekspertiza navbati yuklanmadi');
+  },
+  decideContentReview: async (reviewId: number, decision: 'APPROVED' | 'CHANGES_REQUESTED', comment?: string): Promise<CourseContentReview> => {
+    return dataOf(await api.post<ApiResponse<CourseContentReview>>(`/content-reviews/${reviewId}/decision`, { decision, comment: comment?.trim() || undefined }), 'Ekspertiza qarori saqlanmadi');
   },
   getStudents: async (courseId?: string): Promise<TeacherStudent[]> => {
     const res = await api.get<TeacherStudent[]>('/teachers/me/students', {
@@ -406,6 +534,26 @@ export const teacherPortalApi = {
     const res = await api.get<TeacherAttendance[]>('/teachers/me/attendance');
     return res.data;
   },
+  getLearningSessions: async (courseId?: string): Promise<TeacherLearningSession[]> => {
+    const res = await api.get<TeacherLearningSession[]>('/teachers/me/sessions', {
+      params: courseId ? { courseId } : undefined,
+    });
+    return res.data;
+  },
+  createLearningSession: async (payload: TeacherLearningSessionPayload): Promise<TeacherLearningSession> => {
+    const res = await api.post<TeacherLearningSession>('/teachers/me/sessions', payload);
+    return res.data;
+  },
+  updateLearningSessionStatus: async (
+    sessionId: string,
+    status: 'PUBLISHED' | 'CANCELLED' | 'COMPLETED',
+  ): Promise<TeacherLearningSession> => {
+    const res = await api.patch<TeacherLearningSession>(`/teachers/me/sessions/${sessionId}/status`, { status });
+    return res.data;
+  },
+  deleteLearningSession: async (sessionId: string): Promise<void> => {
+    await api.delete(`/teachers/me/sessions/${sessionId}`);
+  },
   createTest: async (payload: TeacherQuizPayload): Promise<TeacherTest> => {
     const res = await api.post<TeacherTest>('/teachers/me/tests', payload);
     return res.data;
@@ -419,6 +567,20 @@ export const teacherPortalApi = {
   },
   getTestAttempts: async (testId: string): Promise<TeacherQuizAttempt[]> => {
     const res = await api.get<TeacherQuizAttempt[]>(`/teachers/me/tests/${testId}/attempts`);
+    return res.data;
+  },
+  getProctorCandidates: async (): Promise<QuizProctorCandidate[]> => {
+    const res = await api.get<QuizProctorCandidate[]>('/teachers/me/proctors');
+    return res.data;
+  },
+  getTestProctors: async (testId: string): Promise<QuizProctorAssignment> => {
+    const res = await api.get<QuizProctorAssignment>(`/teachers/me/tests/${testId}/proctors`);
+    return res.data;
+  },
+  updateTestProctors: async (testId: string, userIds: string[]): Promise<QuizProctorAssignment> => {
+    const res = await api.put<QuizProctorAssignment>(`/teachers/me/tests/${testId}/proctors`, {
+      userIds: userIds.map(Number),
+    });
     return res.data;
   },
   getQuestions: async (courseId?: string): Promise<TeacherQuizQuestion[]> => {

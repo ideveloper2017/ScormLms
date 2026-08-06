@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-06T06:35:27.938Z",
+  "target": "http://127.0.0.1:18080/actuator/health",
+  "method": "GET",
+  "requestCount": 2000,
+  "warmupRequests": 20,
+  "concurrency": 50,
+  "expectedStatus": 200,
+  "timeoutMs": 5000,
+  "thresholds": {
+    "maxP95Ms": 500,
+    "maxErrors": 0
+  },
+  "durationMs": 2130.57,
+  "requestsPerSecond": 938.71,
+  "latencyMs": {
+    "min": 22.84,
+    "p50": 49.15,
+    "p95": 78.74,
+    "p99": 94.39,
+    "max": 122.98
+  },
+  "statusCounts": {
+    "200": 2000
+  },
+  "transportErrors": 0,
+  "unexpectedStatuses": 0,
+  "passed": true
+}

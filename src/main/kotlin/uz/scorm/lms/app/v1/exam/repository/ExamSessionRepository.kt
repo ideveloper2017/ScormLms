@@ -10,10 +10,16 @@ import java.time.LocalDate
 
 interface ExamSessionRepository : JpaRepository<ExamSession, Long> {
     @EntityGraph(attributePaths = ["course", "examiner", "secondaryExaminer"])
+    fun findAllByDeletedFalseOrderByExamDateDesc(): List<ExamSession>
+
+    @EntityGraph(attributePaths = ["course", "examiner", "secondaryExaminer"])
     fun findAllByCourseIdAndDeletedFalseOrderByExamDateDesc(courseId: Long): List<ExamSession>
 
     @EntityGraph(attributePaths = ["course", "examiner", "secondaryExaminer"])
     fun findAllByExaminerIdAndDeletedFalseOrderByExamDateDesc(examinerId: Long): List<ExamSession>
+
+    @EntityGraph(attributePaths = ["course", "examiner", "secondaryExaminer"])
+    fun findAllBySecondaryExaminerIdAndDeletedFalseOrderByExamDateDesc(secondaryExaminerId: Long): List<ExamSession>
 
     @EntityGraph(attributePaths = ["course", "examiner", "secondaryExaminer"])
     fun findAllByStatusAndDeletedFalseOrderByExamDateAsc(

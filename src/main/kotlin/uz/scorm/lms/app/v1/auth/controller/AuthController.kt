@@ -26,6 +26,7 @@ import uz.scorm.lms.app.v1.auth.dto.JwtResponse
 import uz.scorm.lms.app.common.ApiResponse as CommonApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 import uz.scorm.lms.app.security.JwtService
+import uz.scorm.lms.app.security.ClientIpResolver
 import uz.scorm.lms.app.v1.auth.service.RefreshTokenService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import uz.scorm.lms.app.v1.twofactor.service.TwoFactorService
@@ -59,7 +60,8 @@ class AuthController(
     private val userDetailsService: UserDetailsService,
     private val twoFactorService: TwoFactorService,
     private val loginAttemptService: LoginAttemptService,
-    private val userService: UserService
+    private val userService: UserService,
+    private val clientIpResolver: ClientIpResolver,
 ) {
 
     data class RefreshRequest(val refreshToken: String)
@@ -67,8 +69,7 @@ class AuthController(
 
     @PostMapping("/login")
     fun login(request: HttpServletRequest, @RequestBody body: LoginRequest): ResponseEntity<Any> {
-        val clientIp = request.getHeader("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
-            ?: request.remoteAddr
+        val clientIp = clientIpResolver.resolve(request)
         // Check lock before authenticating
         if (loginAttemptService.isLocked(body.username)) {
             val remaining: Duration? = loginAttemptService.remainingLock(body.username)

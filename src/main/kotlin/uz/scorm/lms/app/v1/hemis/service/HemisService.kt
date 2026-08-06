@@ -16,6 +16,8 @@ import uz.scorm.lms.app.v1.student.model.StudentStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.security.SecureRandom
+import java.util.Base64
 
 private val logger = KotlinLogging.logger {}
 
@@ -121,9 +123,12 @@ class HemisService(
             photoUrl        = image,
             educationLanguage = lang,
             studentStatus   = StudentStatus.ACTIVE,
-            password        = "HEMIS@${student_id_number.takeLast(6)}",
+            password        = randomLocalPassword(),
         )
     }
+
+    private fun randomLocalPassword(): String = ByteArray(32).also(SecureRandom()::nextBytes)
+        .let { Base64.getUrlEncoder().withoutPadding().encodeToString(it) }
 
     /** HemisStudent ni UI preview DTO ga aylantiradi */
     fun HemisStudent.toPreviewDto(alreadyExists: Boolean) = HemisStudentPreviewDto(

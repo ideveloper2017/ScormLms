@@ -98,6 +98,8 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://172.16.10.159:8080,http://localhost:5173,http://localhost:4173,http://localhost:8080}
   seed:
     admin-password: ${APP_SEED_ADMIN_PASSWORD:}
+    teacher-password: ${APP_SEED_TEACHER_PASSWORD:}
+    student-password: ${APP_SEED_STUDENT_PASSWORD:}
   jwt:
     # HS512 uchun kamida 64 baytlik secret talab qilinadi.
     # Prod muhitda JWT_SECRET env variable orqali beriladi; default faqat lokal dev uchun.
@@ -109,7 +111,7 @@ app:
     token-type: Bearer
 
   upload:
-    dir: ./uploads
+    dir: ${FILE_UPLOAD_DIR:./uploads}
   scorm:
     storage-dir: ${SCORM_STORAGE_DIR:./private/scorm}
     max-package-bytes: ${SCORM_MAX_PACKAGE_BYTES:209715200}
@@ -117,6 +119,16 @@ app:
   assignment:
     storage-dir: ${ASSIGNMENT_STORAGE_DIR:./private/assignments}
     max-file-bytes: ${ASSIGNMENT_MAX_FILE_BYTES:10485760}
+  survey:
+    anonymization-secret: ${SURVEY_ANONYMIZATION_SECRET:${JWT_SECRET:dev-only-survey-secret-do-not-use-in-production}}
+  security:
+    trusted-proxy-ips: ${TRUSTED_PROXY_IPS:}
+    rate-limit:
+      window-seconds: ${AUTH_RATE_WINDOW_SECONDS:900}
+      login-per-ip: ${AUTH_LOGIN_PER_IP:30}
+      external-auth-per-ip: ${AUTH_EXTERNAL_PER_IP:20}
+      token-per-ip: ${AUTH_TOKEN_PER_IP:60}
+      max-buckets: ${AUTH_RATE_MAX_BUCKETS:10000}
 
 hemis:
   host: ${HEMIS_HOST:https://student.namdtu.uz}
@@ -128,6 +140,6 @@ hemis:
 
 # File Storage Configuration
 file:
-  upload-dir: ./uploads
+  upload-dir: ${FILE_UPLOAD_DIR:./uploads}
   max-file-size: 10MB
   allowed-extensions: jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx

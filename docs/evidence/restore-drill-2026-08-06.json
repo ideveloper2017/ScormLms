@@ -1,0 +1,13 @@
+﻿{
+    "runId":  "20260806T055611Z-555aea00",
+    "status":  "VERIFIED",
+    "startedAt":  "2026-08-06T05:56:11.1524575Z",
+    "completedAt":  "2026-08-06T05:56:22.4045405Z",
+    "durationSeconds":  11.25,
+    "sourceDatabase":  "scorm_lms",
+    "disposableTargetDatabase":  "scorm_lms_restore_drill_20260806t055611z_555aea00",
+    "restoredTableCount":  34,
+    "verifiedTableFingerprints":  34,
+    "storageSetsVerified":  3,
+    "safetyChecksVerified":  3
+}

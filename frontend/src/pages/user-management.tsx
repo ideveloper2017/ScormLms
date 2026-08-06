@@ -309,6 +309,7 @@ export function UserManagement() {
   const handleSave = async () => {
     if (!form.username.trim()) { toast({ variant: 'destructive', title: 'Login majburiy' }); return; }
     if (!editTarget && !form.password) { toast({ variant: 'destructive', title: 'Parol majburiy' }); return; }
+    if (!editTarget && form.password.length < 12) { toast({ variant: 'destructive', title: 'Parol kamida 12 ta belgi bo‘lishi kerak' }); return; }
     if (!editTarget && !form.roleCode) { toast({ variant: 'destructive', title: 'Rol majburiy' }); return; }
 
     const ok = await run(async () => {
@@ -354,6 +355,7 @@ export function UserManagement() {
 
   const handleResetPwd = async () => {
     if (!resetPwdTarget || !newPwd.trim()) { toast({ variant: 'destructive', title: 'Yangi parol majburiy' }); return; }
+    if (newPwd.length < 12) { toast({ variant: 'destructive', title: 'Parol kamida 12 ta belgi bo‘lishi kerak' }); return; }
     const ok = await run(
       () => resetUserPassword(resetPwdTarget.id, newPwd).then(() => undefined),
       `${displayName(resetPwdTarget)} paroli tiklandi`

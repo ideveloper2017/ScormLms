@@ -8,6 +8,10 @@ import uz.scorm.lms.app.v1.attestation.model.GraduationCertificate
 import java.time.LocalDate
 
 interface GraduationCertificateRepository : JpaRepository<GraduationCertificate, Long> {
+    fun countByDeletedFalse(): Long
+    @EntityGraph(attributePaths = ["studentDefense", "studentDefense.attestationSession", "studentDefense.attestationSession.course", "studentDefense.enrollment", "studentDefense.enrollment.student", "issuedBy"])
+    fun findAllByStudentDefenseEnrollmentStudentUserIdAndDeletedFalseOrderByIssueDateDesc(userId: Long): List<GraduationCertificate>
+
     @EntityGraph(attributePaths = ["studentDefense", "issuedBy"])
     fun findByCertificateNumberAndDeletedFalse(certificateNumber: String): GraduationCertificate?
 

@@ -1,17 +1,20 @@
-import { useState, type ElementType } from "react";
+import { useState, type ElementType, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, BarChart3, BookOpen, Edit, FileText, Link as LinkIcon,
-  Loader2, Plus, Trash2, UserPlus, Users, Video,
+  History, Loader2, Plus, Trash2, UserPlus, Users, Video,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   teacherPortalApi,
@@ -28,6 +31,11 @@ const CONTENT_META: Record<string, { icon: ElementType; label: string; className
 
 type ItemStatus = "DRAFT" | "PUBLISHED";
 type ContentType = "VIDEO" | "DOCUMENT" | "LINK" | "FILE";
+const today = () => {
+  const value = new Date();
+  value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
+  return value.toISOString().slice(0, 10);
+};
 
 export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: string }) {
   const { id } = useParams<{ id: string }>();
@@ -49,10 +57,19 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
   const [moduleTitle, setModuleTitle] = useState("");
   const [editingModuleId, setEditingModuleId] = useState<number | null>(null);
   const [contentTitle, setContentTitle] = useState("");
+  const [contentDescription, setContentDescription] = useState("");
   const [contentUrl, setContentUrl] = useState("");
   const [contentType, setContentType] = useState<ContentType>("LINK");
   const [contentModuleId, setContentModuleId] = useState("");
+  const [contentLanguage, setContentLanguage] = useState("uz");
+  const [contentAuthor, setContentAuthor] = useState("");
+  const [contentVersion, setContentVersion] = useState("1.0");
+  const [contentSourceName, setContentSourceName] = useState("");
+  const [contentSourceUrl, setContentSourceUrl] = useState("");
+  const [contentValidFrom, setContentValidFrom] = useState(today());
+  const [contentValidUntil, setContentValidUntil] = useState("");
   const [editingContentId, setEditingContentId] = useState<number | null>(null);
+  const [historyContent, setHistoryContent] = useState<CourseContent | null>(null);
 
   const courseQuery = useQuery({
     queryKey: ["teacher", "course", courseId],
@@ -73,6 +90,16 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
     queryKey: ["teacher", "course", courseId, "contents"],
     queryFn: () => teacherPortalApi.getContents(courseId),
     enabled: Boolean(courseId),
+  });
+  const revisionsQuery = useQuery({
+    queryKey: ["teacher", "course", courseId, "contents", historyContent?.id, "revisions"],
+    queryFn: () => teacherPortalApi.getContentRevisions(courseId, historyContent!.id),
+    enabled: Boolean(courseId && historyContent),
+  });
+  const reviewsQuery = useQuery({
+    queryKey: ["teacher", "course", courseId, "contents", historyContent?.id, "reviews"],
+    queryFn: () => teacherPortalApi.getContentReviews(courseId, historyContent!.id),
+    enabled: Boolean(courseId && historyContent),
   });
 
   const refreshCourse = () => Promise.all([
@@ -141,7 +168,19 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
   });
   const saveContentMutation = useMutation({
     mutationFn: () => {
-      const payload = { title: contentTitle.trim(), contentType, contentUrl: contentUrl.trim() || undefined };
+      const payload = {
+        title: contentTitle.trim(),
+        description: contentDescription.trim() || undefined,
+        contentType,
+        contentUrl: contentUrl.trim() || undefined,
+        languageCode: contentLanguage.trim(),
+        authorName: contentAuthor.trim(),
+        contentVersion: contentVersion.trim(),
+        sourceName: contentSourceName.trim(),
+        sourceUrl: contentSourceUrl.trim() || undefined,
+        validFrom: contentValidFrom,
+        validUntil: contentValidUntil || undefined,
+      };
       if (editingContentId) return teacherPortalApi.updateContent(courseId, editingContentId, payload);
       return teacherPortalApi.createContent(courseId, Number(contentModuleId), payload);
     },
@@ -157,6 +196,14 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
     onSuccess: async () => { await refreshLearningItems(); },
     onError: showError("Kontent holati yangilanmadi"),
   });
+  const submitReviewMutation = useMutation({
+    mutationFn: (contentId: number) => teacherPortalApi.submitContentReview(courseId, contentId),
+    onSuccess: async () => {
+      await refreshLearningItems();
+      toast({ title: "Kontent ekspertizaga yuborildi" });
+    },
+    onError: showError("Kontent ekspertizaga yuborilmadi"),
+  });
   const deleteContentMutation = useMutation({
     mutationFn: (contentId: number) => teacherPortalApi.deleteContent(courseId, contentId),
     onSuccess: async () => { await refreshLearningItems(); toast({ title: "Kontent o'chirildi" }); },
@@ -168,7 +215,10 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
   }
 
   function resetContentForm() {
-    setContentTitle(""); setContentUrl(""); setContentType("LINK"); setContentModuleId(""); setEditingContentId(null);
+    setContentTitle(""); setContentDescription(""); setContentUrl(""); setContentType("LINK"); setContentModuleId("");
+    setContentLanguage(courseQuery.data?.language || "uz"); setContentAuthor(""); setContentVersion("1.0");
+    setContentSourceName(""); setContentSourceUrl(""); setContentValidFrom(today()); setContentValidUntil("");
+    setEditingContentId(null);
   }
 
   function enrollStudents() {
@@ -184,8 +234,12 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
   }
 
   function saveContent() {
-    if (!contentTitle.trim() || (!editingContentId && !contentModuleId)) {
-      return toast({ variant: "destructive", title: "Modul va kontent nomini kiriting" });
+    if (!contentTitle.trim() || (!editingContentId && !contentModuleId) || !contentLanguage.trim()
+      || !contentAuthor.trim() || !contentVersion.trim() || !contentSourceName.trim() || !contentValidFrom) {
+      return toast({ variant: "destructive", title: "Majburiy kontent metadata maydonlarini kiriting" });
+    }
+    if (contentValidUntil && contentValidUntil < contentValidFrom) {
+      return toast({ variant: "destructive", title: "Amal qilish yakuni boshlanish sanasidan oldin bo'lmasligi kerak" });
     }
     saveContentMutation.mutate();
   }
@@ -195,8 +249,11 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
   }
 
   function editContent(content: CourseContent) {
-    setEditingContentId(content.id); setContentTitle(content.title); setContentUrl(content.contentUrl ?? "");
+    setEditingContentId(content.id); setContentTitle(content.title); setContentDescription(content.description ?? ""); setContentUrl(content.contentUrl ?? "");
     setContentType(content.contentType.toUpperCase() as ContentType); setContentModuleId(String(content.moduleId));
+    setContentLanguage(content.languageCode); setContentAuthor(content.authorName); setContentVersion(content.contentVersion);
+    setContentSourceName(content.sourceName); setContentSourceUrl(content.sourceUrl ?? "");
+    setContentValidFrom(content.validFrom); setContentValidUntil(content.validUntil ?? "");
   }
 
   if (courseQuery.isLoading) {
@@ -260,10 +317,24 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
         </TabsContent>
 
         <TabsContent value="contents" className="mt-4 space-y-3">
-          <Card><CardHeader><CardTitle className="text-base">Oddiy kontent</CardTitle><CardDescription>SCORM paketlari alohida SCORM boshqaruvchisi orqali yuklanadi.</CardDescription></CardHeader><CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3"><Input value={contentTitle} onChange={event => setContentTitle(event.target.value)} placeholder="Kontent nomi" /><Select value={contentModuleId} onValueChange={setContentModuleId} disabled={Boolean(editingContentId)}><SelectTrigger><SelectValue placeholder="Modulni tanlang" /></SelectTrigger><SelectContent>{modules.map(module => <SelectItem key={module.id} value={String(module.id)}>{module.title}</SelectItem>)}</SelectContent></Select><Select value={contentType} onValueChange={value => setContentType(value as ContentType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="VIDEO">Video</SelectItem><SelectItem value="DOCUMENT">Hujjat</SelectItem><SelectItem value="LINK">Havola</SelectItem><SelectItem value="FILE">Fayl</SelectItem></SelectContent></Select><Input value={contentUrl} onChange={event => setContentUrl(event.target.value)} placeholder="https://..." /><div className="md:col-span-2 flex justify-end gap-2">{editingContentId && <Button variant="ghost" onClick={resetContentForm}>Bekor qilish</Button>}<Button onClick={saveContent} disabled={saveContentMutation.isPending || modules.length === 0} className="gap-2">{saveContentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{editingContentId ? "Yangilash" : "Kontent qo'shish"}</Button></div></CardContent></Card>
+          <Card><CardHeader><CardTitle className="text-base">Oddiy kontent va kelib chiqish ma'lumotlari</CardTitle><CardDescription>Muallif, til, versiya, manba va amal qilish davri majburiy. Tahrirlashda avval ishlatilmagan yangi versiyani kiriting.</CardDescription></CardHeader><CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label="Kontent nomi *"><Input value={contentTitle} onChange={event => setContentTitle(event.target.value)} /></Field>
+            <Field label="Modul *"><Select value={contentModuleId} onValueChange={setContentModuleId} disabled={Boolean(editingContentId)}><SelectTrigger><SelectValue placeholder="Modulni tanlang" /></SelectTrigger><SelectContent>{modules.map(module => <SelectItem key={module.id} value={String(module.id)}>{module.title}</SelectItem>)}</SelectContent></Select></Field>
+            <Field label="Kontent turi *"><Select value={contentType} onValueChange={value => setContentType(value as ContentType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="VIDEO">Video</SelectItem><SelectItem value="DOCUMENT">Hujjat</SelectItem><SelectItem value="LINK">Havola</SelectItem><SelectItem value="FILE">Fayl</SelectItem></SelectContent></Select></Field>
+            <Field label="Kontent URL"><Input value={contentUrl} onChange={event => setContentUrl(event.target.value)} placeholder="https://..." /></Field>
+            <Field label="Til kodi *"><Input value={contentLanguage} onChange={event => setContentLanguage(event.target.value)} placeholder="uz, ru yoki en" /></Field>
+            <Field label={editingContentId ? "Yangi versiya *" : "Versiya *"}><Input value={contentVersion} onChange={event => setContentVersion(event.target.value)} placeholder="1.0" /></Field>
+            <Field label="Muallif *"><Input value={contentAuthor} onChange={event => setContentAuthor(event.target.value)} /></Field>
+            <Field label="Manba nomi *"><Input value={contentSourceName} onChange={event => setContentSourceName(event.target.value)} /></Field>
+            <Field label="Manba URL"><Input value={contentSourceUrl} onChange={event => setContentSourceUrl(event.target.value)} placeholder="https://..." /></Field>
+            <Field label="Amal qilish boshlanishi *"><Input type="date" value={contentValidFrom} onChange={event => setContentValidFrom(event.target.value)} /></Field>
+            <Field label="Amal qilish yakuni"><Input type="date" min={contentValidFrom} value={contentValidUntil} onChange={event => setContentValidUntil(event.target.value)} /></Field>
+            <Field label="Tavsif" className="md:col-span-2"><Textarea value={contentDescription} onChange={event => setContentDescription(event.target.value)} /></Field>
+            <div className="md:col-span-2 flex justify-end gap-2">{editingContentId && <Button variant="ghost" onClick={resetContentForm}>Bekor qilish</Button>}<Button onClick={saveContent} disabled={saveContentMutation.isPending || modules.length === 0} className="gap-2">{saveContentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{editingContentId ? "Yangi versiyani saqlash" : "Kontent qo'shish"}</Button></div>
+          </CardContent></Card>
           {contentsQuery.isLoading && <Loading />}
           {!contentsQuery.isLoading && contents.length === 0 && <Empty text="Hozircha oddiy kontent qo'shilmagan" />}
-          {contents.map(content => { const meta = CONTENT_META[content.contentType] ?? CONTENT_META.file; const Icon = meta.icon; const modulePublished = modules.find(item => item.id === content.moduleId)?.status === "published"; return <Card key={content.id}><CardContent className="p-4 flex items-center gap-3"><Icon className={`h-5 w-5 ${meta.className}`} /><div className="flex-1 min-w-0"><p className="font-medium truncate">{content.title}</p><p className="text-xs text-muted-foreground truncate">{content.moduleTitle} · {content.contentUrl || "URL yo'q"}</p></div><Badge variant="outline">{meta.label}</Badge><Badge variant={content.status === "published" ? "default" : "secondary"}>{content.status === "published" ? "Nashrda" : "Qoralama"}</Badge><Button variant="ghost" size="icon" onClick={() => editContent(content)}><Edit className="h-4 w-4" /></Button><Button variant="outline" size="sm" disabled={!modulePublished && content.status === "draft"} title={!modulePublished ? "Avval modulni nashr qiling" : undefined} onClick={() => contentStatusMutation.mutate({ contentId: content.id, status: content.status === "published" ? "DRAFT" : "PUBLISHED" })}>{content.status === "published" ? "Yashirish" : "Nashr"}</Button><Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteContentMutation.mutate(content.id)}><Trash2 className="h-4 w-4" /></Button></CardContent></Card>; })}
+          {contents.map(content => { const meta = CONTENT_META[content.contentType] ?? CONTENT_META.file; const Icon = meta.icon; const modulePublished = modules.find(item => item.id === content.moduleId)?.status === "published"; const validity = content.effective ? "Amalda" : content.validFrom > today() ? "Rejalashtirilgan" : "Muddati tugagan"; const reviewLabel = content.reviewStatus === "approved" ? "Tasdiqlangan" : content.reviewStatus === "in_review" ? "Ekspertizada" : content.reviewStatus === "changes_requested" ? "Tuzatishga qaytarilgan" : "Ekspertizaga yuborilmagan"; return <Card key={content.id}><CardContent className="p-4 flex flex-col lg:flex-row lg:items-center gap-3"><Icon className={`h-5 w-5 ${meta.className}`} /><div className="flex-1 min-w-0"><p className="font-medium truncate">{content.title}</p><p className="text-xs text-muted-foreground truncate">{content.moduleTitle} · v{content.contentVersion} · {content.languageCode} · {content.authorName}</p><p className="text-xs text-muted-foreground truncate">{content.sourceName} · {content.validFrom} — {content.validUntil || "cheklanmagan"}</p></div><div className="flex items-center gap-2 flex-wrap"><Badge variant="outline">{meta.label}</Badge><Badge variant={content.effective ? "default" : "secondary"}>{validity}</Badge><Badge variant={content.reviewStatus === "approved" ? "default" : "secondary"}>{reviewLabel}</Badge><Badge variant={content.status === "published" ? "default" : "secondary"}>{content.status === "published" ? "Nashrda" : "Qoralama"}</Badge><Button variant="ghost" size="sm" className="gap-1" onClick={() => setHistoryContent(content)}><History className="h-4 w-4" />Tarix</Button>{content.status === "draft" && ["draft", "changes_requested"].includes(content.reviewStatus) && <Button variant="outline" size="sm" disabled={submitReviewMutation.isPending} onClick={() => submitReviewMutation.mutate(content.id)}>Ekspertizaga</Button>}<Button variant="ghost" size="icon" disabled={content.reviewStatus === "in_review"} onClick={() => editContent(content)}><Edit className="h-4 w-4" /></Button><Button variant="outline" size="sm" disabled={content.status === "draft" && (!modulePublished || content.reviewStatus !== "approved")} title={content.reviewStatus !== "approved" ? "Avval mustaqil ekspert tasdig'ini oling" : !modulePublished ? "Avval modulni nashr qiling" : undefined} onClick={() => contentStatusMutation.mutate({ contentId: content.id, status: content.status === "published" ? "DRAFT" : "PUBLISHED" })}>{content.status === "published" ? "Yashirish" : "Nashr"}</Button><Button variant="ghost" size="icon" disabled={content.reviewStatus === "in_review"} className="text-destructive" onClick={() => deleteContentMutation.mutate(content.id)}><Trash2 className="h-4 w-4" /></Button></div></CardContent></Card>; })}
         </TabsContent>
 
         <TabsContent value="students" className="mt-4 space-y-3">
@@ -273,6 +344,19 @@ export function TeacherCourseDetail({ defaultTab = "overview" }: { defaultTab?: 
           {enrollments.map(item => <Card key={item.id}><CardContent className="p-4 flex items-center gap-3"><Users className="h-4 w-4 text-muted-foreground" /><div className="flex-1"><p className="font-medium">{item.studentName}</p><p className="text-xs text-muted-foreground">{item.studentNumber} · ID {item.studentId} · {item.academicYear} · {item.semester}-semestr · {item.credits} kredit · {item.required ? "majburiy" : "tanlov"} · {item.progress}%</p></div><Badge variant={item.status === "active" ? "default" : "secondary"}>{item.status === "active" ? "Faol" : item.status === "completed" ? "Yakunlagan" : "Chiqarilgan"}</Badge>{item.status === "active" && <Button variant="ghost" size="icon" className="text-destructive" onClick={() => withdrawMutation.mutate(item.studentId)}><Trash2 className="h-4 w-4" /></Button>}</CardContent></Card>)}
         </TabsContent>
       </Tabs>
+      <Dialog open={Boolean(historyContent)} onOpenChange={open => { if (!open) setHistoryContent(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Kontent versiyalari</DialogTitle><DialogDescription>{historyContent?.title} uchun o'zgarmas tahrirlar tarixi.</DialogDescription></DialogHeader>
+          {revisionsQuery.isLoading && <Loading />}
+          {revisionsQuery.error && <p className="text-sm text-destructive">{revisionsQuery.error.message}</p>}
+          <div className="space-y-3">{(revisionsQuery.data ?? []).map(revision => <Card key={revision.id}><CardContent className="p-4 space-y-1"><div className="flex justify-between gap-2"><strong>#{revision.revisionNumber} · v{revision.contentVersion}</strong><span className="text-xs text-muted-foreground">{new Date(revision.changedAt).toLocaleString("uz-UZ")}</span></div><p className="text-sm">{revision.title}</p><p className="text-xs text-muted-foreground">{revision.languageCode} · {revision.authorName} · {revision.sourceName}</p><p className="text-xs text-muted-foreground">{revision.validFrom} — {revision.validUntil || "cheklanmagan"} · foydalanuvchi ID {revision.changedBy}</p></CardContent></Card>)}</div>
+          <h3 className="pt-2 font-semibold">Ekspertiza qarorlari</h3>
+          {reviewsQuery.isLoading && <Loading />}
+          {reviewsQuery.error && <p className="text-sm text-destructive">{reviewsQuery.error.message}</p>}
+          {(reviewsQuery.data ?? []).length === 0 && !reviewsQuery.isLoading && <p className="text-sm text-muted-foreground">Hali ekspertizaga yuborilmagan.</p>}
+          <div className="space-y-3">{(reviewsQuery.data ?? []).map(review => <Card key={review.id}><CardContent className="p-4 space-y-1"><div className="flex justify-between gap-2"><strong>Revision #{review.revisionNumber} · v{review.contentVersion}</strong><Badge variant={review.status === "approved" ? "default" : "secondary"}>{review.status === "pending" ? "Kutilmoqda" : review.status === "approved" ? "Tasdiqlangan" : "Tuzatishga qaytarilgan"}</Badge></div><p className="text-xs text-muted-foreground">Yuborildi: {new Date(review.submittedAt).toLocaleString("uz-UZ")} · ID {review.submittedBy}</p>{review.reviewedAt && <p className="text-xs text-muted-foreground">Qaror: {new Date(review.reviewedAt).toLocaleString("uz-UZ")} · ekspert ID {review.reviewedBy}</p>}{review.decisionComment && <p className="text-sm">{review.decisionComment}</p>}</CardContent></Card>)}</div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -283,4 +367,8 @@ function Loading() {
 
 function Empty({ text }: { text: string }) {
   return <Card><CardContent className="py-8 text-center text-muted-foreground"><BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />{text}</CardContent></Card>;
+}
+
+function Field({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  return <div className={`space-y-1.5 ${className ?? ""}`}><Label>{label}</Label>{children}</div>;
 }

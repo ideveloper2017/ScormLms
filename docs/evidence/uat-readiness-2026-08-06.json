@@ -1,0 +1,175 @@
+{
+    "schemaVersion":  1,
+    "generatedAt":  "2026-08-06T08:30:05.8075592Z",
+    "manifestPath":  "docs/uat/decision-559-uat-evidence.json",
+    "bandCoverage":  {
+                         "from":  8,
+                         "to":  33,
+                         "count":  26
+                     },
+    "statusCounts":  {
+                         "AUTOMATED_PASS":  5,
+                         "MANUAL_PASS":  0,
+                         "NOT_APPLICABLE":  0,
+                         "MANUAL_PENDING":  8,
+                         "PARTIAL":  9,
+                         "BLOCKED_EXTERNAL":  3,
+                         "NOT_IMPLEMENTED":  1
+                     },
+    "structurallyValid":  true,
+    "requirementsReady":  false,
+    "protocolSigned":  false,
+    "readyForAcceptance":  false,
+    "errors":  [
+
+               ],
+    "blockers":  [
+                     {
+                         "id":  "UAT-559-08",
+                         "band":  8,
+                         "status":  "PARTIAL",
+                         "owner":  "IT va universitet rahbariyati",
+                         "note":  "Kontent provenance, versiya tarixi va validity gate\u0027i avtomatik testlangan; server ijara/mulk, shtat, rasmiy sayt va yillik kontent to\u0027liqligi dalili pending."
+                     },
+                     {
+                         "id":  "UAT-559-09",
+                         "band":  9,
+                         "status":  "BLOCKED_EXTERNAL",
+                         "owner":  "Metodika va yuridik bo\u0027lim",
+                         "note":  "Muallif, til, manba, noyob versiya, amal qilish davri va immutable revision tarixi ishlaydi; rasmiy standart va tashkilot checklisti olinmagan."
+                     },
+                     {
+                         "id":  "UAT-559-10",
+                         "band":  10,
+                         "status":  "PARTIAL",
+                         "owner":  "IT va axborot xavfsizligi",
+                         "note":  "SCORM, attempt-bound identity/active-movement preflight, event jurnali, assignment scope\u0027li dalillar paneli va 10 kunlik manual appeal/review o\u0027tgan; biometrik siyosat va vendor/model bahosi pending."
+                     },
+                     {
+                         "id":  "UAT-559-11",
+                         "band":  11,
+                         "status":  "PARTIAL",
+                         "owner":  "IT va ta\u0027lim bo\u0027limi",
+                         "note":  "O\u0027quv komponentlari ishlaydi; forum/chat/xabar/email to\u0027liq emas."
+                     },
+                     {
+                         "id":  "UAT-559-12",
+                         "band":  12,
+                         "status":  "MANUAL_PENDING",
+                         "owner":  "Registrator va yuridik bo\u0027lim",
+                         "note":  "Tasdiqlangan tashkilot reglamenti bilan manual tekshiruv kerak."
+                     },
+                     {
+                         "id":  "UAT-559-14",
+                         "band":  14,
+                         "status":  "BLOCKED_EXTERNAL",
+                         "owner":  "Vazirlik va universitet",
+                         "note":  "Rasmiy ro\u0027yxat olinmagan."
+                     },
+                     {
+                         "id":  "UAT-559-15",
+                         "band":  15,
+                         "status":  "MANUAL_PENDING",
+                         "owner":  "Qabul komissiyasi",
+                         "note":  "Vakolatli qaror bilan real qiymatlar solishtiriladi."
+                     },
+                     {
+                         "id":  "UAT-559-16",
+                         "band":  16,
+                         "status":  "MANUAL_PENDING",
+                         "owner":  "Yuridik bo\u0027lim",
+                         "note":  "Tashkilot turiga qarab litsenziya dalili yoki NOT_APPLICABLE qarori kerak."
+                     },
+                     {
+                         "id":  "UAT-559-17",
+                         "band":  17,
+                         "status":  "NOT_IMPLEMENTED",
+                         "owner":  "Ta\u0027lim va IT bo\u0027limi",
+                         "note":  "Dastur davomiyligi maydoni va bloklovchi qoida yo\u0027q."
+                     },
+                     {
+                         "id":  "UAT-559-19",
+                         "band":  19,
+                         "status":  "MANUAL_PENDING",
+                         "owner":  "Metodika",
+                         "note":  "Standart rekviziti va tasdiqlangan curriculum versiyasi dalili kerak."
+                     },
+                     {
+                         "id":  "UAT-559-21",
+                         "band":  21,
+                         "status":  "PARTIAL",
+                         "owner":  "Ta\u0027lim bo\u0027limi",
+                         "note":  "Yakuniy nazorat/attestatsiya ishlaydi; boshlang\u0027ich shaxsan orientatsiya jurnali yo\u0027q."
+                     },
+                     {
+                         "id":  "UAT-559-22",
+                         "band":  22,
+                         "status":  "MANUAL_PENDING",
+                         "owner":  "HR, registrator va ish beruvchi",
+                         "note":  "Tashqi buyruq/ariza bilan tekshiriladi."
+                     },
+                     {
+                         "id":  "UAT-559-23",
+                         "band":  23,
+                         "status":  "MANUAL_PENDING",
+                         "owner":  "Amaliyot bo\u0027limi",
+                         "note":  "Amaliyot reja/joy/kelishuv dalili kerak."
+                     },
+                     {
+                         "id":  "UAT-559-24",
+                         "band":  24,
+                         "status":  "PARTIAL",
+                         "owner":  "Ta\u0027lim va metodika",
+                         "note":  "Asosiy workflowlar bor; fan bo\u0027yicha to\u0027liqlik gate\u0027i tugallanmagan."
+                     },
+                     {
+                         "id":  "UAT-559-25",
+                         "band":  25,
+                         "status":  "MANUAL_PENDING",
+                         "owner":  "HR va xalqaro bo\u0027lim",
+                         "note":  "Qo\u0027llanilsa hujjat, aks holda asoslangan NOT_APPLICABLE kerak."
+                     },
+                     {
+                         "id":  "UAT-559-27",
+                         "band":  27,
+                         "status":  "PARTIAL",
+                         "owner":  "Attestatsiya va registrator",
+                         "note":  "Ichki sertifikat gate\u0027i ishlaydi; davlat diplomi registri integratsiyasi/manual dalil kerak."
+                     },
+                     {
+                         "id":  "UAT-559-28",
+                         "band":  28,
+                         "status":  "PARTIAL",
+                         "owner":  "Monitoring bo\u0027limi",
+                         "note":  "Monitoring roli va dalil mavjud; tashqi organ kirish reglamenti pending."
+                     },
+                     {
+                         "id":  "UAT-559-29",
+                         "band":  29,
+                         "status":  "BLOCKED_EXTERNAL",
+                         "owner":  "Vazirlik, inspeksiya va IT",
+                         "note":  "Rasmiy API, test muhiti va credential yo\u0027q."
+                     },
+                     {
+                         "id":  "UAT-559-30",
+                         "band":  30,
+                         "status":  "PARTIAL",
+                         "owner":  "Monitoring va sifat bo\u0027limi",
+                         "note":  "Anonim survey ishlaydi; fokus-guruh/intervyu protokoli manual pending."
+                     },
+                     {
+                         "id":  "UAT-559-32",
+                         "band":  32,
+                         "status":  "PARTIAL",
+                         "owner":  "Ta\u0027lim va support bo\u0027limi",
+                         "note":  "Semestr imtihoni va proktoring apellyatsiyasi ishlaydi; umumiy ticket/SLA oqimi yo\u0027q."
+                     },
+                     {
+                         "id":  "UAT-559-33",
+                         "band":  33,
+                         "status":  "MANUAL_PENDING",
+                         "owner":  "Yuridik va rahbariyat",
+                         "note":  "Ichki reglament va mas\u0027ul imzosi kerak."
+                     }
+                 ]
+}

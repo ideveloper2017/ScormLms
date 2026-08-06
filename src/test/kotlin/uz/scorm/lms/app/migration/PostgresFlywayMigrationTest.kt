@@ -27,7 +27,7 @@ class PostgresFlywayMigrationTest {
             .load()
 
         val result = flyway.migrate()
-        assertEquals("7", result.targetSchemaVersion)
+        assertEquals("18", result.targetSchemaVersion)
         flyway.validate()
 
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
@@ -53,6 +53,22 @@ class PostgresFlywayMigrationTest {
                 "course_quiz_questions",
                 "quiz_attempts",
                 "quiz_answers",
+                "exam_sessions",
+                "state_attestation_sessions",
+                "course_learning_sessions",
+                "learning_session_accesses",
+                "compliance_issues",
+                "surveys",
+                "survey_questions",
+                "survey_responses",
+                "survey_answers",
+                "proctoring_sessions",
+                "proctoring_events",
+                "course_quiz_proctors",
+                "proctoring_appeals",
+                "proctoring_appeal_events",
+                "course_content_revisions",
+                "course_content_reviews",
                 "scorm_packages",
                 "scorm_attempts",
                 "flyway_schema_history",

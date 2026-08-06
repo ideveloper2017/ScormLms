@@ -8,7 +8,12 @@ import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.service.StudentPortalService
 import uz.scorm.lms.app.v1.courses.service.StudyPlanService
+import uz.scorm.lms.app.v1.session.dto.StudentLearningSessionDto
 import uz.scorm.lms.app.v1.user.model.User
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
+import java.time.temporal.WeekFields
 
 @RestController
 @RequestMapping("/api/v1/students/me")
@@ -101,35 +106,60 @@ class StudentPortalController(
         @RequestParam(required = false) endDate: String?,
         @RequestParam(required = false) courseId: String?,
         @RequestParam(required = false) dayOfWeek: Int?,
-    ): ResponseEntity<ApiResponse<List<StudentScheduleItemDto>>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getSchedule(user)))
+    ): ResponseEntity<ApiResponse<List<StudentLearningSessionDto>>> {
+        val defaultMonday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val parsedStart = startDate?.let(LocalDate::parse) ?: if (endDate == null) defaultMonday else null
+        val parsedEnd = endDate?.let(LocalDate::parse) ?: if (startDate == null) defaultMonday.plusDays(6) else null
+        return ResponseEntity.ok(ApiResponse.success(
+            svc.getSchedule(user, parsedStart, parsedEnd, courseId?.toLongOrNull(), dayOfWeek),
+        ))
+    }
 
     @GetMapping("/schedule/today")
-    fun getTodaySchedule(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentScheduleItemDto>>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getSchedule(user)))
+    fun getTodaySchedule(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentLearningSessionDto>>> {
+        val today = LocalDate.now()
+        return ResponseEntity.ok(ApiResponse.success(svc.getSchedule(user, today, today)))
+    }
 
     @GetMapping("/schedule/week")
-    fun getWeekSchedule(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentScheduleItemDto>>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getSchedule(user)))
+    fun getWeekSchedule(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentLearningSessionDto>>> {
+        val monday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        return ResponseEntity.ok(ApiResponse.success(svc.getSchedule(user, monday, monday.plusDays(6))))
+    }
 
     @GetMapping("/schedule/upcoming")
-    fun getUpcomingSchedule(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentScheduleItemDto>>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getSchedule(user)))
+    fun getUpcomingSchedule(@CurrentUser user: User): ResponseEntity<ApiResponse<List<StudentLearningSessionDto>>> {
+        val today = LocalDate.now()
+        val now = java.time.Instant.now()
+        return ResponseEntity.ok(ApiResponse.success(
+            svc.getSchedule(user, today, today.plusDays(30)).filter { it.endsAt.isAfter(now) },
+        ))
+    }
 
     @GetMapping("/schedule/next")
-    fun getNextClass(@CurrentUser user: User): ResponseEntity<ApiResponse<StudentScheduleItemDto?>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getSchedule(user).firstOrNull()))
+    fun getNextClass(@CurrentUser user: User): ResponseEntity<ApiResponse<StudentLearningSessionDto?>> {
+        val today = LocalDate.now()
+        val now = java.time.Instant.now()
+        return ResponseEntity.ok(ApiResponse.success(
+            svc.getSchedule(user, today, today.plusDays(30)).firstOrNull { it.endsAt.isAfter(now) },
+        ))
+    }
 
     @GetMapping("/schedule/week/{weekNumber}")
     fun getScheduleByWeek(
         @CurrentUser user: User,
         @PathVariable weekNumber: Int,
     ): ResponseEntity<ApiResponse<Map<String, Any>>> {
-        val items = svc.getSchedule(user)
+        require(weekNumber in 1..53) { "Hafta raqami 1 dan 53 gacha bo'lishi kerak" }
+        val weekFields = WeekFields.ISO
+        val monday = LocalDate.now()
+            .with(weekFields.weekOfWeekBasedYear(), weekNumber.toLong())
+            .with(weekFields.dayOfWeek(), 1)
+        val items = svc.getSchedule(user, monday, monday.plusDays(6))
         val result = mapOf(
             "weekNumber" to weekNumber,
-            "startDate" to java.time.LocalDate.now().toString(),
-            "endDate" to java.time.LocalDate.now().plusDays(6).toString(),
+            "startDate" to monday.toString(),
+            "endDate" to monday.plusDays(6).toString(),
             "items" to items,
         )
         return ResponseEntity.ok(ApiResponse.success(result))

@@ -6,6 +6,7 @@ import uz.scorm.lms.app.v1.assignment.model.AssignmentStatus
 import uz.scorm.lms.app.v1.assignment.model.CourseAssignment
 
 interface CourseAssignmentRepository : JpaRepository<CourseAssignment, Long> {
+    fun countByDeletedFalse(): Long
     @EntityGraph(attributePaths = ["course"])
     fun findAllByDeletedFalseOrderByDueAtDesc(): List<CourseAssignment>
 

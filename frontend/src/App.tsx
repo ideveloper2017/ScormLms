@@ -54,6 +54,9 @@ import { AdminCalendar } from "@/pages/admin/calendar";
 import { AdminIntegrations } from "@/pages/admin/integrations";
 import { AdminAuditLogs } from "@/pages/admin/audit-logs";
 import { AdminCompliance559 } from "@/pages/admin/compliance-559";
+import { AdminSurveys } from "@/pages/admin/surveys";
+import { AdminContentReviews } from "@/pages/admin/content-reviews";
+import { Surveys } from "@/pages/surveys";
 
 // Student pages
 import { StudentSchedule } from "@/pages/student/schedule";
@@ -81,6 +84,10 @@ import { TeacherStudents } from "@/pages/teacher/students";
 import { TeacherAttendance } from "@/pages/teacher/attendance";
 import { TeacherAnnouncements } from "@/pages/teacher/announcements";
 import { TeacherContent } from "@/pages/teacher/content";
+import { TeacherSessions } from "@/pages/teacher/sessions";
+import { TeacherExams } from "@/pages/teacher/exams";
+import { TeacherAttestations } from "@/pages/teacher/attestations";
+import { StudentAttestations } from "@/pages/student/attestations";
 import { TeacherProfile } from "@/pages/teacher/profile";
 
 // ─── Role constants (match backend role names, normalizeRole strips ROLE_ prefix) ──────
@@ -222,12 +229,16 @@ function App() {
         <Route path="/teacher/gradebook"              element={<P roles={TEACHER_ROLES}><TeacherGradebook /></P>} />
         <Route path="/teacher/students"               element={<P roles={TEACHER_ROLES}><TeacherStudents /></P>} />
         <Route path="/teacher/attendance"             element={<P roles={TEACHER_ROLES}><TeacherAttendance /></P>} />
+        <Route path="/teacher/sessions"               element={<P roles={TEACHER_ROLES}><TeacherSessions /></P>} />
+        <Route path="/teacher/exams"                  element={<P roles={TEACHER_ROLES}><TeacherExams /></P>} />
+        <Route path="/teacher/attestations"           element={<P roles={TEACHER_ROLES}><TeacherAttestations /></P>} />
         <Route path="/teacher/messages"               element={<P roles={TEACHER_ROLES}><Communication /></P>} />
         <Route path="/teacher/announcements"          element={<P roles={TEACHER_ROLES}><TeacherAnnouncements /></P>} />
         <Route path="/teacher/notifications"          element={<P roles={TEACHER_ROLES}><StudentNotifications /></P>} />
         <Route path="/teacher/content"                element={<P roles={TEACHER_ROLES}><TeacherContent /></P>} />
         <Route path="/teacher/reports"                element={<P roles={TEACHER_ROLES}><Reports /></P>} />
         <Route path="/teacher/profile"                element={<P roles={TEACHER_ROLES}><TeacherProfile /></P>} />
+        <Route path="/teacher/surveys"                element={<P roles={[R_TEACH]}><Surveys /></P>} />
 
         {/* ── /student/* ───────────────────────────────────────────────────── */}
         <Route path="/student/dashboard"     element={<P roles={[R_STU]}><StudentDashboard /></P>} />
@@ -237,15 +248,18 @@ function App() {
         <Route path="/student/schedule"      element={<P roles={[R_STU]}><StudentSchedule /></P>} />
         <Route path="/student/assignments"   element={<P roles={[R_STU]}><StudentAssignments /></P>} />
         <Route path="/student/tests"         element={<P roles={[R_STU]}><StudentTests /></P>} />
+        <Route path="/student/tests/:testId/proctoring" element={<P roles={[R_STU]}><ProctoringSession /></P>} />
         <Route path="/student/tests/:testId/session" element={<P roles={[R_STU]}><TestSession /></P>} />
         <Route path="/student/tests/:testId/results" element={<P roles={[R_STU]}><TestResults /></P>} />
         <Route path="/student/exams"         element={<P roles={[R_STU]}><Exams /></P>} />
+        <Route path="/student/attestations"  element={<P roles={[R_STU]}><StudentAttestations /></P>} />
         <Route path="/student/grades"        element={<P roles={[R_STU]}><StudentGrades /></P>} />
         <Route path="/student/attendance"    element={<P roles={[R_STU]}><StudentAttendance /></P>} />
         <Route path="/student/messages"      element={<P roles={[R_STU]}><Communication /></P>} />
         <Route path="/student/notifications" element={<P roles={[R_STU]}><StudentNotifications /></P>} />
         <Route path="/student/calendar"      element={<P roles={[R_STU]}><AdminCalendar /></P>} />
         <Route path="/student/profile"       element={<P roles={[R_STU]}><StudentCabinet /></P>} />
+        <Route path="/student/surveys"       element={<P roles={[R_STU]}><Surveys /></P>} />
 
         {/* ── All learning participants (staff + students) ─────────────────── */}
         <Route path="/courses"       element={<P roles={CONTENT_ROLES}><Courses /></P>} />
@@ -268,7 +282,7 @@ function App() {
         <Route path="/teachers-management" element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
 
         {/* ── Proctor ──────────────────────────────────────────────────────── */}
-        <Route path="/exam/:id/proctoring" element={<P roles={[R_STU, R_PROC]}><ProctoringSession /></P>} />
+        <Route path="/exam/:id/proctoring" element={<P roles={[R_STU]}><ProctoringSession /></P>} />
 
         {/* ── Admin / Super Admin ───────────────────────────────────────────── */}
         <Route path="/management" element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
@@ -293,6 +307,8 @@ function App() {
         <Route path="/admin/integrations" element={<P roles={ADMIN_ROLES}><AdminIntegrations /></P>} />
         <Route path="/admin/audit-logs"   element={<P roles={ADMIN_ROLES}><AdminAuditLogs /></P>} />
         <Route path="/admin/compliance-559" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminCompliance559 /></P>} />
+        <Route path="/admin/surveys"        element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminSurveys /></P>} />
+        <Route path="/admin/content-reviews" element={<P roles={STAFF_ROLES}><AdminContentReviews /></P>} />
         <Route path="/admin/settings"          element={<P roles={ADMIN_ROLES}><Settings /></P>} />
         <Route path="/admin/notifications"     element={<P roles={STAFF_ROLES}><StudentNotifications /></P>} />
 

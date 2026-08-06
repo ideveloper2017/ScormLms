@@ -53,6 +53,17 @@ export interface LearningContent {
   contentUrl?: string | null;
   durationMinutes?: number | null;
   position: number;
+  languageCode: string;
+  authorName: string;
+  contentVersion: string;
+  sourceName: string;
+  sourceUrl?: string | null;
+  validFrom: string;
+  validUntil?: string | null;
+  effective: boolean;
+  metadataUpdatedAt: string;
+  reviewStatus: 'approved';
+  approvedRevisionNumber: number;
 }
 
 function dataOf<T>(response: { data: ApiResponse<T> }, fallback: string): T {

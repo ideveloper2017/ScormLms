@@ -21,7 +21,9 @@ class DataInitializer(
     private val userRepository: UserRepository,
     private val roleRepository: RoleRepository,
     private val environment: Environment,
-    @param:Value("\${app.seed.admin-password:}") private val adminPassword: String
+    @param:Value("\${app.seed.admin-password:}") private val adminPassword: String,
+    @param:Value("\${app.seed.teacher-password:}") private val teacherPassword: String,
+    @param:Value("\${app.seed.student-password:}") private val studentPassword: String
 ) : ApplicationRunner {
 
     override fun run(args: ApplicationArguments?) {
@@ -36,8 +38,8 @@ class DataInitializer(
         seedAdminUser()
 
         if (isDevProfile()) {
-            seedDemoUser("teacher", "teacher123", "teacher")
-            seedDemoUser("student", "student123", "student")
+            seedDemoUserIfConfigured("teacher", teacherPassword, "teacher")
+            seedDemoUserIfConfigured("student", studentPassword, "student")
         }
     }
 
@@ -53,16 +55,12 @@ class DataInitializer(
     private fun seedAdminUser() {
         if (userRepository.existsByUsername("admin")) return
 
-        val password = adminPassword.ifBlank {
-            if (isDevProfile()) {
-                "admin"
-            } else {
-                logger.warn { "Default admin yaratilmadi: APP_SEED_ADMIN_PASSWORD env variable berilmagan." }
-                return
-            }
+        if (adminPassword.isBlank()) {
+            logger.warn { "Default admin yaratilmadi: APP_SEED_ADMIN_PASSWORD env variable berilmagan." }
+            return
         }
 
-        val u = userService.register("admin", password, "super_admin")
+        val u = userService.register("admin", adminPassword, "super_admin")
         u.fullName = "Super Admin"
         u.email = "admin@example.com"
         u.phone = "+998901234567"
@@ -70,7 +68,8 @@ class DataInitializer(
         logger.info { "Super Admin user yaratildi" }
     }
 
-    private fun seedDemoUser(username: String, password: String, roleName: String) {
+    private fun seedDemoUserIfConfigured(username: String, password: String, roleName: String) {
+        if (password.isBlank()) return
         if (userRepository.existsByUsername(username)) return
         userService.register(username, password, roleName)
         logger.info { "Demo user yaratildi: $username" }

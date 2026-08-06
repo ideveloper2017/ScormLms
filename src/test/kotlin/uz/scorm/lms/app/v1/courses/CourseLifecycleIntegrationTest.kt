@@ -13,6 +13,8 @@ import uz.scorm.lms.app.v1.courses.dto.CourseEnrollmentRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseUpdateRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseModuleRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRequest
+import uz.scorm.lms.app.v1.courses.dto.ContentReviewDecisionRequest
+import uz.scorm.lms.app.v1.courses.model.ContentReviewDecision
 import uz.scorm.lms.app.v1.courses.model.CourseContentType
 import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
@@ -21,6 +23,7 @@ import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
 import uz.scorm.lms.app.v1.courses.service.CourseService
 import uz.scorm.lms.app.v1.courses.service.CourseModuleService
 import uz.scorm.lms.app.v1.courses.service.CourseContentService
+import uz.scorm.lms.app.v1.courses.service.CourseContentReviewService
 import uz.scorm.lms.app.v1.courses.service.StudyPlanService
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.scorm.model.ScormAttempt
@@ -50,6 +53,7 @@ class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var studentPortalService: StudentPortalService
     @Autowired private lateinit var moduleService: CourseModuleService
     @Autowired private lateinit var contentService: CourseContentService
+    @Autowired private lateinit var contentReviewService: CourseContentReviewService
     @Autowired private lateinit var studyPlanService: StudyPlanService
     @Autowired private lateinit var courseRepository: CourseRepository
     @Autowired private lateinit var scormPackageRepository: ScormPackageRepository
@@ -138,6 +142,12 @@ class CourseLifecycleIntegrationTest {
                 contentType = CourseContentType.VIDEO,
                 contentUrl = "https://cdn.example.uz/video/1",
                 durationMinutes = 15,
+                languageCode = "uz-Latn",
+                authorName = "Test muallifi",
+                contentVersion = "1.0.0",
+                sourceName = "Universitet media markazi",
+                sourceUrl = "https://cdn.example.uz/catalog/1",
+                validFrom = LocalDate.of(2026, 1, 1),
             ),
             requireNotNull(teacher.id),
             false,
@@ -146,9 +156,35 @@ class CourseLifecycleIntegrationTest {
         assertTrue(contentService.list(course.id, requireNotNull(student.user.id), false).isEmpty())
 
         moduleService.changeStatus(course.id, module.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        assertThrows<IllegalArgumentException> {
+            contentService.changeStatus(course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        }
+        approveContent(course.id, content.id, requireNotNull(teacher.id))
         contentService.changeStatus(course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
         assertEquals(1, moduleService.list(course.id, requireNotNull(student.user.id), false).size)
         assertEquals(1, contentService.list(course.id, requireNotNull(student.user.id), false).size)
+        assertEquals("uz-Latn", content.languageCode)
+        assertEquals("1.0.0", content.contentVersion)
+        assertEquals(1, contentService.revisions(course.id, content.id, requireNotNull(teacher.id), false).size)
+
+        assertThrows<IllegalArgumentException> {
+            contentService.update(
+                course.id,
+                content.id,
+                CourseContentRequest(
+                    title = "Versiyasiz yangilash",
+                    contentType = CourseContentType.VIDEO,
+                    contentUrl = "https://cdn.example.uz/video/2",
+                    languageCode = "uz-Latn",
+                    authorName = "Test muallifi",
+                    contentVersion = "1.0.0",
+                    sourceName = "Universitet media markazi",
+                    validFrom = LocalDate.of(2026, 1, 1),
+                ),
+                requireNotNull(teacher.id),
+                false,
+            )
+        }
 
         val updatedModule = moduleService.update(
             course.id, module.id, CourseModuleRequest(title = "Yangilangan modul", position = 2), requireNotNull(teacher.id), false,
@@ -161,12 +197,27 @@ class CourseLifecycleIntegrationTest {
                 contentType = CourseContentType.VIDEO,
                 contentUrl = "https://cdn.example.uz/video/2",
                 durationMinutes = 20,
+                languageCode = "uz-Latn",
+                authorName = "Yangilangan muallif",
+                contentVersion = "2.0.0",
+                sourceName = "Universitet media markazi",
+                sourceUrl = "https://cdn.example.uz/catalog/2",
+                validFrom = LocalDate.of(2026, 2, 1),
+                validUntil = LocalDate.of(2027, 12, 31),
             ),
             requireNotNull(teacher.id),
             false,
         )
         assertEquals("Yangilangan modul", updatedModule.title)
         assertEquals("Yangilangan video", updatedContent.title)
+        assertEquals("2.0.0", updatedContent.contentVersion)
+        assertEquals("draft", updatedContent.reviewStatus)
+        assertTrue(contentService.list(course.id, requireNotNull(student.user.id), false).isEmpty())
+        approveContent(course.id, content.id, requireNotNull(teacher.id))
+        contentService.changeStatus(course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        val revisions = contentService.revisions(course.id, content.id, requireNotNull(student.user.id), false)
+        assertEquals(listOf("2.0.0", "1.0.0"), revisions.map { it.contentVersion })
+        assertEquals("Video dars", revisions.last().title)
 
         contentService.delete(course.id, content.id, requireNotNull(teacher.id), false)
         moduleService.delete(course.id, module.id, requireNotNull(teacher.id), false)
@@ -206,10 +257,17 @@ class CourseLifecycleIntegrationTest {
                 title = "Birinchi mavzu",
                 contentType = CourseContentType.LINK,
                 contentUrl = "https://lms.example.uz/algorithms/1",
+                languageCode = "uz",
+                authorName = "Algoritmlar kafedrasi",
+                contentVersion = "1.0",
+                sourceName = "Universitet LMS",
+                sourceUrl = "https://lms.example.uz/catalog/algorithms/1",
+                validFrom = LocalDate.of(2026, 1, 1),
             ),
             requireNotNull(teacher.id),
             false,
         )
+        approveContent(course.id, content.id, requireNotNull(teacher.id))
         contentService.changeStatus(course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
 
         val initial = studyPlanService.studyPlan(requireNotNull(student.user.id), "2026-2027")
@@ -287,11 +345,223 @@ class CourseLifecycleIntegrationTest {
         assertEquals(4, completed.completedCredits)
     }
 
+    @Test
+    fun `student faqat amal qilayotgan kontentni koradi va progress yozadi`() {
+        val teacher = user("content-validity-teacher")
+        val student = student("10000000000007", "ST-CONT-007", "content-validity-student")
+        val course = courseService.create(CourseCreateRequest(title = "Metadata kursi"), requireNotNull(teacher.id))
+        courseService.changeStatus(course.id, CourseStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        enrollmentService.enroll(course.id, setOf(requireNotNull(student.id)), requireNotNull(teacher.id), false)
+        val module = moduleService.create(
+            course.id, CourseModuleRequest(title = "Metadata modul"), requireNotNull(teacher.id), false,
+        )
+        moduleService.changeStatus(course.id, module.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        val today = LocalDate.now()
+        val content = contentService.create(
+            course.id,
+            module.id,
+            CourseContentRequest(
+                title = "Rejalangan material",
+                contentType = CourseContentType.DOCUMENT,
+                contentUrl = "https://content.example.uz/material.pdf",
+                languageCode = "uz",
+                authorName = "Metodika bo'limi",
+                contentVersion = "1.0",
+                sourceName = "Tasdiqlangan metodik fond",
+                sourceUrl = "https://content.example.uz/catalog/material",
+                validFrom = today.plusDays(1),
+                validUntil = today.plusYears(1),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+        approveContent(course.id, content.id, requireNotNull(teacher.id))
+        contentService.changeStatus(course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        assertTrue(contentService.list(course.id, requireNotNull(student.user.id), false).isEmpty())
+        assertThrows<NoSuchElementException> {
+            studyPlanService.recordContentProgress(course.id, content.id, 100, requireNotNull(student.user.id))
+        }
+
+        contentService.update(
+            course.id,
+            content.id,
+            CourseContentRequest(
+                title = "Amaldagi material",
+                contentType = CourseContentType.DOCUMENT,
+                contentUrl = "https://content.example.uz/material-v2.pdf",
+                languageCode = "uz",
+                authorName = "Metodika bo'limi",
+                contentVersion = "2.0",
+                sourceName = "Tasdiqlangan metodik fond",
+                sourceUrl = "https://content.example.uz/catalog/material-v2",
+                validFrom = today.minusDays(1),
+                validUntil = today.plusYears(1),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+        approveContent(course.id, content.id, requireNotNull(teacher.id))
+        contentService.changeStatus(course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        assertEquals(1, contentService.list(course.id, requireNotNull(student.user.id), false).size)
+        assertEquals(100, studyPlanService.recordContentProgress(
+            course.id, content.id, 100, requireNotNull(student.user.id),
+        ).progress)
+
+        contentService.update(
+            course.id,
+            content.id,
+            CourseContentRequest(
+                title = "Muddati tugagan material",
+                contentType = CourseContentType.DOCUMENT,
+                contentUrl = "https://content.example.uz/material-v3.pdf",
+                languageCode = "uz",
+                authorName = "Metodika bo'limi",
+                contentVersion = "3.0",
+                sourceName = "Tasdiqlangan metodik fond",
+                validFrom = today.minusYears(1),
+                validUntil = today.minusDays(1),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+        assertTrue(contentService.list(course.id, requireNotNull(student.user.id), false).isEmpty())
+        approveContent(course.id, content.id, requireNotNull(teacher.id))
+        contentService.changeStatus(course.id, content.id, LearningItemStatus.DRAFT, requireNotNull(teacher.id), false)
+        assertThrows<IllegalArgumentException> {
+            contentService.changeStatus(course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        }
+        assertEquals(3, contentService.revisions(course.id, content.id, requireNotNull(teacher.id), false).size)
+    }
+
+    @Test
+    fun `kontent egasidan mustaqil ekspert qarorisiz joriy revision nashr qilinmaydi`() {
+        val teacher = user("review-workflow-teacher")
+        val reviewer = user("review-workflow-metodist")
+        val course = courseService.create(CourseCreateRequest(title = "Ekspertiza kursi"), requireNotNull(teacher.id))
+        courseService.changeStatus(course.id, CourseStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        val module = moduleService.create(
+            course.id, CourseModuleRequest(title = "Ekspertiza moduli"), requireNotNull(teacher.id), false,
+        )
+        moduleService.changeStatus(course.id, module.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        val content = contentService.create(
+            course.id,
+            module.id,
+            CourseContentRequest(
+                title = "Ekspertiza materiali",
+                contentType = CourseContentType.DOCUMENT,
+                contentUrl = "https://content.example.uz/review-v1.pdf",
+                languageCode = "uz",
+                authorName = "Test muallifi",
+                contentVersion = "1.0",
+                sourceName = "Metodik fond",
+                validFrom = LocalDate.now(),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+
+        val firstReview = contentReviewService.submit(course.id, content.id, requireNotNull(teacher.id), false)
+        assertEquals("pending", firstReview.status)
+        assertThrows<IllegalArgumentException> {
+            contentReviewService.submit(course.id, content.id, requireNotNull(teacher.id), false)
+        }
+        assertThrows<IllegalArgumentException> {
+            contentReviewService.decide(
+                firstReview.id,
+                ContentReviewDecisionRequest(ContentReviewDecision.APPROVED),
+                requireNotNull(teacher.id),
+                true,
+            )
+        }
+        assertThrows<IllegalArgumentException> {
+            contentService.update(
+                course.id,
+                content.id,
+                CourseContentRequest(
+                    title = "Ekspertizadagi tahrir",
+                    contentType = CourseContentType.DOCUMENT,
+                    languageCode = "uz",
+                    authorName = "Test muallifi",
+                    contentVersion = "2.0",
+                    sourceName = "Metodik fond",
+                    validFrom = LocalDate.now(),
+                ),
+                requireNotNull(teacher.id),
+                false,
+            )
+        }
+        assertThrows<IllegalArgumentException> {
+            contentReviewService.decide(
+                firstReview.id,
+                ContentReviewDecisionRequest(ContentReviewDecision.CHANGES_REQUESTED, "qisqa"),
+                requireNotNull(reviewer.id),
+                true,
+            )
+        }
+        val rejected = contentReviewService.decide(
+            firstReview.id,
+            ContentReviewDecisionRequest(ContentReviewDecision.CHANGES_REQUESTED, "Manba izohini aniqlashtiring"),
+            requireNotNull(reviewer.id),
+            true,
+        )
+        assertEquals("changes_requested", rejected.status)
+        assertThrows<IllegalArgumentException> {
+            contentService.changeStatus(course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false)
+        }
+
+        val revised = contentService.update(
+            course.id,
+            content.id,
+            CourseContentRequest(
+                title = "Tuzatilgan ekspertiza materiali",
+                contentType = CourseContentType.DOCUMENT,
+                contentUrl = "https://content.example.uz/review-v2.pdf",
+                languageCode = "uz",
+                authorName = "Test muallifi",
+                contentVersion = "2.0",
+                sourceName = "Aniqlashtirilgan metodik fond",
+                validFrom = LocalDate.now(),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+        assertEquals("draft", revised.reviewStatus)
+        val secondReview = contentReviewService.submit(course.id, content.id, requireNotNull(teacher.id), false)
+        contentReviewService.decide(
+            secondReview.id,
+            ContentReviewDecisionRequest(ContentReviewDecision.APPROVED, "Talablar bajarildi"),
+            requireNotNull(reviewer.id),
+            true,
+        )
+        val published = contentService.changeStatus(
+            course.id, content.id, LearningItemStatus.PUBLISHED, requireNotNull(teacher.id), false,
+        )
+        assertEquals("approved", published.reviewStatus)
+        assertEquals(2, published.approvedRevisionNumber)
+        assertEquals(
+            listOf("approved", "changes_requested"),
+            contentReviewService.history(course.id, content.id, requireNotNull(teacher.id), false).map { it.status },
+        )
+        assertTrue(contentReviewService.pending(true).none { it.contentId == content.id })
+    }
+
     private fun user(username: String): User = userRepository.save(User(
         username = username,
         password = "test-password-hash",
         fullName = username,
     ))
+
+    private fun approveContent(courseId: Long, contentId: Long, ownerId: Long) {
+        val submitted = contentReviewService.submit(courseId, contentId, ownerId, false)
+        val reviewer = user("content-reviewer-$contentId-${submitted.revisionNumber}")
+        val approved = contentReviewService.decide(
+            submitted.id,
+            ContentReviewDecisionRequest(ContentReviewDecision.APPROVED, "Metodik talablar tekshirildi"),
+            requireNotNull(reviewer.id),
+            true,
+        )
+        assertEquals("approved", approved.status)
+    }
 
     private fun student(pinfl: String, number: String, username: String): StudentProfile {
         val user = user(username)
