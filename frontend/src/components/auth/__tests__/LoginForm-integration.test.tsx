@@ -6,6 +6,13 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { faceRecognitionApi } from '@/services/api/face-recognition-api';
 import * as api from '@/lib/api';
 
+const mockGetUserMedia = vi.fn();
+
+Object.defineProperty(global.navigator, 'mediaDevices', {
+  configurable: true,
+  value: { getUserMedia: mockGetUserMedia },
+});
+
 // Mock the face recognition API
 vi.mock('@/services/api/face-recognition-api', () => ({
   faceRecognitionApi: {
@@ -47,18 +54,19 @@ const renderLoginForm = async () => {
   return result;
 };
 
-describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
+describe('LoginForm - credential login with deferred biometric governance', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mockGetUserMedia.mockResolvedValue({ getTracks: () => [] });
     
     // Mock default API responses
     vi.mocked(api.isAuthenticated).mockResolvedValue(false);
     vi.mocked(api.getToken).mockReturnValue(null);
   });
 
-  describe('Student Login with Face Photo', () => {
-    it('should check for face photo after successful student login', async () => {
+  describe('Student login', () => {
+    it('does not collect or inspect biometric data during credential login', async () => {
       // Mock successful student login
       const mockLoginResponse = {
         data: {
@@ -77,12 +85,6 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       };
       vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
 
-      // Mock that user HAS a face photo
-      vi.mocked(faceRecognitionApi.getFacePhotoUrl).mockResolvedValue({
-        photoUrl: 'https://example.com/face.jpg',
-        uploadedAt: new Date(),
-      });
-
       await renderLoginForm();
 
       // Fill in login form
@@ -94,53 +96,15 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
       fireEvent.click(loginButton);
 
-      // Wait for face photo check
       await waitFor(() => {
-        expect(faceRecognitionApi.getFacePhotoUrl).toHaveBeenCalled();
+        expect(api.login).toHaveBeenCalled();
       }, { timeout: 3000 });
+      expect(faceRecognitionApi.getFacePhotoUrl).not.toHaveBeenCalled();
+      expect(faceRecognitionApi.verifyFaceMatch).not.toHaveBeenCalled();
+      expect(mockGetUserMedia).not.toHaveBeenCalled();
     });
 
-    it('should set face recognition as required when user has face photo', async () => {
-      const mockLoginResponse = {
-        data: {
-          success: true,
-          data: {
-            token: 'mock-jwt-token',
-            user: {
-              id: '1',
-              username: 'student',
-              roles: [{ name: 'ROLE_STUDENT' }],
-            },
-          },
-        },
-      };
-      vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
-      vi.mocked(faceRecognitionApi.getFacePhotoUrl).mockResolvedValue({
-        photoUrl: 'https://example.com/face.jpg',
-        uploadedAt: new Date(),
-      });
-
-      await renderLoginForm();
-
-      const usernameInput = screen.getByLabelText(/^login$/i);
-      const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
-
-      fireEvent.change(usernameInput, { target: { value: 'student' } });
-      fireEvent.change(passwordInput, { target: { value: 'password123' } });
-      fireEvent.click(loginButton);
-
-      await waitFor(() => {
-        expect(faceRecognitionApi.getFacePhotoUrl).toHaveBeenCalled();
-      }, { timeout: 3000 });
-
-      // Face recognition should be required - user will be redirected to App.tsx
-      // where FaceRecognition component will be shown
-    });
-  });
-
-  describe('Student Login without Face Photo', () => {
-    it('should check for face photo and allow skip when no photo exists', async () => {
+    it('does not create the removed faceRecognitionCompleted bypass flag', async () => {
       const mockLoginResponse = {
         data: {
           success: true,
@@ -156,9 +120,6 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       };
       vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
 
-      // Mock that user DOES NOT have a face photo
-      vi.mocked(faceRecognitionApi.getFacePhotoUrl).mockResolvedValue(null);
-
       await renderLoginForm();
 
       const usernameInput = screen.getByLabelText(/^login$/i);
@@ -170,49 +131,9 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       fireEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(faceRecognitionApi.getFacePhotoUrl).toHaveBeenCalled();
+        expect(api.login).toHaveBeenCalled();
       }, { timeout: 3000 });
-
-      // User should be allowed to proceed without face recognition
-      // Face recognition NOT required for first-time users
-    });
-
-    it('should handle API errors gracefully and allow login', async () => {
-      const mockLoginResponse = {
-        data: {
-          success: true,
-          data: {
-            token: 'mock-jwt-token',
-            user: {
-              id: '1',
-              username: 'student',
-              roles: [{ name: 'ROLE_STUDENT' }],
-            },
-          },
-        },
-      };
-      vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
-
-      // Mock API error when checking face photo
-      vi.mocked(faceRecognitionApi.getFacePhotoUrl).mockRejectedValue(
-        new Error('Network error')
-      );
-
-      await renderLoginForm();
-
-      const usernameInput = screen.getByLabelText(/^login$/i);
-      const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
-
-      fireEvent.change(usernameInput, { target: { value: 'student' } });
-      fireEvent.change(passwordInput, { target: { value: 'password123' } });
-      fireEvent.click(loginButton);
-
-      await waitFor(() => {
-        expect(faceRecognitionApi.getFacePhotoUrl).toHaveBeenCalled();
-      }, { timeout: 3000 });
-
-      // User should still be allowed to login even if face photo check fails
+      expect(localStorage.getItem('faceRecognitionCompleted')).toBeNull();
     });
   });
 
@@ -282,43 +203,6 @@ describe('LoginForm - Face Recognition Integration (Task 18.4)', () => {
       }, { timeout: 3000 });
 
       expect(faceRecognitionApi.getFacePhotoUrl).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('LocalStorage Integration', () => {
-    it('should initialize faceRecognitionCompleted flag in localStorage', async () => {
-      const mockLoginResponse = {
-        data: {
-          success: true,
-          data: {
-            token: 'mock-jwt-token',
-            user: {
-              id: '1',
-              username: 'student',
-              roles: [{ name: 'ROLE_STUDENT' }],
-            },
-          },
-        },
-      };
-      vi.mocked(api.login).mockResolvedValue(mockLoginResponse as any);
-      vi.mocked(faceRecognitionApi.getFacePhotoUrl).mockResolvedValue(null);
-
-      await renderLoginForm();
-
-      const usernameInput = screen.getByLabelText(/^login$/i);
-      const passwordInput = screen.getByPlaceholderText(/parolingizni kiriting/i);
-      const loginButton = screen.getByRole('button', { name: /^kirish$/i });
-
-      fireEvent.change(usernameInput, { target: { value: 'student' } });
-      fireEvent.change(passwordInput, { target: { value: 'password123' } });
-      fireEvent.click(loginButton);
-
-      await waitFor(() => {
-        expect(api.login).toHaveBeenCalled();
-      }, { timeout: 3000 });
-
-      // Should set faceRecognitionCompleted flag
-      expect(localStorage.getItem('faceRecognitionCompleted')).toBeDefined();
     });
   });
 

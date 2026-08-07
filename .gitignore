@@ -30,6 +30,7 @@ out/
 .env
 !.env.example
 .backups/
+private-uploads/
 ops/backup/drill-work/
 ops/backup/drill-reports/
 

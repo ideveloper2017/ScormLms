@@ -28,6 +28,10 @@ export interface TeacherCourse {
   title: string;
   description?: string;
   subjectName?: string | null;
+  subjectId?: number | null;
+  programId?: number | null;
+  programName?: string | null;
+  programLanguage?: string | null;
   groupName?: string | null;
   students: number;
   progress: number;
@@ -42,6 +46,7 @@ export interface CourseCreatePayload {
   title: string;
   description?: string;
   subjectName?: string;
+  subjectId?: number;
   groupName?: string;
   startDate?: string;
   endDate?: string;
@@ -107,6 +112,25 @@ export interface CourseContent {
   metadataUpdatedAt: string;
   reviewStatus: 'draft' | 'in_review' | 'approved' | 'changes_requested';
   approvedRevisionNumber?: number | null;
+  compatibility: ContentCompatibility;
+}
+
+export interface ContentCompatibilityIssue {
+  code: string;
+  message: string;
+  details: string[];
+}
+
+export interface ContentCompatibility {
+  compatible: boolean;
+  courseLanguage?: string | null;
+  contentLanguage: string;
+  subjectId?: number | null;
+  subjectName?: string | null;
+  programId?: number | null;
+  programName?: string | null;
+  programLanguage?: string | null;
+  issues: ContentCompatibilityIssue[];
 }
 
 export interface CourseContentRevision {
@@ -169,6 +193,7 @@ export interface CourseContentReview {
   reviewedAt?: string | null;
   reviewedBy?: number | null;
   decisionComment?: string | null;
+  compatibility: ContentCompatibility;
 }
 
 function dataOf<T>(response: { data: ApiResponse<T> }, fallback: string): T {
@@ -382,6 +407,25 @@ export interface TeacherLearningSession {
   resourceUrl?: string;
   status: 'draft' | 'published' | 'cancelled' | 'completed';
   accessCount: number;
+  videoConference?: VideoConferenceMeeting | null;
+}
+
+export interface VideoConferenceMeeting {
+  id: number;
+  sessionId: number;
+  providerCode: string;
+  status: 'PROVISIONING' | 'READY' | 'FAILED' | 'CANCELLED';
+  providerMeetingId?: string | null;
+  joinUrl?: string | null;
+  hostUrl?: string | null;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  provisionAttempts: number;
+  lastRequestedAt: string;
+  readyAt?: string | null;
+  cancelledAt?: string | null;
+  requestedByName: string;
+  cancelledByName?: string | null;
 }
 
 export interface TeacherLearningSessionPayload {
@@ -553,6 +597,14 @@ export const teacherPortalApi = {
   },
   deleteLearningSession: async (sessionId: string): Promise<void> => {
     await api.delete(`/teachers/me/sessions/${sessionId}`);
+  },
+  provisionVideoConference: async (sessionId: string): Promise<VideoConferenceMeeting> => {
+    const res = await api.post<VideoConferenceMeeting>(`/teachers/me/sessions/${sessionId}/videoconference`);
+    return res.data;
+  },
+  cancelVideoConference: async (sessionId: string): Promise<VideoConferenceMeeting> => {
+    const res = await api.delete<VideoConferenceMeeting>(`/teachers/me/sessions/${sessionId}/videoconference`);
+    return res.data;
   },
   createTest: async (payload: TeacherQuizPayload): Promise<TeacherTest> => {
     const res = await api.post<TeacherTest>('/teachers/me/tests', payload);

@@ -43,6 +43,12 @@ data class ProgramComplianceDto(
     val informationTechnologyProgram: Boolean,
     val localDistanceStudents: Long,
     val admissionLimit: Int?,
+    val fullTimeDurationMonths: Int?,
+    val distanceDurationMonths: Int?,
+    val durationStatus: ComplianceStatus,
+    val fullTimeAvailable: Boolean?,
+    val fullTimeBasisReference: String?,
+    val fullTimeCounterpartStatus: ComplianceStatus,
     val status: ComplianceStatus,
 )
 

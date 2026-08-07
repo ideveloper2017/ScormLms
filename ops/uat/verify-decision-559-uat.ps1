@@ -49,7 +49,7 @@ $duplicateBands = @($requirements | Group-Object band | Where-Object Count -gt 1
 if ($duplicateBands.Count -gt 0) { $errors.Add("Each band must have one manifest record. Duplicate bands: $($duplicateBands -join ', ')") }
 
 $actualBands = @($requirements | ForEach-Object { [int]$_.band } | Sort-Object -Unique)
-$expectedBands = @(8..33)
+$expectedBands = @(@(3) + @(8..33))
 $missingBands = @($expectedBands | Where-Object { $_ -notin $actualBands })
 $unexpectedBands = @($actualBands | Where-Object { $_ -notin $expectedBands })
 if ($missingBands.Count -gt 0) { $errors.Add("Missing bands: $($missingBands -join ', ')") }
@@ -147,7 +147,7 @@ $report = [ordered]@{
     schemaVersion = 1
     generatedAt = (Get-Date).ToUniversalTime().ToString("o")
     manifestPath = $ManifestPath.Replace('\', '/')
-    bandCoverage = [ordered]@{ from = 8; to = 33; count = $requirements.Count }
+    bandCoverage = [ordered]@{ from = 3; to = 33; requiredBands = $expectedBands; count = $requirements.Count }
     statusCounts = $statusCounts
     structurallyValid = $structurallyValid
     requirementsReady = $requirementsReady

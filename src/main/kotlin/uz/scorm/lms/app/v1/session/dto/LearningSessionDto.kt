@@ -4,6 +4,7 @@ import uz.scorm.lms.app.v1.session.model.LearningSessionAccessType
 import uz.scorm.lms.app.v1.session.model.LearningSessionFormat
 import uz.scorm.lms.app.v1.session.model.LearningSessionStatus
 import uz.scorm.lms.app.v1.session.model.LearningSessionType
+import uz.scorm.lms.app.v1.videoconference.dto.VideoConferenceMeetingDto
 import java.time.Instant
 
 data class LearningSessionRequest(
@@ -41,6 +42,7 @@ data class TeacherLearningSessionDto(
     val resourceUrl: String?,
     val status: String,
     val accessCount: Long,
+    val videoConference: VideoConferenceMeetingDto?,
 )
 
 data class StudentLearningSessionDto(

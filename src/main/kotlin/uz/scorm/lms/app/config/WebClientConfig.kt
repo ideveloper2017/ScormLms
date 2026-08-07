@@ -1,7 +1,5 @@
 package uz.scorm.lms.app.config
 
-import io.netty.handler.ssl.SslContextBuilder
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
@@ -15,17 +13,8 @@ import java.time.Duration
 class WebClientConfig {
     @Bean
     fun webClient(): WebClient {
-        val tlsContext = SslContextBuilder
-            .forClient()
-            .trustManager(InsecureTrustManagerFactory.INSTANCE)
-            .build()
-
         val httpClient = HttpClient.create()
-            .secure { spec ->
-                spec.sslContext(tlsContext)
-            }
             .responseTimeout(Duration.ofSeconds(30))
-            .wiretap(true)  // Enable wiretap logging
 
         // Increase memory size for large responses
         val strategies = ExchangeStrategies.builder()

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { qk } from '@/lib/query-keys';
@@ -8,100 +8,131 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AcademicSelect } from '@/components/admin/academic-select';
 import {
-  archiveStudent,
   createStudent,
   getStudent,
-  graduateStudent,
+  listStudentLifecycle,
   listStudents,
   promoteStudent,
-  reinstateStudent,
+  transitionStudent,
   updateStudent,
 } from '@/lib/student-api';
-import type { Gender, StudentDto, StudentSummaryDto } from '@/types/student.types';
-import { Loader2, ArrowUpCircle, GraduationCap, Archive, UserCheck, Edit, Upload, UserPlus } from 'lucide-react';
+import type {
+  DegreeLevel,
+  EducationForm,
+  Gender,
+  PaymentType,
+  StudentDto,
+  StudentLifecycleEventType,
+  StudentLifecycleRequest,
+  StudentStatus,
+  StudentSummaryDto,
+} from '@/types/student.types';
+import { Loader2, ArrowUpCircle, Edit, History, UserPlus, RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const emptyForm = () => ({
-  firstName: '',
-  lastName: '',
-  pinfl: '',
-  studentNumber: '',
-  birthDate: '',
-  gender: 'MALE' as Gender,
-  email: '',
-  groupId: '',
-  facultyId: '',
-  programId: '',
-  course: '1',
-  language: 'uz',
+type LifecycleAction = Exclude<StudentLifecycleEventType, 'ADMISSION'>;
+
+const today = () => new Date().toISOString().slice(0, 10);
+const emptyEvidence = () => ({
+  orderNumber: '',
+  orderDate: today(),
+  effectiveDate: today(),
+  legalBasis: "559-son qaror 12-bandi va tashkilotning talabalar harakati reglamenti",
+  reason: '',
 });
+const emptyForm = () => ({
+  firstName: '', lastName: '', pinfl: '', studentNumber: '', birthDate: '', gender: 'MALE' as Gender,
+  email: '', groupId: '', facultyId: '', programId: '', course: '1', language: 'uz', academicYear: '',
+  degreeLevel: 'BACHELOR' as DegreeLevel, educationForm: 'FULL_TIME' as EducationForm,
+  paymentType: 'CONTRACT' as PaymentType, contractNumber: '', contractAmount: '',
+  ...emptyEvidence(),
+});
+const emptyLifecycle = () => ({ ...emptyEvidence(), targetProgramId: '', targetGroupId: '', academicYear: '' });
+
+const actionLabel: Record<LifecycleAction, string> = {
+  SUSPENSION: "O'qishni to'xtatish",
+  REINSTATEMENT: 'Qayta tiklash',
+  TRANSFER: "Ko'chirish",
+  EXPULSION: 'Chetlashtirish',
+  GRADUATION: 'Bitiruvchi qilish',
+};
+const statusLabel: Record<StudentStatus, string> = {
+  ACTIVE: 'Faol', SUSPENDED: "To'xtatilgan", EXPELLED: 'Chetlashtirilgan', GRADUATED: 'Bitirgan',
+};
+const availableActions: Record<StudentStatus, LifecycleAction[]> = {
+  ACTIVE: ['SUSPENSION', 'TRANSFER', 'EXPULSION', 'GRADUATION'],
+  SUSPENDED: ['REINSTATEMENT', 'TRANSFER', 'EXPULSION'],
+  EXPELLED: ['REINSTATEMENT'],
+  GRADUATED: [],
+};
 
 export function StudentManagement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: students = [], isLoading } = useQuery({
-    queryKey: qk.students(),
-    queryFn: listStudents,
-  });
+  const { data: students = [], isLoading } = useQuery({ queryKey: qk.students(), queryFn: listStudents });
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
+  const [lifecycleTarget, setLifecycleTarget] = useState<{ student: StudentSummaryDto; action: LifecycleAction } | null>(null);
+  const [lifecycleForm, setLifecycleForm] = useState(emptyLifecycle);
+  const [historyStudent, setHistoryStudent] = useState<StudentSummaryDto | null>(null);
+  const [saving, setSaving] = useState(false);
+  const history = useQuery({
+    queryKey: ['student-lifecycle', historyStudent?.id],
+    queryFn: () => listStudentLifecycle(historyStudent!.id!),
+    enabled: historyStudent?.id != null,
+  });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.students() });
   const optionalId = (value: string) => value ? Number(value) : null;
-
-  const closeDialog = () => {
-    setIsAdding(false);
-    setEditingStudent(null);
-    setFormData(emptyForm());
-  };
+  const closeStudentDialog = () => { setIsAdding(false); setEditingStudent(null); setFormData(emptyForm()); };
+  const showError = (error: unknown) => toast({
+    title: 'Amal rad etildi',
+    description: error instanceof Error ? error.message : "Server lifecycle qoidasini qabul qilmadi",
+    variant: 'destructive',
+  });
 
   const handleSave = async () => {
     if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.pinfl.trim()
       || !formData.studentNumber.trim() || !formData.birthDate) {
-      toast({
-        title: 'Majburiy maydonlar',
-        description: "Ism, familiya, JSHSHIR, talaba raqami va tug'ilgan sanani kiriting",
-        variant: 'destructive',
-      });
+      toast({ title: 'Majburiy maydonlar', description: "Ism, familiya, JSHSHIR, talaba raqami va tug'ilgan sanani kiriting", variant: 'destructive' });
       return;
     }
-
-    const commonPayload = {
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
-      email: formData.email.trim() || null,
-      facultyId: optionalId(formData.facultyId),
-      programId: optionalId(formData.programId),
-      groupId: optionalId(formData.groupId),
-      courseNumber: Number(formData.course),
-      educationLanguage: formData.language,
-    };
-
+    setSaving(true);
     try {
+      const personalPayload = {
+        firstName: formData.firstName.trim(), lastName: formData.lastName.trim(),
+        email: formData.email.trim() || null, courseNumber: Number(formData.course),
+        educationLanguage: formData.language,
+      };
       if (editingStudent?.id != null) {
-        await updateStudent(editingStudent.id, commonPayload);
-        toast({ title: 'Muvaffaqiyatli', description: "Talaba ma'lumotlari yangilandi" });
+        await updateStudent(editingStudent.id, personalPayload);
+        toast({ title: 'Muvaffaqiyatli', description: "Talabaning shaxsiy ma'lumotlari yangilandi" });
       } else {
         await createStudent({
-          ...commonPayload,
-          pinfl: formData.pinfl.trim(),
-          studentNumber: formData.studentNumber.trim(),
-          birthDate: formData.birthDate,
-          gender: formData.gender,
-          citizenship: 'UZBEKISTAN',
+          student: {
+            ...personalPayload,
+            pinfl: formData.pinfl.trim(), studentNumber: formData.studentNumber.trim(), birthDate: formData.birthDate,
+            gender: formData.gender, citizenship: 'UZBEKISTAN', facultyId: optionalId(formData.facultyId),
+            programId: optionalId(formData.programId), groupId: optionalId(formData.groupId),
+            academicYear: formData.academicYear.trim() || null, degreeLevel: formData.degreeLevel,
+            educationForm: formData.educationForm, paymentType: formData.paymentType,
+            contractNumber: formData.contractNumber.trim() || null,
+            contractAmount: formData.contractAmount ? Number(formData.contractAmount) : null,
+          },
+          orderNumber: formData.orderNumber, orderDate: formData.orderDate, effectiveDate: formData.effectiveDate,
+          legalBasis: formData.legalBasis, reason: formData.reason,
         });
-        toast({ title: 'Muvaffaqiyatli', description: "Yangi talaba qo'shildi" });
+        toast({ title: 'Qabul qilindi', description: "Talaba va ADMISSION lifecycle yozuvi yaratildi" });
       }
-      closeDialog();
+      closeStudentDialog();
       await invalidate();
-    } catch {
-      toast({ title: 'Xatolik', description: "Amalni bajarib bo'lmadi", variant: 'destructive' });
-    }
+    } catch (error) { showError(error); } finally { setSaving(false); }
   };
 
   const handleEditClick = async (summary: StudentSummaryDto) => {
@@ -110,184 +141,131 @@ export function StudentManagement() {
       const student = await getStudent(summary.id);
       setEditingStudent(student);
       setFormData({
-        firstName: student.firstName || '',
-        lastName: student.lastName || '',
-        pinfl: student.pinfl || '',
-        studentNumber: student.studentNumber || '',
-        birthDate: student.birthDate || '',
-        gender: student.gender || 'MALE',
-        email: student.email || '',
-        groupId: student.groupId == null ? '' : String(student.groupId),
+        firstName: student.firstName || '', lastName: student.lastName || '', pinfl: student.pinfl || '',
+        studentNumber: student.studentNumber || '', birthDate: student.birthDate || '', gender: student.gender || 'MALE',
+        email: student.email || '', groupId: student.groupId == null ? '' : String(student.groupId),
         facultyId: student.facultyId == null ? '' : String(student.facultyId),
-        programId: student.programId == null ? '' : String(student.programId),
-        course: String(student.courseNumber || 1),
-        language: student.educationLanguage || 'uz',
+        programId: student.programId == null ? '' : String(student.programId), course: String(student.courseNumber || 1),
+        language: student.educationLanguage || 'uz', academicYear: student.academicYear || '',
+        degreeLevel: student.degreeLevel || 'BACHELOR', educationForm: student.educationForm || 'FULL_TIME',
+        paymentType: student.paymentType || 'CONTRACT', contractNumber: student.contractNumber || '',
+        contractAmount: student.contractAmount == null ? '' : String(student.contractAmount), ...emptyEvidence(),
       });
-    } catch {
-      toast({ title: 'Xatolik', description: "Talaba ma'lumotlarini yuklab bo'lmadi", variant: 'destructive' });
-    }
+    } catch (error) { showError(error); }
   };
 
-  const runStudentAction = async (studentId: number | null, action: (id: number) => Promise<StudentDto>) => {
+  const runPromotion = async (studentId: number | null) => {
     if (studentId == null) return;
+    try { await promoteStudent(studentId); await invalidate(); }
+    catch (error) { showError(error); }
+  };
+
+  const openLifecycle = (student: StudentSummaryDto, action: LifecycleAction) => {
+    setLifecycleTarget({ student, action }); setLifecycleForm(emptyLifecycle());
+  };
+  const submitLifecycle = async () => {
+    if (!lifecycleTarget?.student.id) return;
+    setSaving(true);
     try {
-      await action(studentId);
-      await invalidate();
-    } catch {
-      toast({ title: 'Xatolik', description: "Amalni bajarib bo'lmadi", variant: 'destructive' });
-    }
+      const request: StudentLifecycleRequest = {
+        eventType: lifecycleTarget.action,
+        orderNumber: lifecycleForm.orderNumber, orderDate: lifecycleForm.orderDate,
+        effectiveDate: lifecycleForm.effectiveDate, legalBasis: lifecycleForm.legalBasis, reason: lifecycleForm.reason,
+        targetProgramId: lifecycleTarget.action === 'TRANSFER' ? optionalId(lifecycleForm.targetProgramId) : null,
+        targetGroupId: lifecycleTarget.action === 'TRANSFER' ? optionalId(lifecycleForm.targetGroupId) : null,
+        academicYear: lifecycleTarget.action === 'TRANSFER' ? lifecycleForm.academicYear.trim() || null : null,
+      };
+      await transitionStudent(lifecycleTarget.student.id, request);
+      toast({ title: actionLabel[lifecycleTarget.action], description: 'Buyruq va lifecycle hodisasi saqlandi' });
+      setLifecycleTarget(null); setLifecycleForm(emptyLifecycle()); await invalidate();
+    } catch (error) { showError(error); } finally { setSaving(false); }
   };
 
   const columns: ColumnDef<StudentSummaryDto>[] = [
-    {
-      accessorKey: 'fullName',
-      header: 'Ism',
-      cell: ({ row }) => <span className="font-medium">{row.original.fullName}</span>,
-    },
+    { accessorKey: 'fullName', header: 'Ism', cell: ({ row }) => <span className="font-medium">{row.original.fullName}</span> },
     { accessorKey: 'studentNumber', header: 'Talaba raqami' },
     { accessorKey: 'pinfl', header: 'JSHSHIR' },
-    { accessorKey: 'groupId', header: 'Guruh ID' },
-    {
-      accessorKey: 'courseNumber',
-      header: 'Kurs',
-      cell: ({ row }) => row.original.courseNumber ?? '—',
-    },
-    {
-      accessorKey: 'studentStatus',
-      header: 'Holat',
-      cell: ({ row }) => <Badge variant="secondary">{row.original.studentStatus ?? '—'}</Badge>,
-    },
-    {
-      id: 'actions',
-      header: () => <div className="text-right">Amallar</div>,
-      enableSorting: false,
-      cell: ({ row: { original: student } }) => (
-        <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" onClick={() => handleEditClick(student)} title="Tahrirlash">
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => runStudentAction(student.id, promoteStudent)} title="Kursdan o'tkazish">
-            <ArrowUpCircle className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => runStudentAction(student.id, graduateStudent)} title="Bitiruvchi">
-            <GraduationCap className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => runStudentAction(student.id, archiveStudent)} title="Arxivlash">
-            <Archive className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => runStudentAction(student.id, reinstateStudent)} title="Qayta tiklash">
-            <UserCheck className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
+    { accessorKey: 'groupId', header: 'Guruh ID', cell: ({ row }) => row.original.groupId ?? '—' },
+    { accessorKey: 'courseNumber', header: 'Kurs', cell: ({ row }) => row.original.courseNumber ?? '—' },
+    { accessorKey: 'studentStatus', header: 'Holat', cell: ({ row }) => {
+      const status = row.original.studentStatus;
+      return <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>{status ? statusLabel[status] : '—'}</Badge>;
+    } },
+    { id: 'actions', header: () => <div className="text-right">Amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
+      const status = student.studentStatus ?? 'ACTIVE';
+      return <div className="flex flex-wrap justify-end gap-1">
+        <Button size="sm" variant="ghost" onClick={() => handleEditClick(student)} title="Shaxsiy ma'lumot"><Edit className="h-4 w-4" /></Button>
+        <Button size="sm" variant="ghost" onClick={() => runPromotion(student.id)} title="Kursdan o'tkazish"><ArrowUpCircle className="h-4 w-4" /></Button>
+        <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)} title="Lifecycle tarixi"><History className="h-4 w-4" /></Button>
+        {availableActions[status].map(action => <Button key={action} size="sm" variant="outline" onClick={() => openLifecycle(student, action)}>{actionLabel[action]}</Button>)}
+      </div>;
+    } },
   ];
 
-  if (isLoading) {
-    return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
-  }
+  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
-  return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Talabalar boshqaruvi</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" disabled title="Excel import keyingi bosqichda ulanadi">
-            <Upload className="h-4 w-4" /> Excel Import
-          </Button>
-          <Button className="gap-2" onClick={() => { setFormData(emptyForm()); setIsAdding(true); }}>
-            <UserPlus className="h-4 w-4" /> Yangi talaba
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader><CardTitle>Barcha talabalar</CardTitle></CardHeader>
-        <CardContent>
-          <DataTable
-            columns={columns}
-            data={students}
-            searchPlaceholder="Ism, talaba raqami yoki JSHSHIR bo'yicha qidirish..."
-            showColumnToggle
-            emptyText="Talabalar topilmadi"
-          />
-        </CardContent>
-      </Card>
-
-      <Dialog open={isAdding || !!editingStudent} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingStudent ? 'Talabani tahrirlash' : "Yangi talaba qo'shish"}</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Ism *</Label>
-              <Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
-            </div>
-            <div className="space-y-2">
-              <Label>Familiya *</Label>
-              <Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
-            </div>
-            <div className="space-y-2">
-              <Label>JSHSHIR *</Label>
-              <Input value={formData.pinfl} onChange={(e) => setFormData({...formData, pinfl: e.target.value})} disabled={!!editingStudent} />
-            </div>
-            <div className="space-y-2">
-              <Label>Talaba raqami *</Label>
-              <Input value={formData.studentNumber} onChange={(e) => setFormData({...formData, studentNumber: e.target.value})} disabled={!!editingStudent} />
-            </div>
-            <div className="space-y-2">
-              <Label>Tug'ilgan sana *</Label>
-              <Input type="date" value={formData.birthDate} onChange={(e) => setFormData({...formData, birthDate: e.target.value})} disabled={!!editingStudent} />
-            </div>
-            <div className="space-y-2">
-              <Label>Jinsi *</Label>
-              <Select value={formData.gender} onValueChange={(value: Gender) => setFormData({...formData, gender: value})} disabled={!!editingStudent}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MALE">Erkak</SelectItem>
-                  <SelectItem value="FEMALE">Ayol</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
-            </div>
-            <div className="space-y-2">
-              <Label>Fakultet</Label>
-              <AcademicSelect kind="faculty" valueMode="id" value={formData.facultyId} onChange={(value) => setFormData({...formData, facultyId: value})} />
-            </div>
-            <div className="space-y-2">
-              <Label>Yo'nalish</Label>
-              <AcademicSelect kind="program" valueMode="id" value={formData.programId} onChange={(value) => setFormData({...formData, programId: value})} />
-            </div>
-            <div className="space-y-2">
-              <Label>Guruh</Label>
-              <AcademicSelect kind="group" valueMode="id" value={formData.groupId} onChange={(value) => setFormData({...formData, groupId: value})} />
-            </div>
-            <div className="space-y-2">
-              <Label>Ta'lim tili</Label>
-              <Select value={formData.language} onValueChange={(value) => setFormData({...formData, language: value})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="uz">O'zbek</SelectItem>
-                  <SelectItem value="ru">Rus</SelectItem>
-                  <SelectItem value="en">Ingliz</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Kurs</Label>
-              <Input type="number" min="1" max="6" value={formData.course} onChange={(e) => setFormData({...formData, course: e.target.value})} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Bekor qilish</Button>
-            <Button onClick={handleSave}>Saqlash</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+  return <div className="space-y-6 p-3 sm:p-4 md:p-6">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div><h1 className="text-2xl font-bold">Talabalar harakati</h1><p className="text-sm text-muted-foreground">559-son qaror 12-bandi: qabul, ko'chirish, qayta tiklash va chetlashtirish buyruq hamda audit bilan.</p></div>
+      <Button className="gap-2" onClick={() => { setFormData(emptyForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Buyruq bilan qabul</Button>
     </div>
-  );
+    <Card><CardHeader><CardTitle>Barcha talabalar</CardTitle></CardHeader><CardContent><DataTable columns={columns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi" /></CardContent></Card>
+
+    <Dialog open={isAdding || !!editingStudent} onOpenChange={open => { if (!open) closeStudentDialog(); }}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{editingStudent ? 'Shaxsiy maʼlumotlarni tahrirlash' : "Yangi talabani buyruq bilan qabul qilish"}</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
+          <Field label="Ism *"><Input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} /></Field>
+          <Field label="Familiya *"><Input value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} /></Field>
+          <Field label="JSHSHIR *"><Input value={formData.pinfl} disabled={!!editingStudent} onChange={e => setFormData({...formData, pinfl: e.target.value})} /></Field>
+          <Field label="Talaba raqami *"><Input value={formData.studentNumber} disabled={!!editingStudent} onChange={e => setFormData({...formData, studentNumber: e.target.value})} /></Field>
+          <Field label="Tug'ilgan sana *"><Input type="date" value={formData.birthDate} disabled={!!editingStudent} onChange={e => setFormData({...formData, birthDate: e.target.value})} /></Field>
+          <Field label="Jinsi *"><Select value={formData.gender} disabled={!!editingStudent} onValueChange={(value: Gender) => setFormData({...formData, gender: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="MALE">Erkak</SelectItem><SelectItem value="FEMALE">Ayol</SelectItem></SelectContent></Select></Field>
+          <Field label="Email"><Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></Field>
+          <Field label="Ta'lim tili"><Select value={formData.language} onValueChange={value => setFormData({...formData, language: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uz">O'zbek</SelectItem><SelectItem value="ru">Rus</SelectItem><SelectItem value="en">Ingliz</SelectItem></SelectContent></Select></Field>
+          {!editingStudent && <>
+            <Field label="Fakultet"><AcademicSelect kind="faculty" valueMode="id" value={formData.facultyId} onChange={value => setFormData({...formData, facultyId: value})} /></Field>
+            <Field label="Ta'lim dasturi"><AcademicSelect kind="program" valueMode="id" value={formData.programId} onChange={value => setFormData({...formData, programId: value})} /></Field>
+            <Field label="Guruh"><AcademicSelect kind="group" valueMode="id" value={formData.groupId} onChange={value => setFormData({...formData, groupId: value})} /></Field>
+            <Field label="O'quv yili"><Input value={formData.academicYear} placeholder="2026-2027" onChange={e => setFormData({...formData, academicYear: e.target.value})} /></Field>
+            <Field label="Ta'lim darajasi"><Select value={formData.degreeLevel} onValueChange={(value: DegreeLevel) => setFormData({...formData, degreeLevel: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="BACHELOR">Bakalavriat</SelectItem><SelectItem value="MASTER">Magistratura</SelectItem><SelectItem value="PHD">PhD</SelectItem><SelectItem value="ASSOCIATE">Associate</SelectItem></SelectContent></Select></Field>
+            <Field label="Ta'lim shakli"><Select value={formData.educationForm} onValueChange={(value: EducationForm) => setFormData({...formData, educationForm: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="FULL_TIME">Kunduzgi</SelectItem><SelectItem value="DISTANCE">Masofaviy</SelectItem><SelectItem value="PART_TIME">Sirtqi</SelectItem><SelectItem value="EVENING">Kechki</SelectItem></SelectContent></Select></Field>
+            <Field label="To'lov turi"><Select value={formData.paymentType} onValueChange={(value: PaymentType) => setFormData({...formData, paymentType: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="CONTRACT">Kontrakt</SelectItem><SelectItem value="GRANT">Grant</SelectItem></SelectContent></Select></Field>
+            <Field label="Kontrakt raqami"><Input value={formData.contractNumber} onChange={e => setFormData({...formData, contractNumber: e.target.value})} /></Field>
+            <Field label="Kontrakt summasi"><Input type="number" min="0" value={formData.contractAmount} onChange={e => setFormData({...formData, contractAmount: e.target.value})} /></Field>
+            <Field label="Kurs"><Input type="number" min="1" max="6" value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} /></Field>
+            <EvidenceFields value={formData} onChange={patch => setFormData({...formData, ...patch})} />
+          </>}
+        </div><DialogFooter><Button variant="outline" onClick={closeStudentDialog}>Bekor qilish</Button><Button disabled={saving} onClick={handleSave}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Saqlash</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={!!lifecycleTarget} onOpenChange={open => { if (!open) setLifecycleTarget(null); }}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{lifecycleTarget && `${lifecycleTarget.student.fullName}: ${actionLabel[lifecycleTarget.action]}`}</DialogTitle></DialogHeader>
+      <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
+        {lifecycleTarget?.action === 'TRANSFER' && <><Field label="Yangi ta'lim dasturi *"><AcademicSelect kind="program" valueMode="id" value={lifecycleForm.targetProgramId} onChange={value => setLifecycleForm({...lifecycleForm, targetProgramId: value, targetGroupId: ''})} /></Field><Field label="Yangi guruh"><AcademicSelect kind="group" valueMode="id" value={lifecycleForm.targetGroupId} onChange={value => setLifecycleForm({...lifecycleForm, targetGroupId: value})} /></Field><Field label="O'quv yili"><Input value={lifecycleForm.academicYear} placeholder="2026-2027" onChange={e => setLifecycleForm({...lifecycleForm, academicYear: e.target.value})} /></Field></>}
+        <EvidenceFields value={lifecycleForm} onChange={patch => setLifecycleForm({...lifecycleForm, ...patch})} />
+      </div><DialogFooter><Button variant="outline" onClick={() => setLifecycleTarget(null)}>Bekor qilish</Button><Button disabled={saving} onClick={submitLifecycle}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Buyruqni qo'llash</Button></DialogFooter></DialogContent>
+    </Dialog>
+
+    <Dialog open={!!historyStudent} onOpenChange={open => { if (!open) setHistoryStudent(null); }}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{historyStudent?.fullName}: lifecycle tarixi</DialogTitle></DialogHeader>
+      {history.isLoading ? <Loader2 className="mx-auto animate-spin" /> : <div className="space-y-3">{(history.data ?? []).map(event => <Card key={event.id}><CardContent className="space-y-2 pt-4"><div className="flex flex-wrap justify-between gap-2"><Badge>{event.eventType}</Badge><span className="text-sm font-medium">{event.fromStatus ?? '—'} → {event.toStatus}</span></div><p className="text-sm"><b>Buyruq:</b> {event.orderNumber} / {event.orderDate}; <b>amal:</b> {event.effectiveDate}</p>{event.eventType === 'TRANSFER' && <p className="text-sm"><b>Dastur:</b> {event.fromProgramName ?? '—'} → {event.toProgramName ?? '—'}; <b>guruh:</b> {event.fromGroupId ?? '—'} → {event.toGroupId ?? '—'}</p>}<p className="text-sm"><b>Asos:</b> {event.legalBasis}</p><p className="text-sm"><b>Sabab:</b> {event.reason}</p><p className="text-xs text-muted-foreground">{event.recordedByName} · {new Date(event.recordedAt).toLocaleString('uz-Latn')}</p></CardContent></Card>)}{history.data?.length === 0 && <p className="py-8 text-center text-muted-foreground">Lifecycle yozuvi mavjud emas.</p>}</div>}
+      <DialogFooter><Button variant="outline" onClick={() => history.refetch()}><RefreshCcw className="mr-2 h-4 w-4" />Yangilash</Button></DialogFooter></DialogContent>
+    </Dialog>
+  </div>;
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="space-y-2"><Label>{label}</Label>{children}</div>;
+}
+
+function EvidenceFields({ value, onChange }: {
+  value: ReturnType<typeof emptyEvidence>;
+  onChange: (patch: Partial<ReturnType<typeof emptyEvidence>>) => void;
+}) {
+  return <>
+    <Field label="Buyruq raqami *"><Input value={value.orderNumber} onChange={e => onChange({orderNumber: e.target.value})} /></Field>
+    <Field label="Buyruq sanasi *"><Input type="date" max={today()} value={value.orderDate} onChange={e => onChange({orderDate: e.target.value})} /></Field>
+    <Field label="Amal sanasi *"><Input type="date" min={value.orderDate} max={today()} value={value.effectiveDate} onChange={e => onChange({effectiveDate: e.target.value})} /></Field>
+    <div className="space-y-2 sm:col-span-2"><Label>Huquqiy asos *</Label><Textarea value={value.legalBasis} onChange={e => onChange({legalBasis: e.target.value})} /></div>
+    <div className="space-y-2 sm:col-span-2"><Label>Sabab *</Label><Textarea value={value.reason} onChange={e => onChange({reason: e.target.value})} /></div>
+  </>;
 }

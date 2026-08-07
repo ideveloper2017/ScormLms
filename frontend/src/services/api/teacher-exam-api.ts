@@ -14,6 +14,7 @@ export interface AttendanceRecord {
   id: string; enrollmentId: string; studentId: string; studentName: string; studentEmail: string;
   status: ExamAttendanceStatus; arrivalTime?: string; departureTime?: string; specialConditions?: string;
   proctorNotes?: string; verifiedBy?: string; verificationTime?: string;
+  onsiteAttendanceRequired: boolean;
 }
 
 export interface AttendanceSheet {

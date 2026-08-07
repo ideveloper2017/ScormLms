@@ -20,9 +20,28 @@ describe('teacherPortalApi content provenance', () => {
     validFrom: '2026-08-01',
     validUntil: '2027-07-31',
   };
+  const compatibility = {
+    compatible: true,
+    courseLanguage: 'uz',
+    contentLanguage: 'uz',
+    subjectId: 12,
+    subjectName: 'Algoritmlar',
+    programId: 4,
+    programName: 'Dasturiy injiniring',
+    programLanguage: 'uz',
+    issues: [],
+  };
+
+  it("kursni katalogdagi fan va dastur tiliga bog'lab yaratadi", async () => {
+    const course = { id: 3, title: 'Algoritmlar', subjectId: 12, programId: 4, language: 'uz' };
+    vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: course } });
+
+    await teacherPortalApi.createCourse({ title: 'Algoritmlar', subjectId: 12, language: 'uz' });
+    expect(api.post).toHaveBeenCalledWith('/courses', { title: 'Algoritmlar', subjectId: 12, language: 'uz' });
+  });
 
   it('kontent metadata va amal qilish davrini create endpointiga yuboradi', async () => {
-    const content = { id: 9, ...payload };
+    const content = { id: 9, ...payload, compatibility };
     vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: content } });
 
     await expect(teacherPortalApi.createContent('3', 5, payload)).resolves.toEqual(content);
@@ -83,7 +102,16 @@ describe('teacherPortalApi content provenance', () => {
     status: 'pending',
     submittedAt: '2026-08-06T08:00:00Z',
     submittedBy: 4,
+    compatibility,
   };
+
+  it("kontent bilan birga server hisoblagan til va dastur mosligini oladi", async () => {
+    const content = { id: 9, ...payload, compatibility };
+    vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: [content] } });
+
+    await expect(teacherPortalApi.getContents('3')).resolves.toEqual([content]);
+    expect(api.get).toHaveBeenCalledWith('/courses/3/contents');
+  });
 
   it("joriy revisionni ekspertizaga yuboradi va tarixini oladi", async () => {
     vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true, data: review } });

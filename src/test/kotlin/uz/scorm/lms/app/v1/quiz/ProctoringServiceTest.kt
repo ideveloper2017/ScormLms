@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
+import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.face.service.FaceFrameAnalysis
 import uz.scorm.lms.app.v1.face.service.FaceService
@@ -31,11 +32,12 @@ class ProctoringServiceTest {
     private val sessionRepository = mockk<ProctoringSessionRepository>()
     private val faceService = mockk<FaceService>()
     private val eventRepository = mockk<ProctoringEventRepository>(relaxed = true)
+    private val biometricGovernanceService = mockk<BiometricGovernanceService>(relaxed = true)
     private lateinit var service: ProctoringService
 
     @BeforeEach
     fun setUp() {
-        service = ProctoringService(quizRepository, enrollmentRepository, sessionRepository, faceService, eventRepository)
+        service = ProctoringService(quizRepository, enrollmentRepository, sessionRepository, faceService, eventRepository, biometricGovernanceService)
     }
 
     @Test
@@ -56,6 +58,7 @@ class ProctoringServiceTest {
         assertEquals(0.12, fixture.movementDelta!!, 0.0001)
         assertEquals(0.91, fixture.identitySimilarity!!, 0.0001)
         verify(exactly = 2) { faceService.analyzeFrame(any()) }
+        verify(exactly = 1) { biometricGovernanceService.requireActiveConsent(99) }
     }
 
     @Test

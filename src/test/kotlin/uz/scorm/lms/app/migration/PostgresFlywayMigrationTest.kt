@@ -27,7 +27,7 @@ class PostgresFlywayMigrationTest {
             .load()
 
         val result = flyway.migrate()
-        assertEquals("18", result.targetSchemaVersion)
+        assertEquals("45", result.targetSchemaVersion)
         flyway.validate()
 
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
@@ -69,10 +69,65 @@ class PostgresFlywayMigrationTest {
                 "proctoring_appeal_events",
                 "course_content_revisions",
                 "course_content_reviews",
+                "course_forum_topics",
+                "course_forum_posts",
+                "course_forum_post_revisions",
+                "chat_conversations",
+                "chat_conversation_members",
+                "chat_messages",
+                "chat_message_receipts",
+                "announcements",
+                "announcement_deliveries",
+                "support_tickets",
+                "support_ticket_events",
+                "integration_outbox_events",
+                "integration_attempts",
+                "hemis_sync_runs",
+                "hemis_sync_control",
+                "hemis_group_mappings",
+                "hemis_sync_items",
+                "hemis_sync_conflicts",
                 "scorm_packages",
                 "scorm_attempts",
+                "student_practice_placements",
+                "program_curriculum_versions",
+                "program_curriculum_subjects",
+                "student_lifecycle_events",
+                "distance_admission_policies",
+                "non_state_education_licenses",
+                "non_state_license_program_scopes",
+                "assessment_leave_evidence",
+                "foreign_teacher_engagements",
+                "foreign_teacher_engagement_courses",
+                "compliance_accountability_referrals",
+                "distance_program_restriction_catalogs",
+                "distance_program_restriction_entries",
+                "biometric_policies",
+                "biometric_consent_events",
+                "biometric_purge_records",
+                "distance_infrastructure_readiness_profiles",
+                "official_site_publications",
+                "content_standard_checklists",
+                "content_standard_criteria",
+                "content_standard_assessments",
+                "content_standard_assessment_responses",
+                "video_conference_meetings",
+                "decision_559_uat_runs",
+                "decision_559_uat_evidence",
                 "flyway_schema_history",
             )))
+            val courseColumns = buildSet {
+                connection.metaData.getColumns(null, "public", "courses", null).use { rows ->
+                    while (rows.next()) add(rows.getString("COLUMN_NAME").lowercase())
+                }
+            }
+            assertTrue(courseColumns.contains("subject_id"))
+            val programColumns = buildSet {
+                connection.metaData.getColumns(null, "public", "programs", null).use { rows ->
+                    while (rows.next()) add(rows.getString("COLUMN_NAME").lowercase())
+                }
+            }
+            assertTrue(programColumns.containsAll(setOf("full_time_available", "full_time_basis_reference")))
         }
     }
 }

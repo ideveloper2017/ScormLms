@@ -7,6 +7,7 @@ param(
     [string]$UploadPath = $env:FILE_UPLOAD_DIR,
     [string]$ScormPath = $env:SCORM_STORAGE_DIR,
     [string]$AssignmentPath = $env:ASSIGNMENT_STORAGE_DIR,
+    [string]$UatEvidencePath = $env:UAT_PRIVATE_STORAGE_DIR,
     [string]$PostgresBin = $env:POSTGRES_BIN
 )
 
@@ -16,7 +17,8 @@ Set-StrictMode -Version Latest
 
 foreach ($required in @{
     DB_URL = $DatabaseUrl; DB_USERNAME = $DatabaseUser; BACKUP_OUTPUT_DIR = $OutputRoot;
-    FILE_UPLOAD_DIR = $UploadPath; SCORM_STORAGE_DIR = $ScormPath; ASSIGNMENT_STORAGE_DIR = $AssignmentPath
+    FILE_UPLOAD_DIR = $UploadPath; SCORM_STORAGE_DIR = $ScormPath; ASSIGNMENT_STORAGE_DIR = $AssignmentPath;
+    UAT_PRIVATE_STORAGE_DIR = $UatEvidencePath
 }.GetEnumerator()) {
     if ([string]::IsNullOrWhiteSpace([string]$required.Value)) { throw "$($required.Key) majburiy" }
 }
@@ -30,7 +32,8 @@ $resolvedOutput = [IO.Path]::GetFullPath($OutputRoot)
 $storageDefinitions = @(
     @{ label = 'uploads'; path = (Resolve-Path -LiteralPath $UploadPath -ErrorAction Stop).Path },
     @{ label = 'scorm'; path = (Resolve-Path -LiteralPath $ScormPath -ErrorAction Stop).Path },
-    @{ label = 'assignments'; path = (Resolve-Path -LiteralPath $AssignmentPath -ErrorAction Stop).Path }
+    @{ label = 'assignments'; path = (Resolve-Path -LiteralPath $AssignmentPath -ErrorAction Stop).Path },
+    @{ label = 'uat-559'; path = (Resolve-Path -LiteralPath $UatEvidencePath -ErrorAction Stop).Path }
 )
 foreach ($item in $storageDefinitions) {
     if (-not (Test-Path -LiteralPath $item.path -PathType Container)) { throw "Persistent katalog topilmadi: $($item.path)" }

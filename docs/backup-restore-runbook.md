@@ -2,7 +2,7 @@
 
 ## Maqsad va SLO
 
-Ushbu runbook PostgreSQL ma'lumotlari hamda `uploads`, SCORM va assignment persistent fayllarini birgalikda saqlash va tekshirilgan yangi muhitga tiklash tartibini belgilaydi.
+Ushbu runbook PostgreSQL ma'lumotlari hamda `uploads`, SCORM, assignment va xususiy 559 UAT dalil fayllarini birgalikda saqlash va tekshirilgan yangi muhitga tiklash tartibini belgilaydi.
 
 | Ko'rsatkich | Texnik maqsad | Nazorat |
 |---|---:|---|
@@ -18,7 +18,7 @@ RPO/RTO qiymatlari universitetning axborot xavfsizligi va biznes egasi tomonidan
 Har backup alohida katalogda atomar yaratiladi. Unda:
 
 - PostgreSQL custom-format `database.dump`;
-- uchta persistent storage uchun `tar.gz` arxiv;
+- to'rtta persistent storage uchun `tar.gz` arxiv;
 - DB table/Flyway metadata, storage fayl inventari va SHA-256 qiymatli `manifest.json`;
 - manifestning alohida `MANIFEST.sha256` nazorati mavjud.
 
@@ -35,8 +35,11 @@ $env:BACKUP_OUTPUT_DIR = '/var/backups/scorm-lms'
 $env:FILE_UPLOAD_DIR = '/var/lib/scorm-lms/uploads'
 $env:SCORM_STORAGE_DIR = '/var/lib/scorm-lms/scorm'
 $env:ASSIGNMENT_STORAGE_DIR = '/var/lib/scorm-lms/assignments'
+$env:UAT_PRIVATE_STORAGE_DIR = '/var/lib/scorm-lms/uat-559'
 pwsh ./ops/backup/backup-scorm-lms.ps1
 ```
+
+To'rtta storage katalogi deployment vaqtida oldindan yaratiladi; application user o'z katalogiga yozadi, backup service account esa faqat o'qiydi. UAT hali boshlanmagan bo'lsa ham `UAT_PRIVATE_STORAGE_DIR` bo'sh katalog sifatida mavjud bo'lishi kerak.
 
 Exit code `0` va `.partial` suffixsiz yakuniy katalog backup muvaffaqiyatini bildiradi. Monitoring backup yoshi 24 soatdan oshsa incident ochadi. Retention va off-site copy backup yakunlangandan keyin storage platform lifecycle'i orqali bajariladi.
 
@@ -63,7 +66,7 @@ pwsh ./ops/backup/restore-scorm-lms.ps1 `
 
 ## Choraklik restore drill
 
-Drill yangi tasodifiy `scorm_lms_restore_drill_*` bazasini yaratadi, backupni tiklaydi va har bir public jadval uchun row count hamda deterministik row fingerprintni manba bilan solishtiradi. Uch storage inventari ham tekshiriladi. Disposable baza va vaqtinchalik fayllar yakunda tozalanadi.
+Drill yangi tasodifiy `scorm_lms_restore_drill_*` bazasini yaratadi, backupni tiklaydi va har bir public jadval uchun row count hamda deterministik row fingerprintni manba bilan solishtiradi. To'rt storage inventari, jumladan xususiy UAT dalillari ham tekshiriladi. Disposable baza va vaqtinchalik fayllar yakunda tozalanadi.
 
 ```powershell
 pwsh ./ops/backup/invoke-restore-drill.ps1 `

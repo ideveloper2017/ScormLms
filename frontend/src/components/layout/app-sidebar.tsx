@@ -6,7 +6,7 @@ import {
   Sparkles, Building2, Layers3, NotebookText, UserCog,
   LayoutDashboard, Shield, Building, FolderTree, Calendar,
   Plug, ScrollText, BookMarked, CalendarDays, FileQuestion,
-  Star, Bell, CircleUser, Video, Megaphone, Scale, Award, ClipboardCheck, FileCheck2,
+  Star, Bell, CircleUser, Video, Megaphone, Scale, Award, ClipboardCheck, FileCheck2, LifeBuoy, Presentation, FileSearch, BriefcaseBusiness, Landmark, BadgeCheck, Globe2, Gavel, ShieldAlert, Fingerprint, ServerCog, ListChecks,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
@@ -44,6 +44,7 @@ const ITEMS = {
   attendance: { name: "Davomat",               href: "/attendance",          icon: Activity      },
   teaching:   { name: "O'qitishni boshqarish", href: "/teaching",            icon: Database      },
   stats:      { name: "Statistika",            href: "/statistics",          icon: BarChart3     },
+  support:    { name: "Texnik yordam",         href: "/support",             icon: LifeBuoy      },
 
   // ── O'qituvchi navigatsiyasi (/teacher/*) ──────────────────────────────
   tDashboard:     { name: "Dashboard",          href: "/teacher/dashboard",     icon: LayoutDashboard },
@@ -67,6 +68,9 @@ const ITEMS = {
   sDashboard:     { name: "Dashboard",           href: "/student/dashboard",     icon: LayoutDashboard },
   sCourses:       { name: "Mening kurslarim",    href: "/student/courses",       icon: BookOpen        },
   sStudyPlan:     { name: "O'quv rejam",         href: "/student/study-plan",    icon: BookMarked      },
+  sOrientation:   { name: "LMS orientatsiyasi",  href: "/student/orientation",   icon: Presentation    },
+  sPractice:      { name: "Amaliyot",            href: "/student/practice",      icon: BriefcaseBusiness },
+  sAssessmentLeave: { name: "Yakuniy nazorat ta'tili", href: "/student/assessment-leave", icon: CalendarDays },
   sSchedule:      { name: "Dars jadvali",        href: "/student/schedule",      icon: CalendarDays    },
   sAssignments:   { name: "Topshiriqlar",        href: "/student/assignments",   icon: ClipboardList   },
   sTests:         { name: "Testlar",             href: "/student/tests",         icon: FileQuestion    },
@@ -92,13 +96,26 @@ const ITEMS = {
   aGroups:       { name: "Guruhlar",            href: "/admin/groups",       icon: Layers3         },
   aSubjects:     { name: "Fanlar",              href: "/admin/subjects",     icon: NotebookText    },
   aStudyPlans:   { name: "O'quv reja",          href: "/admin/study-plans",  icon: BookMarked      },
+  aAdmissionPolicies: { name: "Qabul va kontrakt", href: "/admin/admission-policies", icon: Landmark },
+  aNonStateLicenses: { name: "Nodavlat litsenziyalari", href: "/admin/non-state-licenses", icon: BadgeCheck },
   aCourses:      { name: "Kurslar",             href: "/admin/courses",      icon: BookOpen        },
   aCalendar:     { name: "Akademik kalendar",   href: "/admin/calendar",     icon: Calendar        },
+  aOrientations: { name: "LMS orientatsiyasi",  href: "/admin/orientations", icon: Presentation    },
+  aPractices:    { name: "Talaba amaliyoti",    href: "/admin/practices",    icon: BriefcaseBusiness },
+  aAssessmentLeaves: { name: "Yakuniy nazorat ta'tili", href: "/admin/assessment-leaves", icon: CalendarDays },
+  aForeignTeachers: { name: "Xorijiy pedagoglar", href: "/admin/foreign-teacher-engagements", icon: Globe2 },
+  aAccountability: { name: "Javobgarlik yo'llanmalari", href: "/admin/accountability-referrals", icon: Gavel },
+  aRestrictions: { name: "Taqiqlangan yo'nalishlar", href: "/admin/distance-program-restrictions", icon: ShieldAlert },
+  aBiometric:    { name: "Biometrik boshqaruv", href: "/admin/biometric-governance", icon: Fingerprint },
+  aReadiness:    { name: "Infratuzilma tayyorgarligi", href: "/admin/distance-readiness", icon: ServerCog },
+  aPublications: { name: "Rasmiy sayt axborotlari", href: "/admin/official-site-publications", icon: Globe2 },
+  aContentStandard: { name: "O'zDSt 36.2030 nazorati", href: "/admin/content-standard", icon: ListChecks },
   aReports:      { name: "Hisobotlar",          href: "/admin/reports",      icon: BarChart3       },
   aIntegrations: { name: "Integratsiyalar",     href: "/admin/integrations", icon: Plug            },
   aAuditLogs:     { name: "Audit log",            href: "/admin/audit-logs",       icon: ScrollText      },
   aCompliance559: { name: "559-son qaror",        href: "/admin/compliance-559",   icon: Scale           },
   aSurveys:       { name: "Anonim so'rovlar",     href: "/admin/surveys",          icon: ClipboardCheck  },
+  aQualityStudies:{ name: "Sifat monitoringi",    href: "/admin/quality-monitoring", icon: FileSearch     },
   aContentReviews:{ name: "Kontent ekspertizasi", href: "/admin/content-reviews",  icon: FileCheck2       },
   aSettings:      { name: "Sozlamalar",          href: "/admin/settings",         icon: Settings        },
   aNotifications: { name: "Bildirishnomalar",    href: "/admin/notifications",     icon: Bell            },
@@ -111,10 +128,10 @@ function buildNav(role: string): NavGroup[] {
 
   const ADMIN_NAV: NavGroup[] = [
     { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-    { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aTeachers, ITEMS.aRoles] },
-    { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aGroups, ITEMS.aSubjects] },
-    { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aCalendar] },
-    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aCompliance559, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.aSettings] },
+    { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.aRoles] },
+    { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
+    { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aContentStandard, ITEMS.aCalendar, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves] },
+    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aCompliance559, ITEMS.aAccountability, ITEMS.aBiometric, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.support, ITEMS.aSettings] },
   ];
 
   const groups: Record<string, NavGroup[]> = {
@@ -122,10 +139,10 @@ function buildNav(role: string): NavGroup[] {
     ADMIN:       ADMIN_NAV,
     METODIST: [
       { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-      { label: "Ta'lim",           items: [ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.resources, ITEMS.teaching, ITEMS.exams] },
-      { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aGroups, ITEMS.aSubjects] },
-      { label: "Boshqaruv",        items: [ITEMS.aStudents, ITEMS.aTeachers, ITEMS.contingent, ITEMS.comms] },
-      { label: "Tahlil",           items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.stats] },
+      { label: "Ta'lim",           items: [ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.resources, ITEMS.teaching, ITEMS.exams] },
+      { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
+      { label: "Boshqaruv",        items: [ITEMS.aStudents, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.contingent, ITEMS.comms] },
+      { label: "Tahlil",           items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.stats, ITEMS.aIntegrations, ITEMS.support] },
     ],
     TEACHER: [
       { label: "Asosiy",         items: [ITEMS.tDashboard] },
@@ -133,24 +150,24 @@ function buildNav(role: string): NavGroup[] {
       { label: "Baholash",       items: [ITEMS.tAssignments, ITEMS.tTests, ITEMS.tExams, ITEMS.tAttestations, ITEMS.tGradebook] },
       { label: "Talabalar",      items: [ITEMS.tStudents, ITEMS.tAttendance] },
       { label: "Kommunikatsiya", items: [ITEMS.tMessages, ITEMS.tAnnouncements, ITEMS.tNotifications] },
-      { label: "Boshqa",         items: [ITEMS.tSurveys, ITEMS.tReports, ITEMS.tProfile] },
+      { label: "Boshqa",         items: [ITEMS.tSurveys, ITEMS.tReports, ITEMS.support, ITEMS.tProfile] },
     ],
     STUDENT: [
       { label: "Asosiy",    items: [ITEMS.sDashboard] },
-      { label: "Ta'lim",    items: [ITEMS.sStudyPlan, ITEMS.sCourses, ITEMS.sSchedule, ITEMS.sAssignments, ITEMS.sTests, ITEMS.sExams, ITEMS.sAttestations] },
+      { label: "Ta'lim",    items: [ITEMS.sOrientation, ITEMS.sPractice, ITEMS.sAssessmentLeave, ITEMS.sStudyPlan, ITEMS.sCourses, ITEMS.sSchedule, ITEMS.sAssignments, ITEMS.sTests, ITEMS.sExams, ITEMS.sAttestations] },
       { label: "Natijalar", items: [ITEMS.sGrades, ITEMS.sAttendance] },
       { label: "Aloqa",     items: [ITEMS.sMessages, ITEMS.sNotifications] },
-      { label: "Boshqa",    items: [ITEMS.sSurveys, ITEMS.sCalendar, ITEMS.sProfile] },
+      { label: "Boshqa",    items: [ITEMS.sSurveys, ITEMS.sCalendar, ITEMS.support, ITEMS.sProfile] },
     ],
     PROCTOR: [
-      { label: "Asosiy", items: [ITEMS.home, ITEMS.exams, ITEMS.comms] },
+      { label: "Asosiy", items: [ITEMS.home, ITEMS.exams, ITEMS.comms, ITEMS.support] },
     ],
     MONITORING: [
       { label: "Asosiy", items: [ITEMS.home] },
-      { label: "Tahlil", items: [ITEMS.stats, ITEMS.aReports, ITEMS.aSurveys, ITEMS.comms] },
+      { label: "Tahlil", items: [ITEMS.stats, ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aContentStandard, ITEMS.aRestrictions, ITEMS.aAccountability, ITEMS.aBiometric, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.aIntegrations, ITEMS.comms, ITEMS.support] },
     ],
   };
-  return groups[r] ?? [{ label: "Asosiy", items: [ITEMS.home, ITEMS.courses, ITEMS.comms] }];
+  return groups[r] ?? [{ label: "Asosiy", items: [ITEMS.home, ITEMS.courses, ITEMS.comms, ITEMS.support] }];
 }
 
 const ROLE_LABEL: Record<string, string> = {

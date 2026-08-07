@@ -3,6 +3,7 @@ package uz.scorm.lms.app.v1.quiz.service
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
+import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.face.service.FaceService
@@ -34,6 +35,7 @@ class ProctoringService(
     private val sessionRepository: ProctoringSessionRepository,
     private val faceService: FaceService,
     private val eventRepository: ProctoringEventRepository,
+    private val biometricGovernanceService: BiometricGovernanceService,
 ) {
     private val secureRandom = SecureRandom()
 
@@ -46,9 +48,8 @@ class ProctoringService(
         require(quiz.status == QuizStatus.PUBLISHED) { "Test boshlash uchun ochiq emas" }
         require(!now.isBefore(quiz.opensAt) && now.isBefore(quiz.closesAt)) { "Testning vaqt oynasi yopiq" }
         val enrollment = lockedEnrollment(quiz, userId)
-        require(!enrollment.student.user.faceDescriptor.isNullOrBlank()) {
-            "Testdan oldin serverda yuz shablonini ro'yxatdan o'tkazing"
-        }
+        val binding = biometricGovernanceService.requireActiveConsent(userId)
+        biometricGovernanceService.requireActiveFaceTemplate(enrollment.student.user, binding)
 
         sessionRepository.findAllByQuizIdAndEnrollmentIdAndStatusAndDeletedFalse(
             quizId,
@@ -74,6 +75,9 @@ class ProctoringService(
                 challengeDirection = direction,
                 nonceHash = sha256(nonce.toByteArray(Charsets.UTF_8)),
                 expiresAt = now.plus(CHALLENGE_TTL),
+                biometricPolicy = binding.policy,
+                biometricConsentEvent = binding.consent,
+                biometricRetentionUntil = now.plus(Duration.ofDays(binding.policy.proctoringEvidenceRetentionDays.toLong())),
             )
         )
         return ProctoringChallengeDto(
@@ -99,6 +103,8 @@ class ProctoringService(
             "Proktoring sessiyasi ushbu foydalanuvchi yoki testga tegishli emas"
         }
         require(session.status == ProctoringSessionStatus.CHALLENGE_ISSUED) { "Challenge faol emas" }
+        val binding = biometricGovernanceService.requireActiveConsent(userId)
+        biometricGovernanceService.requireSameBinding(session.biometricPolicy?.id, session.biometricConsentEvent?.id, binding)
         if (!Instant.now().isBefore(session.expiresAt)) fail(session, "Challenge muddati tugagan", expired = true)
         if (!MessageDigest.isEqual(
                 session.nonceHash.toByteArray(Charsets.US_ASCII),
@@ -153,12 +159,15 @@ class ProctoringService(
     @Transactional
     fun consumeRequiredSession(quiz: CourseQuiz, enrollment: CourseEnrollment, attempt: QuizAttempt) {
         if (!quiz.proctoring) return
+        val userId = requireNotNull(enrollment.student.user.id)
+        val binding = biometricGovernanceService.requireActiveConsent(userId)
         val session = sessionRepository
             .findFirstByQuizIdAndEnrollmentIdAndStatusAndDeletedFalseOrderByVerifiedAtDesc(
                 requireNotNull(quiz.id),
                 requireNotNull(enrollment.id),
                 ProctoringSessionStatus.VERIFIED,
             ) ?: throw IllegalArgumentException("Testni boshlashdan oldin proktoring tekshiruvidan o'ting")
+        biometricGovernanceService.requireSameBinding(session.biometricPolicy?.id, session.biometricConsentEvent?.id, binding)
         if (!Instant.now().isBefore(session.expiresAt)) {
             session.status = ProctoringSessionStatus.EXPIRED
             session.failureReason = "Tasdiqlangan challenge muddati tugagan"

@@ -10,12 +10,15 @@ import uz.scorm.lms.app.v1.program.mapper.ProgramMapper
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.compliance.Decision559Rules
+import uz.scorm.lms.app.v1.restriction.service.DistanceProgramRestrictionService
+import java.time.LocalDate
 
 @Service
 class ProgramService(
     private val programRepository: ProgramRepository,
     private val programMapper: ProgramMapper,
-    private val departmentService: DepartmentService
+    private val departmentService: DepartmentService,
+    private val restrictionService: DistanceProgramRestrictionService,
 ) {
     fun list(departmentId: Long? = null): List<ProgramDto> {
         val items = if (departmentId != null) {
@@ -45,6 +48,18 @@ class ProgramService(
             requestedLimit = request.distanceAdmissionLimit,
             licenseReference = request.licenseReference,
         )
+        Decision559Rules.validateStudyDuration(
+            request.distanceEnabled,
+            request.fullTimeDurationMonths,
+            request.distanceDurationMonths,
+        )
+        Decision559Rules.validateFullTimeCounterpart(
+            request.distanceEnabled,
+            request.informationTechnologyProgram,
+            request.fullTimeAvailable,
+            request.fullTimeBasisReference,
+        )
+        restrictionService.requireAllowed(request.code, request.degreeLevel, request.distanceEnabled, LocalDate.now())
         return programMapper.toDto(
             programRepository.save(
                 Program(
@@ -57,6 +72,10 @@ class ProgramService(
                     educationLanguage = request.educationLanguage.lowercase(),
                     distanceAdmissionLimit = admissionLimit,
                     licenseReference = request.licenseReference,
+                    fullTimeDurationMonths = request.fullTimeDurationMonths,
+                    distanceDurationMonths = request.distanceDurationMonths,
+                    fullTimeAvailable = request.fullTimeAvailable,
+                    fullTimeBasisReference = request.fullTimeBasisReference?.trim()?.takeIf(String::isNotBlank),
                     department = request.departmentId?.let { departmentService.getEntity(it) }
                 )
             )
@@ -74,6 +93,13 @@ class ProgramService(
         request.informationTechnologyProgram?.let { program.informationTechnologyProgram = it }
         request.educationLanguage?.let { program.educationLanguage = it.lowercase() }
         request.licenseReference?.let { program.licenseReference = it }
+        request.fullTimeDurationMonths?.let { program.fullTimeDurationMonths = it }
+        request.distanceDurationMonths?.let { program.distanceDurationMonths = it }
+        request.fullTimeAvailable?.let {
+            program.fullTimeAvailable = it
+            if (!it) program.fullTimeBasisReference = null
+        }
+        request.fullTimeBasisReference?.let { program.fullTimeBasisReference = it.trim().takeIf(String::isNotBlank) }
         request.departmentId?.let { program.department = departmentService.getEntity(it) }
         program.distanceAdmissionLimit = Decision559Rules.validateProgramSettings(
             degreeLevel = program.degreeLevel,
@@ -82,6 +108,18 @@ class ProgramService(
             requestedLimit = request.distanceAdmissionLimit ?: program.distanceAdmissionLimit,
             licenseReference = program.licenseReference,
         )
+        Decision559Rules.validateStudyDuration(
+            program.distanceEnabled,
+            program.fullTimeDurationMonths,
+            program.distanceDurationMonths,
+        )
+        Decision559Rules.validateFullTimeCounterpart(
+            program.distanceEnabled,
+            program.informationTechnologyProgram,
+            program.fullTimeAvailable,
+            program.fullTimeBasisReference,
+        )
+        restrictionService.requireAllowed(program.code, program.degreeLevel, program.distanceEnabled, LocalDate.now())
         return programMapper.toDto(programRepository.save(program))
     }
 

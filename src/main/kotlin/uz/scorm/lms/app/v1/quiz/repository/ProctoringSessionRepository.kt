@@ -7,8 +7,11 @@ import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.domain.Pageable
 import uz.scorm.lms.app.v1.quiz.model.ProctoringSession
 import uz.scorm.lms.app.v1.quiz.model.ProctoringSessionStatus
+import java.time.Instant
 
 interface ProctoringSessionRepository : JpaRepository<ProctoringSession, Long> {
+    fun countByAttemptIsNotNullAndDeletedFalse(): Long
+
     @EntityGraph(attributePaths = ["quiz", "quiz.course", "enrollment", "enrollment.student", "enrollment.student.user"])
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     fun findByIdAndDeletedFalse(id: Long): ProctoringSession?
@@ -42,4 +45,10 @@ interface ProctoringSessionRepository : JpaRepository<ProctoringSession, Long> {
 
     @EntityGraph(attributePaths = ["quiz", "quiz.course", "enrollment", "enrollment.student", "enrollment.student.user", "attempt"])
     fun findAllByQuizIdInAndAttemptIsNotNullAndDeletedFalse(quizIds: Collection<Long>): List<ProctoringSession>
+
+    @EntityGraph(attributePaths = ["enrollment", "enrollment.student", "enrollment.student.user", "biometricPolicy"])
+    fun findAllByBiometricRetentionUntilBeforeAndBiometricPurgedAtIsNullAndDeletedFalse(
+        retentionBefore: Instant,
+        pageable: Pageable,
+    ): List<ProctoringSession>
 }

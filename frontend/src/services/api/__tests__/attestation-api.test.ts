@@ -17,6 +17,13 @@ describe('state attestation API', () => {
     await attestationApi.grade('9', 82, 'Himoya yaxshi');
     expect(api.post).toHaveBeenCalledWith('/defenses/9/grade', { score: 82, comments: 'Himoya yaxshi' });
   });
+  it('shaxsan himoya tasdigini serverga yuboradi', async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    await attestationApi.recordDefense({ id: '9', onsiteAttendanceConfirmed: true });
+    expect(api.post).toHaveBeenCalledWith('/defenses/9/record', {
+      defenseStatus: 'DEFENDED', onsiteAttendanceConfirmed: true,
+    });
+  });
   it('rasmiy protokol yaratadi', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { id: '12', protocolNumber: 'DAK-2026-X' } });
     await attestationApi.generateProtocol('7');

@@ -16,6 +16,7 @@ class CourseEnrollmentService(
     private val enrollmentRepository: CourseEnrollmentRepository,
     private val studentRepository: StudentRepository,
     private val accessService: CourseAccessService,
+    private val compatibilityService: ContentCompatibilityService,
 ) {
     @Transactional(readOnly = true)
     fun list(courseId: Long, userId: Long, mayManageAll: Boolean): List<CourseEnrollmentDto> {
@@ -43,6 +44,10 @@ class CourseEnrollmentService(
         val saved = request.studentIds.map { studentId ->
             val student = studentRepository.findById(studentId)
                 .orElseThrow { NoSuchElementException("Talaba topilmadi: $studentId") }
+            require(!student.lmsOrientationRequired) {
+                "559-son qarorning 21-bandiga ko'ra talaba LMS bilan shaxsan tanishtirilib, yo'riqnomani tasdiqlamaguncha kursga biriktirilmaydi"
+            }
+            compatibilityService.requireEnrollmentCompatible(course, student)
             val item = enrollmentRepository.findByCourseIdAndStudentId(courseId, studentId)
                 ?: CourseEnrollment(course = course, student = student)
             item.deleted = false

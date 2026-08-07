@@ -121,6 +121,43 @@ app:
     max-file-bytes: ${ASSIGNMENT_MAX_FILE_BYTES:10485760}
   survey:
     anonymization-secret: ${SURVEY_ANONYMIZATION_SECRET:${JWT_SECRET:dev-only-survey-secret-do-not-use-in-production}}
+  announcement:
+    # Optional provider webhooks. Empty values intentionally keep EMAIL/PUSH in FAILED audit state.
+    email-webhook-url: ${ANNOUNCEMENT_EMAIL_WEBHOOK_URL:}
+    email-webhook-token: ${ANNOUNCEMENT_EMAIL_WEBHOOK_TOKEN:}
+    push-webhook-url: ${ANNOUNCEMENT_PUSH_WEBHOOK_URL:}
+    push-webhook-token: ${ANNOUNCEMENT_PUSH_WEBHOOK_TOKEN:}
+  video-conference:
+    # Provider-specific credentials stay behind an institution adapter implementing the documented neutral contract.
+    # Empty values intentionally make provisioning fail closed and keep the failure in the meeting audit record.
+    provider-code: ${VIDEO_CONFERENCE_PROVIDER_CODE:UNCONFIGURED}
+    provision-url: ${VIDEO_CONFERENCE_PROVISION_URL:}
+    token: ${VIDEO_CONFERENCE_TOKEN:}
+  integration:
+    max-attempts: ${INTEGRATION_MAX_ATTEMPTS:5}
+    retry-base-seconds: ${INTEGRATION_RETRY_BASE_SECONDS:30}
+    retry-max-seconds: ${INTEGRATION_RETRY_MAX_SECONDS:3600}
+    worker:
+      enabled: ${INTEGRATION_WORKER_ENABLED:true}
+      fixed-delay-ms: ${INTEGRATION_WORKER_FIXED_DELAY_MS:30000}
+      initial-delay-ms: ${INTEGRATION_WORKER_INITIAL_DELAY_MS:30000}
+  hemis:
+    sync:
+      enabled: ${HEMIS_SYNC_ENABLED:false}
+      async-enabled: ${HEMIS_SYNC_ASYNC_ENABLED:true}
+      page-size: ${HEMIS_SYNC_PAGE_SIZE:100}
+      cron: ${HEMIS_SYNC_CRON:0 0 */6 * * *}
+  support:
+    sla:
+      policy-version: ${SUPPORT_SLA_POLICY_VERSION:1.0}
+      low-response-hours: ${SUPPORT_SLA_LOW_RESPONSE_HOURS:24}
+      low-resolution-hours: ${SUPPORT_SLA_LOW_RESOLUTION_HOURS:120}
+      normal-response-hours: ${SUPPORT_SLA_NORMAL_RESPONSE_HOURS:8}
+      normal-resolution-hours: ${SUPPORT_SLA_NORMAL_RESOLUTION_HOURS:72}
+      high-response-hours: ${SUPPORT_SLA_HIGH_RESPONSE_HOURS:4}
+      high-resolution-hours: ${SUPPORT_SLA_HIGH_RESOLUTION_HOURS:24}
+      urgent-response-hours: ${SUPPORT_SLA_URGENT_RESPONSE_HOURS:1}
+      urgent-resolution-hours: ${SUPPORT_SLA_URGENT_RESOLUTION_HOURS:4}
   security:
     trusted-proxy-ips: ${TRUSTED_PROXY_IPS:}
     rate-limit:
@@ -143,3 +180,7 @@ file:
   upload-dir: ${FILE_UPLOAD_DIR:./uploads}
   max-file-size: 10MB
   allowed-extensions: jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx
+
+# Private, authorization-gated UAT evidence. Never map this directory as a public resource.
+uat:
+  private-storage-dir: ${UAT_PRIVATE_STORAGE_DIR:./private-uploads/uat-559}

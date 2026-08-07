@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Camera, CheckCircle2, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import FacePhotoSetup from '@/components/auth/face-photo-setup';
+import { biometricGovernanceApi, type MyBiometricStatus } from '@/services/api/biometric-governance-api';
 import { startTest } from '@/services/test-api';
 import {
   issueProctoringChallenge,
@@ -25,8 +29,29 @@ export function ProctoringSession() {
   const [centerFrame, setCenterFrame] = useState<Blob | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [governance, setGovernance] = useState<MyBiometricStatus | null>(null);
+  const [governanceLoading, setGovernanceLoading] = useState(true);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState('');
+
+  const loadGovernance = useCallback(async () => {
+    setGovernanceLoading(true);
+    try {
+      setGovernance(await biometricGovernanceApi.myStatus());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Biometrik siyosat holati olinmadi');
+    } finally {
+      setGovernanceLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
+    void loadGovernance();
+  }, [loadGovernance]);
+
+  useEffect(() => {
+    if (!governance?.consentGranted || !governance.faceRegistered) return;
     let active = true;
     navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
@@ -44,8 +69,35 @@ export function ProctoringSession() {
     return () => {
       active = false;
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setCameraReady(false);
     };
-  }, []);
+  }, [governance?.consentGranted, governance?.faceRegistered]);
+
+  const acceptConsent = async () => {
+    if (!governance?.policy || !consentChecked) return;
+    setError(null);
+    try {
+      setGovernance(await biometricGovernanceApi.accept(governance.policy.id, governance.policy.statementHash));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Rozilik saqlanmadi');
+    }
+  };
+
+  const withdrawConsent = async () => {
+    if (withdrawReason.trim().length < 5) return;
+    setError(null);
+    try {
+      setGovernance(await biometricGovernanceApi.withdraw(withdrawReason.trim()));
+      setWithdrawing(false);
+      setWithdrawReason('');
+      setChallenge(null);
+      setCenterFrame(null);
+      setStep('camera');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Rozilik qaytarib olinmadi');
+    }
+  };
 
   const capture = async (): Promise<Blob> => {
     const video = videoRef.current;
@@ -103,6 +155,18 @@ export function ProctoringSession() {
   };
 
   const directionLabel = challenge?.direction === 'left' ? 'chapga' : 'o‘ngga';
+
+  if (governanceLoading) return <div className="mx-auto max-w-3xl p-6"><Card><CardContent className="py-12 text-center"><Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin" />Biometrik siyosat tekshirilmoqda...</CardContent></Card></div>;
+
+  if (!governance?.policy) return <div className="mx-auto max-w-3xl p-6"><Alert variant="destructive"><AlertDescription>Tasdiqlangan biometrik siyosat mavjud emas. Proktorli test fail-closed bloklandi; administrator yuridik va axborot xavfsizligi tasdiqlagan siyosatni PUBLISHED holatiga o'tkazishi kerak.</AlertDescription></Alert></div>;
+
+  if (!governance.consentGranted) return <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
+    <div><h1 className="flex items-center gap-2 text-2xl font-bold"><ShieldCheck className="h-6 w-6 text-blue-600" />Biometrik rozilik</h1><p className="mt-1 text-sm text-muted-foreground">Kamera faqat amaldagi siyosatni o'qib, aniq rozilik berganingizdan keyin yoqiladi.</p></div>
+    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+    <Card><CardHeader><div className="flex justify-between gap-3"><div><CardTitle>{governance.policy.title}</CardTitle><CardDescription>{governance.policy.versionCode} · {governance.policy.documentNumber} · {governance.policy.documentDate}</CardDescription></div><Badge>{governance.policy.status}</Badge></div></CardHeader><CardContent className="space-y-4 text-sm"><div><b>Maqsad</b><p>{governance.policy.purposeText}</p></div><div><b>Huquqiy asos</b><p>{governance.policy.legalBasis}</p></div><div className="rounded-md bg-muted p-3"><b>Maxfiylik xabarnomasi</b><p>{governance.policy.privacyNotice}</p><p className="mt-2">Yuz shabloni: {governance.policy.faceTemplateRetentionDays} kun. Proktoring dalili: {governance.policy.proctoringEvidenceRetentionDays} kun.</p></div><label className="flex items-start gap-3 rounded-md border p-3"><input className="mt-1" type="checkbox" checked={consentChecked} onChange={(e) => setConsentChecked(e.target.checked)} /><span><b>Aniq rozilik:</b> {governance.policy.consentText}</span></label><Button disabled={!consentChecked} onClick={acceptConsent}><ShieldCheck className="mr-2 h-4 w-4" />Rozilik berish va davom etish</Button></CardContent></Card>
+  </div>;
+
+  if (!governance.faceRegistered) return <div className="space-y-4"><div className="mx-auto max-w-2xl px-4 pt-4"><Alert><AlertDescription>Rozilik {governance.policy.versionCode} versiyasiga bog'landi. Endi proktorli test uchun yuz shablonini ro'yxatdan o'tkazing; bu bosqichni client-side o'tkazib yuborib bo'lmaydi.</AlertDescription></Alert></div><FacePhotoSetup onSuccess={loadGovernance} /></div>;
 
   return (
     <div className="mx-auto max-w-3xl p-4 md:p-6 space-y-4">
@@ -177,6 +241,8 @@ export function ProctoringSession() {
           Bu bosqich faqat test oldi identifikatsiya va faol harakat challenge’idir; u uzluksiz ko‘z, ovoz yoki ekran monitoringi sifatida talqin qilinmaydi.
         </AlertDescription>
       </Alert>
+      <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm"><div><b>Siyosat:</b> {governance.policy.versionCode} · yuz shabloni {governance.faceExpiresAt ? new Date(governance.faceExpiresAt).toLocaleDateString('uz-UZ') : '—'} gacha.</div><Button variant="outline" size="sm" onClick={() => setWithdrawing(true)}>Rozilikni qaytarib olish</Button></CardContent></Card>
+      <Dialog open={withdrawing} onOpenChange={setWithdrawing}><DialogContent><DialogHeader><DialogTitle>Biometrik rozilikni qaytarib olish</DialogTitle><DialogDescription>Yuz shabloni darhol o'chiriladi va yangi proktorli urinish bloklanadi. Oldingi proktoring dalili tasdiqlangan retention muddati tugaguncha saqlanishi mumkin.</DialogDescription></DialogHeader><Textarea value={withdrawReason} onChange={(e) => setWithdrawReason(e.target.value)} placeholder="Sabab" /><DialogFooter><Button variant="outline" onClick={() => setWithdrawing(false)}>Bekor qilish</Button><Button variant="destructive" disabled={withdrawReason.trim().length < 5} onClick={withdrawConsent}>Qaytarib olish</Button></DialogFooter></DialogContent></Dialog>
     </div>
   );
 }

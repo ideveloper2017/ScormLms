@@ -1,200 +1,161 @@
-import { CheckCircle2, AlertCircle, Settings2, Plug, RefreshCw, ExternalLink } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, CheckCircle2, Clock3, Eye, Loader2, Plug, RefreshCw, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { integrationApi, type IntegrationEvent, type IntegrationEventStatus } from '@/services/api/integration-api';
+import { HemisSyncPanel } from '@/components/admin/hemis-sync-panel';
 
-interface Integration {
-  id: string;
-  name: string;
-  description: string;
-  status: "active" | "inactive" | "error";
-  category: string;
-  version?: string;
-  lastSync?: string;
-}
-
-const INTEGRATIONS: Integration[] = [
-  {
-    id: "scorm-2004",
-    name: "SCORM 2004",
-    description: "SCORM 2004 4th Edition standartini qo'llab-quvvatlash. Kurs paketlarini import va export qilish.",
-    status: "active",
-    category: "Ta'lim standarti",
-    version: "4th Edition",
-    lastSync: "Doim faol",
-  },
-  {
-    id: "scorm-12",
-    name: "SCORM 1.2",
-    description: "Eski SCORM 1.2 formatidagi paketlar bilan ishlash imkoniyati.",
-    status: "active",
-    category: "Ta'lim standarti",
-    version: "1.2",
-    lastSync: "Doim faol",
-  },
-  {
-    id: "ldap",
-    name: "LDAP / Active Directory",
-    description: "Korporativ foydalanuvchilarni LDAP/AD orqali autentifikatsiya qilish.",
-    status: "inactive",
-    category: "Autentifikatsiya",
-    version: "v3",
-    lastSync: "Ulanmagan",
-  },
-  {
-    id: "sso-saml",
-    name: "SSO / SAML 2.0",
-    description: "Yagona kirish tizimi (Single Sign-On) SAML 2.0 protokoli orqali.",
-    status: "inactive",
-    category: "Autentifikatsiya",
-    lastSync: "Ulanmagan",
-  },
-  {
-    id: "smtp",
-    name: "SMTP Email",
-    description: "Tizim bildirishnomalari va parol tiklash uchun email xizmati.",
-    status: "active",
-    category: "Xabarnoma",
-    lastSync: "5 daqiqa oldin",
-  },
-  {
-    id: "sms",
-    name: "SMS Gateway",
-    description: "SMS orqali bildirishnomalar yuborish (Eskiz, Playmobile).",
-    status: "error",
-    category: "Xabarnoma",
-    lastSync: "Xato: API kalit yaroqsiz",
-  },
-  {
-    id: "lti",
-    name: "LTI 1.3",
-    description: "Learning Tools Interoperability — tashqi o'quv qurollarini ulash.",
-    status: "inactive",
-    category: "Ta'lim standarti",
-    version: "1.3",
-    lastSync: "Ulanmagan",
-  },
-  {
-    id: "zoom",
-    name: "Zoom Meetings",
-    description: "Video darslar va onlayn imtihonlar uchun Zoom integratsiyasi.",
-    status: "active",
-    category: "Video konferensiya",
-    lastSync: "1 soat oldin",
-  },
+const statuses: Array<{ value: IntegrationEventStatus | 'ALL'; label: string }> = [
+  { value: 'ALL', label: 'Barcha holatlar' },
+  { value: 'PENDING', label: 'Navbatda' },
+  { value: 'PROCESSING', label: 'Bajarilmoqda' },
+  { value: 'FAILED', label: 'Retry kutilmoqda' },
+  { value: 'SUCCEEDED', label: 'Muvaffaqiyatli' },
+  { value: 'DEAD_LETTER', label: 'Dead-letter' },
 ];
 
-const STATUS_META: Record<string, { label: string; icon: React.ElementType; cls: string; badgeCls: string }> = {
-  active:   { label: "Faol",    icon: CheckCircle2, cls: "text-green-600", badgeCls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
-  inactive: { label: "Nofaol",  icon: Plug,         cls: "text-slate-400", badgeCls: "bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400"  },
-  error:    { label: "Xato",    icon: AlertCircle,  cls: "text-red-600",   badgeCls: "bg-red-100   text-red-800   dark:bg-red-900/30   dark:text-red-300"   },
+const statusMeta: Record<IntegrationEventStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  PENDING: { label: 'Navbatda', variant: 'secondary' },
+  PROCESSING: { label: 'Bajarilmoqda', variant: 'outline' },
+  FAILED: { label: 'Retry kutilmoqda', variant: 'destructive' },
+  SUCCEEDED: { label: 'Muvaffaqiyatli', variant: 'default' },
+  DEAD_LETTER: { label: 'Dead-letter', variant: 'destructive' },
 };
 
-const CATEGORIES = [...new Set(INTEGRATIONS.map((i) => i.category))];
-
 export function AdminIntegrations() {
-  const active = INTEGRATIONS.filter((i) => i.status === "active").length;
-  const errors = INTEGRATIONS.filter((i) => i.status === "error").length;
+  const [status, setStatus] = useState<IntegrationEventStatus | 'ALL'>('ALL');
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const metrics = useQuery({ queryKey: ['integration-metrics'], queryFn: integrationApi.metrics, refetchInterval: 15_000 });
+  const events = useQuery({
+    queryKey: ['integration-events', status],
+    queryFn: () => integrationApi.events({ status: status === 'ALL' ? undefined : status, limit: 200 }),
+    refetchInterval: 15_000,
+  });
+  const detail = useQuery({
+    queryKey: ['integration-event', selectedId],
+    queryFn: () => integrationApi.detail(selectedId!),
+    enabled: selectedId !== null,
+  });
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['integration-metrics'] }),
+      queryClient.invalidateQueries({ queryKey: ['integration-events'] }),
+      queryClient.invalidateQueries({ queryKey: ['integration-event'] }),
+    ]);
+  };
+  const process = useMutation({
+    mutationFn: () => integrationApi.processDue(100),
+    onSuccess: async result => {
+      await refresh();
+      toast({ title: `${result.selected} ta event ko'rib chiqildi`, description: `${result.succeeded} muvaffaqiyatli, ${result.retryScheduled} retry, ${result.deadLetter} dead-letter.` });
+    },
+    onError: (error: Error) => toast({ title: "Navbatni ishlab bo'lmadi", description: error.message, variant: 'destructive' }),
+  });
+  const retry = useMutation({
+    mutationFn: integrationApi.retry,
+    onSuccess: async () => { await refresh(); toast({ title: "Event qayta navbatga qo'yildi" }); },
+    onError: (error: Error) => toast({ title: "Retry bajarilmadi", description: error.message, variant: 'destructive' }),
+  });
 
+  const data = metrics.data;
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Integratsiyalar</h1>
-          <p className="text-muted-foreground">Tashqi tizimlar va standartlar bilan ulanishlar</p>
+          <h1 className="text-2xl font-bold tracking-tight">Integratsiya outbox nazorati</h1>
+          <p className="text-muted-foreground">Idempotent yuborish, avtomatik retry, dead-letter va urinishlar auditi.</p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <RefreshCw className="h-4 w-4" />Hammani yangilash
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => refresh()}><RefreshCw className="h-4 w-4" />Yangilash</Button>
+          {data?.canManage && <Button className="gap-2" disabled={process.isPending} onClick={() => process.mutate()}>
+            {process.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}Muddatli eventlarni ishlash
+          </Button>}
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
-            <div>
-              <div className="text-2xl font-bold text-green-600">{active}</div>
-              <div className="text-xs text-muted-foreground">Faol</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <div>
-              <div className="text-2xl font-bold text-red-600">{errors}</div>
-              <div className="text-xs text-muted-foreground">Xato</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <Plug className="h-8 w-8 text-slate-400" />
-            <div>
-              <div className="text-2xl font-bold">{INTEGRATIONS.length - active - errors}</div>
-              <div className="text-xs text-muted-foreground">Nofaol</div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <Metric label="Jami" value={data?.total} icon={Plug} />
+        <Metric label="Navbatda" value={data?.pending} icon={Clock3} />
+        <Metric label="Retry" value={data?.failed} icon={RefreshCw} />
+        <Metric label="Muvaffaqiyatli" value={data?.succeeded} icon={CheckCircle2} />
+        <Metric label="Dead-letter" value={data?.deadLetter} icon={AlertCircle} danger />
+        <Metric label="Success rate" value={data ? `${data.successRate.toFixed(1)}%` : undefined} icon={ShieldCheck} />
       </div>
 
-      {/* Integration groups */}
-      {CATEGORIES.map((category) => {
-        const items = INTEGRATIONS.filter((i) => i.category === category);
-        return (
-          <div key={category} className="space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{category}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {items.map((item) => {
-                const meta = STATUS_META[item.status];
-                const Icon = meta.icon;
-                return (
-                  <Card key={item.id} className={item.status === "error" ? "border-red-200 dark:border-red-900/50" : ""}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <Icon className={`h-5 w-5 shrink-0 ${meta.cls}`} />
-                          <div>
-                            <CardTitle className="text-base">
-                              {item.name}
-                              {item.version && <span className="text-xs font-normal text-muted-foreground ml-1">v{item.version}</span>}
-                            </CardTitle>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={meta.badgeCls}>{meta.label}</Badge>
-                          <Switch
-                            checked={item.status === "active"}
-                            disabled={item.status === "error"}
-                          />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <CardDescription className="text-xs">{item.description}</CardDescription>
-                      <Separator />
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">{item.lastSync}</span>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <Settings2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+      <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+        <CardContent className="pt-5 text-sm">
+          <strong>Chegara aniq saqlanadi:</strong> V24 outbox va e’lon email/push adapterlari ishlaydi. Vazirlik hamda ta’lim sifati tizimi adapterlari rasmiy API va credential berilmaguncha ulanmagan; bu ekran ularni faol deb ko‘rsatmaydi.
+        </CardContent>
+      </Card>
+
+      <HemisSyncPanel />
+
+      <Card>
+        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div><CardTitle>Eventlar</CardTitle><CardDescription>Payload ko‘rsatilmaydi; PII o‘rniga aggregate va maskalangan provayder natijasi beriladi.</CardDescription></div>
+          <Select value={status} onValueChange={value => setStatus(value as IntegrationEventStatus | 'ALL')}>
+            <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
+            <SelectContent>{statuses.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent>
+          {(metrics.isLoading || events.isLoading) && <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Yuklanmoqda...</div>}
+          {(metrics.error || events.error) && <div className="rounded border border-destructive/30 p-4 text-sm text-destructive">{(metrics.error ?? events.error)?.message}</div>}
+          {!events.isLoading && events.data?.length === 0 && <div className="py-10 text-center text-sm text-muted-foreground">Tanlangan holatda event yo‘q.</div>}
+          <div className="space-y-2">
+            {events.data?.map(event => <EventRow key={event.id} event={event} onOpen={() => setSelectedId(event.id)} onRetry={() => retry.mutate(event.id)} retrying={retry.isPending} />)}
           </div>
-        );
-      })}
+        </CardContent>
+      </Card>
+
+      <Dialog open={selectedId !== null} onOpenChange={open => { if (!open) setSelectedId(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Integratsiya urinishlari</DialogTitle><DialogDescription>Event holati va o‘zgarmas attempt ketma-ketligi.</DialogDescription></DialogHeader>
+          {detail.isLoading && <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+          {detail.error && <p className="text-sm text-destructive">{detail.error.message}</p>}
+          {detail.data && <>
+            <div className="grid gap-2 rounded border p-3 text-sm sm:grid-cols-2">
+              <span><strong>Kalit:</strong> {detail.data.event.eventKey}</span>
+              <span><strong>Connector:</strong> {detail.data.event.connector}</span>
+              <span><strong>Aggregate:</strong> {detail.data.event.aggregateType} #{detail.data.event.aggregateId}</span>
+              <span><strong>Urinish:</strong> {detail.data.event.attemptCount}/{detail.data.event.maxAttempts}</span>
+            </div>
+            <ScrollArea className="h-80 rounded border">
+              <div className="divide-y">{detail.data.attempts.map(attempt => <div key={attempt.id} className="grid gap-1 p-3 text-sm sm:grid-cols-[80px_150px_1fr]">
+                <strong>#{attempt.sequence}</strong><Badge variant={attempt.outcome === 'SUCCESS' ? 'default' : 'destructive'} className="w-fit">{attempt.outcome}</Badge>
+                <span className="text-xs text-muted-foreground">{formatDate(attempt.completedAt)} · {attempt.durationMs} ms{attempt.errorMessage && <><br /><span className="text-destructive">{attempt.errorMessage}</span></>}</span>
+              </div>)}</div>
+            </ScrollArea>
+          </>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+}
+
+function Metric({ label, value, icon: Icon, danger = false }: { label: string; value?: number | string; icon: React.ElementType; danger?: boolean }) {
+  return <Card><CardContent className="flex items-center gap-3 p-4"><Icon className={`h-7 w-7 ${danger ? 'text-destructive' : 'text-primary'}`} /><div><div className="text-xl font-bold">{value ?? '—'}</div><div className="text-xs text-muted-foreground">{label}</div></div></CardContent></Card>;
+}
+
+function EventRow({ event, onOpen, onRetry, retrying }: { event: IntegrationEvent; onOpen: () => void; onRetry: () => void; retrying: boolean }) {
+  const meta = statusMeta[event.status];
+  return <div className="grid gap-2 rounded border p-3 text-sm lg:grid-cols-[1.2fr_1fr_120px_120px_auto] lg:items-center">
+    <div><strong>{event.connector}</strong><p className="text-xs text-muted-foreground">{event.eventKey}</p></div>
+    <div className="text-xs text-muted-foreground">{event.aggregateType} #{event.aggregateId}<br />{formatDate(event.createdAt)}</div>
+    <Badge variant={meta.variant} className="w-fit">{meta.label}</Badge>
+    <span className="text-xs">Urinish {event.attemptCount}/{event.maxAttempts}{event.lastErrorCode && <><br /><span className="text-destructive">{event.lastErrorCode}</span></>}</span>
+    <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={onOpen}><Eye className="h-4 w-4" /></Button>{event.canRetry && <Button size="icon" variant="outline" disabled={retrying} onClick={onRetry}><RotateCcw className="h-4 w-4" /></Button>}</div>
+  </div>;
+}
+
+function formatDate(value?: string | null): string {
+  return value ? new Intl.DateTimeFormat('uz-UZ', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
 }

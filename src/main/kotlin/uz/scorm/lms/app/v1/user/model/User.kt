@@ -2,6 +2,8 @@ package uz.scorm.lms.app.v1.user.model
 
 import jakarta.persistence.*
 import uz.scorm.lms.app.common.BaseEntity
+import uz.scorm.lms.app.v1.biometric.model.BiometricConsentEvent
+import uz.scorm.lms.app.v1.biometric.model.BiometricPolicy
 import uz.scorm.lms.app.v1.role.model.Role
 import java.io.Serializable
 import java.time.Instant
@@ -57,6 +59,17 @@ class User(
 
     @Column(name = "face_uploaded_at")
     var faceUploadedAt: java.time.LocalDateTime? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "face_policy_id")
+    var facePolicy: BiometricPolicy? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "face_consent_event_id")
+    var faceConsentEvent: BiometricConsentEvent? = null,
+
+    @Column(name = "face_expires_at")
+    var faceExpiresAt: Instant? = null,
 
     @Column(name = "last_login_at")
     var lastLoginAt: Instant? = null,

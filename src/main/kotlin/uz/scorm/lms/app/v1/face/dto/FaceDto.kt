@@ -1,6 +1,7 @@
 package uz.scorm.lms.app.v1.face.dto
 
 import java.time.LocalDateTime
+import java.time.Instant
 
 /**
  * Face photo response DTO
@@ -8,7 +9,9 @@ import java.time.LocalDateTime
  */
 data class FacePhotoResponse(
     val photoUrl: String,
-    val uploadedAt: LocalDateTime
+    val uploadedAt: LocalDateTime,
+    val policyVersion: String,
+    val expiresAt: Instant,
 )
 
 /**

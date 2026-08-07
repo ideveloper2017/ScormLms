@@ -8,6 +8,7 @@ interface ScormPackageRepository : JpaRepository<ScormPackage, Long> {
     fun countByDeletedFalse(): Long
     fun countByCourseIdAndDeletedFalse(courseId: Long): Long
     fun findAllByCourseIdOrderByCreatedAtDesc(courseId: Long): List<ScormPackage>
+    fun findAllByCourseIdInAndStatusAndDeletedFalse(courseIds: Collection<Long>, status: ScormPackageStatus): List<ScormPackage>
     fun findFirstByCourseIdAndDeletedFalseOrderByCreatedAtDesc(courseId: Long): ScormPackage?
     fun findFirstByCourseIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
         courseId: Long,

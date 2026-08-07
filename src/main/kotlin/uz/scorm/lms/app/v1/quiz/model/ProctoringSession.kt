@@ -11,6 +11,8 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
+import uz.scorm.lms.app.v1.biometric.model.BiometricConsentEvent
+import uz.scorm.lms.app.v1.biometric.model.BiometricPolicy
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
 import java.time.Instant
 
@@ -69,6 +71,20 @@ class ProctoringSession(
 
     @Column(name = "failure_reason", length = 500)
     var failureReason: String? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "biometric_policy_id")
+    var biometricPolicy: BiometricPolicy? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "biometric_consent_event_id")
+    var biometricConsentEvent: BiometricConsentEvent? = null,
+
+    @Column(name = "biometric_retention_until")
+    var biometricRetentionUntil: Instant? = null,
+
+    @Column(name = "biometric_purged_at")
+    var biometricPurgedAt: Instant? = null,
 ) : BaseEntity()
 
 enum class ProctoringSessionStatus { CHALLENGE_ISSUED, VERIFIED, FAILED, EXPIRED, CONSUMED, COMPLETED }

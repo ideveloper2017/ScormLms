@@ -10,6 +10,7 @@ import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
+import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import java.time.Instant
 
 @Service
@@ -17,6 +18,8 @@ class CourseService(
     private val courseRepository: CourseRepository,
     private val enrollmentRepository: CourseEnrollmentRepository,
     private val accessService: CourseAccessService,
+    private val subjectRepository: SubjectRepository,
+    private val compatibilityService: ContentCompatibilityService,
 ) {
     @Transactional(readOnly = true)
     fun owned(userId: Long, mayManageAll: Boolean): List<CourseDto> =
@@ -30,6 +33,7 @@ class CourseService(
     @Transactional
     fun create(request: CourseCreateRequest, ownerUserId: Long): CourseDto {
         validate(request.title, request.startDate, request.endDate)
+        val subject = request.subjectId?.let(::subject)
         val course = Course(
             title = request.title.trim(),
             slug = slug(request.title),
@@ -37,7 +41,8 @@ class CourseService(
             description = request.description?.trim(),
             userId = ownerUserId,
             status = CourseStatus.DRAFT.name,
-            subjectName = request.subjectName?.trim(),
+            subjectName = subject?.name ?: request.subjectName?.trim(),
+            subject = subject,
             groupName = request.groupName?.trim(),
             startDate = request.startDate,
             endDate = request.endDate,
@@ -57,12 +62,18 @@ class CourseService(
         validate(title ?: course.title.orEmpty(), start, end)
         title?.let { course.title = it; course.slug = slug(it) }
         request.description?.let { course.description = it.trim(); course.shortDescription = it.trim() }
-        request.subjectName?.let { course.subjectName = it.trim() }
+        request.subjectId?.let {
+            val subject = subject(it)
+            course.subject = subject
+            course.subjectName = subject.name
+        }
+        if (request.subjectId == null) request.subjectName?.let { course.subjectName = it.trim() }
         request.groupName?.let { course.groupName = it.trim() }
         request.startDate?.let { course.startDate = it }
         request.endDate?.let { course.endDate = it }
         request.language?.let { course.language = it.trim().lowercase() }
         request.level?.let { course.level = it.trim() }
+        compatibilityService.requirePublishedContentsCompatible(course)
         return toDto(courseRepository.save(course))
     }
 
@@ -94,7 +105,11 @@ class CourseService(
         id = requireNotNull(course.id),
         title = course.title.orEmpty(),
         description = course.description ?: course.shortDescription.orEmpty(),
-        subjectName = course.subjectName,
+        subjectName = course.subject?.name ?: course.subjectName,
+        subjectId = course.subject?.id,
+        programId = course.subject?.program?.id,
+        programName = course.subject?.program?.name,
+        programLanguage = course.subject?.program?.educationLanguage,
         groupName = course.groupName,
         status = course.status?.lowercase() ?: "draft",
         startDate = course.startDate,
@@ -116,6 +131,9 @@ class CourseService(
         require(title.length <= 255) { "Kurs nomi 255 belgidan oshmasligi kerak" }
         require(start == null || end == null || !end.isBefore(start)) { "Tugash sanasi boshlanish sanasidan oldin bo'lmaydi" }
     }
+
+    private fun subject(id: Long) = subjectRepository.findById(id)
+        .orElseThrow { IllegalArgumentException("Fan topilmadi: $id") }
 
     private fun slug(value: String): String = value.trim().lowercase()
         .replace(Regex("[^a-z0-9\\p{L}]+"), "-")

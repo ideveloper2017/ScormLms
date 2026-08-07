@@ -22,4 +22,13 @@ spring:
 app:
   seed:
     admin-password: ""
-
+  integration:
+    retry-base-seconds: 1
+    retry-max-seconds: 4
+    worker:
+      enabled: false
+  hemis:
+    sync:
+      enabled: false
+      async-enabled: false
+      page-size: 2

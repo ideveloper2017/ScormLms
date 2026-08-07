@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { ReactNode } from "react";
 import { Route, Routes } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
@@ -6,8 +5,6 @@ import { RoleGuard } from "@/components/auth/role-guard";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { DashboardLayout } from "@/components/layout/AdminLayout";
 import { Toaster } from "@/components/ui/toaster";
-import FaceRecognition from "@/components/auth/face-recognition";
-import FacePhotoSetup from "@/components/auth/face-photo-setup";
 
 // Auth pages
 import LoginPage from "@/pages/auth/login";
@@ -30,6 +27,7 @@ import { Exams } from "@/pages/exams";
 import { Reports } from "@/pages/reports";
 import { Resources } from "@/pages/resources";
 import { Settings } from "@/pages/settings";
+import { SupportPage } from "@/pages/support";
 import { Statistics } from "@/pages/statistics";
 import { StudentCabinet } from "@/pages/student-cabinet";
 import { StudentManagement } from "@/pages/student-management";
@@ -50,12 +48,26 @@ import { AdminPrograms } from "@/pages/admin/programs";
 import { AdminGroups } from "@/pages/admin/groups";
 import { AdminSubjects } from "@/pages/admin/subjects";
 import { AdminStudyPlans } from "@/pages/admin/study-plans";
+import { AdminAdmissionPolicies } from "@/pages/admin/admission-policies";
+import { AdminNonStateLicenses } from "@/pages/admin/non-state-licenses";
 import { AdminCalendar } from "@/pages/admin/calendar";
 import { AdminIntegrations } from "@/pages/admin/integrations";
 import { AdminAuditLogs } from "@/pages/admin/audit-logs";
 import { AdminCompliance559 } from "@/pages/admin/compliance-559";
 import { AdminSurveys } from "@/pages/admin/surveys";
 import { AdminContentReviews } from "@/pages/admin/content-reviews";
+import { AdminOrientations } from "@/pages/admin/orientations";
+import { AdminQualityMonitoring } from "@/pages/admin/quality-monitoring";
+import { AdminPractices } from "@/pages/admin/practices";
+import { AdminAssessmentLeaves } from "@/pages/admin/assessment-leaves";
+import { AdminForeignTeacherEngagements } from "@/pages/admin/foreign-teacher-engagements";
+import { AdminAccountabilityReferrals } from "@/pages/admin/accountability-referrals";
+import { AdminDistanceProgramRestrictions } from "@/pages/admin/distance-program-restrictions";
+import { AdminBiometricGovernance } from "@/pages/admin/biometric-governance";
+import { AdminDistanceReadiness } from "@/pages/admin/distance-readiness";
+import { AdminOfficialSitePublications } from "@/pages/admin/official-site-publications";
+import { AdminContentStandard } from "@/pages/admin/content-standard";
+import { PublicInstitutionDisclosure } from "@/pages/public/institution-disclosure";
 import { Surveys } from "@/pages/surveys";
 
 // Student pages
@@ -69,6 +81,9 @@ import { StudentAttendance } from "@/pages/student/attendance";
 import { StudentNotifications } from "@/pages/student/notifications";
 import { StudentStudyPlan } from "@/pages/student/study-plan";
 import { StudentCourseLearning } from "@/pages/student/course-learning";
+import { StudentOrientation } from "@/pages/student/orientation";
+import { StudentPractice } from "@/pages/student/practice";
+import { StudentAssessmentLeave } from "@/pages/student/assessment-leave";
 
 // Teacher pages
 import { TeacherDashboard } from "@/pages/teacher/dashboard";
@@ -110,24 +125,12 @@ const STAFF_ROLES     = [R_SUPER, R_ADMIN, R_MET];
 const TEACHER_ROLES   = [R_SUPER, R_ADMIN, R_MET, R_TEACH];
 const CONTENT_ROLES   = [R_SUPER, R_ADMIN, R_MET, R_TEACH, R_STU];
 const REPORTING_ROLES = [R_SUPER, R_ADMIN, R_MET, R_TEACH, R_MON];
+const ALL_ROLES       = [R_SUPER, R_ADMIN, R_MET, R_TEACH, R_STU, R_PROC, R_MON];
 
 // ─── App ────────────────────────────────────────────────────────────────────────────────
 
 function App() {
-  const { user, isLoading, completeLogin } = useAuth();
-  const [faceRecognitionCompleted, setFaceRecognitionCompleted] = useState(
-    localStorage.getItem("faceRecognitionCompleted") === "true"
-  );
-  const [showFaceSetup, setShowFaceSetup] = useState(false);
-
-  // Debug logging
-  console.log('App.tsx - State:', { 
-    isLoading, 
-    user, 
-    faceRecognitionCompleted,
-    showFaceSetup,
-    userRoles: user?.roles,
-  });
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     console.log('App.tsx - Showing loading screen');
@@ -141,22 +144,6 @@ function App() {
     );
   }
 
-  const handleFaceCompleted = () => {
-    completeLogin(user ?? undefined);
-    localStorage.setItem("faceRecognitionCompleted", "true");
-    setFaceRecognitionCompleted(true);
-    setShowFaceSetup(false);
-  };
-
-  const handleFaceSetupRequest = () => {
-    setShowFaceSetup(true);
-  };
-
-  const handleFaceSetupSuccess = () => {
-    // After uploading face photo, mark as completed
-    handleFaceCompleted();
-  };
-
   return (
     <>
       <Routes>
@@ -164,46 +151,15 @@ function App() {
         <Route path="/login"          element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password"  element={<ResetPasswordPage />} />
+        <Route path="/public/institution" element={<PublicInstitutionDisclosure />} />
         
         {/* ── Face Recognition Setup (for students) ──────────────────────── */}
-        <Route 
-          path="/face-setup" 
-          element={
-            <AuthGuard>
-              <FacePhotoSetup
-                onSuccess={() => {
-                  localStorage.setItem("faceRecognitionCompleted", "true");
-                  window.location.href = "/";
-                }}
-                onSkip={() => {
-                  localStorage.setItem("faceRecognitionCompleted", "true");
-                  window.location.href = "/";
-                }}
-              />
-            </AuthGuard>
-          }
-        />
-
         {/* ── Root: redirect to role-appropriate dashboard ─────────────────── */}
         <Route
           path="/"
           element={
             <AuthGuard>
-              {isStudent(user) && !faceRecognitionCompleted ? (
-                showFaceSetup ? (
-                  <FacePhotoSetup
-                    onSuccess={handleFaceSetupSuccess}
-                    onSkip={handleFaceCompleted}
-                  />
-                ) : (
-                  <FaceRecognition
-                    onSuccess={handleFaceCompleted}
-                    onSkip={handleFaceSetupRequest}
-                  />
-                )
-              ) : (
-                <DashboardLayout>{getDashboardComponent(user)}</DashboardLayout>
-              )}
+              <DashboardLayout>{getDashboardComponent(user)}</DashboardLayout>
             </AuthGuard>
           }
         />
@@ -220,6 +176,7 @@ function App() {
         <Route path="/teacher/courses/:id/modules"    element={<P roles={TEACHER_ROLES}><TeacherCourseDetail defaultTab="modules" /></P>} />
         <Route path="/teacher/courses/:id/lessons"    element={<P roles={TEACHER_ROLES}><TeacherCourseDetail defaultTab="lessons" /></P>} />
         <Route path="/teacher/courses/:id/contents"   element={<P roles={TEACHER_ROLES}><TeacherCourseDetail defaultTab="contents" /></P>} />
+        <Route path="/teacher/courses/:id/forum"      element={<P roles={TEACHER_ROLES}><TeacherCourseDetail defaultTab="forum" /></P>} />
         <Route path="/teacher/assignments"            element={<P roles={TEACHER_ROLES}><TeacherAssignments /></P>} />
         <Route path="/teacher/assignments/create"     element={<P roles={TEACHER_ROLES}><TeacherAssignments openCreate /></P>} />
         <Route path="/teacher/assignments/:id/submissions" element={<P roles={TEACHER_ROLES}><TeacherSubmissions /></P>} />
@@ -244,6 +201,9 @@ function App() {
         <Route path="/student/dashboard"     element={<P roles={[R_STU]}><StudentDashboard /></P>} />
         <Route path="/student/courses"       element={<P roles={[R_STU]}><Courses /></P>} />
         <Route path="/student/study-plan"    element={<P roles={[R_STU]}><StudentStudyPlan /></P>} />
+        <Route path="/student/orientation"   element={<P roles={[R_STU]}><StudentOrientation /></P>} />
+        <Route path="/student/practice"      element={<P roles={[R_STU]}><StudentPractice /></P>} />
+        <Route path="/student/assessment-leave" element={<P roles={[R_STU]}><StudentAssessmentLeave /></P>} />
         <Route path="/student/courses/:id/learn" element={<P roles={[R_STU]}><StudentCourseLearning /></P>} />
         <Route path="/student/schedule"      element={<P roles={[R_STU]}><StudentSchedule /></P>} />
         <Route path="/student/assignments"   element={<P roles={[R_STU]}><StudentAssignments /></P>} />
@@ -265,6 +225,7 @@ function App() {
         <Route path="/courses"       element={<P roles={CONTENT_ROLES}><Courses /></P>} />
         <Route path="/resources"     element={<P roles={CONTENT_ROLES}><Resources /></P>} />
         <Route path="/communication" element={<P roles={[...CONTENT_ROLES, R_PROC]}><Communication /></P>} />
+        <Route path="/support"       element={<P roles={ALL_ROLES}><SupportPage /></P>} />
         <Route path="/exams"         element={<P roles={[R_SUPER, R_ADMIN, R_MET, R_TEACH, R_STU, R_PROC]}><Exams /></P>} />
         <Route path="/reports"       element={<P roles={REPORTING_ROLES}><Reports /></P>} />
         <Route path="/course/:id"    element={<P roles={CONTENT_ROLES}><CoursePlayer /></P>} />
@@ -301,13 +262,26 @@ function App() {
         <Route path="/admin/groups"       element={<P roles={STAFF_ROLES}><AdminGroups /></P>} />
         <Route path="/admin/subjects"     element={<P roles={STAFF_ROLES}><AdminSubjects /></P>} />
         <Route path="/admin/study-plans"  element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
+        <Route path="/admin/admission-policies" element={<P roles={STAFF_ROLES}><AdminAdmissionPolicies /></P>} />
+        <Route path="/admin/non-state-licenses" element={<P roles={STAFF_ROLES}><AdminNonStateLicenses /></P>} />
         <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><Courses /></P>} />
         <Route path="/admin/calendar"     element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
+        <Route path="/admin/orientations" element={<P roles={STAFF_ROLES}><AdminOrientations /></P>} />
+        <Route path="/admin/practices"    element={<P roles={STAFF_ROLES}><AdminPractices /></P>} />
+        <Route path="/admin/assessment-leaves" element={<P roles={STAFF_ROLES}><AdminAssessmentLeaves /></P>} />
+        <Route path="/admin/foreign-teacher-engagements" element={<P roles={STAFF_ROLES}><AdminForeignTeacherEngagements /></P>} />
+        <Route path="/admin/accountability-referrals" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminAccountabilityReferrals /></P>} />
+        <Route path="/admin/distance-program-restrictions" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminDistanceProgramRestrictions /></P>} />
+        <Route path="/admin/biometric-governance" element={<P roles={[...ADMIN_ROLES, R_MON]}><AdminBiometricGovernance /></P>} />
+        <Route path="/admin/distance-readiness" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminDistanceReadiness /></P>} />
+        <Route path="/admin/official-site-publications" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminOfficialSitePublications /></P>} />
+        <Route path="/admin/content-standard" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminContentStandard /></P>} />
         <Route path="/admin/reports"      element={<P roles={REPORTING_ROLES}><Reports /></P>} />
-        <Route path="/admin/integrations" element={<P roles={ADMIN_ROLES}><AdminIntegrations /></P>} />
+        <Route path="/admin/integrations" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminIntegrations /></P>} />
         <Route path="/admin/audit-logs"   element={<P roles={ADMIN_ROLES}><AdminAuditLogs /></P>} />
         <Route path="/admin/compliance-559" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminCompliance559 /></P>} />
         <Route path="/admin/surveys"        element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminSurveys /></P>} />
+        <Route path="/admin/quality-monitoring" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminQualityMonitoring /></P>} />
         <Route path="/admin/content-reviews" element={<P roles={STAFF_ROLES}><AdminContentReviews /></P>} />
         <Route path="/admin/settings"          element={<P roles={ADMIN_ROLES}><Settings /></P>} />
         <Route path="/admin/notifications"     element={<P roles={STAFF_ROLES}><StudentNotifications /></P>} />

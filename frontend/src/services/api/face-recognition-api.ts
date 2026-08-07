@@ -17,6 +17,8 @@ export interface UploadFacePhotoPayload {
 export interface FacePhotoResponse {
   photoUrl: string;
   uploadedAt: Date;
+  policyVersion: string;
+  expiresAt: Date;
 }
 
 /**
@@ -112,6 +114,7 @@ export const faceRecognitionApi = {
       const parsedData = {
         ...response.data.data,
         uploadedAt: new Date(response.data.data.uploadedAt),
+        expiresAt: new Date(response.data.data.expiresAt),
       };
 
       return parsedData;
@@ -161,6 +164,7 @@ export const faceRecognitionApi = {
       const parsedData = {
         ...response.data.data,
         uploadedAt: new Date(response.data.data.uploadedAt),
+        expiresAt: new Date(response.data.data.expiresAt),
       };
 
       return parsedData;

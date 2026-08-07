@@ -12,15 +12,10 @@ import {
 
 interface AuthContextType {
   user: User | null;
-  pendingUser: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<AuthResponse>;
-  completeLogin: (userData?: User) => void;
   logout: () => void;
-  isFaceRecognitionCompleted: boolean;
-  faceRecognitionRequired: boolean;
-  setFaceRecognitionRequired: (required: boolean) => void;
   checkAuthStatus: () => Promise<boolean>;
 }
 
@@ -28,23 +23,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [pendingUser, setPendingUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isFaceRecognitionCompleted, setIsFaceRecognitionCompleted] = useState(
-    localStorage.getItem("faceRecognitionCompleted") === "true"
-  );
-  const [faceRecognitionRequired, setFaceRecognitionRequired] = useState(false);
   const navigate = useNavigate();
 
   const clearAuthState = useCallback(() => {
     clearAuthData();
     setUser(null);
-    setPendingUser(null);
     setIsAuthenticated(false);
-    setIsFaceRecognitionCompleted(false);
-    setFaceRecognitionRequired(false);
-    localStorage.removeItem("faceRecognitionCompleted");
   }, []);
 
   useEffect(() => {
@@ -69,7 +55,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setUser(currentUser);
         setIsAuthenticated(true);
-        setIsFaceRecognitionCompleted(localStorage.getItem("faceRecognitionCompleted") === "true");
       } catch {
         if (isMounted) {
           clearAuthState();
@@ -105,13 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const normalizedUser = normalizeUser(payload.user);
       setUser(normalizedUser);
       setIsAuthenticated(true);
-      setPendingUser(isStudent(normalizedUser) ? normalizedUser : null);
-
-      if (!localStorage.getItem("faceRecognitionCompleted")) {
-        localStorage.setItem("faceRecognitionCompleted", "false");
-      }
-
-      setIsFaceRecognitionCompleted(localStorage.getItem("faceRecognitionCompleted") === "true");
+      localStorage.setItem("user", JSON.stringify(normalizedUser));
 
       return response.data;
     } catch (error) {
@@ -143,21 +122,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const completeLogin = (userData?: User) => {
-    const completedUser = userData ?? pendingUser ?? user;
-
-    if (completedUser) {
-      const normalized = normalizeUser(completedUser);
-      setUser(normalized);
-      localStorage.setItem("user", JSON.stringify(normalized));
-    }
-
-    setPendingUser(null);
-    setIsAuthenticated(true);
-    setIsFaceRecognitionCompleted(true);
-    localStorage.setItem("faceRecognitionCompleted", "true");
-  };
-
   const logout = () => {
     apiLogout().finally(() => {
       clearAuthState();
@@ -169,16 +133,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        pendingUser,
         isAuthenticated,
         isLoading,
         login,
-        completeLogin,
         logout,
         checkAuthStatus,
-        isFaceRecognitionCompleted,
-        faceRecognitionRequired,
-        setFaceRecognitionRequired,
       }}
     >
       {children}
@@ -201,11 +160,4 @@ function normalizeUser(raw: User): User {
     ? [raw.role]
     : [];
   return { ...raw, roles };
-}
-
-function isStudent(user: User): boolean {
-  return user.roles.some((role) => {
-    const value = (role.code || role.name).toUpperCase();
-    return value === "ROLE_STUDENT" || value === "STUDENT";
-  });
 }

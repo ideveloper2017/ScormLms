@@ -114,6 +114,12 @@ tasks.named('test') {
     }
 }
 
+tasks.named('processResources') {
+    from('docs/uat/decision-559-uat-evidence.json') {
+        into 'uat'
+    }
+}
+
 tasks.register('runtimeDependencyInventory') {
     group = 'verification'
     description = 'Prints the resolved runtime Maven coordinates for OSV auditing.'

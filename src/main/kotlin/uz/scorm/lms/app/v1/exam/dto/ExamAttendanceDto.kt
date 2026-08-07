@@ -45,6 +45,7 @@ data class AttendanceRecordDto(
     val proctorNotes: String?,
     val verifiedBy: String?,
     val verificationTime: Instant?,
+    val onsiteAttendanceRequired: Boolean,
 )
 
 data class StudentAttendanceDto(

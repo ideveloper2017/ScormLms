@@ -12,8 +12,16 @@ import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import uz.scorm.lms.app.v1.compliance.Decision559Rules
+import uz.scorm.lms.app.v1.admission.model.AdmissionPolicyStatus
+import uz.scorm.lms.app.v1.admission.model.DistanceAdmissionPolicy
+import uz.scorm.lms.app.v1.admission.model.InstitutionGovernanceType
+import uz.scorm.lms.app.v1.admission.repository.DistanceAdmissionPolicyRepository
+import uz.scorm.lms.app.v1.license.model.NonStateLicenseStatus
+import uz.scorm.lms.app.v1.license.repository.NonStateLicenseProgramScopeRepository
 import uz.scorm.lms.app.v1.user.model.UserStatus
 import uz.scorm.lms.app.v1.user.service.UserService
+import uz.scorm.lms.app.v1.restriction.service.DistanceProgramRestrictionService
+import java.time.LocalDate
 
 @Service
 class StudentService(
@@ -21,6 +29,9 @@ class StudentService(
     private val userService: UserService,
     private val programRepository: ProgramRepository,
     private val teacherRepository: TeacherRepository,
+    private val admissionPolicyRepository: DistanceAdmissionPolicyRepository,
+    private val licenseScopeRepository: NonStateLicenseProgramScopeRepository,
+    private val restrictionService: DistanceProgramRestrictionService,
 ) {
 
     @Transactional(readOnly = true)
@@ -90,6 +101,10 @@ class StudentService(
             paymentType       = req.paymentType,
             contractNumber    = req.contractNumber,
             contractAmount    = req.contractAmount,
+            lmsOrientationRequired = Decision559Rules.requiresLmsOrientation(
+                req.educationForm == EducationForm.DISTANCE,
+                req.citizenship != Citizenship.UZBEKISTAN,
+            ),
         )
         return toDto(studentRepository.save(student))
     }
@@ -106,6 +121,9 @@ class StudentService(
         require(program.distanceEnabled) {
             "${program.name} yo'nalishida masofaviy ta'limga ruxsat berilmagan"
         }
+        require(program.active && !program.deleted) {
+            "Faqat faol ta'lim dasturiga masofaviy qabul qilish mumkin"
+        }
         require(program.degreeLevel.equals(req.degreeLevel.name, ignoreCase = true)) {
             "Talabaning ta'lim darajasi yo'nalish darajasiga mos emas"
         }
@@ -115,16 +133,45 @@ class StudentService(
         require(program.educationLanguage.equals(req.educationLanguage, ignoreCase = true)) {
             "Ta'lim kontenti tili talabaning ta'lim tiliga mos bo'lishi shart"
         }
+        Decision559Rules.validateStudyDuration(
+            program.distanceEnabled,
+            program.fullTimeDurationMonths,
+            program.distanceDurationMonths,
+        )
+        Decision559Rules.validateFullTimeCounterpart(
+            program.distanceEnabled,
+            program.informationTechnologyProgram,
+            program.fullTimeAvailable,
+            program.fullTimeBasisReference,
+        )
+        restrictionService.requireAllowed(program.code, program.degreeLevel, program.distanceEnabled, req.admissionDate ?: LocalDate.now())
+
+        val academicYear = requireNotNull(req.academicYear?.trim()?.takeIf(String::isNotBlank)) {
+            "Masofaviy qabul uchun o'quv yili majburiy"
+        }
+        val policy = requireApprovedAdmissionPolicy(programId, academicYear)
+        validateNonStateLicenseCoverage(policy, programId, req.admissionDate ?: LocalDate.now())
+        val contractAmount = requireNotNull(req.contractAmount) {
+            "Masofaviy qabul uchun tasdiqlangan kontrakt qiymati majburiy"
+        }
+        require(contractAmount.compareTo(policy.contractAmount) == 0) {
+            "Kontrakt qiymati tasdiqlangan qabul siyosatidagi ${policy.contractAmount} UZS qiymatiga mos emas"
+        }
+        val admitted = studentRepository.countByProgramIdAndAcademicYearAndEducationForm(
+            programId, academicYear, EducationForm.DISTANCE,
+        )
+        require(admitted < policy.admissionQuota) {
+            "${program.name} yo'nalishining $academicYear o'quv yili uchun tasdiqlangan qabul parametri (${policy.admissionQuota}) to'lgan"
+        }
 
         if (!program.informationTechnologyProgram && req.citizenship == Citizenship.UZBEKISTAN) {
-            val current = studentRepository.countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
+            val current = studentRepository.countByProgramIdAndAcademicYearAndEducationFormAndCitizenship(
                 programId,
+                academicYear,
                 EducationForm.DISTANCE,
-                StudentStatus.ACTIVE,
                 Citizenship.UZBEKISTAN,
             )
-            val limit = program.distanceAdmissionLimit
-                ?: Decision559Rules.regulatoryLimit(program.degreeLevel)
+            val limit = Decision559Rules.regulatoryLimit(program.degreeLevel)
                 ?: throw IllegalArgumentException("Yo'nalish uchun masofaviy qabul limiti aniqlanmagan")
             require(current < limit) {
                 "${program.name} yo'nalishi bo'yicha masofaviy qabul limiti ($limit) to'lgan"
@@ -148,6 +195,28 @@ class StudentService(
     fun update(id: Long, req: StudentUpdateRequest): StudentDto {
         val student = studentRepository.findById(id)
             .orElseThrow { NoSuchElementException("Talaba topilmadi: $id") }
+
+        require(req.studentStatus == null || req.studentStatus == student.studentStatus) {
+            "Talaba statusi faqat buyruqli lifecycle endpointi orqali o'zgartiriladi"
+        }
+        require(req.programId == null || req.programId == student.programId) {
+            "Ta'lim dasturi faqat buyruqli TRANSFER lifecycle'i orqali o'zgartiriladi"
+        }
+        require(req.groupId == null || req.groupId == student.groupId) {
+            "Guruh faqat buyruqli TRANSFER lifecycle'i orqali o'zgartiriladi"
+        }
+        require(req.facultyId == null || req.facultyId == student.facultyId) {
+            "Fakultet faqat buyruqli TRANSFER lifecycle'i orqali o'zgartiriladi"
+        }
+        require(req.departmentId == null || req.departmentId == student.departmentId) {
+            "Kafedra faqat buyruqli TRANSFER lifecycle'i orqali o'zgartiriladi"
+        }
+        require(req.degreeLevel == null || req.degreeLevel == student.degreeLevel) {
+            "Ta'lim darajasi faqat rasmiy akademik lifecycle orqali o'zgartiriladi"
+        }
+        require(req.educationForm == null || req.educationForm == student.educationForm) {
+            "Ta'lim shakli faqat rasmiy akademik lifecycle orqali o'zgartiriladi"
+        }
 
         validateDistanceUpdate(student, req)
 
@@ -173,6 +242,8 @@ class StudentService(
         req.departmentId?.let      { student.departmentId = it }
         req.programId?.let         { student.programId = it }
         req.degreeLevel?.let       { student.degreeLevel = it }
+        val entersDistanceEducation = student.educationForm != EducationForm.DISTANCE &&
+            req.educationForm == EducationForm.DISTANCE
         req.educationForm?.let     { student.educationForm = it }
         req.educationLanguage?.let { student.educationLanguage = it }
         req.courseNumber?.let      { student.courseNumber = it }
@@ -183,10 +254,18 @@ class StudentService(
         req.contractNumber?.let    { student.contractNumber = it }
         req.contractAmount?.let    { student.contractAmount = it }
 
+        if (entersDistanceEducation) {
+            student.lmsOrientationRequired = Decision559Rules.requiresLmsOrientation(
+                isDistanceEducation = true,
+                isForeignCitizen = student.citizenship != Citizenship.UZBEKISTAN,
+            )
+            student.lmsOrientationCompletedAt = null
+        }
+
         return toDto(studentRepository.save(student))
     }
 
-    private fun validateDistanceUpdate(student: StudentProfile, req: StudentUpdateRequest) {
+    private fun validateDistanceUpdate(student: StudentProfile, req: StudentUpdateRequest, effectiveDate: LocalDate = LocalDate.now()) {
         val futureForm = req.educationForm ?: student.educationForm
         if (futureForm != EducationForm.DISTANCE) return
 
@@ -198,20 +277,57 @@ class StudentService(
         val futureLanguage = req.educationLanguage ?: student.educationLanguage
         val futurePayment = req.paymentType ?: student.paymentType
         val futureStatus = req.studentStatus ?: student.studentStatus
+        val futureAcademicYear = req.academicYear ?: student.academicYear
+        val futureContractAmount = req.contractAmount ?: student.contractAmount
 
         require(program.distanceEnabled) { "${program.name} yo'nalishida masofaviy ta'limga ruxsat berilmagan" }
+        require(program.active && !program.deleted) { "Faqat faol ta'lim dasturidan foydalanish mumkin" }
         require(program.degreeLevel.equals(futureDegree.name, ignoreCase = true)) { "Talabaning ta'lim darajasi yo'nalish darajasiga mos emas" }
         require(futurePayment == PaymentType.CONTRACT) { "Masofaviy ta'lim to'lov-kontrakt asosida amalga oshiriladi" }
         require(program.educationLanguage.equals(futureLanguage, ignoreCase = true)) { "Ta'lim kontenti tili talabaning ta'lim tiliga mos bo'lishi shart" }
+        Decision559Rules.validateStudyDuration(
+            program.distanceEnabled,
+            program.fullTimeDurationMonths,
+            program.distanceDurationMonths,
+        )
+        Decision559Rules.validateFullTimeCounterpart(
+            program.distanceEnabled,
+            program.informationTechnologyProgram,
+            program.fullTimeAvailable,
+            program.fullTimeBasisReference,
+        )
+        if (futureStatus == StudentStatus.ACTIVE) {
+            restrictionService.requireAllowed(program.code, program.degreeLevel, program.distanceEnabled, effectiveDate)
+        }
 
-        val entersTargetProgram = student.educationForm != EducationForm.DISTANCE || student.programId != programId || student.studentStatus != StudentStatus.ACTIVE
-        if (!program.informationTechnologyProgram && student.citizenship == Citizenship.UZBEKISTAN && futureStatus == StudentStatus.ACTIVE) {
-            val current = studentRepository.countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
-                programId, EducationForm.DISTANCE, StudentStatus.ACTIVE, Citizenship.UZBEKISTAN,
+        val entersPolicyCohort = student.educationForm != EducationForm.DISTANCE || student.programId != programId || student.academicYear != futureAcademicYear
+        if (futureStatus == StudentStatus.ACTIVE) {
+            val academicYear = requireNotNull(futureAcademicYear?.trim()?.takeIf(String::isNotBlank)) {
+                "Faol masofaviy talaba uchun o'quv yili majburiy"
+            }
+            val policy = requireApprovedAdmissionPolicy(programId, academicYear)
+            validateNonStateLicenseCoverage(policy, programId, effectiveDate)
+            val contractAmount = requireNotNull(futureContractAmount) {
+                "Faol masofaviy talaba uchun kontrakt qiymati majburiy"
+            }
+            require(contractAmount.compareTo(policy.contractAmount) == 0) {
+                "Kontrakt qiymati tasdiqlangan qabul siyosatidagi ${policy.contractAmount} UZS qiymatiga mos emas"
+            }
+            val current = studentRepository.countByProgramIdAndAcademicYearAndEducationForm(
+                programId, academicYear, EducationForm.DISTANCE,
             )
-            val limit = program.distanceAdmissionLimit ?: Decision559Rules.regulatoryLimit(program.degreeLevel)
+            require(current + (if (entersPolicyCohort) 1 else 0) <= policy.admissionQuota) {
+                "${program.name} yo'nalishining $academicYear o'quv yili uchun tasdiqlangan qabul parametri (${policy.admissionQuota}) to'lgan"
+            }
+        }
+        if (!program.informationTechnologyProgram && student.citizenship == Citizenship.UZBEKISTAN && futureStatus == StudentStatus.ACTIVE) {
+            val academicYear = requireNotNull(futureAcademicYear?.trim()?.takeIf(String::isNotBlank))
+            val current = studentRepository.countByProgramIdAndAcademicYearAndEducationFormAndCitizenship(
+                programId, academicYear, EducationForm.DISTANCE, Citizenship.UZBEKISTAN,
+            )
+            val limit = Decision559Rules.regulatoryLimit(program.degreeLevel)
                 ?: throw IllegalArgumentException("Yo'nalish uchun masofaviy qabul limiti aniqlanmagan")
-            require(current + (if (entersTargetProgram) 1 else 0) <= limit) { "${program.name} yo'nalishi bo'yicha masofaviy qabul limiti ($limit) to'lgan" }
+            require(current + (if (entersPolicyCohort) 1 else 0) <= limit) { "${program.name} yo'nalishi bo'yicha masofaviy qabul limiti ($limit) to'lgan" }
         }
 
         if (futureStatus == StudentStatus.ACTIVE && (student.educationForm != EducationForm.DISTANCE || student.studentStatus != StudentStatus.ACTIVE)) {
@@ -223,16 +339,33 @@ class StudentService(
         }
     }
 
-    @Transactional
-    fun changeStatus(id: Long, status: StudentStatus): StudentDto {
-        val student = studentRepository.findById(id)
-            .orElseThrow { NoSuchElementException("Talaba topilmadi: $id") }
-        student.studentStatus = status
-        if (status == StudentStatus.EXPELLED || status == StudentStatus.GRADUATED) {
-            student.user.status = UserStatus.INACTIVE
-        }
-        return toDto(studentRepository.save(student))
+    fun validateLifecyclePlacement(
+        student: StudentProfile,
+        targetProgramId: Long?,
+        targetStatus: StudentStatus,
+        academicYear: String? = student.academicYear,
+        effectiveDate: LocalDate = LocalDate.now(),
+    ) {
+        validateDistanceUpdate(student, StudentUpdateRequest(
+            programId = targetProgramId,
+            studentStatus = targetStatus,
+            academicYear = academicYear,
+        ), effectiveDate)
     }
+
+    private fun validateNonStateLicenseCoverage(policy: DistanceAdmissionPolicy, programId: Long, effectiveDate: LocalDate) {
+        if (policy.institutionGovernanceType != InstitutionGovernanceType.NON_STATE) return
+        require(licenseScopeRepository.existsEffectiveCoverage(programId, NonStateLicenseStatus.VERIFIED, effectiveDate)) {
+            "Nodavlat OTMning masofaviy dasturi $effectiveDate sanasida amaldagi va tekshirilgan litsenziyada qayd etilmagan"
+        }
+    }
+
+    private fun requireApprovedAdmissionPolicy(programId: Long, academicYear: String) =
+        admissionPolicyRepository.findByProgramIdAndAcademicYearAndStatusAndDeletedFalse(
+            programId, academicYear, AdmissionPolicyStatus.APPROVED,
+        ) ?: throw IllegalArgumentException(
+            "$academicYear o'quv yili uchun 559-son qarorning 15-bandiga muvofiq tasdiqlangan qabul parametri va kontrakt qiymati topilmadi"
+        )
 
     @Transactional
     fun promote(id: Long): StudentDto {
@@ -293,6 +426,8 @@ class StudentService(
         paymentType          = s.paymentType,
         contractNumber       = s.contractNumber,
         contractAmount       = s.contractAmount,
+        lmsOrientationRequired = s.lmsOrientationRequired,
+        lmsOrientationCompletedAt = s.lmsOrientationCompletedAt,
         username             = s.user.username,
         accountEnabled       = s.user.status == UserStatus.ACTIVE,
         lastLoginAt          = s.user.lastLoginAt,
@@ -313,5 +448,6 @@ class StudentService(
         degreeLevel   = s.degreeLevel,
         studentStatus = s.studentStatus,
         photoUrl      = s.photoUrl,
+        lmsOrientationRequired = s.lmsOrientationRequired,
     )
 }

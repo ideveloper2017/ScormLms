@@ -12,7 +12,9 @@ import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
+import uz.scorm.lms.app.v1.user.model.User
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -64,6 +66,16 @@ class StudentDefense(
 
     @Column(name = "total_graders", nullable = false)
     var totalGraders: Int = 0,
+
+    @Column(name = "onsite_attendance_required", nullable = false)
+    var onsiteAttendanceRequired: Boolean = true,
+
+    @Column(name = "onsite_attendance_confirmed_at")
+    var onsiteAttendanceConfirmedAt: Instant? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "onsite_attendance_confirmed_by")
+    var onsiteAttendanceConfirmedBy: User? = null,
 ) : BaseEntity()
 
 enum class DefenseStatus {

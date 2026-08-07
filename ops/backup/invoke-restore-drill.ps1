@@ -36,7 +36,7 @@ $status = 'FAILED'
 $tableFingerprints = New-Object 'System.Collections.Generic.List[object]'
 try {
     New-Item -ItemType Directory -Path $backupRoot, $fixtureRoot | Out-Null
-    foreach ($label in @('uploads', 'scorm', 'assignments')) {
+    foreach ($label in @('uploads', 'scorm', 'assignments', 'uat-559')) {
         $directory = Join-Path $fixtureRoot $label
         New-Item -ItemType Directory -Path $directory | Out-Null
         "restore-drill-$label-$runId" | Set-Content -LiteralPath (Join-Path $directory 'integrity.txt') -Encoding UTF8
@@ -48,6 +48,7 @@ try {
             -DatabaseUrl $DatabaseUrl -DatabaseUser $DatabaseUser -DatabasePassword $DatabasePassword `
             -OutputRoot (Join-Path $fixtureRoot 'uploads/backups') -UploadPath (Join-Path $fixtureRoot 'uploads') `
             -ScormPath (Join-Path $fixtureRoot 'scorm') -AssignmentPath (Join-Path $fixtureRoot 'assignments') `
+            -UatEvidencePath (Join-Path $fixtureRoot 'uat-559') `
             -PostgresBin $PostgresBin | Out-Null
     } catch {
         if ($_.Exception.Message -like '*persistent katalog ichida*') { $nestedOutputBlocked = $true } else { throw }
@@ -58,6 +59,7 @@ try {
         -DatabaseUrl $DatabaseUrl -DatabaseUser $DatabaseUser -DatabasePassword $DatabasePassword `
         -OutputRoot $backupRoot -UploadPath (Join-Path $fixtureRoot 'uploads') `
         -ScormPath (Join-Path $fixtureRoot 'scorm') -AssignmentPath (Join-Path $fixtureRoot 'assignments') `
+        -UatEvidencePath (Join-Path $fixtureRoot 'uat-559') `
         -PostgresBin $PostgresBin
 
     $sameSourceBlocked = $false
@@ -116,7 +118,7 @@ try {
         disposableTargetDatabase = $targetDatabase
         restoredTableCount = $restore.tableCount
         verifiedTableFingerprints = $tableFingerprints.Count
-        storageSetsVerified = 3
+        storageSetsVerified = 4
         safetyChecksVerified = 3
     }
     $json = $report | ConvertTo-Json -Depth 5

@@ -81,6 +81,7 @@ class ExamAttendanceService(
             specialConditions = record.specialConditions, proctorNotes = record.proctorNotes,
             verifiedBy = record.attendanceVerifiedBy?.fullName ?: record.attendanceVerifiedBy?.username,
             verificationTime = record.verificationTime,
+            onsiteAttendanceRequired = record.onsiteAttendanceRequired,
         )
     }
 }

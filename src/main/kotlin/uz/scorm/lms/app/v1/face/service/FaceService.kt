@@ -11,6 +11,8 @@ import org.bytedeco.opencv.opencv_core.*
 import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import uz.scorm.lms.app.v1.face.dto.*
+import uz.scorm.lms.app.v1.biometric.service.BiometricDataErasureService
+import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.transaction.annotation.Transactional
 import java.io.File
@@ -23,6 +25,8 @@ import java.util.*
 @Service
 class FaceService(
     private val userRepository: UserRepository,
+    private val biometricGovernanceService: BiometricGovernanceService,
+    private val biometricDataErasureService: BiometricDataErasureService,
     @Value("\${file.upload-dir:./uploads}") private val uploadDir: String
 ) {
 
@@ -159,34 +163,8 @@ class FaceService(
      */
     @Transactional
     fun uploadFacePhoto(file: MultipartFile, userId: Long): FacePhotoResponse {
-        val user = userRepository.findById(userId)
-            .orElseThrow { IllegalArgumentException("User not found: $userId") }
-
-        // Create uploads directory if it doesn't exist
-        val facesDir = Paths.get(uploadDir, "faces")
-        Files.createDirectories(facesDir)
-
-        // Generate unique filename
-        val extension = file.originalFilename?.substringAfterLast('.', "jpg") ?: "jpg"
-        val filename = "${user.id}_${System.currentTimeMillis()}.$extension"
-        val filePath = facesDir.resolve(filename)
-
-        // Save file
-        Files.write(filePath, file.bytes)
-
-        // Generate face descriptor from uploaded image
-        val descriptor = generateTemplate(file.bytes)
-
-        // Update user entity
-        user.facePhotoUrl = "/uploads/faces/$filename"
-        user.faceDescriptor = descriptor
-        user.faceUploadedAt = LocalDateTime.now()
-        userRepository.save(user)
-
-        return FacePhotoResponse(
-            photoUrl = user.facePhotoUrl!!,
-            uploadedAt = user.faceUploadedAt!!
-        )
+        require(file.size in 1..MAX_STORED_FACE_BYTES) { "Yuz rasmi 5 MB dan oshmasligi kerak" }
+        return storeFacePhoto(file.bytes, userId, extensionFor(file.contentType))
     }
 
     /**
@@ -194,41 +172,19 @@ class FaceService(
      */
     @Transactional
     fun uploadFacePhotoBase64(request: FacePhotoUploadRequest, userId: Long): FacePhotoResponse {
-        val user = userRepository.findById(userId)
-            .orElseThrow { IllegalArgumentException("User not found: $userId") }
-
-        // Decode base64 image
         val imageBytes = try {
             val base64Data = request.photo.substringAfter("base64,", request.photo)
             Base64.getDecoder().decode(base64Data)
         } catch (e: Exception) {
             throw IllegalArgumentException("Invalid base64 image data: ${e.message}")
         }
-
-        // Create uploads directory
-        val facesDir = Paths.get(uploadDir, "faces")
-        Files.createDirectories(facesDir)
-
-        // Generate unique filename
-        val filename = "${user.id}_${System.currentTimeMillis()}.jpg"
-        val filePath = facesDir.resolve(filename)
-
-        // Save file
-        Files.write(filePath, imageBytes)
-
-        // Generate face descriptor
-        val descriptor = generateTemplate(imageBytes)
-
-        // Update user entity
-        user.facePhotoUrl = "/uploads/faces/$filename"
-        user.faceDescriptor = descriptor
-        user.faceUploadedAt = LocalDateTime.now()
-        userRepository.save(user)
-
-        return FacePhotoResponse(
-            photoUrl = user.facePhotoUrl!!,
-            uploadedAt = user.faceUploadedAt!!
-        )
+        require(imageBytes.size in 1..MAX_STORED_FACE_BYTES.toInt()) { "Yuz rasmi 5 MB dan oshmasligi kerak" }
+        val extension = when {
+            request.photo.startsWith("data:image/png") -> "png"
+            request.photo.startsWith("data:image/webp") -> "webp"
+            else -> "jpg"
+        }
+        return storeFacePhoto(imageBytes, userId, extension)
     }
 
     /**
@@ -237,11 +193,15 @@ class FaceService(
     fun getFacePhotoUrl(userId: Long): FacePhotoResponse? {
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("User not found: $userId") }
-
-        return if (user.facePhotoUrl != null && user.faceUploadedAt != null) {
+        val binding = biometricGovernanceService.requireActiveConsent(userId)
+        return if (user.facePhotoUrl != null && user.faceUploadedAt != null && user.faceExpiresAt != null &&
+            user.facePolicy?.id == binding.policy.id && user.faceConsentEvent?.id == binding.consent.id &&
+            user.faceExpiresAt!!.isAfter(java.time.Instant.now())) {
             FacePhotoResponse(
                 photoUrl = user.facePhotoUrl!!,
-                uploadedAt = user.faceUploadedAt!!
+                uploadedAt = user.faceUploadedAt!!,
+                policyVersion = binding.policy.versionCode,
+                expiresAt = user.faceExpiresAt!!,
             )
         } else {
             null
@@ -257,6 +217,8 @@ class FaceService(
     fun verifyFaceMatch(request: FaceVerificationRequest, userId: Long): FaceVerificationResponse {
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("User not found: $userId") }
+        val binding = biometricGovernanceService.requireActiveConsent(userId)
+        biometricGovernanceService.requireActiveFaceTemplate(user, binding)
 
         if (user.faceDescriptor.isNullOrBlank()) {
             return FaceVerificationResponse(
@@ -304,27 +266,39 @@ class FaceService(
      */
     @Transactional
     fun deleteFacePhoto(userId: Long) {
-        val user = userRepository.findById(userId)
-            .orElseThrow { IllegalArgumentException("User not found: $userId") }
-
-        // Delete photo file if it exists
-        if (user.facePhotoUrl != null) {
-            try {
-                val photoPath = user.facePhotoUrl!!.removePrefix("/")
-                val file = Paths.get(uploadDir).parent.resolve(photoPath)
-                Files.deleteIfExists(file)
-            } catch (e: Exception) {
-                // Log error but continue with database cleanup
-                println("Warning: Could not delete face photo file: ${e.message}")
-            }
-        }
-
-        // Clear user face data
-        user.facePhotoUrl = null
-        user.faceDescriptor = null
-        user.faceUploadedAt = null
-        userRepository.save(user)
+        biometricDataErasureService.eraseFaceTemplate(userId, "USER_REQUESTED_TEMPLATE_DELETION", userId)
     }
+
+    private fun storeFacePhoto(imageBytes: ByteArray, userId: Long, extension: String): FacePhotoResponse {
+        val binding = biometricGovernanceService.requireActiveConsent(userId)
+        val descriptor = generateTemplate(imageBytes)
+        biometricDataErasureService.eraseFaceTemplate(userId, "FACE_TEMPLATE_REPLACED", userId)
+        val user = userRepository.findById(userId).orElseThrow { IllegalArgumentException("User not found: $userId") }
+        val facesDir = Paths.get(uploadDir, "faces").toAbsolutePath().normalize()
+        Files.createDirectories(facesDir)
+        val filename = "${user.id}_${System.currentTimeMillis()}.$extension"
+        val filePath = facesDir.resolve(filename).normalize()
+        require(filePath.startsWith(facesDir)) { "Yuz rasmi saqlash yo'li yaroqsiz" }
+        Files.write(filePath, imageBytes)
+        val uploadedAt = LocalDateTime.now()
+        val expiresAt = java.time.Instant.now().plus(java.time.Duration.ofDays(binding.policy.faceTemplateRetentionDays.toLong()))
+        user.facePhotoUrl = "/uploads/faces/$filename"
+        user.faceDescriptor = descriptor
+        user.faceUploadedAt = uploadedAt
+        user.facePolicy = binding.policy
+        user.faceConsentEvent = binding.consent
+        user.faceExpiresAt = expiresAt
+        userRepository.save(user)
+        return FacePhotoResponse(user.facePhotoUrl!!, uploadedAt, binding.policy.versionCode, expiresAt)
+    }
+
+    private fun extensionFor(contentType: String?) = when (contentType) {
+        "image/png" -> "png"
+        "image/webp" -> "webp"
+        else -> "jpg"
+    }
+
+    companion object { private const val MAX_STORED_FACE_BYTES = 5L * 1024 * 1024 }
 }
 
 data class FaceFrameAnalysis(

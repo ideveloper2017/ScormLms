@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { Decision559UatPanel } from "@/components/admin/decision-559-uat-panel";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { hasAuthority } from "@/lib/rbac-api";
@@ -252,12 +253,14 @@ export function AdminCompliance559() {
         <CardContent className="space-y-2">
           {data.programs.length === 0 ? <p className="text-sm text-muted-foreground">Masofaviy yo'nalish sozlanmagan.</p> : data.programs.map((program) => (
             <div key={program.programId} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div><p className="font-medium">{program.programName}</p><p className="text-xs text-muted-foreground">{program.degreeLevel}{program.informationTechnologyProgram ? " · AKT istisnosi" : ""}</p></div>
+              <div><p className="font-medium">{program.programName}</p><p className="text-xs text-muted-foreground">{program.degreeLevel}{program.informationTechnologyProgram ? " · AKT istisnosi" : ""} · davomiylik {program.fullTimeDurationMonths ?? "—"}/{program.distanceDurationMonths ?? "—"} oy</p></div>
               <div className="flex items-center gap-3"><span className="text-sm">{program.localDistanceStudents} / {program.admissionLimit ?? "cheklanmagan"}</span>{program.status === "COMPLIANT" ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}</div>
             </div>
           ))}
         </CardContent>
       </Card>
+
+      <Decision559UatPanel />
 
       <Dialog open={Boolean(formViolation || editingIssue)} onOpenChange={(open) => { if (!open) { setFormViolation(null); setEditingIssue(null); } }}>
         <DialogContent>

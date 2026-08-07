@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 interface Props {
     onSuccess: () => void;
-    onSkip: () => void;
+    onSkip?: () => void;
 }
 
 export default function FacePhotoSetup({ onSuccess, onSkip }: Props) {
@@ -249,12 +249,12 @@ export default function FacePhotoSetup({ onSuccess, onSkip }: Props) {
                                 <Camera className="h-5 w-5" />
                                 <span>Rasmga olish</span>
                             </button>
-                            <button
+                            {onSkip && <button
                                 onClick={onSkip}
                                 className="px-6 py-3 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 font-medium transition-all"
                             >
                                 O'tkazib yuborish
-                            </button>
+                            </button>}
                         </>
                     )}
 
@@ -308,12 +308,12 @@ export default function FacePhotoSetup({ onSuccess, onSkip }: Props) {
                                 <RefreshCw className="h-5 w-5" />
                                 <span>Qayta urinish</span>
                             </button>
-                            <button
+                            {onSkip && <button
                                 onClick={onSkip}
                                 className="px-6 py-3 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 font-medium transition-all"
                             >
                                 O'tkazib yuborish
-                            </button>
+                            </button>}
                         </>
                     )}
                 </div>

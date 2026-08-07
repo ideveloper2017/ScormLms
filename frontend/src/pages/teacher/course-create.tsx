@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BookOpen, Save } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { teacherPortalApi } from "@/services/api/teacher-portal-api";
+import { listPrograms, listSubjects } from "@/lib/academic-api";
 
-const SUBJECTS = [
-  "Dasturlash", "Web dasturlash", "Backend", "Ma'lumotlar bazasi",
-  "Matematik tahlil", "Fizika", "Ingliz tili", "Algoritmlar nazariyasi",
-];
 const GROUPS = ["CS-22-01", "CS-22-02", "CS-22-03", "CS-21-01", "CS-21-02", "CS-23-01"];
 
 export function TeacherCourseCreate() {
@@ -24,15 +22,22 @@ export function TeacherCourseCreate() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    title: "", description: "", subject: "", group: "",
+    title: "", description: "", subjectId: "", language: "", group: "",
     startDate: "", endDate: "", isPublic: false, hasCertificate: false,
+  });
+  const subjects = useQuery({ queryKey: ["academic", "subjects"], queryFn: () => listSubjects() });
+  const programs = useQuery({ queryKey: ["academic", "programs"], queryFn: () => listPrograms() });
+  const programById = new Map((programs.data ?? []).map(program => [program.id, program]));
+  const eligibleSubjects = (subjects.data ?? []).filter(subject => {
+    const program = subject.programId == null ? undefined : programById.get(subject.programId);
+    return subject.active && program?.active && program.distanceEnabled;
   });
 
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
     if (!form.title.trim()) { toast({ variant: "destructive", title: "Kurs nomi majburiy" }); return; }
-    if (!form.subject) { toast({ variant: "destructive", title: "Fan majburiy" }); return; }
+    if (!form.subjectId) { toast({ variant: "destructive", title: "Ta'lim dasturiga bog'langan fan majburiy" }); return; }
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       toast({ variant: "destructive", title: "Tugash sanasi boshlanish sanasidan oldin bo'lmaydi" });
       return;
@@ -42,11 +47,11 @@ export function TeacherCourseCreate() {
       const created = await teacherPortalApi.createCourse({
         title: form.title.trim(),
         description: form.description.trim() || undefined,
-        subjectName: form.subject,
+        subjectId: Number(form.subjectId),
         groupName: form.group || undefined,
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
-        language: "uz",
+        language: form.language,
       });
       toast({ title: "Kurs qoralama sifatida yaratildi", description: created.title });
       navigate(`/teacher/courses/${created.id}`);
@@ -91,10 +96,18 @@ export function TeacherCourseCreate() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Fan <span className="text-destructive">*</span></Label>
-              <Select value={form.subject} onValueChange={(v) => set("subject", v)}>
+              <Select value={form.subjectId} onValueChange={(value) => {
+                const subject = eligibleSubjects.find(item => String(item.id) === value);
+                const program = subject?.programId == null ? undefined : programById.get(subject.programId);
+                setForm(current => ({ ...current, subjectId: value, language: program?.educationLanguage ?? "" }));
+              }} disabled={subjects.isLoading || programs.isLoading}>
                 <SelectTrigger><SelectValue placeholder="Tanlang" /></SelectTrigger>
-                <SelectContent>{SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                <SelectContent>{eligibleSubjects.map(subject => {
+                  const program = subject.programId == null ? undefined : programById.get(subject.programId);
+                  return <SelectItem key={subject.id} value={String(subject.id)}>{subject.name} · {program?.name} ({program?.educationLanguage})</SelectItem>;
+                })}</SelectContent>
               </Select>
+              {!subjects.isLoading && !programs.isLoading && eligibleSubjects.length === 0 && <p className="text-xs text-destructive">Faol masofaviy dasturga bog'langan fan topilmadi.</p>}
             </div>
             <div className="space-y-1.5">
               <Label>Guruh</Label>
@@ -104,6 +117,7 @@ export function TeacherCourseCreate() {
               </Select>
             </div>
           </div>
+          <div className="space-y-1.5"><Label>Kurs va kontent tili</Label><Input value={form.language || "Fan tanlang"} readOnly /></div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Boshlanish sanasi</Label>
@@ -135,7 +149,7 @@ export function TeacherCourseCreate() {
 
       <div className="flex gap-3 justify-end">
         <Button variant="outline" onClick={() => navigate("/teacher/courses")}>Bekor qilish</Button>
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
+        <Button onClick={handleSave} disabled={saving || !form.subjectId || !form.language} className="gap-2">
           <Save className="h-4 w-4" />{saving ? "Saqlanmoqda..." : "Kurs yaratish"}
         </Button>
       </div>

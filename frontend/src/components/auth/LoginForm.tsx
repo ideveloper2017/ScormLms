@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { HemisLoginDialog } from '@/components/auth/HemisLoginDialog';
 import { Button } from '@/components/ui/button';
@@ -6,13 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldGroup, FieldLabel, FieldSeparator } from '@/components/ui/field';
-import { Eye, EyeOff, Camera, Shield, CheckCircle, AlertCircle, Loader2, LogIn, Droplets, GraduationCap, Mail, Lock, BookOpen, Play } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, Loader2, Droplets, GraduationCap, Mail, Lock, BookOpen, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils"
-import { faceRecognitionApi } from '@/services/api/face-recognition-api';
 
 interface LoginFormProps {
     onSuccess: () => void;
@@ -23,14 +20,10 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
     const [showPassword, setShowPassword] = useState(false);
-    const [loginStep, setLoginStep] = useState<'credentials' | 'face-recognition' | 'success'>('credentials');
+    const [loginStep, setLoginStep] = useState<'credentials' | 'success'>('credentials');
     const [hemisDialogOpen, setHemisDialogOpen] = useState(false);
-    const [faceRecognitionStatus, setFaceRecognitionStatus] = useState<'idle' | 'scanning' | 'success' | 'failed'>('idle');
 
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const [stream, setStream] = useState<MediaStream | null>(null);
-
-    const { login: authLogin, completeLogin, pendingUser, isAuthenticated, isLoading: isAuthLoading, setFaceRecognitionRequired } = useAuth();
+    const { login: authLogin, isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -39,61 +32,11 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
         if (isAuthenticated) navigate('/', { replace: true });
     }, [isAuthenticated]);
 
-    // Initialize camera for face recognition
-    const initializeCamera = async () => {
-        try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
-            setStream(mediaStream);
-            if (videoRef.current) videoRef.current.srcObject = mediaStream;
-
-            return true;
-        } catch (error) {
-            console.error('Camera access denied:', error);
-            return false;
-        }
-    };
-
-    const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
-    };
-
     // Handle login success
     const handleLoginSuccess = () => {
-        stopCamera();
         setLoginStep('success');
-        if (pendingUser) completeLogin(pendingUser);
         setTimeout(() => onSuccess(), 1500);
     };
-
-    const handleFaceRecognition = async () => {
-        setFaceRecognitionStatus('scanning');
-        try {
-            // Simulate face recognition
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const isRecognized = Math.random() > 0.1;
-
-            if (isRecognized) {
-                setFaceRecognitionStatus('success');
-                setTimeout(() => handleLoginSuccess(), 1000);
-            } else {
-                setFaceRecognitionStatus('failed');
-                setTimeout(() => setFaceRecognitionStatus('idle'), 1000);
-            }
-        } catch (error) {
-            console.error('Face recognition error:', error);
-            setFaceRecognitionStatus('failed');
-            toast({
-                title: 'Face Recognition Failed',
-                description: 'Could not verify your identity. Please try again.',
-                variant: 'destructive'
-            });
-        }
-    };
-
-    const handleSkipFaceRecognition = () => handleLoginSuccess();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -116,36 +59,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             const result = await authLogin(formData.username, formData.password);
 
             if (result?.success) {
-                const userRoles = result.data?.user?.roles || [];
-                const roles = Array.isArray(userRoles)
-                    ? userRoles.map((r: any) => typeof r === 'string' ? r : r.code || r.name)
-                    : [];
-                const isStudent = roles.some((role) => normalizeRole(role) === 'STUDENT');
-                ensureFaceRecognitionFlag();
-
-                if (isStudent) {
-                    // Check if user has face photo in backend
-                    try {
-                        const facePhoto = await faceRecognitionApi.getFacePhotoUrl();
-
-                        if (facePhoto && facePhoto.photoUrl) {
-                            // User has face photo → redirect to face verification
-                            setFaceRecognitionRequired(true);
-                            handleLoginSuccess(); // This will redirect to App.tsx where FaceRecognition component will show
-                        } else {
-                            // No face photo → optional first-time setup, allow skip
-                            setFaceRecognitionRequired(false);
-                            handleLoginSuccess();
-                        }
-                    } catch (error) {
-                        console.error('Error checking face photo:', error);
-                        // On error, allow login without face recognition
-                        setFaceRecognitionRequired(false);
-                        handleLoginSuccess();
-                    }
-                } else {
-                    handleLoginSuccess();
-                }
+                handleLoginSuccess();
 
                 if (result?.message) {
                     toast({ title: 'Success', description: result?.message, variant: 'default' });
@@ -164,18 +78,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             setIsSubmitting(false);
         }
     };
-
-    useEffect(() => {
-        if (loginStep === 'face-recognition') {
-            const initCamera = async () => {
-                const cameraInitialized = await initializeCamera();
-                if (!cameraInitialized) {
-                    handleLoginSuccess();
-                }
-            };
-            initCamera();
-        }
-    }, [loginStep]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -200,64 +102,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                         <p className="text-muted-foreground">Tizimga muvaffaqiyatli kirdingiz. Dashboard yuklanmoqda...</p>
                         <div className="flex items-center justify-center">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        </div>
-                    </Card>
-                </div>
-                <DecorativeSide />
-            </div>
-        );
-    }
-
-    if (loginStep === 'face-recognition') {
-        return (
-            <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-                <div className="flex items-center justify-center p-4 sm:p-6 lg:p-12">
-                    <Card className="w-full max-w-sm shadow-none border border-border p-4 sm:p-6 space-y-4 sm:space-y-6 relative">
-                        <div className="text-center">
-                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
-                                <Camera className="h-5 w-5 sm:h-6 sm:w-6" /> Yuzni Tanib Olish
-                            </h1>
-                            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Xavfsizlik uchun yuzingizni kameraga ko'rsating</p>
-                        </div>
-                        <video ref={videoRef} autoPlay muted className="w-full h-56 sm:h-80 bg-black rounded-lg object-cover" />
-                        <div className="absolute top-4 right-4">
-                            <Badge variant={faceRecognitionStatus === 'success' ? 'default' : faceRecognitionStatus === 'failed' ? 'destructive' : 'secondary'}>
-                                <Shield className="h-3 w-3 mr-1" />
-                                {faceRecognitionStatus === 'idle' && 'Tayyor'}
-                                {faceRecognitionStatus === 'scanning' && 'Skanlanmoqda...'}
-                                {faceRecognitionStatus === 'success' && 'Tanildi!'}
-                                {faceRecognitionStatus === 'failed' && 'Tanilmadi'}
-                            </Badge>
-                        </div>
-
-                        {faceRecognitionStatus === 'scanning' && (
-                            <Alert>
-                                <Camera className="h-4 w-4" />
-                                <AlertDescription>Yuzingizni kameraga to'g'ri qarash va harakat qilmaslik...</AlertDescription>
-                            </Alert>
-                        )}
-                        {faceRecognitionStatus === 'success' && (
-                            <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                <AlertDescription className="text-green-800 dark:text-green-400">Yuz muvaffaqiyatli tanildi!</AlertDescription>
-                            </Alert>
-                        )}
-                        {faceRecognitionStatus === 'failed' && (
-                            <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>Yuz tanilmadi. Qaytadan urinib ko'ring yoki o'tkazib yuboring.</AlertDescription>
-                            </Alert>
-                        )}
-
-                        <div className="flex gap-3">
-                            {(faceRecognitionStatus === 'idle' || faceRecognitionStatus === 'failed') && (
-                                <Button onClick={handleFaceRecognition} className="flex-1 gap-2">
-                                    <Camera className="h-4 w-4" /> {faceRecognitionStatus === 'idle' ? 'Yuzni Tanib Olishni Boshlash' : 'Qaytadan Urinish'}
-                                </Button>
-                            )}
-                            <Button variant="outline" onClick={handleSkipFaceRecognition} className="flex-1 gap-2">
-                                <LogIn className="h-4 w-4" /> O'tkazib Yuborish
-                            </Button>
                         </div>
                     </Card>
                 </div>
@@ -427,13 +271,3 @@ const WelcomePanel = () => (
 )
 
 const DecorativeSide = () => <WelcomePanel />;
-
-function ensureFaceRecognitionFlag() {
-    if (!localStorage.getItem('faceRecognitionCompleted')) {
-        localStorage.setItem('faceRecognitionCompleted', 'false');
-    }
-}
-
-function normalizeRole(role: string): string {
-    return role.replace(/^ROLE_/i, '').toUpperCase();
-}

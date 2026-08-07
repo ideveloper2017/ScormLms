@@ -3,6 +3,7 @@ package uz.scorm.lms.app.v1.courses.model
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import jakarta.persistence.*
 import uz.scorm.lms.app.common.BaseEntity
+import uz.scorm.lms.app.v1.subject.model.Subject
 import java.time.Instant
 import java.time.LocalDate
 
@@ -43,6 +44,10 @@ class Course(
 
     @Column(name = "subject_name")
     var subjectName: String? = null,
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "subject_id")
+    var subject: Subject? = null,
 
     @Column(name = "group_name")
     var groupName: String? = null,

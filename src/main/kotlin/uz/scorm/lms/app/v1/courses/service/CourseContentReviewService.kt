@@ -12,6 +12,7 @@ import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseContentReviewRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRevisionRepository
+import uz.scorm.lms.app.v1.contentstandard.service.ContentStandardService
 import java.time.Instant
 
 @Service
@@ -20,6 +21,8 @@ class CourseContentReviewService(
     private val revisionRepository: CourseContentRevisionRepository,
     private val reviewRepository: CourseContentReviewRepository,
     private val accessService: CourseAccessService,
+    private val compatibilityService: ContentCompatibilityService,
+    private val contentStandardService: ContentStandardService,
 ) {
     @Transactional
     fun submit(
@@ -37,6 +40,7 @@ class CourseContentReviewService(
             ContentReviewStatus.DRAFT.name,
             ContentReviewStatus.CHANGES_REQUESTED.name,
         )) { "Kontent allaqachon ekspertizada yoki tasdiqlangan" }
+        compatibilityService.requireContentCompatible(content)
         val revision = requireNotNull(
             revisionRepository.findFirstByContentIdAndDeletedFalseOrderByRevisionNumberDesc(contentId)
         ) { "Kontent revisioni topilmadi" }
@@ -89,6 +93,10 @@ class CourseContentReviewService(
         require(comment == null || comment.length <= 2000) { "Ekspert izohi 2000 belgidan oshmasligi kerak" }
         require(request.decision != ContentReviewDecision.CHANGES_REQUESTED || (comment?.length ?: 0) >= 10) {
             "Tuzatishga qaytarishda kamida 10 belgili asos majburiy"
+        }
+        if (request.decision == ContentReviewDecision.APPROVED) {
+            compatibilityService.requireContentCompatible(content)
+            contentStandardService.requirePassingAssessmentIfConfigured(requireNotNull(latest.id))
         }
         val now = Instant.now()
         review.status = request.decision.name
@@ -157,6 +165,7 @@ class CourseContentReviewService(
             reviewedAt = review.reviewedAt,
             reviewedBy = review.reviewedBy,
             decisionComment = review.decisionComment,
+            compatibility = compatibilityService.evaluate(content),
         )
     }
 }

@@ -23,7 +23,6 @@ class ComplianceIssueAuthorizationIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var userRepository: UserRepository
     @Autowired private lateinit var complianceService: Decision559ComplianceService
-    @Autowired private lateinit var issueRepository: ComplianceIssueRepository
 
     @Test
     @WithMockUser(username = "compliance-monitor", authorities = ["STAT_READ"])
@@ -39,10 +38,9 @@ class ComplianceIssueAuthorizationIntegrationTest {
     @Test
     @WithMockUser(username = "compliance-writer", authorities = ["ACADEMIC_READ", "ACADEMIC_WRITE"])
     fun `akademik yozish vakolati vazifa yaratadi`() {
-        issueRepository.deleteAll()
         userRepository.save(User(username = "compliance-writer", password = "test"))
         val owner = userRepository.save(User(username = "compliance-owner-api", password = "test", fullName = "API Owner"))
-        val violationCode = complianceService.summary().violations.first().code
+        val violationCode = complianceService.summary().violations.first { it.code != "NO_DISTANCE_PROGRAM" }.code
         mockMvc.post("/api/v1/compliance/559/issues") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"violationCode":"$violationCode","ownerId":${owner.id},"dueDate":"${LocalDate.now().plusDays(2)}","remediationPlan":"Nomuvofiqlikni bartaraf etish"}"""

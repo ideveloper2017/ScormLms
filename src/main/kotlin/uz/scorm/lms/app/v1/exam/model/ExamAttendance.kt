@@ -58,6 +58,9 @@ class ExamAttendance(
 
     @Column(name = "verification_time")
     var verificationTime: Instant? = null,
+
+    @Column(name = "onsite_attendance_required", nullable = false)
+    var onsiteAttendanceRequired: Boolean = true,
 ) : BaseEntity()
 
 enum class AttendanceStatus {

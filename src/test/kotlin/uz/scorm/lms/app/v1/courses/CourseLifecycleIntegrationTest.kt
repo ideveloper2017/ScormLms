@@ -39,6 +39,10 @@ import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.student.service.StudentPortalService
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
+import uz.scorm.lms.app.v1.program.model.Program
+import uz.scorm.lms.app.v1.program.repository.ProgramRepository
+import uz.scorm.lms.app.v1.subject.model.Subject
+import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import java.time.LocalDate
 
 @SpringBootTest
@@ -59,6 +63,8 @@ class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var scormPackageRepository: ScormPackageRepository
     @Autowired private lateinit var scormAttemptRepository: ScormAttemptRepository
     @Autowired private lateinit var learningActivityEventRepository: LearningActivityEventRepository
+    @Autowired private lateinit var programRepository: ProgramRepository
+    @Autowired private lateinit var subjectRepository: SubjectRepository
 
     @Test
     fun `oqituvchi draft yaratadi publish qiladi va biriktirilgan talaba kursni ochadi`() {
@@ -127,7 +133,7 @@ class CourseLifecycleIntegrationTest {
     fun `modul va kontent CRUD publish hamda student visibility oqimi ishlaydi`() {
         val teacher = user("course-teacher-3")
         val student = student("10000000000004", "ST-E2E-004", "course-student-4")
-        val course = courseService.create(CourseCreateRequest(title = "Kontent testi"), requireNotNull(teacher.id))
+        val course = compliantCourse(teacher, "Kontent testi", "Kontent fani", student)
         courseService.changeStatus(course.id, CourseStatus.PUBLISHED, requireNotNull(teacher.id), false)
         enrollmentService.enroll(course.id, setOf(requireNotNull(student.id)), requireNotNull(teacher.id), false)
 
@@ -229,10 +235,7 @@ class CourseLifecycleIntegrationTest {
     fun `individual reja fan progressini kontentdan avtomatik hisoblaydi`() {
         val teacher = user("study-plan-teacher")
         val student = student("10000000000005", "ST-PLAN-001", "study-plan-student")
-        val course = courseService.create(
-            CourseCreateRequest(title = "Algoritmlar", subjectName = "Algoritmlar nazariyasi"),
-            requireNotNull(teacher.id),
-        )
+        val course = compliantCourse(teacher, "Algoritmlar", "Algoritmlar nazariyasi", student)
         courseService.changeStatus(course.id, CourseStatus.PUBLISHED, requireNotNull(teacher.id), false)
         enrollmentService.enroll(
             course.id,
@@ -349,7 +352,7 @@ class CourseLifecycleIntegrationTest {
     fun `student faqat amal qilayotgan kontentni koradi va progress yozadi`() {
         val teacher = user("content-validity-teacher")
         val student = student("10000000000007", "ST-CONT-007", "content-validity-student")
-        val course = courseService.create(CourseCreateRequest(title = "Metadata kursi"), requireNotNull(teacher.id))
+        val course = compliantCourse(teacher, "Metadata kursi", "Metadata fani", student)
         courseService.changeStatus(course.id, CourseStatus.PUBLISHED, requireNotNull(teacher.id), false)
         enrollmentService.enroll(course.id, setOf(requireNotNull(student.id)), requireNotNull(teacher.id), false)
         val module = moduleService.create(
@@ -437,7 +440,7 @@ class CourseLifecycleIntegrationTest {
     fun `kontent egasidan mustaqil ekspert qarorisiz joriy revision nashr qilinmaydi`() {
         val teacher = user("review-workflow-teacher")
         val reviewer = user("review-workflow-metodist")
-        val course = courseService.create(CourseCreateRequest(title = "Ekspertiza kursi"), requireNotNull(teacher.id))
+        val course = compliantCourse(teacher, "Ekspertiza kursi", "Ekspertiza fani")
         courseService.changeStatus(course.id, CourseStatus.PUBLISHED, requireNotNull(teacher.id), false)
         val module = moduleService.create(
             course.id, CourseModuleRequest(title = "Ekspertiza moduli"), requireNotNull(teacher.id), false,
@@ -550,6 +553,38 @@ class CourseLifecycleIntegrationTest {
         password = "test-password-hash",
         fullName = username,
     ))
+
+    private fun compliantCourse(
+        owner: User,
+        title: String,
+        subjectName: String,
+        vararg students: StudentProfile,
+    ): uz.scorm.lms.app.v1.courses.dto.CourseDto {
+        val program = programRepository.save(Program(
+            name = "$title dasturi",
+            active = true,
+            distanceEnabled = true,
+            fullTimeAvailable = true,
+            fullTimeBasisReference = "BUYRUQ-3/2026",
+            fullTimeDurationMonths = 48,
+            distanceDurationMonths = 48,
+            educationLanguage = "uz",
+        ))
+        students.forEach { student ->
+            student.programId = requireNotNull(program.id)
+            student.educationLanguage = "uz"
+            studentRepository.save(student)
+        }
+        val subject = subjectRepository.save(Subject(name = subjectName, active = true, program = program))
+        return courseService.create(
+            CourseCreateRequest(
+                title = title,
+                subjectId = requireNotNull(subject.id),
+                language = "uz",
+            ),
+            requireNotNull(owner.id),
+        )
+    }
 
     private fun approveContent(courseId: Long, contentId: Long, ownerId: Long) {
         val submitted = contentReviewService.submit(courseId, contentId, ownerId, false)

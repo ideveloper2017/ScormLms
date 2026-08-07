@@ -88,6 +88,13 @@ class StudentDefenseService(
         } catch (e: IllegalArgumentException) {
             throw IllegalArgumentException("Noto'g'ri himoya holati: ${request.defenseStatus}")
         }
+        if (status == DefenseStatus.DEFENDED && defense.onsiteAttendanceRequired) {
+            require(request.onsiteAttendanceConfirmed == true) {
+                "559-son qarorning 21-bandiga ko'ra shaxsan qatnashuv tasdiqlanishi shart"
+            }
+            defense.onsiteAttendanceConfirmedAt = Instant.now()
+            defense.onsiteAttendanceConfirmedBy = userRepository.findById(userId).orElseThrow()
+        }
         defense.defenseStatus = status
 
         val updated = defenseRepository.save(defense)
@@ -264,7 +271,8 @@ class StudentDefenseService(
             StudentAttestationSessionDto(
                 id = session.id!!.toString(), courseId = session.course.id!!.toString(), courseTitle = session.course.name,
                 title = session.title, description = session.description, examDate = session.examDate, examTime = session.examTime,
-                location = session.location, defenseType = session.defenseType.name,
+                location = session.location, onsiteAttendanceRequired = defense.onsiteAttendanceRequired,
+                defenseType = session.defenseType.name,
                 chairName = session.commissionChair.fullName ?: session.commissionChair.username, status = session.status.name,
                 myDefenseStatus = defense.defenseStatus.name,
                 myDefenseDecision = defense.commissionDecision?.name?.takeIf { published },
@@ -286,6 +294,8 @@ class StudentDefenseService(
             studentId = defense.enrollment.student.id.toString(),
             studentName = defense.enrollment.student.fullName ?: defense.enrollment.student.username,
             studentEmail = defense.enrollment.student.email.orEmpty(),
+            onsiteAttendanceRequired = defense.onsiteAttendanceRequired,
+            onsiteAttendanceConfirmedAt = defense.onsiteAttendanceConfirmedAt,
             defenseStatus = defense.defenseStatus.name,
             defenseDate = defense.defenseDate,
             defenseTime = defense.defenseTime,
@@ -330,6 +340,7 @@ class StudentDefenseService(
             examDate = defense.attestationSession.examDate,
             examTime = defense.attestationSession.examTime,
             location = defense.attestationSession.location,
+            onsiteAttendanceRequired = defense.onsiteAttendanceRequired,
             defenseType = defense.attestationSession.defenseType.name,
             defenseStatus = defense.defenseStatus.name,
             defenseDate = defense.defenseDate,

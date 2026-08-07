@@ -5,6 +5,7 @@ import uz.scorm.lms.app.common.DateAudit
 import uz.scorm.lms.app.v1.user.model.User
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.Instant
 
 @Entity
 @Table(
@@ -157,6 +158,21 @@ class StudentProfile(
 
     @Column(name = "contract_amount", precision = 14, scale = 2)
     var contractAmount: BigDecimal? = null,
+
+    @Column(name = "hemis_id", unique = true)
+    var hemisId: Long? = null,
+
+    @Column(name = "hemis_source_hash", length = 128)
+    var hemisSourceHash: String? = null,
+
+    @Column(name = "hemis_synced_at")
+    var hemisSyncedAt: Instant? = null,
+
+    @Column(name = "lms_orientation_required", nullable = false)
+    var lmsOrientationRequired: Boolean = false,
+
+    @Column(name = "lms_orientation_completed_at")
+    var lmsOrientationCompletedAt: Instant? = null,
 
 ) : DateAudit() {
     @get:Transient

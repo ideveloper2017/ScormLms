@@ -14,6 +14,12 @@ import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
 import uz.scorm.lms.app.v1.courses.service.CourseService
+import uz.scorm.lms.app.v1.biometric.dto.AcceptBiometricConsentRequest
+import uz.scorm.lms.app.v1.biometric.dto.PublishBiometricPolicyRequest
+import uz.scorm.lms.app.v1.biometric.dto.SaveBiometricPolicyRequest
+import uz.scorm.lms.app.v1.biometric.model.BiometricPolicyStatus
+import uz.scorm.lms.app.v1.biometric.service.BiometricConsentBinding
+import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import uz.scorm.lms.app.v1.quiz.dto.ProctoringClientEventRequest
 import uz.scorm.lms.app.v1.quiz.dto.CreateProctoringAppealRequest
 import uz.scorm.lms.app.v1.quiz.dto.ProctoringEventBatchRequest
@@ -61,6 +67,7 @@ class ProctorDashboardIntegrationTest {
     @Autowired private lateinit var userRepository: UserRepository
     @Autowired private lateinit var studentRepository: StudentRepository
     @Autowired private lateinit var roleRepository: RoleRepository
+    @Autowired private lateinit var biometricGovernanceService: BiometricGovernanceService
 
     @Test
     fun `biriktirilgan proktor faqat oz quiz sessiyasi va dalillarini koradi`() {
@@ -69,7 +76,7 @@ class ProctorDashboardIntegrationTest {
         val stranger = user("dashboard-other-proctor", "proctor")
         val student = student("30000000000006", "ST-QZ-006", "dashboard-student")
         student.user.faceDescriptor = "server-template"
-        userRepository.save(student.user)
+        val biometricBinding = bindBiometrics(student.user, teacher, assigned)
         val course = courseService.create(
             CourseCreateRequest(title = "Monitoring kursi"),
             requireNotNull(teacher.id),
@@ -117,6 +124,9 @@ class ProctorDashboardIntegrationTest {
                 movementDelta = 0.12,
                 centerFrameHash = "a".repeat(64),
                 challengeFrameHash = "b".repeat(64),
+                biometricPolicy = biometricBinding.policy,
+                biometricConsentEvent = biometricBinding.consent,
+                biometricRetentionUntil = Instant.now().plusSeconds(3600),
             )
         )
         val attempt = quizService.start(quizId, requireNotNull(student.user.id))
@@ -232,6 +242,38 @@ class ProctorDashboardIntegrationTest {
         assertEquals(1, dashboardService.sessions(requireNotNull(stranger.id), false).size)
         assertTrue(assignmentService.candidates().map { it.id }.containsAll(setOf(assigned.id.toString(), stranger.id.toString())))
     }
+
+    private fun bindBiometrics(studentUser: User, author: User, approver: User): BiometricConsentBinding {
+        biometricGovernanceService.listPolicies().filter { it.status == BiometricPolicyStatus.PUBLISHED }
+            .forEach { biometricGovernanceService.archive(it.id, requireNotNull(approver.id)) }
+        val draft = biometricGovernanceService.create(testPolicy(), requireNotNull(author.id))
+        val policy = biometricGovernanceService.publish(
+            draft.id,
+            PublishBiometricPolicyRequest("Integratsion test uchun mustaqil biometrik siyosat tasdig'i"),
+            requireNotNull(approver.id),
+        )
+        biometricGovernanceService.accept(
+            AcceptBiometricConsentRequest(policy.id, policy.statementHash),
+            requireNotNull(studentUser.id),
+        )
+        val binding = biometricGovernanceService.requireActiveConsent(requireNotNull(studentUser.id))
+        studentUser.facePhotoUrl = "/uploads/faces/dashboard-test.jpg"
+        studentUser.facePolicy = binding.policy
+        studentUser.faceConsentEvent = binding.consent
+        studentUser.faceExpiresAt = Instant.now().plusSeconds(3600)
+        userRepository.save(studentUser)
+        return binding
+    }
+
+    private fun testPolicy() = SaveBiometricPolicyRequest(
+        versionCode = "DASH-${System.nanoTime()}", title = "Proktoring integratsion test siyosati",
+        purposeText = "Proktorli testda talaba shaxsini tekshirish uchun biometrik ma'lumotdan foydalanish",
+        legalBasis = "Integratsion test uchun tasdiqlangan yuridik asos hujjati",
+        consentText = "Men yuz shablonim proktorli testda shaxsni tekshirish uchun qayta ishlanishiga aniq rozilik beraman.",
+        privacyNotice = "Yuz shabloni va proktoring dalili belgilangan retention muddati tugagach auditli o'chiriladi.",
+        documentNumber = "TEST-BIO", documentDate = LocalDate.now(), documentReference = "test://biometric-policy",
+        faceTemplateRetentionDays = 30, proctoringEvidenceRetentionDays = 90,
+    )
 
     private fun user(username: String, role: String): User = userRepository.save(
         User(

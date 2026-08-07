@@ -20,6 +20,7 @@ data class RecordDefenseRequest(
     val presentationFileName: String? = null,
     val defenseNotes: String? = null,
     val defenseStatus: String, // "DEFENDED", "CANCELLED", "RESCHEDULED"
+    val onsiteAttendanceConfirmed: Boolean? = null,
 )
 
 data class SubmitCommissionDecisionRequest(
@@ -54,6 +55,8 @@ data class TeacherStudentDefenseDto(
     val studentId: String,
     val studentName: String,
     val studentEmail: String,
+    val onsiteAttendanceRequired: Boolean,
+    val onsiteAttendanceConfirmedAt: Instant?,
     val defenseStatus: String,
     val defenseDate: LocalDate?,
     val defenseTime: LocalTime?,
@@ -104,6 +107,7 @@ data class StudentDefenseDetailsDto(
     val examDate: LocalDate,
     val examTime: LocalTime,
     val location: String,
+    val onsiteAttendanceRequired: Boolean,
     val defenseType: String,
     val defenseStatus: String,
     val defenseDate: LocalDate?,

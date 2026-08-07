@@ -3,12 +3,20 @@ package uz.scorm.lms.app.v1.student
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
+import uz.scorm.lms.app.v1.admission.model.AdmissionPolicyStatus
+import uz.scorm.lms.app.v1.admission.model.ApprovalAuthorityType
+import uz.scorm.lms.app.v1.admission.model.DistanceAdmissionPolicy
+import uz.scorm.lms.app.v1.admission.model.InstitutionGovernanceType
+import uz.scorm.lms.app.v1.admission.repository.DistanceAdmissionPolicyRepository
+import uz.scorm.lms.app.v1.license.model.NonStateLicenseStatus
+import uz.scorm.lms.app.v1.license.repository.NonStateLicenseProgramScopeRepository
 import uz.scorm.lms.app.v1.student.dto.StudentCreateRequest
 import uz.scorm.lms.app.v1.student.model.Citizenship
 import uz.scorm.lms.app.v1.student.model.DegreeLevel
@@ -22,7 +30,9 @@ import uz.scorm.lms.app.v1.student.service.StudentService
 import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.service.UserService
+import uz.scorm.lms.app.v1.restriction.service.DistanceProgramRestrictionService
 import java.time.LocalDate
+import java.math.BigDecimal
 import java.util.Optional
 
 class StudentServiceDecision559Test {
@@ -31,7 +41,10 @@ class StudentServiceDecision559Test {
     private val userService = mockk<UserService>()
     private val programRepository = mockk<ProgramRepository>()
     private val teacherRepository = mockk<TeacherRepository>()
-    private val service = StudentService(studentRepository, userService, programRepository, teacherRepository)
+    private val admissionPolicyRepository = mockk<DistanceAdmissionPolicyRepository>()
+    private val licenseScopeRepository = mockk<NonStateLicenseProgramScopeRepository>()
+    private val restrictionService = mockk<DistanceProgramRestrictionService>()
+    private val service = StudentService(studentRepository, userService, programRepository, teacherRepository, admissionPolicyRepository, licenseScopeRepository, restrictionService)
 
     @BeforeEach
     fun defaults() {
@@ -39,12 +52,24 @@ class StudentServiceDecision559Test {
         every { studentRepository.existsByStudentNumber(any()) } returns false
         every { programRepository.findById(1) } returns Optional.of(program())
         every {
-            studentRepository.countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
-                1, EducationForm.DISTANCE, StudentStatus.ACTIVE, Citizenship.UZBEKISTAN,
+            studentRepository.countByProgramIdAndAcademicYearAndEducationFormAndCitizenship(
+                1, "2026-2027", EducationForm.DISTANCE, Citizenship.UZBEKISTAN,
             )
         } returns 0
+        every {
+            studentRepository.countByProgramIdAndAcademicYearAndEducationForm(
+                1, "2026-2027", EducationForm.DISTANCE,
+            )
+        } returns 0
+        every {
+            admissionPolicyRepository.findByProgramIdAndAcademicYearAndStatusAndDeletedFalse(
+                1, "2026-2027", AdmissionPolicyStatus.APPROVED,
+            )
+        } returns policy()
         every { studentRepository.countByEducationFormAndStudentStatus(EducationForm.DISTANCE, StudentStatus.ACTIVE) } returns 0
         every { teacherRepository.countByActiveTrue() } returns 1
+        every { licenseScopeRepository.existsEffectiveCoverage(1, NonStateLicenseStatus.VERIFIED, any()) } returns true
+        every { restrictionService.requireAllowed(any(), any(), any(), any()) } returns Unit
         every { userService.register(any(), any(), "student") } answers {
             User(username = firstArg(), password = "encoded")
         }
@@ -54,16 +79,35 @@ class StudentServiceDecision559Test {
     }
 
     @Test
+    fun `nodavlat OTM masofaviy qabulida amaldagi litsenziya qamrovi majburiy`() {
+        every { licenseScopeRepository.existsEffectiveCoverage(1, NonStateLicenseStatus.VERIFIED, any()) } returns false
+
+        val error = assertThrows<IllegalArgumentException> { service.create(request()) }
+
+        assertTrue(error.message.orEmpty().contains("litsenziyada qayd etilmagan"))
+    }
+
+    @Test
+    fun `taqiqlangan dasturga masofaviy qabul bloklanadi`() {
+        every { restrictionService.requireAllowed(any(), any(), any(), any()) } throws
+            IllegalArgumentException("LAW-601 masofaviy shaklda taqiqlangan")
+
+        val error = assertThrows<IllegalArgumentException> { service.create(request()) }
+
+        assertTrue(error.message.orEmpty().contains("taqiqlangan"))
+    }
+
+    @Test
     fun `bakalavriatdagi 300-chi mavjud talabadan keyin qabul bloklanadi`() {
         every {
-            studentRepository.countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
-                1, EducationForm.DISTANCE, StudentStatus.ACTIVE, Citizenship.UZBEKISTAN,
+            studentRepository.countByProgramIdAndAcademicYearAndEducationForm(
+                1, "2026-2027", EducationForm.DISTANCE,
             )
         } returns 300
 
         val error = assertThrows<IllegalArgumentException> { service.create(request()) }
 
-        assertTrue(error.message.orEmpty().contains("limiti (300) to'lgan"))
+        assertTrue(error.message.orEmpty().contains("qabul parametri (300) to'lgan"))
     }
 
     @Test
@@ -73,19 +117,40 @@ class StudentServiceDecision559Test {
             admissionLimit = 30,
         ))
         every {
-            studentRepository.countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
-                1, EducationForm.DISTANCE, StudentStatus.ACTIVE, Citizenship.UZBEKISTAN,
+            admissionPolicyRepository.findByProgramIdAndAcademicYearAndStatusAndDeletedFalse(
+                1, "2026-2027", AdmissionPolicyStatus.APPROVED,
+            )
+        } returns policy(quota = 30)
+        every {
+            studentRepository.countByProgramIdAndAcademicYearAndEducationFormAndCitizenship(
+                1, "2026-2027", EducationForm.DISTANCE, Citizenship.UZBEKISTAN,
+            )
+        } returns 29
+        every {
+            studentRepository.countByProgramIdAndAcademicYearAndEducationForm(
+                1, "2026-2027", EducationForm.DISTANCE,
             )
         } returns 29
 
         val created = service.create(request(degreeLevel = DegreeLevel.MASTER))
 
         assertEquals(100, created.id)
+        assertTrue(created.lmsOrientationRequired)
     }
 
     @Test
     fun `IT yonalishida qabul soni limiti qollanmaydi`() {
         every { programRepository.findById(1) } returns Optional.of(program(informationTechnology = true))
+        every {
+            admissionPolicyRepository.findByProgramIdAndAcademicYearAndStatusAndDeletedFalse(
+                1, "2026-2027", AdmissionPolicyStatus.APPROVED,
+            )
+        } returns policy(quota = 1000)
+        every {
+            studentRepository.countByProgramIdAndAcademicYearAndEducationForm(
+                1, "2026-2027", EducationForm.DISTANCE,
+            )
+        } returns 500
         every { studentRepository.countByEducationFormAndStudentStatus(EducationForm.DISTANCE, StudentStatus.ACTIVE) } returns 500
         every { teacherRepository.countByActiveTrue() } returns 11
 
@@ -97,14 +162,15 @@ class StudentServiceDecision559Test {
     @Test
     fun `xorijiy talaba mahalliy qabul limitiga kirmaydi`() {
         every {
-            studentRepository.countByProgramIdAndEducationFormAndStudentStatusAndCitizenship(
-                1, EducationForm.DISTANCE, StudentStatus.ACTIVE, Citizenship.UZBEKISTAN,
+            studentRepository.countByProgramIdAndAcademicYearAndEducationFormAndCitizenship(
+                1, "2026-2027", EducationForm.DISTANCE, Citizenship.UZBEKISTAN,
             )
         } returns 300
 
         val created = service.create(request(citizenship = Citizenship.OTHER))
 
         assertEquals(100, created.id)
+        assertFalse(created.lmsOrientationRequired)
     }
 
     @Test
@@ -144,10 +210,58 @@ class StudentServiceDecision559Test {
         assertTrue(error.message.orEmpty().contains("kontenti tili"))
     }
 
+    @Test
+    fun `davomiyligi qisqa masofaviy dasturga qabul bloklanadi`() {
+        every { programRepository.findById(1) } returns Optional.of(program(
+            fullTimeDurationMonths = 48,
+            distanceDurationMonths = 36,
+        ))
+
+        val error = assertThrows<IllegalArgumentException> { service.create(request()) }
+
+        assertTrue(error.message.orEmpty().contains("kunduzgi ta'limdan kam bo'lmasligi"))
+    }
+
+    @Test
+    fun `kunduzgi shakl dalilisiz oddiy masofaviy dasturga qabul bloklanadi`() {
+        every { programRepository.findById(1) } returns Optional.of(program(
+            fullTimeAvailable = false,
+            fullTimeBasisReference = null,
+        ))
+
+        val error = assertThrows<IllegalArgumentException> { service.create(request()) }
+
+        assertTrue(error.message.orEmpty().contains("3-band"))
+    }
+
+    @Test
+    fun `tasdiqlangan qabul siyosatisiz masofaviy qabul bloklanadi`() {
+        every {
+            admissionPolicyRepository.findByProgramIdAndAcademicYearAndStatusAndDeletedFalse(
+                1, "2026-2027", AdmissionPolicyStatus.APPROVED,
+            )
+        } returns null
+
+        val error = assertThrows<IllegalArgumentException> { service.create(request()) }
+        assertTrue(error.message.orEmpty().contains("15-bandiga muvofiq tasdiqlangan"))
+    }
+
+    @Test
+    fun `talaba kontrakti tasdiqlangan qiymatga aynan mos bolishi shart`() {
+        val error = assertThrows<IllegalArgumentException> {
+            service.create(request(contractAmount = BigDecimal("11999999.99")))
+        }
+        assertTrue(error.message.orEmpty().contains("tasdiqlangan qabul siyosatidagi"))
+    }
+
     private fun program(
         degreeLevel: String = "BACHELOR",
         admissionLimit: Int? = 300,
         informationTechnology: Boolean = false,
+        fullTimeDurationMonths: Int = 48,
+        distanceDurationMonths: Int = 48,
+        fullTimeAvailable: Boolean = true,
+        fullTimeBasisReference: String? = "BUYRUQ-3/2026",
     ) = Program(
         name = "Dasturiy injiniring",
         code = "60610400",
@@ -158,6 +272,10 @@ class StudentServiceDecision559Test {
         educationLanguage = "uz",
         distanceAdmissionLimit = admissionLimit,
         licenseReference = "L-123",
+        fullTimeDurationMonths = fullTimeDurationMonths,
+        distanceDurationMonths = distanceDurationMonths,
+        fullTimeAvailable = fullTimeAvailable,
+        fullTimeBasisReference = fullTimeBasisReference,
     ).apply { id = 1 }
 
     private fun request(
@@ -165,6 +283,7 @@ class StudentServiceDecision559Test {
         citizenship: Citizenship = Citizenship.UZBEKISTAN,
         paymentType: PaymentType = PaymentType.CONTRACT,
         educationLanguage: String = "uz",
+        contractAmount: BigDecimal = BigDecimal("12000000.00"),
     ) = StudentCreateRequest(
         pinfl = "12345678901234",
         lastName = "Karimov",
@@ -178,6 +297,17 @@ class StudentServiceDecision559Test {
         educationForm = EducationForm.DISTANCE,
         educationLanguage = educationLanguage,
         paymentType = paymentType,
+        academicYear = "2026-2027",
+        contractAmount = contractAmount,
         password = "Student@12345",
     )
+
+    private fun policy(quota: Int = 300) = DistanceAdmissionPolicy(
+        program = program(), academicYear = "2026-2027", versionCode = "V1",
+        institutionGovernanceType = InstitutionGovernanceType.NON_STATE,
+        approvalAuthorityType = ApprovalAuthorityType.FOUNDER,
+        institutionName = "Test universiteti", approvingAuthorityName = "Ta'sischi",
+        admissionQuota = quota, contractAmount = BigDecimal("12000000.00"),
+        status = AdmissionPolicyStatus.APPROVED, createdByUser = User(username = "author", password = "x"),
+    ).apply { id = 9 }
 }

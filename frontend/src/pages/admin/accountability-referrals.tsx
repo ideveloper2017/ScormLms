@@ -1,0 +1,65 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileCheck2, Pencil, Plus, Scale, Send } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/hooks/use-toast";
+import { hasAuthority } from "@/lib/rbac-api";
+import { getComplianceIssues } from "@/services/api/compliance-559-api";
+import { accountabilityDecisionInputError, accountabilityReferralApi, accountabilityReferralInputError, type AccountabilityDecisionInput, type AccountabilityDecisionOutcome, type AccountabilityReferral, type SaveAccountabilityReferralInput } from "@/services/api/accountability-referral-api";
+
+const localDate = () => { const date = new Date(); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0, 10); };
+const emptyReferral = (): SaveAccountabilityReferralInput => ({ complianceIssueId: 0, reviewSubjectReference: "", competentAuthority: "", legalBasis: "", referralNumber: "", referralDate: localDate(), evidencePackageReference: "" });
+const emptyDecision = (): AccountabilityDecisionInput => ({ outcome: "NO_RESPONSIBILITY_FOUND", decisionAuthority: "", decisionNumber: "", decisionDate: localDate(), decisionEvidenceReference: "", decisionSummary: "" });
+const outcomeLabel: Record<AccountabilityDecisionOutcome, string> = { RESPONSIBILITY_ESTABLISHED: "Javobgarlik belgilangan", NO_RESPONSIBILITY_FOUND: "Javobgarlik aniqlanmagan", PROCEEDING_TERMINATED: "Ish yuritish tugatilgan" };
+
+export function AdminAccountabilityReferrals() {
+  const { user } = useAuth(); const canWrite = hasAuthority(user, "ACADEMIC_WRITE"); const { toast } = useToast(); const client = useQueryClient();
+  const [form, setForm] = useState<SaveAccountabilityReferralInput>(emptyReferral); const [editingId, setEditingId] = useState<number | null>(null);
+  const [referring, setReferring] = useState<AccountabilityReferral | null>(null); const [referralNote, setReferralNote] = useState("");
+  const [deciding, setDeciding] = useState<AccountabilityReferral | null>(null); const [decision, setDecision] = useState<AccountabilityDecisionInput>(emptyDecision);
+  const records = useQuery({ queryKey: ["accountability-referrals"], queryFn: accountabilityReferralApi.list });
+  const issues = useQuery({ queryKey: ["compliance", "559", "issues"], queryFn: getComplianceIssues });
+  const refresh = () => client.invalidateQueries({ queryKey: ["accountability-referrals"] });
+  const fail = (error: Error) => toast({ variant: "destructive", title: "Amal bajarilmadi", description: error.message });
+  const save = useMutation({ mutationFn: () => editingId ? accountabilityReferralApi.update(editingId, form) : accountabilityReferralApi.create(form), onSuccess: async () => { setEditingId(null); setForm(emptyReferral()); await refresh(); toast({ title: "Javobgarlik yo'llanmasi qoralamasi saqlandi" }); }, onError: fail });
+  const refer = useMutation({ mutationFn: () => accountabilityReferralApi.refer(referring!.id, referralNote), onSuccess: async () => { setReferring(null); setReferralNote(""); await refresh(); toast({ title: "Dalil paketi vakolatli organga yo'llangan deb qayd etildi" }); }, onError: fail });
+  const recordDecision = useMutation({ mutationFn: () => accountabilityReferralApi.recordDecision(deciding!.id, decision), onSuccess: async () => { setDeciding(null); setDecision(emptyDecision()); await refresh(); toast({ title: "Vakolatli organning tashqi qarori qayd etildi" }); }, onError: fail });
+  const edit = (item: AccountabilityReferral) => { setEditingId(item.id); setForm({ complianceIssueId: item.complianceIssueId, reviewSubjectReference: item.reviewSubjectReference, competentAuthority: item.competentAuthority, legalBasis: item.legalBasis, referralNumber: item.referralNumber, referralDate: item.referralDate, evidencePackageReference: item.evidencePackageReference }); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const formError = accountabilityReferralInputError(form, localDate());
+  const decisionError = deciding ? accountabilityDecisionInputError(decision, deciding.referralDate, localDate()) : null;
+
+  return <div className="space-y-6 p-3 sm:p-6">
+    <div><h1 className="flex items-center gap-2 text-2xl font-bold"><Scale className="h-6 w-6" />Javobgarlik yo'llanmalari</h1><p className="text-sm text-muted-foreground">559-son qaror 33-bandi: LMS aybdorlikni belgilamaydi. U nomuvofiqlik dalilini vakolatli organga yo'llashni va faqat tashqi rasmiy qarorni qayd etishni ta'minlaydi.</p></div>
+    {canWrite && <Card><CardHeader><CardTitle>{editingId ? "Qoralamani tahrirlash" : "Yangi yo'llanma qoralamasi"}</CardTitle><CardDescription>Tekshiruv subyekti neytral rekvizit bilan yuritiladi; bu maydon shaxs aybdor deb topilganini anglatmaydi.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
+      <div className="space-y-2 md:col-span-2"><Label>Compliance vazifasi</Label><select disabled={!!editingId} className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.complianceIssueId} onChange={(event) => setForm({ ...form, complianceIssueId: Number(event.target.value) })}><option value={0}>Vazifani tanlang</option>{(issues.data ?? []).filter((issue) => issue.status !== "CLOSED").map((issue) => <option key={issue.id} value={issue.id}>{issue.clause} — {issue.title} ({issue.status})</option>)}</select></div>
+      <div className="space-y-2"><Label>Tekshiruv subyekti rekviziti</Label><Input value={form.reviewSubjectReference} onChange={(event) => setForm({ ...form, reviewSubjectReference: event.target.value })} placeholder="Masalan: HR/SUBJECT-17" /></div>
+      <div className="space-y-2"><Label>Vakolatli organ</Label><Input value={form.competentAuthority} onChange={(event) => setForm({ ...form, competentAuthority: event.target.value })} /></div>
+      <div className="space-y-2 md:col-span-2"><Label>Huquqiy asos</Label><Textarea value={form.legalBasis} onChange={(event) => setForm({ ...form, legalBasis: event.target.value })} /></div>
+      <div className="space-y-2"><Label>Yo'llanma raqami</Label><Input value={form.referralNumber} onChange={(event) => setForm({ ...form, referralNumber: event.target.value })} /></div>
+      <div className="space-y-2"><Label>Yo'llanma sanasi</Label><Input type="date" max={localDate()} value={form.referralDate} onChange={(event) => setForm({ ...form, referralDate: event.target.value })} /></div>
+      <div className="space-y-2 md:col-span-2"><Label>Himoyalangan dalil paketi rekviziti</Label><Input value={form.evidencePackageReference} onChange={(event) => setForm({ ...form, evidencePackageReference: event.target.value })} placeholder="Yuridik arxiv identifikatori yoki rasmiy hujjat rekviziti" /></div>
+      {formError && <p className="text-sm text-amber-700 md:col-span-2">{formError}</p>}<div className="flex gap-2 md:col-span-2"><Button disabled={!!formError || save.isPending} onClick={() => save.mutate()}>{editingId ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}{editingId ? "Saqlash" : "Qoralama yaratish"}</Button>{editingId && <Button variant="outline" onClick={() => { setEditingId(null); setForm(emptyReferral()); }}>Bekor qilish</Button>}</div>
+    </CardContent></Card>}
+    <div className="grid gap-4 lg:grid-cols-2">{(records.data ?? []).map((item) => <Card key={item.id} className={item.status === "DECIDED" ? "border-emerald-400" : item.status === "REFERRED" ? "border-blue-300" : ""}><CardHeader><div className="flex justify-between gap-3"><div><CardTitle className="text-lg">{item.referralNumber} — {item.competentAuthority}</CardTitle><CardDescription>{item.issueClause} · {item.issueTitle}</CardDescription></div><Badge variant={item.responsibilityEstablished ? "destructive" : "secondary"}>{item.status}</Badge></div></CardHeader><CardContent className="space-y-3 text-sm">
+      <p><b>Tekshiruv rekviziti:</b> {item.reviewSubjectReference}<br/><b>Yo'llanma:</b> {item.referralDate}<br/><b>Huquqiy asos:</b> {item.legalBasis}</p><div className="rounded-md bg-muted p-3"><b>Dalil paketi:</b> {item.evidencePackageReference}<br/><b>Muallif:</b> {item.createdByName}</div>
+      {item.referralNote && <p><b>Yuborish qaydi:</b> {item.referralNote} — {item.referredByName}</p>}
+      {item.decisionOutcome && <div className="rounded-md border p-3"><b>Tashqi qaror:</b> {outcomeLabel[item.decisionOutcome]}<br/><b>Organ va hujjat:</b> {item.decisionAuthority}, {item.decisionNumber}, {item.decisionDate}<br/><b>Dalil:</b> {item.decisionEvidenceReference}<br/>{item.decisionSummary}</div>}
+      {canWrite && item.status === "DRAFT" && <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => edit(item)}><Pencil className="mr-1 h-3 w-3" />Tahrirlash</Button><Button size="sm" onClick={() => { setReferring(item); setReferralNote(""); }}><Send className="mr-1 h-3 w-3" />Yo'llash</Button></div>}
+      {canWrite && item.status === "REFERRED" && <Button size="sm" onClick={() => { setDeciding(item); setDecision({ ...emptyDecision(), decisionAuthority: item.competentAuthority, decisionDate: localDate() }); }}><FileCheck2 className="mr-1 h-3 w-3" />Tashqi qarorni qayd etish</Button>}
+    </CardContent></Card>)}{records.data?.length === 0 && <Card className="lg:col-span-2"><CardContent className="py-10 text-center text-muted-foreground">Yo'llanma hali mavjud emas. 33-band shartli norma bo'lgani uchun nol yozuv avtomatik nomuvofiqlik emas.</CardContent></Card>}</div>
+    <Dialog open={!!referring} onOpenChange={(open) => { if (!open) setReferring(null); }}><DialogContent><DialogHeader><DialogTitle>Dalil paketini yo'llash</DialogTitle><DialogDescription>Qoralama muallifidan boshqa vakolatli xodim rekvizitlarni tekshiradi va vakolatli organga yuborilganini qayd etadi.</DialogDescription></DialogHeader><div className="space-y-2"><Label>Tekshiruv va yuborish izohi</Label><Textarea value={referralNote} onChange={(event) => setReferralNote(event.target.value)} /></div><DialogFooter><Button variant="outline" onClick={() => setReferring(null)}>Bekor qilish</Button><Button disabled={referralNote.trim().length < 10 || refer.isPending} onClick={() => refer.mutate()}>Yo'llash</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={!!deciding} onOpenChange={(open) => { if (!open) setDeciding(null); }}><DialogContent><DialogHeader><DialogTitle>Tashqi rasmiy qarorni qayd etish</DialogTitle><DialogDescription>LMS mustaqil ravishda aybdorlik xulosasini chiqarmaydi. Quyidagi natija faqat vakolatli organ hujjatidan ko'chiriladi.</DialogDescription></DialogHeader><div className="grid gap-3 md:grid-cols-2">
+      <div className="space-y-2 md:col-span-2"><Label>Qaror natijasi</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={decision.outcome} onChange={(event) => setDecision({ ...decision, outcome: event.target.value as AccountabilityDecisionOutcome })}>{Object.entries(outcomeLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+      <div className="space-y-2"><Label>Qaror chiqargan organ</Label><Input value={decision.decisionAuthority} onChange={(event) => setDecision({ ...decision, decisionAuthority: event.target.value })} /></div><div className="space-y-2"><Label>Qaror raqami</Label><Input value={decision.decisionNumber} onChange={(event) => setDecision({ ...decision, decisionNumber: event.target.value })} /></div>
+      <div className="space-y-2"><Label>Qaror sanasi</Label><Input type="date" min={deciding?.referralDate} max={localDate()} value={decision.decisionDate} onChange={(event) => setDecision({ ...decision, decisionDate: event.target.value })} /></div><div className="space-y-2"><Label>Qaror dalili rekviziti</Label><Input value={decision.decisionEvidenceReference} onChange={(event) => setDecision({ ...decision, decisionEvidenceReference: event.target.value })} /></div>
+      <div className="space-y-2 md:col-span-2"><Label>Qaror mazmuni</Label><Textarea value={decision.decisionSummary} onChange={(event) => setDecision({ ...decision, decisionSummary: event.target.value })} /></div>{decisionError && <p className="text-sm text-amber-700 md:col-span-2">{decisionError}</p>}
+    </div><DialogFooter><Button variant="outline" onClick={() => setDeciding(null)}>Bekor qilish</Button><Button disabled={!!decisionError || recordDecision.isPending} onClick={() => recordDecision.mutate()}>Qarorni qayd etish</Button></DialogFooter></DialogContent></Dialog>
+  </div>;
+}

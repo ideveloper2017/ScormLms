@@ -22,11 +22,9 @@ class ComplianceIssueWorkflowIntegrationTest {
     @Autowired private lateinit var complianceService: Decision559ComplianceService
     @Autowired private lateinit var userRepository: UserRepository
     @Autowired private lateinit var programRepository: ProgramRepository
-    @Autowired private lateinit var issueRepository: ComplianceIssueRepository
 
     @Test
     fun `buzilish masul deadline yechim va real yopilish nazorati bilan kuzatiladi`() {
-        issueRepository.deleteAll()
         val actor = userRepository.save(User(username = "compliance-admin", password = "test", fullName = "Compliance Admin"))
         val owner = userRepository.save(User(username = "compliance-owner", password = "test", fullName = "Mas'ul Xodim"))
         val violation = complianceService.summary().violations.first { it.code == "NO_DISTANCE_PROGRAM" }
@@ -67,6 +65,8 @@ class ComplianceIssueWorkflowIntegrationTest {
             distanceEnabled = true,
             informationTechnologyProgram = true,
             licenseReference = "LICENSE-MON02",
+            fullTimeDurationMonths = 48,
+            distanceDurationMonths = 48,
         ))
         val closed = service.changeStatus(created.id, ChangeComplianceIssueStatusRequest(ComplianceIssueStatus.CLOSED), actor.id!!)
         assertEquals(ComplianceIssueStatus.CLOSED, closed.status)

@@ -6,9 +6,13 @@ import uz.scorm.lms.app.v1.courses.model.CourseContentRevision
 
 interface CourseContentRevisionRepository : JpaRepository<CourseContentRevision, Long> {
     @EntityGraph(attributePaths = ["content", "content.module", "content.module.course"])
+    fun findAllByDeletedFalseOrderByChangedAtDesc(): List<CourseContentRevision>
+    @EntityGraph(attributePaths = ["content", "content.module", "content.module.course"])
     fun findAllByContentIdAndDeletedFalseOrderByRevisionNumberDesc(contentId: Long): List<CourseContentRevision>
 
     fun findFirstByContentIdAndDeletedFalseOrderByRevisionNumberDesc(contentId: Long): CourseContentRevision?
     fun findByContentIdAndRevisionNumberAndDeletedFalse(contentId: Long, revisionNumber: Int): CourseContentRevision?
+    @EntityGraph(attributePaths = ["content", "content.module", "content.module.course"])
+    fun findByIdAndDeletedFalse(id: Long): CourseContentRevision?
     fun existsByContentIdAndContentVersionAndDeletedFalse(contentId: Long, contentVersion: String): Boolean
 }

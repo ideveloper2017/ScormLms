@@ -55,6 +55,8 @@ data class StudentDto(
     val paymentType: PaymentType?,
     val contractNumber: String?,
     val contractAmount: BigDecimal?,
+    val lmsOrientationRequired: Boolean,
+    val lmsOrientationCompletedAt: Instant?,
     // Tizim
     val username: String,
     val accountEnabled: Boolean,
@@ -76,6 +78,7 @@ data class StudentSummaryDto(
     val degreeLevel: DegreeLevel?,
     val studentStatus: StudentStatus?,
     val photoUrl: String?,
+    val lmsOrientationRequired: Boolean,
 )
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────

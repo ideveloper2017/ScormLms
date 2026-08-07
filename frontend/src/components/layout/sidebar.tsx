@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   BarChart3, Home, Users, Settings, BookOpen, GraduationCap,
   FileText, Library, Shield, X, Monitor, MessageCircle,
-  UserCheck, ClipboardList, Activity, Database, ChevronLeft,
+  UserCheck, ClipboardList, Activity, Database, ChevronLeft, LifeBuoy, Plug,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,23 +42,25 @@ function buildNav(role: string): NavItem[] {
   const teaching:   NavItem = { name: "O'qitishni boshqarish", href: '/teaching',            icon: Database      };
   const cabinet:    NavItem = { name: 'Shaxsiy kabinet',       href: '/cabinet',             icon: UserCheck     };
   const settings:   NavItem = { name: 'Sozlamalar',            href: '/settings',            icon: Settings      };
+  const support:    NavItem = { name: 'Texnik yordam',         href: '/support',             icon: LifeBuoy      };
+  const integrations: NavItem = { name: 'Integratsiyalar',     href: '/admin/integrations',  icon: Plug         };
 
   switch (r) {
     case 'SUPER_ADMIN':
     case 'ADMIN':
-      return [home, users, students, contingent, courses, resources, exams, attendance, teaching, comms, reports, stats, settings];
+      return [home, users, students, contingent, courses, resources, exams, attendance, teaching, comms, reports, stats, integrations, support, settings];
     case 'METODIST':
-      return [home, courses, resources, students, contingent, teaching, exams, comms, reports, stats];
+      return [home, courses, resources, students, contingent, teaching, exams, comms, reports, stats, integrations, support];
     case 'TEACHER':
-      return [home, courses, resources, exams, attendance, teaching, comms, reports];
+      return [home, courses, resources, exams, attendance, teaching, comms, reports, support];
     case 'STUDENT':
-      return [home, courses, resources, exams, cabinet, comms];
+      return [home, courses, resources, exams, cabinet, comms, support];
     case 'PROCTOR':
-      return [home, exams, comms];
+      return [home, exams, comms, support];
     case 'MONITORING':
-      return [home, stats, reports, comms];
+      return [home, stats, reports, integrations, comms, support];
     default:
-      return [home, courses, comms];
+      return [home, courses, comms, support];
   }
 }
 

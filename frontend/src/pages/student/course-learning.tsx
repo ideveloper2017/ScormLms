@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { scormApi } from '@/services/api/scorm-api';
 import { studyPlanApi } from '@/services/api/study-plan-api';
+import { CourseForum } from '@/components/course-forum';
 
 export function StudentCourseLearning() {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +50,7 @@ export function StudentCourseLearning() {
       <section className="space-y-3"><h2 className="text-lg font-semibold">O'quv kontenti</h2>{contents.length === 0 && <Card><CardContent className="py-8 text-center text-muted-foreground">Hozir amal qilayotgan va nashr qilingan oddiy kontent yo'q.</CardContent></Card>}{contents.map(content => <Card key={content.id}><CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />{content.title}<Badge variant="outline">v{content.contentVersion}</Badge></CardTitle><CardDescription>{content.moduleTitle}{content.durationMinutes ? ` · ${content.durationMinutes} daqiqa` : ''}</CardDescription></CardHeader><CardContent className="space-y-3"><div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1"><p><span className="font-medium text-foreground">Muallif:</span> {content.authorName} · <span className="font-medium text-foreground">Til:</span> {content.languageCode}</p><p><span className="font-medium text-foreground">Manba:</span> {content.sourceUrl ? <a className="underline hover:text-foreground" href={content.sourceUrl} target="_blank" rel="noreferrer">{content.sourceName}</a> : content.sourceName}</p><p><span className="font-medium text-foreground">Amal qilish davri:</span> {content.validFrom} — {content.validUntil || "cheklanmagan"}</p></div><div className="flex flex-col sm:flex-row gap-2 sm:justify-end">{content.contentUrl && <Button variant="outline" onClick={() => window.open(content.contentUrl!, '_blank', 'noopener,noreferrer')} className="gap-2"><ExternalLink className="h-4 w-4" />Ochish</Button>}<Button onClick={() => completeMutation.mutate(content.id)} disabled={completeMutation.isPending} className="gap-2"><CheckCircle2 className="h-4 w-4" />Bajarildi</Button></div></CardContent></Card>)}</section>
 
       <section className="space-y-3"><h2 className="text-lg font-semibold">SCORM paketlari</h2>{packages.length === 0 ? <Card><CardContent className="py-8 text-center text-muted-foreground">Ushbu kursga SCORM paket biriktirilmagan.</CardContent></Card> : <Card><CardHeader><CardTitle className="text-base">{packages[0].title}</CardTitle><CardDescription>{packages.length} ta SCORM paket · oxirgi tayyor paket ishga tushiriladi</CardDescription></CardHeader><CardContent><Button onClick={() => navigate(`/course/${courseId}`)} className="gap-2"><PlayCircle className="h-4 w-4" />SCORM kursni ochish</Button></CardContent></Card>}</section>
+      <section className="border-t pt-6"><CourseForum courseId={courseId} /></section>
     </div>
   );
 }

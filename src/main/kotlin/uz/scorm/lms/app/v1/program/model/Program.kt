@@ -41,6 +41,18 @@ class Program(
     @Column(name = "license_reference", length = 200)
     var licenseReference: String? = null,
 
+    @Column(name = "full_time_duration_months")
+    var fullTimeDurationMonths: Int? = null,
+
+    @Column(name = "distance_duration_months")
+    var distanceDurationMonths: Int? = null,
+
+    @Column(name = "full_time_available")
+    var fullTimeAvailable: Boolean? = null,
+
+    @Column(name = "full_time_basis_reference", length = 500)
+    var fullTimeBasisReference: String? = null,
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "department_id")
     var department: Department? = null,

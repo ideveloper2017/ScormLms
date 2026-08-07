@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.courses.dto.CourseContentDto
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRevisionDto
+import uz.scorm.lms.app.v1.courses.dto.ContentCompatibilityDto
 import uz.scorm.lms.app.v1.courses.model.CourseContent
 import uz.scorm.lms.app.v1.courses.model.CourseContentRevision
 import uz.scorm.lms.app.v1.courses.model.ContentReviewStatus
@@ -12,6 +13,7 @@ import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
 import uz.scorm.lms.app.v1.courses.model.isEffective
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRevisionRepository
+import uz.scorm.lms.app.v1.contentstandard.service.ContentStandardService
 import java.net.URI
 import java.time.Instant
 import java.time.LocalDate
@@ -23,19 +25,24 @@ class CourseContentService(
     private val revisionRepository: CourseContentRevisionRepository,
     private val moduleService: CourseModuleService,
     private val accessService: CourseAccessService,
+    private val compatibilityService: ContentCompatibilityService,
+    private val contentStandardService: ContentStandardService,
 ) {
     @Transactional(readOnly = true)
     fun list(courseId: Long, userId: Long, mayManageAll: Boolean): List<CourseContentDto> {
         val course = accessService.requireRead(courseId, userId, mayManageAll)
         val mayEdit = mayManageAll || course.userId == userId
-        return contentRepository.findAllByModuleCourseIdAndDeletedFalseOrderByModulePositionAscPositionAsc(courseId)
+        val contents = contentRepository.findAllByModuleCourseIdAndDeletedFalseOrderByModulePositionAscPositionAsc(courseId)
+        val compatibility = compatibilityService.evaluateAll(course, contents.map { it.languageCode })
+        return contents
             .filter { mayEdit || (
                 it.status == LearningItemStatus.PUBLISHED.name &&
                     it.reviewStatus == ContentReviewStatus.APPROVED.name &&
                     it.module.status == LearningItemStatus.PUBLISHED.name &&
-                    it.isEffective()
+                    it.isEffective() &&
+                    compatibility.getValue(it.languageCode).compatible
                 ) }
-            .map(::toDto)
+            .map { toDto(it, compatibility.getValue(it.languageCode)) }
     }
 
     @Transactional
@@ -119,9 +126,13 @@ class CourseContentService(
         require(status != LearningItemStatus.PUBLISHED || content.approvedRevisionNumber == latestRevision?.revisionNumber) {
             "Faqat ekspert tasdiqlagan joriy kontent versiyasi nashr qilinadi"
         }
+        if (status == LearningItemStatus.PUBLISHED) {
+            contentStandardService.requirePassingAssessmentIfConfigured(requireNotNull(latestRevision?.id))
+        }
         require(status != LearningItemStatus.PUBLISHED || content.validUntil == null || !content.validUntil!!.isBefore(LocalDate.now())) {
             "Amal qilish muddati tugagan kontent nashr qilinmaydi"
         }
+        if (status == LearningItemStatus.PUBLISHED) compatibilityService.requireContentCompatible(content)
         content.status = status.name
         content.publishedAt = if (status == LearningItemStatus.PUBLISHED) content.publishedAt ?: Instant.now() else null
         return toDto(contentRepository.save(content))
@@ -152,7 +163,8 @@ class CourseContentService(
             content.status == LearningItemStatus.PUBLISHED.name &&
                 content.reviewStatus == ContentReviewStatus.APPROVED.name &&
                 content.module.status == LearningItemStatus.PUBLISHED.name &&
-                content.isEffective()
+                content.isEffective() &&
+                compatibilityService.evaluate(content).compatible
             )) { "Kontent versiyalari ko'rish uchun ochiq emas" }
         return revisionRepository.findAllByContentIdAndDeletedFalseOrderByRevisionNumberDesc(contentId).map(::revisionDto)
     }
@@ -174,7 +186,10 @@ class CourseContentService(
         validateUrl(request.sourceUrl, "Manba URL")
     }
 
-    private fun toDto(content: CourseContent) = CourseContentDto(
+    private fun toDto(
+        content: CourseContent,
+        compatibility: ContentCompatibilityDto = compatibilityService.evaluate(content),
+    ) = CourseContentDto(
         id = requireNotNull(content.id),
         courseId = requireNotNull(content.module.course.id),
         moduleId = requireNotNull(content.module.id),
@@ -198,6 +213,7 @@ class CourseContentService(
         metadataUpdatedAt = content.metadataUpdatedAt,
         reviewStatus = content.reviewStatus.lowercase(),
         approvedRevisionNumber = content.approvedRevisionNumber,
+        compatibility = compatibility,
     )
 
     private fun saveRevision(content: CourseContent, number: Int, userId: Long, changedAt: Instant) {

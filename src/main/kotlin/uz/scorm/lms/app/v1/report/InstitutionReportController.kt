@@ -17,7 +17,10 @@ import java.time.LocalDate
 @RestController
 @RequestMapping("/api/v1/reports/institution")
 @PreAuthorize("hasAnyAuthority('REPORT_READ', 'STAT_READ')")
-class InstitutionReportController(private val service: InstitutionReportService) {
+class InstitutionReportController(
+    private val service: InstitutionReportService,
+    private val completenessService: ContentCompletenessService,
+) {
     @GetMapping
     fun report(@CurrentUser user: User, authentication: Authentication, @RequestParam from: LocalDate?, @RequestParam to: LocalDate?) =
         ResponseEntity.ok(ApiResponse.success(service.report(requireNotNull(user.id), institutionScope(authentication), from, to)))
@@ -30,6 +33,15 @@ class InstitutionReportController(private val service: InstitutionReportService)
             .contentType(MediaType.parseMediaType(export.contentType))
             .body(export.bytes)
     }
+
+    @GetMapping("/content-completeness")
+    fun contentCompleteness(
+        @CurrentUser user: User,
+        authentication: Authentication,
+        @RequestParam academicYear: String?,
+    ) = ResponseEntity.ok(ApiResponse.success(
+        completenessService.report(requireNotNull(user.id), institutionScope(authentication), academicYear),
+    ))
 
     private fun institutionScope(authentication: Authentication) = authentication.authorities.any {
         it.authority in setOf("ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_METODIST", "ROLE_MONITORING")

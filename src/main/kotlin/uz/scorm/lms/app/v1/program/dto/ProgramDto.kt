@@ -13,6 +13,10 @@ data class ProgramDto(
     val educationLanguage: String = "uz",
     val distanceAdmissionLimit: Int? = null,
     val licenseReference: String? = null,
+    val fullTimeDurationMonths: Int? = null,
+    val distanceDurationMonths: Int? = null,
+    val fullTimeAvailable: Boolean? = null,
+    val fullTimeBasisReference: String? = null,
     val departmentId: Long? = null,
     val departmentName: String? = null,
     val createdAt: Instant? = null,
@@ -29,6 +33,10 @@ data class ProgramCreateRequest(
     val educationLanguage: String = "uz",
     val distanceAdmissionLimit: Int? = null,
     val licenseReference: String? = null,
+    val fullTimeDurationMonths: Int? = null,
+    val distanceDurationMonths: Int? = null,
+    val fullTimeAvailable: Boolean = false,
+    val fullTimeBasisReference: String? = null,
     val departmentId: Long? = null
 )
 
@@ -42,5 +50,9 @@ data class ProgramUpdateRequest(
     val educationLanguage: String? = null,
     val distanceAdmissionLimit: Int? = null,
     val licenseReference: String? = null,
+    val fullTimeDurationMonths: Int? = null,
+    val distanceDurationMonths: Int? = null,
+    val fullTimeAvailable: Boolean? = null,
+    val fullTimeBasisReference: String? = null,
     val departmentId: Long? = null
 )

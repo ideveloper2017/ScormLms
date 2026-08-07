@@ -7,6 +7,7 @@ export type DegreeLevel    = 'BACHELOR' | 'MASTER' | 'PHD' | 'ASSOCIATE';
 export type EducationForm  = 'FULL_TIME' | 'PART_TIME' | 'DISTANCE' | 'EVENING';
 export type PaymentType    = 'CONTRACT' | 'GRANT';
 export type StudentStatus  = 'ACTIVE' | 'SUSPENDED' | 'EXPELLED' | 'GRADUATED';
+export type StudentLifecycleEventType = 'ADMISSION' | 'SUSPENSION' | 'REINSTATEMENT' | 'TRANSFER' | 'EXPULSION' | 'GRADUATION';
 
 // ── Admin response (to'liq) ───────────────────────────────────────────────────
 
@@ -126,6 +127,56 @@ export interface StudentCreateRequest {
     contractNumber?: string | null;
     contractAmount?: number | null;
     password?: string;
+}
+
+export interface StudentAdmissionRequest {
+    student: StudentCreateRequest;
+    orderNumber: string;
+    orderDate: string;
+    effectiveDate: string;
+    legalBasis: string;
+    reason: string;
+}
+
+export interface StudentLifecycleRequest {
+    eventType: Exclude<StudentLifecycleEventType, 'ADMISSION'>;
+    orderNumber: string;
+    orderDate: string;
+    effectiveDate: string;
+    legalBasis: string;
+    reason: string;
+    targetProgramId?: number | null;
+    targetGroupId?: number | null;
+    academicYear?: string | null;
+}
+
+export interface StudentLifecycleEventDto {
+    id: number;
+    studentId: number;
+    studentNumber: string;
+    studentName: string;
+    eventType: StudentLifecycleEventType;
+    fromStatus: StudentStatus | null;
+    toStatus: StudentStatus;
+    fromProgramId: number | null;
+    fromProgramName: string | null;
+    toProgramId: number | null;
+    toProgramName: string | null;
+    fromGroupId: number | null;
+    toGroupId: number | null;
+    orderNumber: string;
+    orderDate: string;
+    effectiveDate: string;
+    legalBasis: string;
+    reason: string;
+    recordedByUserId: number;
+    recordedByName: string;
+    recordedAt: string;
+}
+
+export interface StudentLifecycleResultDto {
+    student: StudentDto;
+    event: StudentLifecycleEventDto;
 }
 
 export interface StudentUpdateRequest {

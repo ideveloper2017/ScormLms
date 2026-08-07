@@ -16,6 +16,12 @@ import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
 import uz.scorm.lms.app.v1.courses.service.CourseService
+import uz.scorm.lms.app.v1.biometric.dto.AcceptBiometricConsentRequest
+import uz.scorm.lms.app.v1.biometric.dto.PublishBiometricPolicyRequest
+import uz.scorm.lms.app.v1.biometric.dto.SaveBiometricPolicyRequest
+import uz.scorm.lms.app.v1.biometric.model.BiometricPolicyStatus
+import uz.scorm.lms.app.v1.biometric.service.BiometricConsentBinding
+import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import uz.scorm.lms.app.v1.quiz.dto.QuizAnswerItemRequest
 import uz.scorm.lms.app.v1.quiz.dto.QuizQuestionRequest
 import uz.scorm.lms.app.v1.quiz.dto.QuizRequest
@@ -58,6 +64,7 @@ class QuizWorkflowIntegrationTest {
     @Autowired private lateinit var proctoringSessionRepository: ProctoringSessionRepository
     @Autowired private lateinit var proctoringEventRepository: ProctoringEventRepository
     @Autowired private lateinit var proctoringEventService: ProctoringEventService
+    @Autowired private lateinit var biometricGovernanceService: BiometricGovernanceService
 
     @Test
     fun `savol bankidan test tuziladi server baholaydi va audit natija saqlanadi`() {
@@ -218,9 +225,10 @@ class QuizWorkflowIntegrationTest {
     @Test
     fun `proktorli test faqat bir martalik server tasdigidan keyin boshlanadi`() {
         val teacher = user("proctor-teacher")
+        val policyApprover = user("proctor-policy-approver")
         val student = student("30000000000004", "ST-QZ-004", "proctor-student")
         student.user.faceDescriptor = "server-template"
-        userRepository.save(student.user)
+        val biometricBinding = bindBiometrics(student.user, teacher, policyApprover)
         val course = publishedCourse(teacher, "Proktorli kurs")
         enrollmentService.enroll(
             course.id,
@@ -261,6 +269,9 @@ class QuizWorkflowIntegrationTest {
                 nonceHash = "0".repeat(64),
                 expiresAt = Instant.now().plusSeconds(120),
                 verifiedAt = Instant.now(),
+                biometricPolicy = biometricBinding.policy,
+                biometricConsentEvent = biometricBinding.consent,
+                biometricRetentionUntil = Instant.now().plusSeconds(3600),
             )
         )
 
@@ -309,6 +320,38 @@ class QuizWorkflowIntegrationTest {
             proctoringEventService.recordClientEvents(quizId, started.id.toLong(), userId, clientEvents)
         }
     }
+
+    private fun bindBiometrics(studentUser: User, author: User, approver: User): BiometricConsentBinding {
+        biometricGovernanceService.listPolicies().filter { it.status == BiometricPolicyStatus.PUBLISHED }
+            .forEach { biometricGovernanceService.archive(it.id, requireNotNull(approver.id)) }
+        val draft = biometricGovernanceService.create(testPolicy(), requireNotNull(author.id))
+        val policy = biometricGovernanceService.publish(
+            draft.id,
+            PublishBiometricPolicyRequest("Integratsion test uchun mustaqil biometrik siyosat tasdig'i"),
+            requireNotNull(approver.id),
+        )
+        biometricGovernanceService.accept(
+            AcceptBiometricConsentRequest(policy.id, policy.statementHash),
+            requireNotNull(studentUser.id),
+        )
+        val binding = biometricGovernanceService.requireActiveConsent(requireNotNull(studentUser.id))
+        studentUser.facePhotoUrl = "/uploads/faces/quiz-test.jpg"
+        studentUser.facePolicy = binding.policy
+        studentUser.faceConsentEvent = binding.consent
+        studentUser.faceExpiresAt = Instant.now().plusSeconds(3600)
+        userRepository.save(studentUser)
+        return binding
+    }
+
+    private fun testPolicy() = SaveBiometricPolicyRequest(
+        versionCode = "QUIZ-${System.nanoTime()}", title = "Proktoring integratsion test siyosati",
+        purposeText = "Proktorli testda talaba shaxsini tekshirish uchun biometrik ma'lumotdan foydalanish",
+        legalBasis = "Integratsion test uchun tasdiqlangan yuridik asos hujjati",
+        consentText = "Men yuz shablonim proktorli testda shaxsni tekshirish uchun qayta ishlanishiga aniq rozilik beraman.",
+        privacyNotice = "Yuz shabloni va proktoring dalili belgilangan retention muddati tugagach auditli o'chiriladi.",
+        documentNumber = "TEST-BIO", documentDate = LocalDate.now(), documentReference = "test://biometric-policy",
+        faceTemplateRetentionDays = 30, proctoringEvidenceRetentionDays = 90,
+    )
 
     @Test
     fun `proktorli test tasdiqsiz yangi urinish yaratmaydi`() {

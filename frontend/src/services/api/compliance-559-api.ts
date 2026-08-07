@@ -19,6 +19,12 @@ export interface ProgramCompliance {
   informationTechnologyProgram: boolean;
   localDistanceStudents: number;
   admissionLimit?: number | null;
+  fullTimeDurationMonths?: number | null;
+  distanceDurationMonths?: number | null;
+  durationStatus: ComplianceStatus;
+  fullTimeAvailable?: boolean | null;
+  fullTimeBasisReference?: string | null;
+  fullTimeCounterpartStatus: ComplianceStatus;
   status: ComplianceStatus;
 }
 

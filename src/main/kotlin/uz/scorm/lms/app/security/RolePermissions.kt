@@ -26,6 +26,13 @@ object RolePermissions {
     const val TEACHER_WRITE  = "TEACHER_WRITE"
     const val STUDENT_READ   = "STUDENT_READ"
     const val STUDENT_WRITE  = "STUDENT_WRITE"
+    const val SUPPORT_READ    = "SUPPORT_READ"
+    const val SUPPORT_WRITE   = "SUPPORT_WRITE"
+    const val INTEGRATION_READ  = "INTEGRATION_READ"
+    const val INTEGRATION_WRITE = "INTEGRATION_WRITE"
+    const val UAT_READ         = "UAT_READ"
+    const val UAT_WRITE        = "UAT_WRITE"
+    const val UAT_APPROVE      = "UAT_APPROVE"
 
     private val MATRIX: Map<String, List<String>> = mapOf(
         "super_admin" to listOf(
@@ -34,33 +41,40 @@ object RolePermissions {
             ROLE_MANAGE, AUDIT_READ, REPORT_READ,
             EXAM_MANAGE, EXAM_PROCTOR, EXAM_TAKE,
             USER_MONITOR, STAT_READ,
-            ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE
+            ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE,
+            SUPPORT_READ, SUPPORT_WRITE, INTEGRATION_READ, INTEGRATION_WRITE,
+            UAT_READ, UAT_WRITE, UAT_APPROVE
         ),
         "admin" to listOf(
             USER_READ, USER_WRITE, USER_MANAGE,
             COURSE_READ, COURSE_WRITE,
             AUDIT_READ, REPORT_READ, STAT_READ, EXAM_MANAGE,
-            ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE
+            ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE,
+            SUPPORT_READ, SUPPORT_WRITE, INTEGRATION_READ, INTEGRATION_WRITE,
+            UAT_READ, UAT_WRITE, UAT_APPROVE
         ),
         "metodist" to listOf(
             USER_READ,
             COURSE_READ, COURSE_WRITE,
             REPORT_READ, STAT_READ,
-            ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE
+            ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE,
+            SUPPORT_READ, SUPPORT_WRITE, INTEGRATION_READ,
+            UAT_READ, UAT_WRITE
         ),
         "teacher" to listOf(
             COURSE_READ, COURSE_WRITE,
             EXAM_MANAGE, REPORT_READ,
-            ACADEMIC_READ, TEACHER_READ
+            ACADEMIC_READ, TEACHER_READ, SUPPORT_READ
         ),
         "student" to listOf(
-            COURSE_READ, EXAM_TAKE, STUDENT_READ, STUDENT_WRITE
+            COURSE_READ, EXAM_TAKE, STUDENT_READ, STUDENT_WRITE, SUPPORT_READ
         ),
         "proctor" to listOf(
-            EXAM_PROCTOR, USER_MONITOR
+            EXAM_PROCTOR, USER_MONITOR, SUPPORT_READ
         ),
         "monitoring" to listOf(
-            USER_READ, AUDIT_READ, REPORT_READ, STAT_READ
+            USER_READ, AUDIT_READ, REPORT_READ, STAT_READ, SUPPORT_READ, INTEGRATION_READ,
+            UAT_READ
         )
     )
 
@@ -75,7 +89,10 @@ object RolePermissions {
         ROLE_MANAGE, AUDIT_READ, REPORT_READ, STAT_READ,
         EXAM_MANAGE, EXAM_PROCTOR, EXAM_TAKE,
         ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE,
-        STUDENT_READ, STUDENT_WRITE
+        STUDENT_READ, STUDENT_WRITE,
+        SUPPORT_READ, SUPPORT_WRITE,
+        INTEGRATION_READ, INTEGRATION_WRITE,
+        UAT_READ, UAT_WRITE, UAT_APPROVE
     )
 
     val allRoles: List<String> = MATRIX.keys.toList()

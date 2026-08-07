@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
-import { downloadInstitutionReport, getInstitutionReport } from "../reports-api";
+import { downloadInstitutionReport, getContentCompletenessReport, getInstitutionReport } from "../reports-api";
 
 vi.mock("@/lib/api");
 
@@ -15,6 +15,16 @@ describe("reports api", () => {
     await expect(getInstitutionReport("2026-01-01", "2026-08-06")).resolves.toEqual(report);
     expect(api.get).toHaveBeenCalledWith("/reports/institution", {
       params: { from: "2026-01-01", to: "2026-08-06" },
+    });
+  });
+
+  it("o'quv yili bo'yicha kontent to'liqligi hisobotini oladi", async () => {
+    const report = { scope: "TEACHER", academicYear: "2026-2027", courses: [], totalCourses: 0 };
+    vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: report } });
+
+    await expect(getContentCompletenessReport("2026-2027")).resolves.toEqual(report);
+    expect(api.get).toHaveBeenCalledWith("/reports/institution/content-completeness", {
+      params: { academicYear: "2026-2027" },
     });
   });
 

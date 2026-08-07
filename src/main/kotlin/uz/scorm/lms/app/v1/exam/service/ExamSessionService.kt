@@ -3,6 +3,7 @@ package uz.scorm.lms.app.v1.exam.service
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.audit.service.AuditService
+import uz.scorm.lms.app.v1.compliance.Decision559Rules
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
@@ -23,6 +24,7 @@ import uz.scorm.lms.app.v1.exam.model.ExamResult
 import uz.scorm.lms.app.v1.exam.repository.ExamAttendanceRepository
 import uz.scorm.lms.app.v1.exam.repository.ExamResultRepository
 import uz.scorm.lms.app.v1.exam.repository.ExamSessionRepository
+import uz.scorm.lms.app.v1.student.model.Citizenship
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.Instant
@@ -142,7 +144,13 @@ class ExamSessionService(
         examSessionRepository.save(session)
         enrollments.forEach { enrollment ->
             if (examAttendanceRepository.findByExamSessionIdAndEnrollmentIdAndDeletedFalse(sessionId, requireNotNull(enrollment.id)) == null) {
-                examAttendanceRepository.save(ExamAttendance(session, enrollment))
+                examAttendanceRepository.save(ExamAttendance(
+                    session,
+                    enrollment,
+                    onsiteAttendanceRequired = Decision559Rules.requiresOnsiteParticipation(
+                        enrollment.student.citizenship != Citizenship.UZBEKISTAN,
+                    ),
+                ))
             }
         }
 
@@ -177,10 +185,13 @@ class ExamSessionService(
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
         require(session.status == ExamSessionStatus.ONGOING) { "Faqat davom etayotgan sessiya tugatiladi" }
         val attendance = examAttendanceRepository.findAllByExamSessionIdAndDeletedFalseOrderByArrivalTimeAsc(sessionId)
-        require(attendance.none { it.attendanceStatus == AttendanceStatus.EXPECTED || it.attendanceStatus == AttendanceStatus.EXCUSE }) {
+        require(attendance.filter { it.onsiteAttendanceRequired }
+            .none { it.attendanceStatus == AttendanceStatus.EXPECTED || it.attendanceStatus == AttendanceStatus.EXCUSE }) {
             "Barcha talabalar davomati tasdiqlanishi kerak"
         }
-        val attendeeIds = attendance.filter { it.attendanceStatus in setOf(AttendanceStatus.PRESENT, AttendanceStatus.LATE) }
+        val attendeeIds = attendance.filter {
+            !it.onsiteAttendanceRequired || it.attendanceStatus in setOf(AttendanceStatus.PRESENT, AttendanceStatus.LATE)
+        }
             .map { requireNotNull(it.enrollment.id) }.toSet()
         val resultIds = examResultRepository.findAllByExamSessionIdAndDeletedFalseOrderByScoreDesc(sessionId)
             .map { requireNotNull(it.enrollment.id) }.toSet()

@@ -23,6 +23,7 @@ import uz.scorm.lms.app.v1.exam.service.ExamAttendanceService
 import uz.scorm.lms.app.v1.exam.service.ExamResultService
 import uz.scorm.lms.app.v1.exam.service.ExamSessionService
 import uz.scorm.lms.app.v1.student.model.Gender
+import uz.scorm.lms.app.v1.student.model.Citizenship
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.user.model.User
@@ -61,6 +62,7 @@ class ExamWorkflowIntegrationTest {
         val sheet = attendance.sheet(session.id.toLong(), teacher.id!!, false)
         assertEquals(1, sheet.totalEnrolled)
         assertEquals("EXPECTED", sheet.attendanceRecords.single().status)
+        assertTrue(sheet.attendanceRecords.single().onsiteAttendanceRequired)
 
         sessions.startExamSession(session.id.toLong(), teacher.id!!, false)
         val verified = attendance.record(session.id.toLong(), enrollment.id!!,
@@ -84,6 +86,26 @@ class ExamWorkflowIntegrationTest {
         assertEquals("APPROVED", reviewed.status)
         assertEquals(85.0, reviewed.newScore)
         assertEquals("B", results.teacherResults(session.id.toLong(), teacher.id!!, false).single().grade)
+    }
+
+    @Test
+    fun `xorijiy talaba yakuniy nazoratda shaxsan davomat tasdigisiz baholanadi`() {
+        val teacher = user("exam-foreign-teacher")
+        val student = student("50000000000003", "ST-EX-003", "exam-foreign-student", Citizenship.OTHER)
+        val course = publishedCourse(teacher, "Xorijiy talaba nazorati")
+        enrollmentService.enroll(course.id, CourseEnrollmentRequest(setOf(student.id!!)), teacher.id!!, false)
+        val enrollment = enrollmentRepository.findByCourseIdAndStudentId(course.id, student.id!!)!!
+        val session = sessions.createExamSession(CreateExamSessionRequest(
+            course.id, title = "Xorijiy talaba yakuniy nazorati", examDate = LocalDate.now(),
+            examTime = LocalTime.NOON, location = "Masofaviy komissiya",
+        ), teacher.id!!, false)
+
+        sessions.publishExamSession(session.id.toLong(), null, teacher.id!!, false)
+        assertTrue(!attendance.sheet(session.id.toLong(), teacher.id!!, false).attendanceRecords.single().onsiteAttendanceRequired)
+        sessions.startExamSession(session.id.toLong(), teacher.id!!, false)
+        results.record(session.id.toLong(), enrollment.id!!,
+            RecordExamResultRequest(enrollment.id!!, BigDecimal("82")), teacher.id!!, false)
+        sessions.completeExamSession(session.id.toLong(), null, teacher.id!!, false)
     }
 
     @Test
@@ -115,8 +137,8 @@ class ExamWorkflowIntegrationTest {
         courseService.changeStatus(it.id, CourseStatus.PUBLISHED, teacher.id!!, false)
     }
     private fun user(username: String) = userRepository.save(User(username = username, password = "test-password", fullName = username))
-    private fun student(pinfl: String, number: String, username: String) = studentRepository.save(StudentProfile(
+    private fun student(pinfl: String, number: String, username: String, citizenship: Citizenship = Citizenship.UZBEKISTAN) = studentRepository.save(StudentProfile(
         user = user(username), pinfl = pinfl, lastName = "Testov", firstName = "Talaba", birthDate = LocalDate.of(2002, 1, 1),
-        gender = Gender.MALE, studentNumber = number,
+        gender = Gender.MALE, citizenship = citizenship, studentNumber = number,
     ))
 }

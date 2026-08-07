@@ -23,11 +23,13 @@ import uz.scorm.lms.app.v1.attestation.repository.CommissionMemberRepository
 import uz.scorm.lms.app.v1.attestation.repository.GraduationCertificateRepository
 import uz.scorm.lms.app.v1.attestation.repository.StudentDefenseRepository
 import uz.scorm.lms.app.v1.audit.service.AuditService
+import uz.scorm.lms.app.v1.compliance.Decision559Rules
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
+import uz.scorm.lms.app.v1.student.model.Citizenship
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.Instant
 import java.time.LocalDate
@@ -150,7 +152,15 @@ class AttestationSessionService(
         sessionRepository.save(session)
         enrollments.forEach { enrollment ->
             if (defenseRepository.findByAttestationSessionIdAndEnrollmentIdAndDeletedFalse(sessionId, enrollment.id!!) == null) {
-                defenseRepository.save(StudentDefense(session, enrollment, defenseDate = session.examDate, defenseTime = session.examTime))
+                defenseRepository.save(StudentDefense(
+                    session,
+                    enrollment,
+                    defenseDate = session.examDate,
+                    defenseTime = session.examTime,
+                    onsiteAttendanceRequired = Decision559Rules.requiresOnsiteParticipation(
+                        enrollment.student.citizenship != Citizenship.UZBEKISTAN,
+                    ),
+                ))
             }
         }
 
@@ -311,6 +321,8 @@ class AttestationSessionService(
                     studentId = it.enrollment.student.id.toString(),
                     studentName = it.enrollment.student.fullName ?: it.enrollment.student.username,
                     studentEmail = it.enrollment.student.email.orEmpty(),
+                    onsiteAttendanceRequired = it.onsiteAttendanceRequired,
+                    onsiteAttendanceConfirmedAt = it.onsiteAttendanceConfirmedAt,
                     defenseStatus = it.defenseStatus.name,
                     defenseDate = it.defenseDate,
                     defenseTime = it.defenseTime,

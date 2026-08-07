@@ -12,6 +12,10 @@ data class CourseDto(
     val title: String,
     val description: String,
     val subjectName: String?,
+    val subjectId: Long?,
+    val programId: Long?,
+    val programName: String?,
+    val programLanguage: String?,
     val groupName: String?,
     val status: String,
     val startDate: LocalDate?,
@@ -32,6 +36,7 @@ data class CourseCreateRequest(
     val title: String,
     val description: String? = null,
     val subjectName: String? = null,
+    val subjectId: Long? = null,
     val groupName: String? = null,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
@@ -43,6 +48,7 @@ data class CourseUpdateRequest(
     val title: String? = null,
     val description: String? = null,
     val subjectName: String? = null,
+    val subjectId: Long? = null,
     val groupName: String? = null,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
@@ -119,6 +125,25 @@ data class CourseContentDto(
     val metadataUpdatedAt: Instant,
     val reviewStatus: String,
     val approvedRevisionNumber: Int?,
+    val compatibility: ContentCompatibilityDto,
+)
+
+data class ContentCompatibilityIssueDto(
+    val code: String,
+    val message: String,
+    val details: List<String> = emptyList(),
+)
+
+data class ContentCompatibilityDto(
+    val compatible: Boolean,
+    val courseLanguage: String?,
+    val contentLanguage: String,
+    val subjectId: Long?,
+    val subjectName: String?,
+    val programId: Long?,
+    val programName: String?,
+    val programLanguage: String?,
+    val issues: List<ContentCompatibilityIssueDto>,
 )
 
 data class CourseContentRequest(
@@ -182,6 +207,7 @@ data class CourseContentReviewDto(
     val reviewedAt: Instant?,
     val reviewedBy: Long?,
     val decisionComment: String?,
+    val compatibility: ContentCompatibilityDto,
 )
 
 data class ContentReviewDecisionRequest(

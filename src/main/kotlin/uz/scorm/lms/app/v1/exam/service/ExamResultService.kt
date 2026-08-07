@@ -34,7 +34,8 @@ class ExamResultService(
         require(enrollment.course.id == session.course.id && !enrollment.deleted) { "Talaba ushbu kursga biriktirilmagan" }
         val attendance = attendanceRepository.findByExamSessionIdAndEnrollmentIdAndDeletedFalse(sessionId, enrollmentId)
             ?: throw IllegalArgumentException("Davomat yozuvi topilmadi")
-        require(attendance.attendanceStatus in setOf(AttendanceStatus.PRESENT, AttendanceStatus.LATE) && attendance.verificationTime != null) {
+        require(!attendance.onsiteAttendanceRequired ||
+            (attendance.attendanceStatus in setOf(AttendanceStatus.PRESENT, AttendanceStatus.LATE) && attendance.verificationTime != null)) {
             "Faqat tasdiqlangan qatnashuvchiga baho qo'yiladi"
         }
         val calculated = calculate(request.score, request.totalScore)

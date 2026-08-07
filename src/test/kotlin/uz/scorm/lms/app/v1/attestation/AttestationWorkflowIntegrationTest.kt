@@ -20,6 +20,7 @@ import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
 import uz.scorm.lms.app.v1.courses.service.CourseService
 import uz.scorm.lms.app.v1.student.model.Gender
+import uz.scorm.lms.app.v1.student.model.Citizenship
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.user.model.User
@@ -67,7 +68,13 @@ class AttestationWorkflowIntegrationTest {
         sessions.startSession(session.id.toLong(), chair.id!!, false)
 
         val defense = defenseRepository.findByAttestationSessionIdAndEnrollmentIdAndDeletedFalse(session.id.toLong(), enrollment.id!!)!!
-        defenses.recordDefense(defense.id!!, RecordDefenseRequest(defenseStatus = "DEFENDED"), chair.id!!, false)
+        assertThrows(IllegalArgumentException::class.java) {
+            defenses.recordDefense(defense.id!!, RecordDefenseRequest(defenseStatus = "DEFENDED"), chair.id!!, false)
+        }
+        defenses.recordDefense(defense.id!!, RecordDefenseRequest(
+            defenseStatus = "DEFENDED", onsiteAttendanceConfirmed = true,
+        ), chair.id!!, false)
+        assertNotNull(defenseRepository.findByIdAndDeletedFalse(defense.id!!)!!.onsiteAttendanceConfirmedAt)
         assertThrows(IllegalArgumentException::class.java) {
             defenses.submitGrade(defense.id!!, outsider.id!!, SubmitGradeRequest(BigDecimal("100")), false)
         }
@@ -91,9 +98,37 @@ class AttestationWorkflowIntegrationTest {
         assertThrows(IllegalArgumentException::class.java) { defenses.getStudentDefenseHistory(enrollment.id!!, stranger.user.id!!) }
     }
 
+    @Test
+    fun `xorijiy talaba attestatsiya himoyasida shaxsan qatnashishdan ozod`() {
+        val chair = user("att-foreign-chair")
+        val member1 = user("att-foreign-member-1")
+        val member2 = user("att-foreign-member-2")
+        val student = student("60000000000003", "ST-AT-003", "att-foreign-student", Citizenship.OTHER)
+        val course = courseService.create(CourseCreateRequest(title = "Xorijiy talaba himoyasi"), chair.id!!).also {
+            courseService.changeStatus(it.id, CourseStatus.PUBLISHED, chair.id!!, false)
+        }
+        enrollmentService.enroll(course.id, CourseEnrollmentRequest(setOf(student.id!!)), chair.id!!, false)
+        val enrollment = enrollmentRepository.findByCourseIdAndStudentId(course.id, student.id!!)!!
+        val session = sessions.createSession(CreateAttestationSessionRequest(
+            courseId = course.id, title = "Magistrlik himoyasi", examDate = LocalDate.now(),
+            examTime = LocalTime.of(11, 0), location = "Komissiya", commissionChairId = chair.id!!,
+        ), chair.id!!, false)
+        sessions.addCommissionMember(session.id.toLong(), AddCommissionMemberRequest(member1.id!!, "MEMBER"), chair.id!!, false)
+        sessions.addCommissionMember(session.id.toLong(), AddCommissionMemberRequest(member2.id!!, "SECRETARY"), chair.id!!, false)
+        sessions.publishSession(session.id.toLong(), null, chair.id!!, false)
+        val defense = defenseRepository.findByAttestationSessionIdAndEnrollmentIdAndDeletedFalse(session.id.toLong(), enrollment.id!!)!!
+        assertFalse(defense.onsiteAttendanceRequired)
+        sessions.startSession(session.id.toLong(), chair.id!!, false)
+
+        defenses.recordDefense(defense.id!!, RecordDefenseRequest(defenseStatus = "DEFENDED"), chair.id!!, false)
+
+        assertEquals("DEFENDED", defenseRepository.findByIdAndDeletedFalse(defense.id!!)!!.defenseStatus.name)
+        assertNull(defenseRepository.findByIdAndDeletedFalse(defense.id!!)!!.onsiteAttendanceConfirmedAt)
+    }
+
     private fun user(username: String) = userRepository.save(User(username = username, password = "test-password", fullName = username))
-    private fun student(pinfl: String, number: String, username: String) = studentRepository.save(StudentProfile(
+    private fun student(pinfl: String, number: String, username: String, citizenship: Citizenship = Citizenship.UZBEKISTAN) = studentRepository.save(StudentProfile(
         user = user(username), pinfl = pinfl, lastName = "Testov", firstName = "Talaba", birthDate = LocalDate.of(2002, 1, 1),
-        gender = Gender.MALE, studentNumber = number,
+        gender = Gender.MALE, citizenship = citizenship, studentNumber = number,
     ))
 }

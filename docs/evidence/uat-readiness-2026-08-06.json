@@ -1,20 +1,49 @@
 {
     "schemaVersion":  1,
-    "generatedAt":  "2026-08-06T08:49:23.9951680Z",
+    "generatedAt":  "2026-08-06T19:17:27.8596461Z",
     "manifestPath":  "docs/uat/decision-559-uat-evidence.json",
     "bandCoverage":  {
-                         "from":  8,
+                         "from":  3,
                          "to":  33,
-                         "count":  26
+                         "requiredBands":  [
+                                               3,
+                                               8,
+                                               9,
+                                               10,
+                                               11,
+                                               12,
+                                               13,
+                                               14,
+                                               15,
+                                               16,
+                                               17,
+                                               18,
+                                               19,
+                                               20,
+                                               21,
+                                               22,
+                                               23,
+                                               24,
+                                               25,
+                                               26,
+                                               27,
+                                               28,
+                                               29,
+                                               30,
+                                               31,
+                                               32,
+                                               33
+                                           ],
+                         "count":  27
                      },
     "statusCounts":  {
-                         "AUTOMATED_PASS":  5,
+                         "AUTOMATED_PASS":  13,
                          "MANUAL_PASS":  0,
                          "NOT_APPLICABLE":  0,
-                         "MANUAL_PENDING":  8,
-                         "PARTIAL":  9,
-                         "BLOCKED_EXTERNAL":  3,
-                         "NOT_IMPLEMENTED":  1
+                         "MANUAL_PENDING":  0,
+                         "PARTIAL":  14,
+                         "BLOCKED_EXTERNAL":  0,
+                         "NOT_IMPLEMENTED":  0
                      },
     "structurallyValid":  true,
     "requirementsReady":  false,
@@ -29,105 +58,70 @@
                          "band":  8,
                          "status":  "PARTIAL",
                          "owner":  "IT va universitet rahbariyati",
-                         "note":  "Kontent provenance, versiya tarixi va validity gate\u0027i avtomatik testlangan; server ijara/mulk, shtat, rasmiy sayt va yillik kontent to\u0027liqligi dalili pending."
+                         "note":  "Kontent provenance va yillik to\u0027liqlik hisobotiga qo\u0027shimcha V39 Internet/sanitariya/shtat/server readinessni, V40 esa rasmiy saytning to\u0027rtta toifasini manba hujjatli, mustaqil PUBLISHED, validity-filterli anonim public API/sahifa, audit, RBAC va dinamik 4/4 compliance bilan avtomatik testlaydi. V39 tasdig\u0027i endi real amaldagi public nashrlarsiz o\u0027tmaydi; real inventar, sanitariya, HR, server va public matn/manba dalillari manual UATda qoladi."
                      },
                      {
                          "id":  "UAT-559-09",
                          "band":  9,
-                         "status":  "BLOCKED_EXTERNAL",
+                         "status":  "PARTIAL",
                          "owner":  "Metodika va yuridik bo\u0027lim",
-                         "note":  "Metadata/revision tarixi, ownerdan mustaqil ekspertiza, rejection/re-review va current-revision publish gate ishlaydi; rasmiy standart va tashkilot checklisti olinmagan."
+                         "note":  "V41 rasmiy manba-validityli checklist versiyasi, barcha mezonlarga dalil/izoh, muallifdan mustaqil lifecycle, aniq revision PASSED gate\u0027i, coverage, audit, admin/metodist UI va monitoring read-only oqimini avtomatik testlaydi. Vakolatli manbadagi haqiqiy O\u0027zDSt 36.2030 mezonlari va real kontent dalili manual UATda qoladi; tizim mezonlarni uydirmaydi."
                      },
                      {
                          "id":  "UAT-559-10",
                          "band":  10,
                          "status":  "PARTIAL",
                          "owner":  "IT va axborot xavfsizligi",
-                         "note":  "SCORM, attempt-bound identity/active-movement preflight, event jurnali, assignment scope\u0027li dalillar paneli va 10 kunlik manual appeal/review o\u0027tgan; biometrik siyosat va vendor/model bahosi pending."
+                         "note":  "SCORM, attempt-bound identity/active-movement preflight, event jurnali, assignment scope\u0027li dalillar paneli, appeal/review hamda V38 mustaqil biometrik policy publish, exact-hash consent, siyosat/roziliksiz fail-closed kamera gate\u0027i, withdrawal, retention/purge, RBAC va real compliance hisoblagichlari avtomatik o\u0027tgan. Universitet tasdiqlagan haqiqiy siyosat qiymatlari va vendor/model bahosi manual UATda qoladi."
                      },
                      {
                          "id":  "UAT-559-11",
                          "band":  11,
                          "status":  "PARTIAL",
                          "owner":  "IT va ta\u0027lim bo\u0027limi",
-                         "note":  "O\u0027quv komponentlari ishlaydi; forum/chat/xabar/email to\u0027liq emas."
+                         "note":  "O\u0027quv komponentlari, forum, chat, support/SLA va recipient/channel auditli e\u0027lon-email/push oqimiga V42 provider-neutral videokonferensiya qo\u0027shildi: backend-only credential, idempotent provision/retry, fail-closed va secret-redacted audit, cancel, READY publish gate\u0027i, teacher ownership, student join hamda compliance avtomatik testlangan. Real vendor/proxy URL-tokeni, sandbox create/join/cancel va email/push credentiali deployment UATda qoladi."
                      },
                      {
                          "id":  "UAT-559-12",
                          "band":  12,
-                         "status":  "MANUAL_PENDING",
+                         "status":  "PARTIAL",
                          "owner":  "Registrator va yuridik bo\u0027lim",
-                         "note":  "Tasdiqlangan tashkilot reglamenti bilan manual tekshiruv kerak."
+                         "note":  "V31 buyruq/sana/huquqiy asos/sabab majburiy bo\u0027lgan ADMISSION/SUSPENSION/REINSTATEMENT/TRANSFER/EXPULSION/GRADUATION matritsasi, direct status va placement bypass bloki, pessimistic lock, immutable eski-yangi status/dastur/guruh hamda nom snapshoti, account holati, 559 transfer re-validatsiyasi, audit, real registrator UI va compliance dalili avtomatik testlangan; universitet tasdiqlagan reglament va haqiqiy buyruqlar manual qabulda qoladi."
                      },
                      {
                          "id":  "UAT-559-14",
                          "band":  14,
-                         "status":  "BLOCKED_EXTERNAL",
-                         "owner":  "Vazirlik va universitet",
-                         "note":  "Rasmiy ro\u0027yxat olinmagan."
+                         "status":  "PARTIAL",
+                         "owner":  "Vazirlik, yuridik va metodika bo\u0027limi",
+                         "note":  "V37 yil/versiya/vazirlik/hujjat/e\u0027lon/1-aprel deadline\u0027i va kod-daraja yozuvlari, muallifdan mustaqil DRAFT-\u003ePUBLISHED-\u003eARCHIVED workflowi, katalog yo\u0027q yoki taqiqlangan kod uchun program/policy/admission fail-closed gate\u0027i, kech e\u0027lon nomuvofiqligi, audit, compliance va monitoring read-only UI bilan avtomatik testlangan; amaldagi haqiqiy vazirlik ro\u0027yxati manual qabulda kiritilib solishtiriladi."
                      },
                      {
                          "id":  "UAT-559-15",
                          "band":  15,
-                         "status":  "MANUAL_PENDING",
+                         "status":  "PARTIAL",
                          "owner":  "Qabul komissiyasi",
-                         "note":  "Vakolatli qaror bilan real qiymatlar solishtiriladi."
+                         "note":  "V32 OTM turiga mos vakolat (tegishli vazirlik/idora, kuzatuv kengashi yoki ta\u0027sischi), oddiy davlat OTM uchun ikki vazirlik kelishuvi, yillik kvota/kontrakt, mustaqil hujjatli DRAFTâ†’APPROVEDâ†’ARCHIVED workflowi, qabul/transfer/reinstate fail-closed gate\u0027i, audit, compliance va real admin UI bilan avtomatik testlangan; haqiqiy vakolatli hujjat va qiymatlar manual qabul datasetida tekshiriladi."
                      },
                      {
                          "id":  "UAT-559-16",
                          "band":  16,
-                         "status":  "MANUAL_PENDING",
-                         "owner":  "Yuridik bo\u0027lim",
-                         "note":  "Tashkilot turiga qarab litsenziya dalili yoki NOT_APPLICABLE qarori kerak."
-                     },
-                     {
-                         "id":  "UAT-559-17",
-                         "band":  17,
-                         "status":  "NOT_IMPLEMENTED",
-                         "owner":  "Ta\u0027lim va IT bo\u0027limi",
-                         "note":  "Dastur davomiyligi maydoni va bloklovchi qoida yo\u0027q."
-                     },
-                     {
-                         "id":  "UAT-559-19",
-                         "band":  19,
-                         "status":  "MANUAL_PENDING",
-                         "owner":  "Metodika",
-                         "note":  "Standart rekviziti va tasdiqlangan curriculum versiyasi dalili kerak."
-                     },
-                     {
-                         "id":  "UAT-559-21",
-                         "band":  21,
                          "status":  "PARTIAL",
-                         "owner":  "Ta\u0027lim bo\u0027limi",
-                         "note":  "Yakuniy nazorat/attestatsiya ishlaydi; boshlang\u0027ich shaxsan orientatsiya jurnali yo\u0027q."
+                         "owner":  "Yuridik va qabul bo\u0027limi",
+                         "note":  "V33 rasmiy reyestr rekvizitli litsenziya, amal qilish davri, bakalavr/magistr masofaviy dastur snapshoti, muallifdan mustaqil DRAFTâ†’VERIFIEDâ†’REVOKED workflowi, sana bo\u0027yicha effective coverage, nodavlat siyosat tasdig\u0027i hamda qabul/transfer/reinstate fail-closed gate\u0027i, audit, compliance va real admin UI bilan avtomatik testlangan; haqiqiy litsenziya nusxasi va reyestr yozuvini yuridik bo\u0027lim manual qabulda solishtiradi."
                      },
                      {
                          "id":  "UAT-559-22",
                          "band":  22,
-                         "status":  "MANUAL_PENDING",
-                         "owner":  "HR, registrator va ish beruvchi",
-                         "note":  "Tashqi buyruq/ariza bilan tekshiriladi."
-                     },
-                     {
-                         "id":  "UAT-559-23",
-                         "band":  23,
-                         "status":  "MANUAL_PENDING",
-                         "owner":  "Amaliyot bo\u0027limi",
-                         "note":  "Amaliyot reja/joy/kelishuv dalili kerak."
-                     },
-                     {
-                         "id":  "UAT-559-24",
-                         "band":  24,
                          "status":  "PARTIAL",
-                         "owner":  "Ta\u0027lim va metodika",
-                         "note":  "Asosiy workflowlar bor; fan bo\u0027yicha to\u0027liqlik gate\u0027i tugallanmagan."
+                         "owner":  "HR, ta\u0027lim bo\u0027limi va ish beruvchi",
+                         "note":  "V34 yakuniy baholash, davlat attestatsiyasi, bitiruv yoki magistrlik himoyasi maqsadini, ish beruvchi va mehnat dalilini, buyruq sanasi/raqamini, kamida 15 kalendar kunlik davrni, ish haqi saqlanishi tasdig\u0027ini, muallifdan mustaqil DRAFTâ†’VERIFIED/REJECTED workflowi, audit, compliance hamda admin/student UI bilan avtomatik tekshiradi; ish beruvchining haqiqiy buyrug\u0027i va ish haqi saqlanganini HR manual UATda tasdiqlaydi."
                      },
                      {
                          "id":  "UAT-559-25",
                          "band":  25,
-                         "status":  "MANUAL_PENDING",
+                         "status":  "PARTIAL",
                          "owner":  "HR va xalqaro bo\u0027lim",
-                         "note":  "Qo\u0027llanilsa hujjat, aks holda asoslangan NOT_APPLICABLE kerak."
+                         "note":  "V35 UZdan boshqa ISO alpha-2 fuqarolik, fuqarolik va malaka dalili, shartnoma, buyruq, o\u0027quv yili davri, faol masofaviy dastur kursi, pedagog-fan mosligi, remote tasdig\u0027i va muallifdan mustaqil DRAFT-\u003eVERIFIED/REJECTED workflowini audit, compliance va admin UI bilan avtomatik tekshiradi; haqiqiy HR hujjatlari manual qabulda tekshiriladi yoki pedagog jalb qilinmasa komissiya asoslangan NOT_APPLICABLE qarorini beradi."
                      },
                      {
                          "id":  "UAT-559-27",
@@ -146,30 +140,16 @@
                      {
                          "id":  "UAT-559-29",
                          "band":  29,
-                         "status":  "BLOCKED_EXTERNAL",
+                         "status":  "PARTIAL",
                          "owner":  "Vazirlik, inspeksiya va IT",
-                         "note":  "Rasmiy API, test muhiti va credential yo\u0027q."
-                     },
-                     {
-                         "id":  "UAT-559-30",
-                         "band":  30,
-                         "status":  "PARTIAL",
-                         "owner":  "Monitoring va sifat bo\u0027limi",
-                         "note":  "Anonim survey ishlaydi; fokus-guruh/intervyu protokoli manual pending."
-                     },
-                     {
-                         "id":  "UAT-559-32",
-                         "band":  32,
-                         "status":  "PARTIAL",
-                         "owner":  "Ta\u0027lim va support bo\u0027limi",
-                         "note":  "Semestr imtihoni va proktoring apellyatsiyasi ishlaydi; umumiy ticket/SLA oqimi yo\u0027q."
+                         "note":  "V24 outbox/retry/audit va V25 HEMIS checkpoint, mapping, SHA-256 idempotency, maskalangan konflikt hamda RBAC avtomatik testlangan; rasmiy davlat API/test muhiti/credentiali bo\u0027lmagani uchun yakuniy adapter UATi bloklangan."
                      },
                      {
                          "id":  "UAT-559-33",
                          "band":  33,
-                         "status":  "MANUAL_PENDING",
+                         "status":  "PARTIAL",
                          "owner":  "Yuridik va rahbariyat",
-                         "note":  "Ichki reglament va mas\u0027ul imzosi kerak."
+                         "note":  "V36 compliance issuega bog\u0027langan neytral tekshiruv subyekti, vakolatli organ/huquqiy asos/yo\u0027llanma/dalil paketi, muallifdan mustaqil DRAFT-\u003eREFERRED-\u003eDECIDED oqimi, uch tashqi qaror natijasi, audit, compliance va monitoring read-only UI bilan avtomatik testlangan; LMS aybdorlikni o\u0027zi aniqlamaydi, tashkilot reglamenti va haqiqiy vakolatli organ qarori manual qabulda tekshiriladi."
                      }
                  ]
 }

@@ -53,6 +53,10 @@ export interface ProgramRecord {
   educationLanguage: string;
   distanceAdmissionLimit?: number | null;
   licenseReference?: string | null;
+  fullTimeDurationMonths?: number | null;
+  distanceDurationMonths?: number | null;
+  fullTimeAvailable?: boolean | null;
+  fullTimeBasisReference?: string | null;
   departmentId?: number | null;
   departmentName?: string | null;
 }
@@ -66,9 +70,36 @@ export interface ProgramCreateRequest {
   educationLanguage?: string;
   distanceAdmissionLimit?: number | null;
   licenseReference?: string | null;
+  fullTimeDurationMonths?: number | null;
+  distanceDurationMonths?: number | null;
+  fullTimeAvailable?: boolean;
+  fullTimeBasisReference?: string | null;
   departmentId?: number | null;
 }
 export type ProgramUpdateRequest = Partial<ProgramCreateRequest>;
+
+export function validateProgramDurationInput(
+  distanceEnabled: boolean,
+  fullTimeDurationMonths?: number | null,
+  distanceDurationMonths?: number | null,
+): string | null {
+  if (!distanceEnabled) return null;
+  if (!fullTimeDurationMonths || !distanceDurationMonths) return "Kunduzgi va masofaviy davomiylik oy hisobida majburiy";
+  if (fullTimeDurationMonths < 1 || fullTimeDurationMonths > 120 || distanceDurationMonths < 1 || distanceDurationMonths > 120) return "Davomiylik 1..120 oy oralig'ida bo'lishi kerak";
+  if (distanceDurationMonths < fullTimeDurationMonths) return "Masofaviy davomiylik kunduzgi davomiylikdan kam bo'lmasligi kerak";
+  return null;
+}
+
+export function validateFullTimeCounterpartInput(
+  distanceEnabled: boolean,
+  informationTechnologyProgram: boolean,
+  fullTimeAvailable?: boolean | null,
+  fullTimeBasisReference?: string | null,
+): string | null {
+  if (fullTimeAvailable && !fullTimeBasisReference?.trim()) return "Kunduzgi shaklning buyruq yoki reyestr rekviziti majburiy";
+  if (distanceEnabled && !informationTechnologyProgram && !fullTimeAvailable) return "3-band bo'yicha tegishli kunduzgi ta'lim shakli mavjud bo'lishi shart";
+  return null;
+}
 
 export interface GroupRecord {
   id: number;

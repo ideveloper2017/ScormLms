@@ -22,6 +22,9 @@ import uz.scorm.lms.app.v1.session.repository.CourseLearningSessionRepository
 import uz.scorm.lms.app.v1.session.repository.LearningSessionAccessRepository
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.user.repository.UserRepository
+import uz.scorm.lms.app.v1.videoconference.model.VideoConferenceMeetingStatus
+import uz.scorm.lms.app.v1.videoconference.repository.VideoConferenceMeetingRepository
+import uz.scorm.lms.app.v1.videoconference.service.VideoConferenceService
 import java.net.URI
 import java.time.Duration
 import java.time.Instant
@@ -38,6 +41,8 @@ class LearningSessionService(
     private val userRepository: UserRepository,
     private val courseAccessService: CourseAccessService,
     private val learningActivityService: LearningActivityService,
+    private val meetingRepository: VideoConferenceMeetingRepository,
+    private val videoConferenceService: VideoConferenceService,
 ) {
     private val enrolledStatuses = setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED)
     private val visibleStatuses = setOf(LearningSessionStatus.PUBLISHED, LearningSessionStatus.COMPLETED)
@@ -47,7 +52,7 @@ class LearningSessionService(
     fun create(request: LearningSessionRequest, userId: Long, mayManageAll: Boolean): TeacherLearningSessionDto {
         val course = courseAccessService.requireManage(request.courseId, userId, mayManageAll)
         require(course.status != CourseStatus.ARCHIVED.name) { "Arxivlangan kurs uchun mashg'ulot yaratilmaydi" }
-        validate(request)
+        validate(request, requireDelivery = request.status == LearningSessionStatus.PUBLISHED)
         require(request.status in setOf(LearningSessionStatus.DRAFT, LearningSessionStatus.PUBLISHED)) {
             "Yangi mashg'ulot faqat draft yoki published holatida yaratiladi"
         }
@@ -86,7 +91,10 @@ class LearningSessionService(
             "Boshlangan published mashg'ulot tahrirlanmaydi"
         }
         require(request.courseId == session.course.id) { "Mashg'ulot kursini almashtirish mumkin emas" }
-        validate(request)
+        require(meetingRepository.findBySessionIdAndDeletedFalse(sessionId)?.status != VideoConferenceMeetingStatus.READY) {
+            "READY provider meetingi bor mashg'ulot tahrirlanmaydi"
+        }
+        validate(request, requireDelivery = session.status == LearningSessionStatus.PUBLISHED)
         session.title = request.title.trim()
         session.description = request.description.trim()
         session.format = request.format
@@ -116,9 +124,13 @@ class LearningSessionService(
         }
         require(status in allowed) { "${session.status} holatidan $status holatiga o'tib bo'lmaydi" }
         if (status == LearningSessionStatus.PUBLISHED) {
-            validate(entityRequest(session))
+            validate(entityRequest(session), requireDelivery = false)
+            require(hasSynchronousDelivery(session) || session.format == LearningSessionFormat.ASYNCHRONOUS && hasAsynchronousDelivery(session)) {
+                "Mashg'ulotni nashr qilish uchun READY provider meetingi, jonli havola/xona yoki asinxron resurs kerak"
+            }
             session.publishedAt = Instant.now()
         }
+        if (status == LearningSessionStatus.CANCELLED) videoConferenceService.cancelIfReady(session, userId)
         session.status = status
         return teacherDto(sessionRepository.save(session))
     }
@@ -130,6 +142,7 @@ class LearningSessionService(
         require(accessRepository.countBySessionIdAndDeletedFalse(sessionId) == 0L) {
             "Kirish auditi mavjud mashg'ulot o'chirilmaydi"
         }
+        videoConferenceService.cancelIfReady(session, userId)
         session.deleted = true
         sessionRepository.save(session)
     }
@@ -189,7 +202,7 @@ class LearningSessionService(
             LearningSessionAccessType.LIVE_JOIN -> {
                 require(session.format == LearningSessionFormat.SYNCHRONOUS) { "Bu sinxron mashg'ulot emas" }
                 require(canJoin(session, now)) { "Jonli mashg'ulotga kirish oynasi yopiq" }
-                session.liveUrl ?: throw IllegalArgumentException("Jonli dars havolasi belgilanmagan")
+                effectiveLiveUrl(session) ?: throw IllegalArgumentException("READY provider meetingi yoki jonli dars havolasi mavjud emas")
             }
             LearningSessionAccessType.RECORDING_OPEN -> {
                 require(canOpenResources(session, now)) { "Yozuv hali ochilmagan" }
@@ -229,7 +242,7 @@ class LearningSessionService(
         return session
     }
 
-    private fun validate(request: LearningSessionRequest) {
+    private fun validate(request: LearningSessionRequest, requireDelivery: Boolean) {
         require(request.title.isNotBlank()) { "Mashg'ulot nomi majburiy" }
         require(request.title.length <= 255) { "Mashg'ulot nomi 255 belgidan oshmasligi kerak" }
         require(request.startsAt.isBefore(request.endsAt)) { "Boshlanish vaqti tugashidan oldin bo'lishi kerak" }
@@ -238,11 +251,11 @@ class LearningSessionService(
         }
         listOf(request.liveUrl, request.recordingUrl, request.resourceUrl).filterNotNull()
             .filter { it.isNotBlank() }.forEach(::requireSafeUrl)
-        if (request.format == LearningSessionFormat.SYNCHRONOUS) {
+        if (requireDelivery && request.format == LearningSessionFormat.SYNCHRONOUS) {
             require(!request.liveUrl.isNullOrBlank() || !request.room.isNullOrBlank()) {
                 "Sinxron mashg'ulot uchun jonli havola yoki xona majburiy"
             }
-        } else {
+        } else if (requireDelivery) {
             require(!request.recordingUrl.isNullOrBlank() || !request.resourceUrl.isNullOrBlank()) {
                 "Asinxron mashg'ulot uchun yozuv yoki resurs havolasi majburiy"
             }
@@ -273,12 +286,14 @@ class LearningSessionService(
         resourceUrl = session.resourceUrl,
         status = session.status.name.lowercase(),
         accessCount = accessRepository.countBySessionIdAndDeletedFalse(requireNotNull(session.id)),
+        videoConference = videoConferenceService.meetingForSession(requireNotNull(session.id)),
     )
 
     private fun studentDto(session: CourseLearningSession, enrollmentId: Long): StudentLearningSessionDto {
         val now = Instant.now()
         val local = session.startsAt.atZone(ZoneId.systemDefault())
         val owner = session.course.userId?.let { userRepository.findById(it).orElse(null) }
+        val liveUrl = effectiveLiveUrl(session)
         val resourcesOpen = canOpenResources(session, now) &&
             (!session.recordingUrl.isNullOrBlank() || !session.resourceUrl.isNullOrBlank())
         return StudentLearningSessionDto(
@@ -299,13 +314,13 @@ class LearningSessionService(
             type = session.sessionType.name.lowercase(),
             format = session.format.name.lowercase(),
             status = session.status.name.lowercase(),
-            isOnline = !session.liveUrl.isNullOrBlank() || !session.recordingUrl.isNullOrBlank() || !session.resourceUrl.isNullOrBlank(),
+            isOnline = !liveUrl.isNullOrBlank() || !session.recordingUrl.isNullOrBlank() || !session.resourceUrl.isNullOrBlank(),
             meetingLink = null,
             recordingUrl = null,
             resourceUrl = null,
             hasRecording = resourcesOpen && !session.recordingUrl.isNullOrBlank(),
             hasResource = resourcesOpen && !session.resourceUrl.isNullOrBlank(),
-            canJoin = session.liveUrl != null && canJoin(session, now),
+            canJoin = liveUrl != null && canJoin(session, now),
             canOpenResources = resourcesOpen,
             accessed = accessRepository.existsBySessionIdAndEnrollmentIdAndDeletedFalse(requireNotNull(session.id), enrollmentId),
         )
@@ -318,6 +333,15 @@ class LearningSessionService(
 
     private fun canOpenResources(session: CourseLearningSession, now: Instant): Boolean =
         session.status in visibleStatuses && !now.isBefore(session.startsAt)
+
+    private fun effectiveLiveUrl(session: CourseLearningSession): String? =
+        videoConferenceService.readyJoinUrl(requireNotNull(session.id)) ?: session.liveUrl
+
+    private fun hasSynchronousDelivery(session: CourseLearningSession) =
+        !session.room.isNullOrBlank() || effectiveLiveUrl(session) != null
+
+    private fun hasAsynchronousDelivery(session: CourseLearningSession) =
+        !session.recordingUrl.isNullOrBlank() || !session.resourceUrl.isNullOrBlank()
 
     private fun clean(value: String?): String? = value?.trim()?.takeIf(String::isNotBlank)
 

@@ -13,6 +13,8 @@ import {
   type ProgramRecord, type DepartmentRecord,
   createProgram, deleteProgram, listPrograms, updateProgram,
   listDepartments,
+  validateFullTimeCounterpartInput,
+  validateProgramDurationInput,
 } from "@/lib/academic-api";
 
 interface ProgramForm {
@@ -26,6 +28,10 @@ interface ProgramForm {
   educationLanguage: string;
   distanceAdmissionLimit: number | null;
   licenseReference: string;
+  fullTimeDurationMonths: number | null;
+  distanceDurationMonths: number | null;
+  fullTimeAvailable: boolean;
+  fullTimeBasisReference: string;
 }
 
 const DEGREES = [
@@ -114,13 +120,17 @@ export function AdminPrograms() {
           { header: "Daraja",  cell: (p) => <DegreeBadge level={p.degreeLevel} /> },
           { header: "Kafedra", cell: (p) => p.departmentName ?? "—" },
           { header: "Ta'lim shakli", cell: (p) => p.distanceEnabled ? <Badge variant="outline">Masofaviy</Badge> : <Badge variant="secondary">Kunduzgi</Badge> },
-          { header: "Qabul limiti", cell: (p) => p.distanceEnabled ? (p.informationTechnologyProgram ? "AKT istisnosi" : p.distanceAdmissionLimit ?? "—") : "—" },
+          { header: "Normativ chegara", cell: (p) => p.distanceEnabled ? (p.informationTechnologyProgram ? "AKT istisnosi" : p.degreeLevel === "MASTER" ? 30 : 300) : "—" },
+          { header: "Davomiylik", cell: (p) => p.distanceEnabled ? `${p.fullTimeDurationMonths ?? "—"} / ${p.distanceDurationMonths ?? "—"} oy` : "—" },
+          { header: "Kunduzgi asos", cell: (p) => !p.distanceEnabled ? "—" : p.informationTechnologyProgram ? <Badge variant="secondary">AKT istisnosi</Badge> : p.fullTimeAvailable ? <Badge variant="default">Tasdiqlangan</Badge> : <Badge variant="destructive">Kiritilmagan</Badge> },
           { header: "Holat",   cell: (p) => <ActiveBadge active={p.active} /> },
         ]}
         blankForm={() => ({
           name: "", code: "", degreeLevel: "BACHELOR", departmentId: null, active: true,
           distanceEnabled: false, informationTechnologyProgram: false,
           educationLanguage: "uz", distanceAdmissionLimit: 300, licenseReference: "",
+          fullTimeDurationMonths: null, distanceDurationMonths: null,
+          fullTimeAvailable: false, fullTimeBasisReference: "",
         })}
         toForm={(p) => ({
           name: p.name, code: p.code ?? "",
@@ -131,10 +141,17 @@ export function AdminPrograms() {
           educationLanguage: p.educationLanguage ?? "uz",
           distanceAdmissionLimit: p.distanceAdmissionLimit ?? (p.degreeLevel === "MASTER" ? 30 : 300),
           licenseReference: p.licenseReference ?? "",
+          fullTimeDurationMonths: p.fullTimeDurationMonths ?? null,
+          distanceDurationMonths: p.distanceDurationMonths ?? null,
+          fullTimeAvailable: p.fullTimeAvailable ?? false,
+          fullTimeBasisReference: p.fullTimeBasisReference ?? "",
         })}
         validate={(f) => {
           if (!f.name.trim()) return "Nomi majburiy";
-          if (f.distanceEnabled && !f.licenseReference.trim()) return "Masofaviy yo'nalish uchun litsenziya rekviziti majburiy";
+          const durationError = validateProgramDurationInput(f.distanceEnabled, f.fullTimeDurationMonths, f.distanceDurationMonths);
+          if (durationError) return durationError;
+          const counterpartError = validateFullTimeCounterpartInput(f.distanceEnabled, f.informationTechnologyProgram, f.fullTimeAvailable, f.fullTimeBasisReference);
+          if (counterpartError) return counterpartError;
           const max = f.degreeLevel === "MASTER" ? 30 : 300;
           if (f.distanceEnabled && !f.informationTechnologyProgram && (!f.distanceAdmissionLimit || f.distanceAdmissionLimit > max)) return `Qabul limiti 1..${max} oralig'ida bo'lishi kerak`;
           return null;
@@ -147,6 +164,10 @@ export function AdminPrograms() {
             educationLanguage: f.educationLanguage,
             distanceAdmissionLimit: f.distanceEnabled && !f.informationTechnologyProgram ? f.distanceAdmissionLimit : null,
             licenseReference: f.licenseReference.trim() || null,
+            fullTimeDurationMonths: f.fullTimeDurationMonths,
+            distanceDurationMonths: f.distanceDurationMonths,
+            fullTimeAvailable: f.fullTimeAvailable,
+            fullTimeBasisReference: f.fullTimeBasisReference.trim() || null,
           }).then(() => undefined)
         }
         onUpdate={(id, f) =>
@@ -157,6 +178,10 @@ export function AdminPrograms() {
             educationLanguage: f.educationLanguage,
             distanceAdmissionLimit: f.distanceEnabled && !f.informationTechnologyProgram ? f.distanceAdmissionLimit : null,
             licenseReference: f.licenseReference.trim() || null,
+            fullTimeDurationMonths: f.fullTimeDurationMonths,
+            distanceDurationMonths: f.distanceDurationMonths,
+            fullTimeAvailable: f.fullTimeAvailable,
+            fullTimeBasisReference: f.fullTimeBasisReference.trim() || null,
           }).then(() => undefined)
         }
         onDelete={(id) => deleteProgram(id)}
@@ -235,11 +260,30 @@ export function AdminPrograms() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Qabul limiti</Label>
+                      <Label>Normativ yuqori chegara</Label>
                       <Input type="number" min={1} max={form.degreeLevel === "MASTER" ? 30 : 300} disabled={form.informationTechnologyProgram} value={form.distanceAdmissionLimit ?? ""} onChange={(e) => set({ distanceAdmissionLimit: e.target.value ? Number(e.target.value) : null })} />
+                      <p className="text-xs text-muted-foreground">Yillik haqiqiy kvota va kontrakt “Qabul va kontrakt” bo'limida hujjat bilan tasdiqlanadi.</p>
                     </div>
                   </div>
-                  <div className="space-y-1.5"><Label>Litsenziya rekviziti</Label><Input value={form.licenseReference} onChange={(e) => set({ licenseReference: e.target.value })} placeholder="Litsenziya raqami va sanasi" /></div>
+                  <div className="space-y-1.5"><Label>Legacy litsenziya eslatmasi (ixtiyoriy)</Label><Input value={form.licenseReference} onChange={(e) => set({ licenseReference: e.target.value })} placeholder="Eski tizimdan qolgan ma'lumot" /><p className="text-xs text-muted-foreground">16-band bo'yicha rasmiy nodavlat OTM qamrovi “Nodavlat litsenziyalari” bo'limida yuritiladi.</p></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5"><Label>Kunduzgi normativ (oy)</Label><Input type="number" min={1} max={120} value={form.fullTimeDurationMonths ?? ""} onChange={(e) => set({ fullTimeDurationMonths: e.target.value ? Number(e.target.value) : null })} placeholder="Masalan: 48" /></div>
+                    <div className="space-y-1.5"><Label>Masofaviy davomiylik (oy)</Label><Input type="number" min={form.fullTimeDurationMonths ?? 1} max={120} value={form.distanceDurationMonths ?? ""} onChange={(e) => set({ distanceDurationMonths: e.target.value ? Number(e.target.value) : null })} placeholder="Kamida kunduzgi muddat" /></div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">17-band: masofaviy o'qish davomiyligi kunduzgi shakldan kam bo'lmaydi.</p>
+                  <div className="rounded-md border p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={form.fullTimeAvailable} onCheckedChange={(v) => set({ fullTimeAvailable: v })} />
+                      <Label>Tegishli kunduzgi ta'lim shakli mavjud</Label>
+                    </div>
+                    {form.fullTimeAvailable && (
+                      <div className="space-y-1.5">
+                        <Label>Kunduzgi shaklning asos rekviziti</Label>
+                        <Input value={form.fullTimeBasisReference} onChange={(e) => set({ fullTimeBasisReference: e.target.value })} placeholder="Buyruq raqami yoki ichki reyestr havolasi" />
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">3-band: AKT yo'nalishidan tashqari masofaviy dastur faqat tegishli kunduzgi shakl mavjud bo'lsa ochiladi.</p>
+                  </div>
                   <div className="flex items-center gap-2"><Switch checked={form.informationTechnologyProgram} onCheckedChange={(v) => set({ informationTechnologyProgram: v })} /><Label>Axborot-kommunikatsiya texnologiyalari yo'nalishi</Label></div>
                   <p className="text-xs text-muted-foreground">AKT yo'nalishlariga 300/30 qabul cheklovi tatbiq etilmaydi.</p>
                 </>

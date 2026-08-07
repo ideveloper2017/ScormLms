@@ -5,12 +5,17 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import uz.scorm.lms.app.v1.student.dto.*
-import uz.scorm.lms.app.v1.student.model.StudentStatus
+import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.student.service.StudentService
+import uz.scorm.lms.app.v1.student.service.StudentLifecycleService
+import uz.scorm.lms.app.v1.user.model.User
 
 @RestController
 @RequestMapping("/api/v1/students")
-class StudentController(private val studentService: StudentService) {
+class StudentController(
+    private val studentService: StudentService,
+    private val lifecycleService: StudentLifecycleService,
+) {
 
     @GetMapping
     @PreAuthorize("hasAuthority('USER_READ')")
@@ -27,18 +32,25 @@ class StudentController(private val studentService: StudentService) {
 
     @PostMapping
     @PreAuthorize("hasAuthority('USER_MANAGE')")
-    fun create(@RequestBody req: StudentCreateRequest): ResponseEntity<StudentDto> =
-        ResponseEntity.status(HttpStatus.CREATED).body(studentService.create(req))
+    fun create(@RequestBody req: StudentAdmissionRequest, @CurrentUser user: User): ResponseEntity<StudentLifecycleResultDto> =
+        ResponseEntity.status(HttpStatus.CREATED).body(lifecycleService.admit(req, requireNotNull(user.id)))
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_MANAGE')")
     fun update(@PathVariable id: Long, @RequestBody req: StudentUpdateRequest): StudentDto =
         studentService.update(id, req)
 
-    @PatchMapping("/{id}/status")
+    @GetMapping("/{id}/lifecycle")
+    @PreAuthorize("hasAuthority('USER_READ')")
+    fun lifecycle(@PathVariable id: Long): List<StudentLifecycleEventDto> = lifecycleService.history(id)
+
+    @PostMapping("/{id}/lifecycle")
     @PreAuthorize("hasAuthority('USER_MANAGE')")
-    fun changeStatus(@PathVariable id: Long, @RequestParam status: StudentStatus): StudentDto =
-        studentService.changeStatus(id, status)
+    fun transition(
+        @PathVariable id: Long,
+        @RequestBody req: StudentLifecycleRequest,
+        @CurrentUser user: User,
+    ): StudentLifecycleResultDto = lifecycleService.transition(id, req, requireNotNull(user.id))
 
     @PatchMapping("/{id}/promote")
     @PreAuthorize("hasAuthority('USER_MANAGE')")

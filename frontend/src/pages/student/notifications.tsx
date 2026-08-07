@@ -12,6 +12,7 @@ import { useNotifications, useMarkAsRead, useMarkAllAsRead, useUnreadCount } fro
 import { NotificationPageSkeleton } from "@/components/ui/skeletons/NotificationListSkeleton";
 import type { Notification } from "@/types/notification.types";
 import { formatRelativeTime } from "@/utils/time";
+import { AnnouncementInbox } from "@/components/announcement-inbox";
 
 const TYPE_META: Record<Notification['type'], { label: string; icon: React.ElementType; color: string }> = {
   course:     { label: "Kurs",       icon: BookOpen,      color: "text-blue-500"   },
@@ -155,6 +156,8 @@ export function StudentNotifications() {
           )}
         </div>
       </div>
+
+      <AnnouncementInbox />
 
       {/* Type filter */}
       <div className="flex gap-2 overflow-x-auto pb-1">
