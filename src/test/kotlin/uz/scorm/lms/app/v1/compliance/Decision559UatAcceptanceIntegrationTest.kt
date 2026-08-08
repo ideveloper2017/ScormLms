@@ -22,7 +22,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import uz.scorm.lms.app.v1.compliance.uat.CreateDecision559UatRunRequest
+import uz.scorm.lms.app.v1.compliance.uat.BulkCoordinateDecision559UatManualTasksRequest
 import uz.scorm.lms.app.v1.compliance.uat.Decision559UatOutcome
+import uz.scorm.lms.app.v1.compliance.uat.Decision559UatManualEvidenceStatus
 import uz.scorm.lms.app.v1.compliance.uat.Decision559UatReviewStatus
 import uz.scorm.lms.app.v1.compliance.uat.Decision559UatRequirementCatalog
 import uz.scorm.lms.app.v1.compliance.uat.Decision559UatRunRepository
@@ -31,6 +33,7 @@ import uz.scorm.lms.app.v1.compliance.uat.Decision559UatRunStatus
 import uz.scorm.lms.app.v1.compliance.uat.Decision559UatService
 import uz.scorm.lms.app.v1.compliance.uat.RejectDecision559UatRunRequest
 import uz.scorm.lms.app.v1.compliance.uat.ReviewDecision559UatEvidenceRequest
+import uz.scorm.lms.app.v1.compliance.uat.UpdateDecision559UatManualTaskCoordinationRequest
 import uz.scorm.lms.app.security.RolePermissions
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
@@ -55,7 +58,7 @@ class Decision559UatAcceptanceIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
 
     @Test
-    @WithMockUser(username = "uat-runtime-manifest-export", authorities = ["UAT_READ"])
+    @WithMockUser(username = "uat-runtime-manifest-export", authorities = ["UAT_READ", "UAT_WRITE"])
     fun `27 band mustaqil review va imzolangan protokolsiz tasdiqlanmaydi`() {
         val suffix = System.nanoTime()
         val submitter = userRepository.save(User(
@@ -77,6 +80,101 @@ class Decision559UatAcceptanceIntegrationTest {
             CreateDecision559UatRunRequest("559 qaror <script>alert(1)</script> qabul testi", Decision559UatService.SOURCE_SHA256),
             submitter.id!!,
         )
+        assertEquals(43, run.manualEvidenceRequiredCount)
+        assertEquals(0, run.manualEvidenceCoveredCount)
+        assertEquals(0, run.manualEvidenceAcceptedCount)
+        val initialManualProgress = service.manualEvidenceProgress(run.id)
+        assertEquals(43, initialManualProgress.requiredCount)
+        assertEquals(43, initialManualProgress.pendingCount)
+        assertEquals(0, initialManualProgress.collectedCount)
+        assertEquals(0, initialManualProgress.acceptedCount)
+        assertEquals(0, initialManualProgress.coordinatedCount)
+        assertEquals(43, initialManualProgress.uncoordinatedCount)
+        assertEquals(0, initialManualProgress.overdueCount)
+        assertEquals(43, initialManualProgress.items.size)
+        assertTrue(initialManualProgress.items.all { it.status == Decision559UatManualEvidenceStatus.PENDING })
+        assertEquals(8, initialManualProgress.items.first().band)
+        val evidenceSetBeforeCoordination = service.manifest(run.id).evidenceSetSha256
+        val initialProgressCsv = service.manualEvidenceProgressCsv(run.id)
+        assertEquals("text/csv;charset=UTF-8", initialProgressCsv.contentType)
+        assertEquals(sha256(initialProgressCsv.bytes), initialProgressCsv.sha256)
+        assertEquals(44, initialProgressCsv.bytes.toString(Charsets.UTF_8).lineSequence().filter { it.isNotEmpty() }.count())
+        val coordinationDueDate = LocalDate.now().plusDays(7)
+        val coordinatedProgress = service.updateManualTaskCoordination(
+            run.id,
+            "UAT-559-08",
+            0,
+            UpdateDecision559UatManualTaskCoordinationRequest(
+                assigneeName = "IT va universitet rahbariyati",
+                dueDate = coordinationDueDate,
+                note = "Inventar va infratuzilma dalillari muddatida taqdim etiladi",
+            ),
+            submitter.id!!,
+        )
+        val coordinatedItem = coordinatedProgress.items.first()
+        assertEquals(Decision559UatManualEvidenceStatus.PENDING, coordinatedItem.status)
+        assertEquals("IT va universitet rahbariyati", coordinatedItem.coordinationAssigneeName)
+        assertEquals(coordinationDueDate, coordinatedItem.coordinationDueDate)
+        assertFalse(coordinatedItem.coordinationOverdue)
+        assertEquals(0, coordinatedProgress.collectedCount)
+        assertEquals(1, coordinatedProgress.coordinatedCount)
+        assertEquals(42, coordinatedProgress.uncoordinatedCount)
+        assertThrows(IllegalArgumentException::class.java) {
+            service.updateManualTaskCoordination(
+                run.id,
+                "UAT-559-08",
+                0,
+                UpdateDecision559UatManualTaskCoordinationRequest(
+                    "IT", LocalDate.now().minusDays(1), "Eski muddat qabul qilinmaydi",
+                ),
+                submitter.id!!,
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            service.updateManualTaskCoordination(
+                run.id,
+                "UAT-559-03",
+                0,
+                UpdateDecision559UatManualTaskCoordinationRequest(
+                    "Metodika", coordinationDueDate, "Automated band manual task emas",
+                ),
+                submitter.id!!,
+            )
+        }
+        mockMvc.post("/api/v1/compliance/559/uat/runs/${run.id}/manual-evidence-progress/UAT-559-08/0/coordination") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"assigneeName":"IT bo'limi","dueDate":"$coordinationDueDate","note":"Endpoint orqali muddat yangilandi"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.data.items[0].status") { value("PENDING") }
+            jsonPath("$.data.items[0].coordinationAssigneeName") { value("IT bo'limi") }
+            jsonPath("$.data.items[0].coordinationDueDate") { value(coordinationDueDate.toString()) }
+        }
+        val coordinatedCsv = service.manualEvidenceProgressCsv(run.id).bytes.toString(Charsets.UTF_8)
+        assertTrue(coordinatedCsv.contains("\"IT bo'limi\""))
+        assertTrue(coordinatedCsv.contains("\"$coordinationDueDate\""))
+        mockMvc.post("/api/v1/compliance/559/uat/runs/${run.id}/manual-evidence-progress/coordination/bulk") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"dueDate":"$coordinationDueDate","note":"Qolgan topshiriqlar tavsiya etilgan bo'limlarga taqsimlandi"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.data.coordinatedCount") { value(43) }
+            jsonPath("$.data.uncoordinatedCount") { value(0) }
+            jsonPath("$.data.overdueCount") { value(0) }
+            jsonPath("$.data.items[0].coordinationAssigneeName") { value("IT bo'limi") }
+            jsonPath("$.data.items[1].coordinationAssigneeName") { value("IT va universitet rahbariyati") }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            service.bulkCoordinateManualTasks(
+                run.id,
+                BulkCoordinateDecision559UatManualTasksRequest(
+                    coordinationDueDate,
+                    "Takroriy ommaviy taqsimlash bloklanadi",
+                ),
+                submitter.id!!,
+            )
+        }
+        assertEquals(evidenceSetBeforeCoordination, service.manifest(run.id).evidenceSetSha256)
         assertThrows(IllegalArgumentException::class.java) { service.protocolDraft(run.id) }
 
         assertTrue(RolePermissions.UAT_APPROVE in RolePermissions.forRole("admin"))
@@ -110,6 +208,13 @@ class Decision559UatAcceptanceIntegrationTest {
                 partial.id,
                 ReviewDecision559UatEvidenceRequest(Decision559UatReviewStatus.ACCEPTED, "Muallif review qilmoqda"),
                 submitter.id!!,
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            service.reviewEvidence(
+                partial.id,
+                ReviewDecision559UatEvidenceRequest(Decision559UatReviewStatus.ACCEPTED, "Qisman natijani final qabul qilish"),
+                approver.id!!,
             )
         }
 
@@ -174,17 +279,80 @@ class Decision559UatAcceptanceIntegrationTest {
         )
 
         for (band in Decision559UatService.REQUIRED_BANDS.sorted().filterNot { it == 3 }) {
+            val guidance = requirementCatalog.requirement(band, "UAT-559-${band.toString().padStart(2, '0')}")
+            if (guidance.baselineStatus == "PARTIAL") {
+                if (band == 8) {
+                    var collected = service.saveEvidence(
+                        run.id, band, guidance.id, Decision559UatOutcome.PARTIAL,
+                        guidance.owner, "$band-band real dalillarining bir qismi yig'ildi",
+                        "PARTIAL-COLLECTION-$band", pdf("partial-band-$band"), submitter.id!!,
+                        manualEvidenceIndexes = listOf(0, 1),
+                    )
+                    assertEquals(guidance.manualEvidence.take(2), collected.manualEvidenceCoverage)
+                    assertEquals(2, service.detail(run.id).run.manualEvidenceCoveredCount)
+                    val partialProgress = service.manualEvidenceProgress(run.id)
+                    assertEquals(41, partialProgress.pendingCount)
+                    assertEquals(2, partialProgress.collectedCount)
+                    assertEquals(0, partialProgress.acceptedCount)
+                    assertEquals(
+                        listOf(Decision559UatManualEvidenceStatus.COLLECTED, Decision559UatManualEvidenceStatus.COLLECTED),
+                        partialProgress.items.filter { it.band == band }.take(2).map { it.status },
+                    )
+                    assertTrue(partialProgress.items.filter { it.band == band }.take(2).all { it.fileCount == 1 })
+                    assertThrows(IllegalArgumentException::class.java) {
+                        service.reviewEvidence(
+                            collected.id,
+                            ReviewDecision559UatEvidenceRequest(Decision559UatReviewStatus.ACCEPTED, "Qisman qamrov final emas"),
+                            approver.id!!,
+                        )
+                    }
+                    collected = service.deleteEvidenceAttachment(collected.files.single().id, submitter.id!!)
+                    assertEquals(emptyList<String>(), collected.manualEvidenceCoverage)
+                    assertEquals(0, service.manualEvidenceProgress(run.id).collectedCount)
+                    collected = service.saveEvidence(
+                        run.id, band, guidance.id, Decision559UatOutcome.BLOCKED_EXTERNAL,
+                        guidance.owner, "$band-band ikki dalili yig'ildi, qolganlari tashqi mas'ulda",
+                        "PARTIAL-COLLECTION-$band", pdf("partial-band-$band-reloaded"), submitter.id!!,
+                        manualEvidenceIndexes = listOf(0, 1),
+                    )
+                    assertEquals(2, collected.manualEvidenceCoverage.size)
+                    assertThrows(IllegalArgumentException::class.java) {
+                        service.saveEvidence(
+                            run.id, band, guidance.id, Decision559UatOutcome.NOT_APPLICABLE,
+                            guidance.owner, "$band-band partial talabini N/A bilan chetlab o'tish urinishi",
+                            "N-A-BYPASS-$band", null, submitter.id!!,
+                        )
+                    }
+                }
+                assertThrows(IllegalArgumentException::class.java) {
+                    service.saveEvidence(
+                        run.id,
+                        band,
+                        guidance.id,
+                        Decision559UatOutcome.MANUAL_PASS,
+                        guidance.owner,
+                        "$band-band barcha real dalillari bilan tekshirildi",
+                        "MANUAL-REPORT-V51-BAND-$band",
+                        pdf("manual-band-$band-incomplete"),
+                        submitter.id!!,
+                        manualEvidenceIndexes = guidance.manualEvidence.indices.toList().dropLast(1),
+                    )
+                }
+            }
             val evidence = service.saveEvidence(
                 run.id,
                 band,
-                "UAT-559-${band.toString().padStart(2, '0')}",
-                Decision559UatOutcome.AUTOMATED_PASS,
-                "Avtomatlashtirilgan test egasi",
-                "$band-band avtomatlashtirilgan regression hisoboti bilan tekshirildi",
-                "TEST-REPORT-V45-BAND-$band",
-                null,
+                guidance.id,
+                if (guidance.baselineStatus == "PARTIAL") Decision559UatOutcome.MANUAL_PASS else Decision559UatOutcome.AUTOMATED_PASS,
+                if (guidance.baselineStatus == "PARTIAL") guidance.owner else "Avtomatlashtirilgan test egasi",
+                if (guidance.baselineStatus == "PARTIAL") "$band-band barcha real dalillari bilan tekshirildi"
+                else "$band-band avtomatlashtirilgan regression hisoboti bilan tekshirildi",
+                if (guidance.baselineStatus == "PARTIAL") "MANUAL-REPORT-V51-BAND-$band" else "TEST-REPORT-V45-BAND-$band",
+                if (guidance.baselineStatus == "PARTIAL") pdf("manual-band-$band") else null,
                 submitter.id!!,
+                manualEvidenceIndexes = if (guidance.baselineStatus == "PARTIAL") guidance.manualEvidence.indices.toList() else emptyList(),
             )
+            assertEquals(guidance.manualEvidence, evidence.manualEvidenceCoverage)
             service.reviewEvidence(
                 evidence.id,
                 ReviewDecision559UatEvidenceRequest(Decision559UatReviewStatus.ACCEPTED, "Test hisoboti mustaqil tekshirildi"),
@@ -198,16 +366,28 @@ class Decision559UatAcceptanceIntegrationTest {
         assertEquals(27, ready.run.evidenceCount)
         assertEquals(27, ready.run.acceptedCount)
         assertEquals(0, ready.run.blockingCount)
+        assertEquals(43, ready.run.manualEvidenceRequiredCount)
+        assertEquals(43, ready.run.manualEvidenceCoveredCount)
+        assertEquals(43, ready.run.manualEvidenceAcceptedCount)
+        val acceptedProgress = service.manualEvidenceProgress(run.id)
+        assertEquals(0, acceptedProgress.pendingCount)
+        assertEquals(43, acceptedProgress.collectedCount)
+        assertEquals(43, acceptedProgress.acceptedCount)
+        assertTrue(acceptedProgress.items.all { it.status == Decision559UatManualEvidenceStatus.ACCEPTED })
         assertFalse(ready.run.readyToSubmit)
 
         val evidenceManifest = service.manifest(run.id)
-        assertEquals(4, evidenceManifest.schemaVersion)
+        assertEquals(5, evidenceManifest.schemaVersion)
         assertEquals(27, evidenceManifest.requirements.size)
         assertEquals(Decision559UatService.SOURCE_SHA256, evidenceManifest.source.sha256)
         assertEquals(64, evidenceManifest.evidenceSetSha256.length)
         val band3Manifest = evidenceManifest.requirements.single { it.band == 3 }
         assertEquals(null, band3Manifest.file)
         assertEquals(2, band3Manifest.files.size)
+        assertEquals(43, evidenceManifest.requirements.sumOf { it.manualEvidenceCoverage.size })
+        assertEquals(43, evidenceManifest.manualEvidenceRequiredCount)
+        assertEquals(43, evidenceManifest.manualEvidenceCoveredCount)
+        assertEquals(43, evidenceManifest.manualEvidenceAcceptedCount)
         assertFalse(evidenceManifest.protocol.signed)
 
         val protocolDraft = service.protocolDraft(run.id)
@@ -301,6 +481,27 @@ class Decision559UatAcceptanceIntegrationTest {
         assertEquals(protocolPdf.bytes.toList(), downloadedProtocol.bytes.toList())
         assertEquals(sha256(protocolPdf.bytes), downloadedProtocol.sha256)
 
+        mockMvc.get("/api/v1/compliance/559/uat/runs/${run.id}/manual-evidence-progress")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.data.runId") { value(run.id) }
+                jsonPath("$.data.requiredCount") { value(43) }
+                jsonPath("$.data.pendingCount") { value(0) }
+                jsonPath("$.data.collectedCount") { value(43) }
+                jsonPath("$.data.acceptedCount") { value(43) }
+                jsonPath("$.data.items.length()") { value(43) }
+                jsonPath("$.data.items[0].status") { value("ACCEPTED") }
+            }
+        val progressCsvResponse = mockMvc.get(
+            "/api/v1/compliance/559/uat/runs/${run.id}/manual-evidence-progress.csv",
+        ).andExpect {
+            status { isOk() }
+            header { string("Cache-Control", "private, no-store") }
+            header { exists("X-Content-SHA256") }
+        }.andReturn().response
+        assertEquals(sha256(progressCsvResponse.contentAsByteArray), progressCsvResponse.getHeader("X-Content-SHA256"))
+        assertTrue(progressCsvResponse.contentAsString.contains("\"UAT-559-08\",\"8\",\"0\",\"ACCEPTED\""))
+
         val manifestResponse = mockMvc.get("/api/v1/compliance/559/uat/runs/${run.id}/manifest")
             .andExpect {
                 status { isOk() }
@@ -335,7 +536,9 @@ class Decision559UatAcceptanceIntegrationTest {
 
         val bundleEntries = zipEntries(bundleResponse.contentAsByteArray)
         val expectedBundleEntries = mutableSetOf("manifest.json", "protocol/signed-protocol.pdf", "SHA256SUMS")
-        expectedBundleEntries += band3Manifest.files.map { requireNotNull(it.bundlePath) }
+        expectedBundleEntries += evidenceManifest.requirements.flatMap { requirement ->
+            requirement.files.map { requireNotNull(it.bundlePath) }
+        }
         assertEquals(expectedBundleEntries, bundleEntries.keys)
         val sums = bundleEntries.getValue("SHA256SUMS").toString(Charsets.UTF_8).lineSequence()
             .filter(String::isNotBlank)
@@ -367,6 +570,9 @@ class Decision559UatAcceptanceIntegrationTest {
         assertEquals(27, guidance.size)
         assertEquals(Decision559UatService.REQUIRED_BANDS, guidance.map { it.band }.toSet())
         assertEquals(14, guidance.count { it.baselineStatus == "PARTIAL" })
+        assertTrue(guidance.filter { it.baselineStatus == "PARTIAL" }.all { it.manualEvidence.isNotEmpty() })
+        assertTrue(guidance.filter { it.baselineStatus == "AUTOMATED_PASS" }.all { it.manualEvidence.isEmpty() })
+        assertEquals(43, guidance.sumOf { it.manualEvidence.size })
         assertEquals("IT va universitet rahbariyati", guidance.single { it.band == 8 }.owner)
         assertEquals(listOf("DEP-07"), guidance.single { it.band == 8 }.blockedBy)
 
@@ -377,6 +583,23 @@ class Decision559UatAcceptanceIntegrationTest {
                 jsonPath("$.data[0].id") { value("UAT-559-03") }
                 jsonPath("$.data[1].band") { value(8) }
                 jsonPath("$.data[1].baselineStatus") { value("PARTIAL") }
+                jsonPath("$.data[1].manualEvidence.length()") { value(5) }
+            }
+
+        val manualPack = requirementCatalog.manualEvidencePack()
+        val manualPackHtml = manualPack.bytes.toString(Charsets.UTF_8)
+        assertEquals("decision-559-manual-evidence-intake-pack.html", manualPack.originalName)
+        assertEquals(sha256(manualPack.bytes), manualPack.sha256)
+        assertEquals(14, Regex("data-requirement-id=").findAll(manualPackHtml).count())
+        assertEquals(43, Regex("<li>").findAll(manualPackHtml).count() - 4)
+        assertTrue(manualPackHtml.contains("data-partial-count=\"14\""))
+
+        mockMvc.get("/api/v1/compliance/559/uat/requirements/manual-evidence-pack")
+            .andExpect {
+                status { isOk() }
+                content { contentTypeCompatibleWith(MediaType.TEXT_HTML) }
+                header { string("Cache-Control", "private, no-store") }
+                header { string("X-Content-SHA256", manualPack.sha256) }
             }
 
         val actor = userRepository.save(User(
@@ -394,11 +617,14 @@ class Decision559UatAcceptanceIntegrationTest {
                 content { contentType(MediaType.APPLICATION_JSON) }
                 header { string("Cache-Control", "private, no-store") }
                 header { exists("X-Content-SHA256") }
-                jsonPath("$.schemaVersion") { value(4) }
+                jsonPath("$.schemaVersion") { value(5) }
                 jsonPath("$.decisionNumber") { value(559) }
                 jsonPath("$.runId") { value(run.id) }
                 jsonPath("$.source.sha256") { value(Decision559UatService.SOURCE_SHA256) }
                 jsonPath("$.evidenceSetSha256") { value(sha256(byteArrayOf())) }
+                jsonPath("$.manualEvidenceRequiredCount") { value(43) }
+                jsonPath("$.manualEvidenceCoveredCount") { value(0) }
+                jsonPath("$.manualEvidenceAcceptedCount") { value(0) }
             }
             .andReturn().response
         assertEquals(sha256(response.contentAsByteArray), response.getHeader("X-Content-SHA256"))
@@ -409,6 +635,14 @@ class Decision559UatAcceptanceIntegrationTest {
         mockMvc.post("/api/v1/compliance/559/uat/runs") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"title":"Ruxsatsiz run","sourceSha256":"${Decision559UatService.SOURCE_SHA256}"}"""
+        }.andExpect { status { isForbidden() } }
+        mockMvc.post("/api/v1/compliance/559/uat/runs/${run.id}/manual-evidence-progress/UAT-559-08/0/coordination") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"assigneeName":"IT","dueDate":"${LocalDate.now().plusDays(1)}","note":"Ruxsatsiz koordinatsiya"}"""
+        }.andExpect { status { isForbidden() } }
+        mockMvc.post("/api/v1/compliance/559/uat/runs/${run.id}/manual-evidence-progress/coordination/bulk") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"dueDate":"${LocalDate.now().plusDays(1)}","note":"Ruxsatsiz bulk koordinatsiya"}"""
         }.andExpect { status { isForbidden() } }
     }
 
@@ -475,7 +709,7 @@ class Decision559UatAcceptanceIntegrationTest {
     }
 
     @Test
-    fun `rad etilgan legacy run dalili tuzatilsa schema v4ga o'tadi va eski protokol bekor qilinadi`() {
+    fun `rad etilgan legacy run dalili tuzatilsa schema v5ga o'tadi va partial reviewlar qayta ochiladi`() {
         val suffix = System.nanoTime()
         val author = userRepository.save(User(username = "uat-rework-author-$suffix", password = "test", fullName = "Qayta ish muallifi"))
         val reviewer = userRepository.save(User(username = "uat-rework-reviewer-$suffix", password = "test", fullName = "Qayta ish revieweri"))
@@ -532,36 +766,31 @@ class Decision559UatAcceptanceIntegrationTest {
         assertEquals(2, corrected.files.size)
         val detail = service.detail(run.id)
         assertEquals(Decision559UatRunStatus.DRAFT, detail.run.status)
-        assertEquals(4, detail.run.manifestSchemaVersion)
+        assertEquals(5, detail.run.manifestSchemaVersion)
         assertEquals(null, detail.run.protocolOriginalName)
         assertFalse(detail.run.readyToSubmit)
         assertThrows(IllegalArgumentException::class.java) { service.protocolFile(run.id) }
-        assertEquals(4, service.manifest(run.id).schemaVersion)
+        assertEquals(5, service.manifest(run.id).schemaVersion)
 
         service.reviewEvidence(
             corrected.id,
             ReviewDecision559UatEvidenceRequest(Decision559UatReviewStatus.ACCEPTED, "Tuzatilgan dalil qabul qilindi"),
             reviewer.id!!,
         )
-        service.uploadProtocol(
-            run.id, "UAT-559/REWORK-SECOND", LocalDate.now(),
-            "Komissiya raisi; metodika vakili; axborot xavfsizligi vakili",
-            service.manifest(run.id).evidenceSetSha256,
-            pdf("second-obsolete-protocol"), author.id!!,
-        )
-        val secondReview = requireNotNull(runRepository.findByIdAndDeletedFalse(run.id))
-        secondReview.status = Decision559UatRunStatus.IN_REVIEW
-        runRepository.save(secondReview)
-        service.reject(
-            run.id,
-            RejectDecision559UatRunRequest("Qo'shimcha faylni qabul paketidan olib tashlash talab qilinadi"),
-            reviewer.id!!,
-        )
-        val afterDelete = service.deleteEvidenceAttachment(corrected.files.last().id, author.id!!)
-        assertEquals(Decision559UatReviewStatus.PENDING, afterDelete.reviewStatus)
-        assertEquals(1, afterDelete.files.size)
-        assertEquals(Decision559UatRunStatus.DRAFT, service.detail(run.id).run.status)
-        assertThrows(IllegalArgumentException::class.java) { service.protocolFile(run.id) }
+        val migratedDetail = service.detail(run.id)
+        assertEquals(14, migratedDetail.run.blockingCount)
+        assertEquals(14, migratedDetail.evidence.count {
+            requirementCatalog.requirement(it.band, it.requirementId).baselineStatus == "PARTIAL" &&
+                it.reviewStatus == Decision559UatReviewStatus.PENDING
+        })
+        assertThrows(IllegalArgumentException::class.java) {
+            service.uploadProtocol(
+                run.id, "UAT-559/REWORK-SECOND", LocalDate.now(),
+                "Komissiya raisi; metodika vakili; axborot xavfsizligi vakili",
+                service.manifest(run.id).evidenceSetSha256,
+                pdf("second-obsolete-protocol"), author.id!!,
+            )
+        }
     }
 
     private fun pdf(label: String) = MockMultipartFile(

@@ -22,6 +22,8 @@ import uz.scorm.lms.app.v1.student.dto.StudentLifecycleRequest
 import uz.scorm.lms.app.v1.student.dto.StudentAdmissionRequest
 import uz.scorm.lms.app.v1.student.dto.StudentCreateRequest
 import uz.scorm.lms.app.v1.student.dto.StudentUpdateRequest
+import uz.scorm.lms.app.v1.student.dto.StudentRegistrationRequest
+import uz.scorm.lms.app.v1.student.dto.StudentAcademicAdmissionRequest
 import uz.scorm.lms.app.v1.student.model.DegreeLevel
 import uz.scorm.lms.app.v1.student.model.EducationForm
 import uz.scorm.lms.app.v1.student.model.Gender
@@ -53,6 +55,61 @@ class StudentLifecycleWorkflowIntegrationTest {
     @Autowired private lateinit var groupRepository: GroupRepository
     @Autowired private lateinit var teacherRepository: TeacherRepository
     @Autowired private lateinit var admissionPolicyRepository: DistanceAdmissionPolicyRepository
+
+    @Test
+    fun `shaxsiy kartochka va akademik qabul ikki alohida bosqichda bajariladi`() {
+        val actor = user("two-step-registrar")
+        val target = program("Kompyuter injiniringi", "60610500")
+        val targetGroup = groupRepository.save(Group(name = "KI-26", educationYear = "2026-2027", program = target))
+        val suffix = System.nanoTime().toString()
+
+        val registered = studentService.register(StudentRegistrationRequest(
+            pinfl = suffix.takeLast(14).padStart(14, '3'),
+            lastName = "Saidov",
+            firstName = "Bekzod",
+            birthDate = LocalDate.of(2003, 5, 6),
+            gender = Gender.MALE,
+            studentNumber = "REG-$suffix",
+            password = "Student@12345",
+        ))
+
+        assertEquals(StudentStatus.REGISTERED, registered.studentStatus)
+        assertEquals(null, registered.programId)
+        assertEquals(null, registered.groupId)
+        assertEquals(null, registered.degreeLevel)
+        assertEquals(null, registered.educationForm)
+        assertEquals(null, registered.courseNumber)
+        assertFalse(registered.accountEnabled)
+        assertTrue(lifecycleService.history(requireNotNull(registered.id)).isEmpty())
+
+        val admitted = lifecycleService.admitRegistered(
+            requireNotNull(registered.id),
+            StudentAcademicAdmissionRequest(
+                facultyId = target.department?.faculty?.id,
+                programId = requireNotNull(target.id),
+                degreeLevel = DegreeLevel.BACHELOR,
+                educationForm = EducationForm.FULL_TIME,
+                educationLanguage = "uz",
+                courseNumber = 1,
+                groupId = requireNotNull(targetGroup.id),
+                academicYear = "2026-2027",
+                paymentType = PaymentType.CONTRACT,
+                orderNumber = "QABUL-2B/2026",
+                orderDate = LocalDate.now().minusDays(2),
+                effectiveDate = LocalDate.now().minusDays(1),
+                legalBasis = "Universitet qabul komissiyasining tasdiqlangan reglamenti",
+                reason = "Talabani o'qishga qabul qilish bo'yicha komissiya qarori",
+            ),
+            requireNotNull(actor.id),
+        )
+
+        assertEquals(StudentStatus.ACTIVE, admitted.student.studentStatus)
+        assertEquals(target.id, admitted.student.programId)
+        assertEquals(targetGroup.id, admitted.student.groupId)
+        assertTrue(admitted.student.accountEnabled)
+        assertEquals(StudentStatus.REGISTERED, admitted.event.fromStatus)
+        assertEquals(StudentLifecycleEventType.ADMISSION, admitted.event.eventType)
+    }
 
     @Test
     fun `qabul buyruq dalili va ADMISSION hodisasi bilan atomar yaratiladi`() {

@@ -39,6 +39,10 @@ class Decision559UatController(
     fun requirements(): ResponseEntity<ApiResponse<List<Decision559UatRequirementGuidanceDto>>> =
         ResponseEntity.ok(ApiResponse.success(requirementCatalog.list()))
 
+    @GetMapping("/requirements/manual-evidence-pack", produces = ["text/html"])
+    fun manualEvidencePack(): ResponseEntity<ByteArrayResource> =
+        download(requirementCatalog.manualEvidencePack())
+
     @GetMapping("/runs")
     fun list(): ResponseEntity<ApiResponse<List<Decision559UatRunDto>>> =
         ResponseEntity.ok(ApiResponse.success(service.list()))
@@ -46,6 +50,46 @@ class Decision559UatController(
     @GetMapping("/runs/{id}")
     fun detail(@PathVariable id: Long): ResponseEntity<ApiResponse<Decision559UatRunDetailDto>> =
         ResponseEntity.ok(ApiResponse.success(service.detail(id)))
+
+    @GetMapping("/runs/{id}/manual-evidence-progress")
+    fun manualEvidenceProgress(
+        @PathVariable id: Long,
+    ): ResponseEntity<ApiResponse<Decision559UatManualEvidenceProgressDto>> =
+        ResponseEntity.ok(ApiResponse.success(service.manualEvidenceProgress(id)))
+
+    @GetMapping("/runs/{id}/manual-evidence-progress.csv", produces = ["text/csv"])
+    fun manualEvidenceProgressCsv(@PathVariable id: Long): ResponseEntity<ByteArrayResource> =
+        download(service.manualEvidenceProgressCsv(id))
+
+    @PostMapping("/runs/{id}/manual-evidence-progress/{requirementId}/{itemIndex}/coordination")
+    @PreAuthorize("hasAuthority('UAT_WRITE')")
+    fun updateManualTaskCoordination(
+        @PathVariable id: Long,
+        @PathVariable requirementId: String,
+        @PathVariable itemIndex: Int,
+        @RequestBody request: UpdateDecision559UatManualTaskCoordinationRequest,
+        @CurrentUser user: User,
+    ): ResponseEntity<ApiResponse<Decision559UatManualEvidenceProgressDto>> =
+        ResponseEntity.ok(ApiResponse.success(service.updateManualTaskCoordination(
+            id,
+            requirementId,
+            itemIndex,
+            request,
+            requireNotNull(user.id),
+        )))
+
+    @PostMapping("/runs/{id}/manual-evidence-progress/coordination/bulk")
+    @PreAuthorize("hasAuthority('UAT_WRITE')")
+    fun bulkCoordinateManualTasks(
+        @PathVariable id: Long,
+        @RequestBody request: BulkCoordinateDecision559UatManualTasksRequest,
+        @CurrentUser user: User,
+    ): ResponseEntity<ApiResponse<Decision559UatManualEvidenceProgressDto>> =
+        ResponseEntity.ok(ApiResponse.success(service.bulkCoordinateManualTasks(
+            id,
+            request,
+            requireNotNull(user.id),
+        )))
 
     @GetMapping("/runs/{id}/manifest", produces = ["application/json"])
     fun manifest(@PathVariable id: Long): ResponseEntity<ByteArrayResource> {
@@ -109,13 +153,14 @@ class Decision559UatController(
         @RequestParam ownerName: String,
         @RequestParam summary: String,
         @RequestParam(required = false) evidenceReference: String?,
+        @RequestParam(required = false) manualEvidenceIndexes: List<Int>?,
         @RequestParam(required = false) file: MultipartFile?,
         @RequestParam(required = false) files: List<MultipartFile>?,
         @CurrentUser user: User,
     ): ResponseEntity<ApiResponse<Decision559UatEvidenceDto>> = ResponseEntity.ok(ApiResponse.success(
         service.saveEvidence(
             id, band, requirementId, outcome, ownerName, summary, evidenceReference, file, requireNotNull(user.id),
-            files.orEmpty(),
+            files.orEmpty(), manualEvidenceIndexes.orEmpty(),
         ),
     ))
 

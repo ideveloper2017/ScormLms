@@ -6,6 +6,7 @@ export const DECISION_559_REQUIRED_BANDS = [3, ...Array.from({ length: 26 }, (_,
 export type UatRunStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "REJECTED";
 export type UatOutcome = "AUTOMATED_PASS" | "MANUAL_PASS" | "NOT_APPLICABLE" | "PARTIAL" | "BLOCKED_EXTERNAL";
 export type UatReviewStatus = "PENDING" | "ACCEPTED" | "REJECTED";
+export type UatManualEvidenceStatus = "PENDING" | "COLLECTED" | "ACCEPTED";
 
 export interface Decision559UatRequirementGuidance {
   id: string;
@@ -15,6 +16,7 @@ export interface Decision559UatRequirementGuidance {
   owner: string;
   evidence: string[];
   blockedBy: string[];
+  manualEvidence: string[];
   note: string;
 }
 
@@ -27,6 +29,9 @@ export interface Decision559UatRun {
   evidenceCount: number;
   acceptedCount: number;
   blockingCount: number;
+  manualEvidenceRequiredCount: number;
+  manualEvidenceCoveredCount: number;
+  manualEvidenceAcceptedCount: number;
   protocolNumber?: string | null;
   protocolSignedDate?: string | null;
   protocolSignatories?: string | null;
@@ -54,6 +59,7 @@ export interface Decision559UatEvidence {
   ownerName: string;
   summary: string;
   evidenceReference?: string | null;
+  manualEvidenceCoverage: string[];
   originalName?: string | null;
   contentType?: string | null;
   sizeBytes?: number | null;
@@ -76,6 +82,42 @@ export interface Decision559UatEvidenceFile {
   uploadedAt: string;
 }
 
+export interface Decision559UatManualEvidenceProgress {
+  runId: number;
+  requiredCount: number;
+  pendingCount: number;
+  collectedCount: number;
+  acceptedCount: number;
+  coordinatedCount: number;
+  uncoordinatedCount: number;
+  overdueCount: number;
+  items: Decision559UatManualEvidenceProgressItem[];
+}
+
+export interface Decision559UatManualEvidenceProgressItem {
+  requirementId: string;
+  band: number;
+  itemIndex: number;
+  description: string;
+  recommendedOwner: string;
+  actualOwnerName?: string | null;
+  blockedBy: string[];
+  status: UatManualEvidenceStatus;
+  outcome?: UatOutcome | null;
+  reviewStatus?: UatReviewStatus | null;
+  evidenceId?: number | null;
+  fileCount: number;
+  submittedAt?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  coordinationAssigneeName?: string | null;
+  coordinationDueDate?: string | null;
+  coordinationNote?: string | null;
+  coordinationOverdue: boolean;
+  coordinatedByName?: string | null;
+  coordinationUpdatedAt?: string | null;
+}
+
 export interface Decision559UatDetail { run: Decision559UatRun; evidence: Decision559UatEvidence[] }
 export interface UatEvidenceInput {
   band: number;
@@ -85,6 +127,7 @@ export interface UatEvidenceInput {
   evidenceReference?: string;
   file?: File | null;
   files?: File[];
+  manualEvidenceIndexes?: number[];
 }
 export interface UatProtocolInput {
   protocolNumber: string;
@@ -112,6 +155,17 @@ export const decision559UatApi = {
     const response = await api.get<ApiResponse<Decision559UatRequirementGuidance[]>>("/compliance/559/uat/requirements");
     return unwrap(response.data, "UAT talablar yo'riqnomasini yuklab bo'lmadi");
   },
+  manualEvidencePack: async (): Promise<DownloadedUatFile> => {
+    const response = await api.get<Blob>("/compliance/559/uat/requirements/manual-evidence-pack", { responseType: "blob" });
+    return {
+      blob: response.data,
+      originalName: responseFileName(
+        response.headers["content-disposition"],
+        "decision-559-manual-evidence-intake-pack.html",
+      ),
+      sha256: response.headers["x-content-sha256"],
+    };
+  },
   list: async () => {
     const response = await api.get<ApiResponse<Decision559UatRun[]>>("/compliance/559/uat/runs");
     return unwrap(response.data, "UAT runlarini yuklab bo'lmadi");
@@ -119,6 +173,45 @@ export const decision559UatApi = {
   detail: async (id: number) => {
     const response = await api.get<ApiResponse<Decision559UatDetail>>(`/compliance/559/uat/runs/${id}`);
     return unwrap(response.data, "UAT runini yuklab bo'lmadi");
+  },
+  manualEvidenceProgress: async (runId: number) => {
+    const response = await api.get<ApiResponse<Decision559UatManualEvidenceProgress>>(
+      `/compliance/559/uat/runs/${runId}/manual-evidence-progress`,
+    );
+    return unwrap(response.data, "Manual dalil progressini yuklab bo'lmadi");
+  },
+  manualEvidenceProgressCsv: async (runId: number): Promise<DownloadedUatFile> => {
+    const response = await api.get<Blob>(
+      `/compliance/559/uat/runs/${runId}/manual-evidence-progress.csv`,
+      { responseType: "blob" },
+    );
+    return {
+      blob: response.data,
+      originalName: responseFileName(
+        response.headers["content-disposition"],
+        `decision-559-uat-run-${runId}-manual-evidence-progress.csv`,
+      ),
+      sha256: response.headers["x-content-sha256"],
+    };
+  },
+  updateManualTaskCoordination: async (
+    runId: number,
+    requirementId: string,
+    itemIndex: number,
+    input: { assigneeName: string; dueDate: string; note: string },
+  ) => {
+    const response = await api.post<ApiResponse<Decision559UatManualEvidenceProgress>>(
+      `/compliance/559/uat/runs/${runId}/manual-evidence-progress/${requirementId}/${itemIndex}/coordination`,
+      input,
+    );
+    return unwrap(response.data, "Manual topshiriq koordinatsiyasini saqlab bo'lmadi");
+  },
+  bulkCoordinateManualTasks: async (runId: number, input: { dueDate: string; note: string }) => {
+    const response = await api.post<ApiResponse<Decision559UatManualEvidenceProgress>>(
+      `/compliance/559/uat/runs/${runId}/manual-evidence-progress/coordination/bulk`,
+      input,
+    );
+    return unwrap(response.data, "Manual topshiriqlarni ommaviy taqsimlab bo'lmadi");
   },
   create: async (title: string) => {
     const response = await api.post<ApiResponse<Decision559UatRun>>("/compliance/559/uat/runs", {
@@ -135,6 +228,7 @@ export const decision559UatApi = {
     form.set("ownerName", input.ownerName);
     form.set("summary", input.summary);
     if (input.evidenceReference?.trim()) form.set("evidenceReference", input.evidenceReference.trim());
+    input.manualEvidenceIndexes?.forEach(index => form.append("manualEvidenceIndexes", String(index)));
     if (input.file) form.set("file", input.file);
     input.files?.forEach(file => form.append("files", file));
     const response = await api.post<ApiResponse<Decision559UatEvidence>>(

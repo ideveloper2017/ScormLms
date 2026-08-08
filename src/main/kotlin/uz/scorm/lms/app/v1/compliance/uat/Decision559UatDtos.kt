@@ -15,6 +15,17 @@ data class ReviewDecision559UatEvidenceRequest(
 
 data class RejectDecision559UatRunRequest(val reason: String)
 
+data class UpdateDecision559UatManualTaskCoordinationRequest(
+    val assigneeName: String,
+    val dueDate: LocalDate,
+    val note: String,
+)
+
+data class BulkCoordinateDecision559UatManualTasksRequest(
+    val dueDate: LocalDate,
+    val note: String,
+)
+
 data class Decision559UatRequirementGuidanceDto(
     val id: String,
     val band: Int,
@@ -23,6 +34,7 @@ data class Decision559UatRequirementGuidanceDto(
     val owner: String,
     val evidence: List<String>,
     val blockedBy: List<String>,
+    val manualEvidence: List<String>,
     val note: String,
 )
 
@@ -35,6 +47,9 @@ data class Decision559UatRunDto(
     val evidenceCount: Int,
     val acceptedCount: Int,
     val blockingCount: Int,
+    val manualEvidenceRequiredCount: Int,
+    val manualEvidenceCoveredCount: Int,
+    val manualEvidenceAcceptedCount: Int,
     val protocolNumber: String?,
     val protocolSignedDate: LocalDate?,
     val protocolSignatories: String?,
@@ -62,6 +77,7 @@ data class Decision559UatEvidenceDto(
     val ownerName: String,
     val summary: String,
     val evidenceReference: String?,
+    val manualEvidenceCoverage: List<String>,
     val originalName: String?,
     val contentType: String?,
     val sizeBytes: Long?,
@@ -90,6 +106,42 @@ data class Decision559UatRunDetailDto(
     val evidence: List<Decision559UatEvidenceDto>,
 )
 
+data class Decision559UatManualEvidenceProgressDto(
+    val runId: Long,
+    val requiredCount: Int,
+    val pendingCount: Int,
+    val collectedCount: Int,
+    val acceptedCount: Int,
+    val coordinatedCount: Int,
+    val uncoordinatedCount: Int,
+    val overdueCount: Int,
+    val items: List<Decision559UatManualEvidenceProgressItemDto>,
+)
+
+data class Decision559UatManualEvidenceProgressItemDto(
+    val requirementId: String,
+    val band: Int,
+    val itemIndex: Int,
+    val description: String,
+    val recommendedOwner: String,
+    val actualOwnerName: String?,
+    val blockedBy: List<String>,
+    val status: Decision559UatManualEvidenceStatus,
+    val outcome: Decision559UatOutcome?,
+    val reviewStatus: Decision559UatReviewStatus?,
+    val evidenceId: Long?,
+    val fileCount: Int,
+    val submittedAt: Instant?,
+    val reviewedByName: String?,
+    val reviewedAt: Instant?,
+    val coordinationAssigneeName: String?,
+    val coordinationDueDate: LocalDate?,
+    val coordinationNote: String?,
+    val coordinationOverdue: Boolean,
+    val coordinatedByName: String?,
+    val coordinationUpdatedAt: Instant?,
+)
+
 data class PrivateEvidenceFile(
     val bytes: ByteArray,
     val contentType: String,
@@ -107,6 +159,9 @@ data class Decision559UatManifestDto(
     val status: Decision559UatRunStatus,
     val evidenceSetSha256: String,
     val readyToSubmit: Boolean,
+    val manualEvidenceRequiredCount: Int,
+    val manualEvidenceCoveredCount: Int,
+    val manualEvidenceAcceptedCount: Int,
     val protocol: Decision559UatManifestProtocolDto,
     val requirements: List<Decision559UatManifestRequirementDto>,
     val submittedByName: String?,
@@ -142,6 +197,7 @@ data class Decision559UatManifestRequirementDto(
     val owner: String,
     val summary: String,
     val evidenceReference: String?,
+    val manualEvidenceCoverage: List<String>,
     val file: Decision559UatManifestFileDto?,
     val files: List<Decision559UatManifestFileDto>,
     val submittedById: Long,

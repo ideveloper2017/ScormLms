@@ -20,3 +20,12 @@ interface Decision559UatEvidenceFileRepository : JpaRepository<Decision559UatEvi
     fun findByIdAndDeletedFalse(id: Long): Decision559UatEvidenceFile?
     fun countByEvidenceIdAndDeletedFalse(evidenceId: Long): Long
 }
+
+interface Decision559UatManualTaskCoordinationRepository : JpaRepository<Decision559UatManualTaskCoordination, Long> {
+    fun findAllByRunIdAndDeletedFalseOrderByBandAscItemIndexAsc(runId: Long): List<Decision559UatManualTaskCoordination>
+    fun findByRunIdAndRequirementIdAndItemIndexAndDeletedFalse(
+        runId: Long,
+        requirementId: String,
+        itemIndex: Int,
+    ): Decision559UatManualTaskCoordination?
+}

@@ -18,6 +18,7 @@ import java.time.LocalDate
 enum class Decision559UatRunStatus { DRAFT, IN_REVIEW, APPROVED, REJECTED }
 enum class Decision559UatOutcome { AUTOMATED_PASS, MANUAL_PASS, NOT_APPLICABLE, PARTIAL, BLOCKED_EXTERNAL }
 enum class Decision559UatReviewStatus { PENDING, ACCEPTED, REJECTED }
+enum class Decision559UatManualEvidenceStatus { PENDING, COLLECTED, ACCEPTED }
 
 @Entity
 @Table(
@@ -32,7 +33,7 @@ class Decision559UatRun(
     var sourceSha256: String,
 
     @Column(name = "manifest_schema_version", nullable = false)
-    var manifestSchemaVersion: Int = 4,
+    var manifestSchemaVersion: Int = 5,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -95,6 +96,43 @@ class Decision559UatRun(
 
     @Column(name = "rejection_reason", length = 2000)
     var rejectionReason: String? = null,
+) : BaseEntity()
+
+@Entity
+@Table(
+    name = "decision_559_uat_manual_task_coordination",
+    uniqueConstraints = [UniqueConstraint(
+        name = "uq_559_uat_manual_task_coord",
+        columnNames = ["run_id", "requirement_id", "item_index"],
+    )],
+    indexes = [Index(name = "idx_559_uat_manual_task_run", columnList = "run_id,band,item_index")],
+)
+class Decision559UatManualTaskCoordination(
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "run_id", nullable = false)
+    var run: Decision559UatRun,
+
+    @Column(name = "requirement_id", nullable = false, length = 32)
+    var requirementId: String,
+
+    @Column(nullable = false)
+    var band: Int,
+
+    @Column(name = "item_index", nullable = false)
+    var itemIndex: Int,
+
+    @Column(name = "assignee_name", nullable = false, length = 255)
+    var assigneeName: String,
+
+    @Column(name = "due_date", nullable = false)
+    var dueDate: LocalDate,
+
+    @Column(nullable = false, length = 2000)
+    var note: String,
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "coordinated_by", nullable = false)
+    var coordinatedBy: User,
 ) : BaseEntity()
 
 @Entity
@@ -162,6 +200,9 @@ class Decision559UatEvidence(
 
     @Column(name = "evidence_reference", length = 1000)
     var evidenceReference: String? = null,
+
+    @Column(name = "manual_evidence_coverage", nullable = false, length = 4000)
+    var manualEvidenceCoverage: String = "",
 
     @Column(name = "storage_name", length = 255)
     var storageName: String? = null,

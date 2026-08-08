@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory)][string]$ManifestPath,
     [string]$ExpectedSha256 = "",
     [string]$ReportPath = "",
+    [string]$CatalogPath = "",
     [switch]$RequireReady,
     [switch]$RequireApproved
 )
@@ -22,9 +23,36 @@ $expectedBands = @(@(3) + @(8..33))
 $finalOutcomes = @("AUTOMATED_PASS", "MANUAL_PASS", "NOT_APPLICABLE")
 $allowedOutcomes = @($finalOutcomes + @("PARTIAL", "BLOCKED_EXTERNAL"))
 $allowedReviews = @("PENDING", "ACCEPTED", "REJECTED")
+$requiredManualEvidence = @{}
+$manualCoverageValid = $true
+$manualCoverageTotal = 0
+$manualAcceptedTotal = 0
 
 $schemaVersion = [int]$manifest.schemaVersion
-if ($schemaVersion -notin @(2, 3, 4)) { $errors.Add("schemaVersion must be 2, 3 or 4") }
+if ($schemaVersion -notin @(2, 3, 4, 5)) { $errors.Add("schemaVersion must be 2, 3, 4 or 5") }
+if ($schemaVersion -ge 5) {
+    try {
+        $catalogCandidate = if ([string]::IsNullOrWhiteSpace($CatalogPath)) {
+            Join-Path $PSScriptRoot "..\..\docs\uat\decision-559-uat-evidence.json"
+        } else { $CatalogPath }
+        $catalogFile = (Resolve-Path -LiteralPath $catalogCandidate -ErrorAction Stop).Path
+        $catalog = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($catalogFile)) | ConvertFrom-Json
+        if ([int]$catalog.schemaVersion -ne 2 -or [int]$catalog.decisionNumber -ne 559 -or
+            "$($catalog.source.sha256)" -ne $expectedSourceSha) {
+            throw "Tasdiqlangan schema-v2 katalog metadata qiymati noto'g'ri"
+        }
+        foreach ($catalogItem in @($catalog.requirements | Where-Object status -eq "PARTIAL")) {
+            $requiredManualEvidence[[int]$catalogItem.band] = @($catalogItem.manualEvidence)
+        }
+        if ($requiredManualEvidence.Count -ne 14 -or
+            ($requiredManualEvidence.Values | ForEach-Object Count | Measure-Object -Sum).Sum -ne 43) {
+            throw "Tasdiqlangan katalog 14 band/43 checklist invariantiga mos emas"
+        }
+    } catch {
+        $errors.Add("Schema-v5 manual evidence katalogi yuklanmadi: $($_.Exception.Message)")
+        $manualCoverageValid = $false
+    }
+}
 if ($manifest.decisionNumber -ne 559) { $errors.Add("decisionNumber must be 559") }
 if ("$($manifest.source.sha256)" -ne $expectedSourceSha) { $errors.Add("source SHA-256 is not the approved 559 PDF") }
 if ("$($manifest.evidenceSetSha256)" -notmatch '^[a-f0-9]{64}$') { $errors.Add("evidenceSetSha256 is invalid") }
@@ -63,9 +91,71 @@ foreach ($item in @($requirements | Sort-Object band)) {
         ([string]::IsNullOrWhiteSpace("$($item.evidenceReference)") -or "$($item.summary)".Trim().Length -lt 20)) {
         $errors.Add("$($item.id) NOT_APPLICABLE requires rationale and reference")
     }
-    $itemFiles = if ($schemaVersion -eq 2) { @($item.file) } else { @($item.files) }
+    $manualCoverage = [Collections.Generic.List[string]]::new()
+    foreach ($coverageItem in $item.manualEvidenceCoverage) {
+        if ($null -ne $coverageItem) { $manualCoverage.Add([string]$coverageItem) }
+    }
+    if ($schemaVersion -ge 5) {
+        $expectedManualCoverage = if ($requiredManualEvidence.ContainsKey([int]$item.band)) {
+            @($requiredManualEvidence[[int]$item.band])
+        } else { @() }
+        $requiredManualCount = $expectedManualCoverage.Count
+        $manualCoverageTotal += $manualCoverage.Count
+        if ($item.outcome -eq "MANUAL_PASS" -and $item.reviewStatus -eq "ACCEPTED") {
+            $manualAcceptedTotal += $manualCoverage.Count
+        }
+        if ($manualCoverage.Count -ne @($manualCoverage | Sort-Object -Unique).Count -or
+            @($manualCoverage | Where-Object { [string]::IsNullOrWhiteSpace("$($_)") }).Count -gt 0) {
+            $errors.Add("$($item.id) manualEvidenceCoverage has blank or duplicate items")
+            $manualCoverageValid = $false
+        }
+        if ($requiredManualCount -gt 0 -and $item.outcome -in @("AUTOMATED_PASS", "NOT_APPLICABLE")) {
+            $errors.Add("$($item.id) PARTIAL baseline final outcome must be MANUAL_PASS")
+            $manualCoverageValid = $false
+        }
+        if ($requiredManualCount -gt 0 -and $item.outcome -eq "MANUAL_PASS" -and
+            $manualCoverage.Count -ne $requiredManualCount) {
+            $errors.Add("$($item.id) MANUAL_PASS requires all $requiredManualCount manual checklist items")
+            $manualCoverageValid = $false
+        }
+        if ($requiredManualCount -gt 0 -and $manualCoverage.Count -gt 0) {
+            $catalogCursor = 0
+            foreach ($coverageText in $manualCoverage) {
+                $matchedAt = -1
+                for ($catalogIndex = $catalogCursor; $catalogIndex -lt $requiredManualCount; $catalogIndex++) {
+                    if ($coverageText -eq $expectedManualCoverage[$catalogIndex]) {
+                        $matchedAt = $catalogIndex
+                        break
+                    }
+                }
+                if ($matchedAt -lt 0) {
+                    $errors.Add("$($item.id) manualEvidenceCoverage approved catalog text/order mismatch")
+                    $manualCoverageValid = $false
+                    break
+                }
+                $catalogCursor = $matchedAt + 1
+            }
+        }
+        if (($requiredManualCount -eq 0 -or
+            $item.outcome -notin @("MANUAL_PASS", "PARTIAL", "BLOCKED_EXTERNAL")) -and $manualCoverage.Count -gt 0) {
+            $errors.Add("$($item.id) has unexpected manualEvidenceCoverage")
+            $manualCoverageValid = $false
+        }
+    }
+    $itemFiles = [Collections.Generic.List[object]]::new()
+    if ($schemaVersion -eq 2) {
+        if ($null -ne $item.file) { $itemFiles.Add($item.file) }
+    } else {
+        foreach ($evidenceFile in $item.files) {
+            if ($null -ne $evidenceFile) { $itemFiles.Add($evidenceFile) }
+        }
+    }
     if ($item.outcome -eq "MANUAL_PASS" -and $itemFiles.Count -eq 0) {
         $errors.Add("$($item.id) MANUAL_PASS requires a private evidence file")
+    }
+    if ($schemaVersion -ge 5 -and $manualCoverage.Count -gt 0 -and $itemFiles.Count -eq 0) {
+        $errors.Add("$($item.id) manualEvidenceCoverage requires a private evidence file")
+        $manualCoverageValid = $false
     }
     if ($schemaVersion -ge 3 -and $itemFiles.Count -gt 10) { $errors.Add("$($item.id) has more than 10 files") }
     if ($schemaVersion -ge 3 -and @($itemFiles | Group-Object id | Where-Object Count -gt 1).Count) {
@@ -112,12 +202,29 @@ foreach ($item in @($requirements | Sort-Object band)) {
             $item.file.sizeBytes, $item.file.sha256, $item.submittedById, $item.submittedAt,
             $item.reviewStatus, $item.reviewNotes, $item.reviewedById, $item.reviewedAt
         )) { Add-HashValue $incremental $value }
-    } else {
+    } elseif ($schemaVersion -in @(3, 4)) {
         foreach ($value in @(
             $item.id, [string]$item.band, $item.outcome, $item.owner, $item.summary,
             $item.evidenceReference, $item.submittedById, $item.submittedAt,
             $item.reviewStatus, $item.reviewNotes, $item.reviewedById, $item.reviewedAt,
             [string]$itemFiles.Count
+        )) { Add-HashValue $incremental $value }
+        foreach ($evidenceFile in @($itemFiles | Sort-Object id)) {
+            foreach ($value in @(
+                $evidenceFile.id, $evidenceFile.originalName, $evidenceFile.contentType,
+                $evidenceFile.sizeBytes, $evidenceFile.sha256, $evidenceFile.uploadedById,
+                $evidenceFile.uploadedAt
+            )) { Add-HashValue $incremental $value }
+        }
+    } else {
+        foreach ($value in @(
+            $item.id, [string]$item.band, $item.outcome, $item.owner, $item.summary,
+            $item.evidenceReference, [string]$manualCoverage.Count
+        )) { Add-HashValue $incremental $value }
+        foreach ($coverageItem in $manualCoverage) { Add-HashValue $incremental $coverageItem }
+        foreach ($value in @(
+            $item.submittedById, $item.submittedAt, $item.reviewStatus, $item.reviewNotes,
+            $item.reviewedById, $item.reviewedAt, [string]$itemFiles.Count
         )) { Add-HashValue $incremental $value }
         foreach ($evidenceFile in @($itemFiles | Sort-Object id)) {
             foreach ($value in @(
@@ -132,6 +239,13 @@ $calculatedEvidenceSetSha = ($incremental.GetHashAndReset() | ForEach-Object { $
 $incremental.Dispose()
 if ($calculatedEvidenceSetSha -ne "$($manifest.evidenceSetSha256)") {
     $errors.Add("evidenceSetSha256 does not match requirement contents")
+}
+if ($schemaVersion -ge 5) {
+    if ([int]$manifest.manualEvidenceRequiredCount -ne 43 -or
+        [int]$manifest.manualEvidenceCoveredCount -ne $manualCoverageTotal -or
+        [int]$manifest.manualEvidenceAcceptedCount -ne $manualAcceptedTotal) {
+        $errors.Add("Schema-v5 manual evidence progress summary does not match requirement contents")
+    }
 }
 
 $protocol = $manifest.protocol
@@ -153,7 +267,7 @@ if ($schemaVersion -ge 4 -and $protocolSigned -and -not $protocolBound) {
     $errors.Add("Signed protocol evidenceSetSha256 does not match the manifest evidence snapshot")
 }
 
-$requirementsReady = $requirements.Count -eq 27 -and @(
+$requirementsReady = $requirements.Count -eq 27 -and $manualCoverageValid -and @(
     $requirements | Where-Object { $_.outcome -notin $finalOutcomes -or $_.reviewStatus -ne "ACCEPTED" }
 ).Count -eq 0 -and @($requirements | Where-Object {
     $_.outcome -eq "MANUAL_PASS" -and
@@ -176,8 +290,11 @@ $report = [ordered]@{
     manifestPath = $manifestFile
     manifestSha256 = $manifestSha256
     evidenceSetSha256 = "$($manifest.evidenceSetSha256)"
+    calculatedEvidenceSetSha256 = $calculatedEvidenceSetSha
     requirements = $requirements.Count
     requirementsReady = $requirementsReady
+    manualEvidenceCoverage = $manualCoverageTotal
+    manualEvidenceAccepted = $manualAcceptedTotal
     protocolSigned = $protocolSigned
     protocolEvidenceSetBound = $protocolBound
     runStatus = "$($manifest.status)"

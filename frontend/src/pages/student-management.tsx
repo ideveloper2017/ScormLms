@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AcademicSelect } from '@/components/admin/academic-select';
 import {
+  admitStudent,
   createStudent,
   getStudent,
   listStudentLifecycle,
@@ -32,7 +33,7 @@ import type {
   StudentStatus,
   StudentSummaryDto,
 } from '@/types/student.types';
-import { Loader2, ArrowUpCircle, Edit, History, UserPlus, RefreshCcw } from 'lucide-react';
+import { Loader2, ArrowUpCircle, Edit, History, UserPlus, RefreshCcw, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type LifecycleAction = Exclude<StudentLifecycleEventType, 'ADMISSION'>;
@@ -45,9 +46,12 @@ const emptyEvidence = () => ({
   legalBasis: "559-son qaror 12-bandi va tashkilotning talabalar harakati reglamenti",
   reason: '',
 });
-const emptyForm = () => ({
+const emptyPersonalForm = () => ({
   firstName: '', lastName: '', pinfl: '', studentNumber: '', birthDate: '', gender: 'MALE' as Gender,
-  email: '', groupId: '', facultyId: '', programId: '', course: '1', language: 'uz', academicYear: '',
+  email: '',
+});
+const emptyAdmissionForm = () => ({
+  groupId: '', facultyId: '', programId: '', course: '1', language: 'uz', academicYear: '',
   degreeLevel: 'BACHELOR' as DegreeLevel, educationForm: 'FULL_TIME' as EducationForm,
   paymentType: 'CONTRACT' as PaymentType, contractNumber: '', contractAmount: '',
   ...emptyEvidence(),
@@ -62,9 +66,10 @@ const actionLabel: Record<LifecycleAction, string> = {
   GRADUATION: 'Bitiruvchi qilish',
 };
 const statusLabel: Record<StudentStatus, string> = {
-  ACTIVE: 'Faol', SUSPENDED: "To'xtatilgan", EXPELLED: 'Chetlashtirilgan', GRADUATED: 'Bitirgan',
+  REGISTERED: 'Qabul qilinmagan', ACTIVE: 'Faol', SUSPENDED: "To'xtatilgan", EXPELLED: 'Chetlashtirilgan', GRADUATED: 'Bitirgan',
 };
 const availableActions: Record<StudentStatus, LifecycleAction[]> = {
+  REGISTERED: [],
   ACTIVE: ['SUSPENSION', 'TRANSFER', 'EXPULSION', 'GRADUATION'],
   SUSPENDED: ['REINSTATEMENT', 'TRANSFER', 'EXPULSION'],
   EXPELLED: ['REINSTATEMENT'],
@@ -77,7 +82,9 @@ export function StudentManagement() {
   const { data: students = [], isLoading } = useQuery({ queryKey: qk.students(), queryFn: listStudents });
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [formData, setFormData] = useState(emptyForm);
+  const [formData, setFormData] = useState(emptyPersonalForm);
+  const [admissionStudent, setAdmissionStudent] = useState<StudentSummaryDto | null>(null);
+  const [admissionForm, setAdmissionForm] = useState(emptyAdmissionForm);
   const [lifecycleTarget, setLifecycleTarget] = useState<{ student: StudentSummaryDto; action: LifecycleAction } | null>(null);
   const [lifecycleForm, setLifecycleForm] = useState(emptyLifecycle);
   const [historyStudent, setHistoryStudent] = useState<StudentSummaryDto | null>(null);
@@ -90,7 +97,7 @@ export function StudentManagement() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.students() });
   const optionalId = (value: string) => value ? Number(value) : null;
-  const closeStudentDialog = () => { setIsAdding(false); setEditingStudent(null); setFormData(emptyForm()); };
+  const closeStudentDialog = () => { setIsAdding(false); setEditingStudent(null); setFormData(emptyPersonalForm()); };
   const showError = (error: unknown) => toast({
     title: 'Amal rad etildi',
     description: error instanceof Error ? error.message : "Server lifecycle qoidasini qabul qilmadi",
@@ -107,28 +114,18 @@ export function StudentManagement() {
     try {
       const personalPayload = {
         firstName: formData.firstName.trim(), lastName: formData.lastName.trim(),
-        email: formData.email.trim() || null, courseNumber: Number(formData.course),
-        educationLanguage: formData.language,
+        email: formData.email.trim() || null,
       };
       if (editingStudent?.id != null) {
         await updateStudent(editingStudent.id, personalPayload);
         toast({ title: 'Muvaffaqiyatli', description: "Talabaning shaxsiy ma'lumotlari yangilandi" });
       } else {
         await createStudent({
-          student: {
-            ...personalPayload,
-            pinfl: formData.pinfl.trim(), studentNumber: formData.studentNumber.trim(), birthDate: formData.birthDate,
-            gender: formData.gender, citizenship: 'UZBEKISTAN', facultyId: optionalId(formData.facultyId),
-            programId: optionalId(formData.programId), groupId: optionalId(formData.groupId),
-            academicYear: formData.academicYear.trim() || null, degreeLevel: formData.degreeLevel,
-            educationForm: formData.educationForm, paymentType: formData.paymentType,
-            contractNumber: formData.contractNumber.trim() || null,
-            contractAmount: formData.contractAmount ? Number(formData.contractAmount) : null,
-          },
-          orderNumber: formData.orderNumber, orderDate: formData.orderDate, effectiveDate: formData.effectiveDate,
-          legalBasis: formData.legalBasis, reason: formData.reason,
+          ...personalPayload,
+          pinfl: formData.pinfl.trim(), studentNumber: formData.studentNumber.trim(), birthDate: formData.birthDate,
+          gender: formData.gender, citizenship: 'UZBEKISTAN',
         });
-        toast({ title: 'Qabul qilindi', description: "Talaba va ADMISSION lifecycle yozuvi yaratildi" });
+        toast({ title: "Kartochka yaratildi", description: "Endi talabani alohida o'qishga biriktirish mumkin" });
       }
       closeStudentDialog();
       await invalidate();
@@ -143,15 +140,36 @@ export function StudentManagement() {
       setFormData({
         firstName: student.firstName || '', lastName: student.lastName || '', pinfl: student.pinfl || '',
         studentNumber: student.studentNumber || '', birthDate: student.birthDate || '', gender: student.gender || 'MALE',
-        email: student.email || '', groupId: student.groupId == null ? '' : String(student.groupId),
-        facultyId: student.facultyId == null ? '' : String(student.facultyId),
-        programId: student.programId == null ? '' : String(student.programId), course: String(student.courseNumber || 1),
-        language: student.educationLanguage || 'uz', academicYear: student.academicYear || '',
-        degreeLevel: student.degreeLevel || 'BACHELOR', educationForm: student.educationForm || 'FULL_TIME',
-        paymentType: student.paymentType || 'CONTRACT', contractNumber: student.contractNumber || '',
-        contractAmount: student.contractAmount == null ? '' : String(student.contractAmount), ...emptyEvidence(),
+        email: student.email || '',
       });
     } catch (error) { showError(error); }
+  };
+
+  const openAdmission = (student: StudentSummaryDto) => {
+    setAdmissionStudent(student);
+    setAdmissionForm(emptyAdmissionForm());
+  };
+  const submitAdmission = async () => {
+    if (admissionStudent?.id == null) return;
+    if (!admissionForm.programId) {
+      toast({ title: "Ta'lim dasturi majburiy", description: "Talabani qabul qilishdan oldin ta'lim dasturini tanlang", variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await admitStudent(admissionStudent.id, {
+        facultyId: optionalId(admissionForm.facultyId), programId: Number(admissionForm.programId),
+        groupId: optionalId(admissionForm.groupId), academicYear: admissionForm.academicYear.trim() || null,
+        degreeLevel: admissionForm.degreeLevel, educationForm: admissionForm.educationForm,
+        educationLanguage: admissionForm.language, courseNumber: Number(admissionForm.course),
+        paymentType: admissionForm.paymentType, contractNumber: admissionForm.contractNumber.trim() || null,
+        contractAmount: admissionForm.contractAmount ? Number(admissionForm.contractAmount) : null,
+        orderNumber: admissionForm.orderNumber, orderDate: admissionForm.orderDate,
+        effectiveDate: admissionForm.effectiveDate, legalBasis: admissionForm.legalBasis, reason: admissionForm.reason,
+      });
+      toast({ title: "O'qishga biriktirildi", description: "Akademik ma'lumot va qabul buyrug'i saqlandi" });
+      setAdmissionStudent(null); setAdmissionForm(emptyAdmissionForm()); await invalidate();
+    } catch (error) { showError(error); } finally { setSaving(false); }
   };
 
   const runPromotion = async (studentId: number | null) => {
@@ -192,10 +210,11 @@ export function StudentManagement() {
       return <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>{status ? statusLabel[status] : '—'}</Badge>;
     } },
     { id: 'actions', header: () => <div className="text-right">Amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
-      const status = student.studentStatus ?? 'ACTIVE';
+      const status = student.studentStatus ?? 'REGISTERED';
       return <div className="flex flex-wrap justify-end gap-1">
         <Button size="sm" variant="ghost" onClick={() => handleEditClick(student)} title="Shaxsiy ma'lumot"><Edit className="h-4 w-4" /></Button>
-        <Button size="sm" variant="ghost" onClick={() => runPromotion(student.id)} title="Kursdan o'tkazish"><ArrowUpCircle className="h-4 w-4" /></Button>
+        {status === 'REGISTERED' && <Button size="sm" variant="default" onClick={() => openAdmission(student)}><GraduationCap className="mr-1 h-4 w-4" />O'qishga biriktirish</Button>}
+        {status === 'ACTIVE' && <Button size="sm" variant="ghost" onClick={() => runPromotion(student.id)} title="Kursdan o'tkazish"><ArrowUpCircle className="h-4 w-4" /></Button>}
         <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)} title="Lifecycle tarixi"><History className="h-4 w-4" /></Button>
         {availableActions[status].map(action => <Button key={action} size="sm" variant="outline" onClick={() => openLifecycle(student, action)}>{actionLabel[action]}</Button>)}
       </div>;
@@ -206,13 +225,14 @@ export function StudentManagement() {
 
   return <div className="space-y-6 p-3 sm:p-4 md:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h1 className="text-2xl font-bold">Talabalar harakati</h1><p className="text-sm text-muted-foreground">559-son qaror 12-bandi: qabul, ko'chirish, qayta tiklash va chetlashtirish buyruq hamda audit bilan.</p></div>
-      <Button className="gap-2" onClick={() => { setFormData(emptyForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Buyruq bilan qabul</Button>
+      <div><h1 className="text-2xl font-bold">Talabalar</h1><p className="text-sm text-muted-foreground">Avval shaxsiy kartochka yaratiladi, keyin talaba o'qishga alohida biriktiriladi.</p></div>
+      <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Talaba qo'shish</Button>
     </div>
     <Card><CardHeader><CardTitle>Barcha talabalar</CardTitle></CardHeader><CardContent><DataTable columns={columns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi" /></CardContent></Card>
 
     <Dialog open={isAdding || !!editingStudent} onOpenChange={open => { if (!open) closeStudentDialog(); }}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{editingStudent ? 'Shaxsiy maʼlumotlarni tahrirlash' : "Yangi talabani buyruq bilan qabul qilish"}</DialogTitle></DialogHeader>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{editingStudent ? "Shaxsiy ma'lumotlarni tahrirlash" : "Talabaning shaxsiy kartochkasi"}</DialogTitle></DialogHeader>
+        {!editingStudent && <p className="text-sm text-muted-foreground">Bu yerda faqat shaxsiy ma'lumotlar saqlanadi. O'qishga biriktirish keyingi alohida amalda bajariladi.</p>}
         <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
           <Field label="Ism *"><Input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} /></Field>
           <Field label="Familiya *"><Input value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} /></Field>
@@ -221,21 +241,27 @@ export function StudentManagement() {
           <Field label="Tug'ilgan sana *"><Input type="date" value={formData.birthDate} disabled={!!editingStudent} onChange={e => setFormData({...formData, birthDate: e.target.value})} /></Field>
           <Field label="Jinsi *"><Select value={formData.gender} disabled={!!editingStudent} onValueChange={(value: Gender) => setFormData({...formData, gender: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="MALE">Erkak</SelectItem><SelectItem value="FEMALE">Ayol</SelectItem></SelectContent></Select></Field>
           <Field label="Email"><Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></Field>
-          <Field label="Ta'lim tili"><Select value={formData.language} onValueChange={value => setFormData({...formData, language: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uz">O'zbek</SelectItem><SelectItem value="ru">Rus</SelectItem><SelectItem value="en">Ingliz</SelectItem></SelectContent></Select></Field>
-          {!editingStudent && <>
-            <Field label="Fakultet"><AcademicSelect kind="faculty" valueMode="id" value={formData.facultyId} onChange={value => setFormData({...formData, facultyId: value})} /></Field>
-            <Field label="Ta'lim dasturi"><AcademicSelect kind="program" valueMode="id" value={formData.programId} onChange={value => setFormData({...formData, programId: value})} /></Field>
-            <Field label="Guruh"><AcademicSelect kind="group" valueMode="id" value={formData.groupId} onChange={value => setFormData({...formData, groupId: value})} /></Field>
-            <Field label="O'quv yili"><Input value={formData.academicYear} placeholder="2026-2027" onChange={e => setFormData({...formData, academicYear: e.target.value})} /></Field>
-            <Field label="Ta'lim darajasi"><Select value={formData.degreeLevel} onValueChange={(value: DegreeLevel) => setFormData({...formData, degreeLevel: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="BACHELOR">Bakalavriat</SelectItem><SelectItem value="MASTER">Magistratura</SelectItem><SelectItem value="PHD">PhD</SelectItem><SelectItem value="ASSOCIATE">Associate</SelectItem></SelectContent></Select></Field>
-            <Field label="Ta'lim shakli"><Select value={formData.educationForm} onValueChange={(value: EducationForm) => setFormData({...formData, educationForm: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="FULL_TIME">Kunduzgi</SelectItem><SelectItem value="DISTANCE">Masofaviy</SelectItem><SelectItem value="PART_TIME">Sirtqi</SelectItem><SelectItem value="EVENING">Kechki</SelectItem></SelectContent></Select></Field>
-            <Field label="To'lov turi"><Select value={formData.paymentType} onValueChange={(value: PaymentType) => setFormData({...formData, paymentType: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="CONTRACT">Kontrakt</SelectItem><SelectItem value="GRANT">Grant</SelectItem></SelectContent></Select></Field>
-            <Field label="Kontrakt raqami"><Input value={formData.contractNumber} onChange={e => setFormData({...formData, contractNumber: e.target.value})} /></Field>
-            <Field label="Kontrakt summasi"><Input type="number" min="0" value={formData.contractAmount} onChange={e => setFormData({...formData, contractAmount: e.target.value})} /></Field>
-            <Field label="Kurs"><Input type="number" min="1" max="6" value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} /></Field>
-            <EvidenceFields value={formData} onChange={patch => setFormData({...formData, ...patch})} />
-          </>}
         </div><DialogFooter><Button variant="outline" onClick={closeStudentDialog}>Bekor qilish</Button><Button disabled={saving} onClick={handleSave}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Saqlash</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={!!admissionStudent} onOpenChange={open => { if (!open) setAdmissionStudent(null); }}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{admissionStudent?.fullName}: o'qishga biriktirish</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Bu bosqichda ta'lim dasturi, guruh, kontrakt va qabul buyrug'i kiritiladi.</p>
+        <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
+          <Field label="Fakultet"><AcademicSelect kind="faculty" valueMode="id" value={admissionForm.facultyId} onChange={value => setAdmissionForm({...admissionForm, facultyId: value})} /></Field>
+          <Field label="Ta'lim dasturi"><AcademicSelect kind="program" valueMode="id" value={admissionForm.programId} onChange={value => setAdmissionForm({...admissionForm, programId: value, groupId: ''})} /></Field>
+          <Field label="Guruh"><AcademicSelect kind="group" valueMode="id" value={admissionForm.groupId} onChange={value => setAdmissionForm({...admissionForm, groupId: value})} /></Field>
+          <Field label="O'quv yili"><Input value={admissionForm.academicYear} placeholder="2026-2027" onChange={e => setAdmissionForm({...admissionForm, academicYear: e.target.value})} /></Field>
+          <Field label="Ta'lim darajasi"><Select value={admissionForm.degreeLevel} onValueChange={(value: DegreeLevel) => setAdmissionForm({...admissionForm, degreeLevel: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="BACHELOR">Bakalavriat</SelectItem><SelectItem value="MASTER">Magistratura</SelectItem><SelectItem value="PHD">PhD</SelectItem><SelectItem value="ASSOCIATE">Associate</SelectItem></SelectContent></Select></Field>
+          <Field label="Ta'lim shakli"><Select value={admissionForm.educationForm} onValueChange={(value: EducationForm) => setAdmissionForm({...admissionForm, educationForm: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="FULL_TIME">Kunduzgi</SelectItem><SelectItem value="DISTANCE">Masofaviy</SelectItem><SelectItem value="PART_TIME">Sirtqi</SelectItem><SelectItem value="EVENING">Kechki</SelectItem></SelectContent></Select></Field>
+          <Field label="Ta'lim tili"><Select value={admissionForm.language} onValueChange={value => setAdmissionForm({...admissionForm, language: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uz">O'zbek</SelectItem><SelectItem value="ru">Rus</SelectItem><SelectItem value="en">Ingliz</SelectItem></SelectContent></Select></Field>
+          <Field label="Kurs"><Input type="number" min="1" max="6" value={admissionForm.course} onChange={e => setAdmissionForm({...admissionForm, course: e.target.value})} /></Field>
+          <Field label="To'lov turi"><Select value={admissionForm.paymentType} onValueChange={(value: PaymentType) => setAdmissionForm({...admissionForm, paymentType: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="CONTRACT">Kontrakt</SelectItem><SelectItem value="GRANT">Grant</SelectItem></SelectContent></Select></Field>
+          <Field label="Kontrakt raqami"><Input value={admissionForm.contractNumber} onChange={e => setAdmissionForm({...admissionForm, contractNumber: e.target.value})} /></Field>
+          <Field label="Kontrakt summasi"><Input type="number" min="0" value={admissionForm.contractAmount} onChange={e => setAdmissionForm({...admissionForm, contractAmount: e.target.value})} /></Field>
+          <EvidenceFields value={admissionForm} onChange={patch => setAdmissionForm({...admissionForm, ...patch})} />
+        </div><DialogFooter><Button variant="outline" onClick={() => setAdmissionStudent(null)}>Bekor qilish</Button><Button disabled={saving} onClick={submitAdmission}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}O'qishga biriktirish</Button></DialogFooter>
       </DialogContent>
     </Dialog>
 

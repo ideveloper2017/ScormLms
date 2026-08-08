@@ -185,5 +185,5 @@ class StudentProfile(
 }
 
 enum class StudentStatus {
-    ACTIVE, SUSPENDED, EXPELLED, GRADUATED
+    REGISTERED, ACTIVE, SUSPENDED, EXPELLED, GRADUATED
 }

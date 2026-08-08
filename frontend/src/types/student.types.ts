@@ -6,7 +6,7 @@ export type PassportType   = 'BIOMETRIC_PASSPORT' | 'PASSPORT' | 'ID_CARD' | 'BI
 export type DegreeLevel    = 'BACHELOR' | 'MASTER' | 'PHD' | 'ASSOCIATE';
 export type EducationForm  = 'FULL_TIME' | 'PART_TIME' | 'DISTANCE' | 'EVENING';
 export type PaymentType    = 'CONTRACT' | 'GRANT';
-export type StudentStatus  = 'ACTIVE' | 'SUSPENDED' | 'EXPELLED' | 'GRADUATED';
+export type StudentStatus  = 'REGISTERED' | 'ACTIVE' | 'SUSPENDED' | 'EXPELLED' | 'GRADUATED';
 export type StudentLifecycleEventType = 'ADMISSION' | 'SUSPENSION' | 'REINSTATEMENT' | 'TRANSFER' | 'EXPULSION' | 'GRADUATION';
 
 // ── Admin response (to'liq) ───────────────────────────────────────────────────
@@ -127,6 +127,54 @@ export interface StudentCreateRequest {
     contractNumber?: string | null;
     contractAmount?: number | null;
     password?: string;
+}
+
+export interface StudentRegistrationRequest {
+    pinfl: string;
+    lastName: string;
+    firstName: string;
+    middleName?: string | null;
+    birthDate: string;
+    gender: Gender;
+    citizenship?: Citizenship;
+    passportType?: PassportType | null;
+    passportSeries?: string | null;
+    passportNumber?: string | null;
+    passportIssuedDate?: string | null;
+    passportExpiryDate?: string | null;
+    passportIssuedBy?: string | null;
+    photoUrl?: string | null;
+    phoneNumber?: string | null;
+    email?: string | null;
+    permanentRegion?: string | null;
+    permanentDistrict?: string | null;
+    permanentAddress?: string | null;
+    currentRegion?: string | null;
+    currentDistrict?: string | null;
+    currentAddress?: string | null;
+    studentNumber: string;
+    password?: string;
+}
+
+export interface StudentAcademicAdmissionRequest {
+    universityId?: number | null;
+    facultyId?: number | null;
+    departmentId?: number | null;
+    programId: number;
+    degreeLevel: DegreeLevel;
+    educationForm: EducationForm;
+    educationLanguage: string;
+    courseNumber: number;
+    groupId?: number | null;
+    academicYear?: string | null;
+    paymentType?: PaymentType | null;
+    contractNumber?: string | null;
+    contractAmount?: number | null;
+    orderNumber: string;
+    orderDate: string;
+    effectiveDate: string;
+    legalBasis: string;
+    reason: string;
 }
 
 export interface StudentAdmissionRequest {

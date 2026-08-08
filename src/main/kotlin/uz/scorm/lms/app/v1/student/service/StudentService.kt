@@ -48,6 +48,84 @@ class StudentService(
             ?: throw NoSuchElementException("Talaba topilmadi: $studentNumber"))
 
     @Transactional
+    fun register(req: StudentRegistrationRequest): StudentDto {
+        require(req.pinfl.matches(Regex("\\d{14}"))) { "JSHSHIR 14 ta raqamdan iborat bo'lishi shart" }
+        require(req.firstName.trim().isNotBlank() && req.lastName.trim().isNotBlank()) {
+            "Talabaning ism va familiyasi majburiy"
+        }
+        require(req.studentNumber.trim().isNotBlank()) { "Talaba raqami majburiy" }
+        if (studentRepository.existsByPinfl(req.pinfl))
+            throw IllegalArgumentException("Bu PINFL allaqachon ro'yxatdan o'tgan: ${req.pinfl}")
+        if (studentRepository.existsByStudentNumber(req.studentNumber.trim()))
+            throw IllegalArgumentException("Bu talaba raqami band: ${req.studentNumber}")
+
+        val user = userService.register(req.studentNumber.trim(), req.password, "student")
+        user.email = req.email
+        user.phone = req.phoneNumber
+        user.status = UserStatus.INACTIVE
+        val student = StudentProfile(
+            user = user,
+            pinfl = req.pinfl,
+            lastName = req.lastName.trim(),
+            firstName = req.firstName.trim(),
+            middleName = req.middleName?.trim()?.takeIf(String::isNotBlank),
+            birthDate = req.birthDate,
+            gender = req.gender,
+            citizenship = req.citizenship,
+            passportType = req.passportType,
+            passportSeries = req.passportSeries,
+            passportNumber = req.passportNumber,
+            passportIssuedDate = req.passportIssuedDate,
+            passportExpiryDate = req.passportExpiryDate,
+            passportIssuedBy = req.passportIssuedBy,
+            photoUrl = req.photoUrl,
+            phoneNumber = req.phoneNumber,
+            email = req.email,
+            permanentRegion = req.permanentRegion,
+            permanentDistrict = req.permanentDistrict,
+            permanentAddress = req.permanentAddress,
+            currentRegion = req.currentRegion,
+            currentDistrict = req.currentDistrict,
+            currentAddress = req.currentAddress,
+            studentNumber = req.studentNumber.trim(),
+            studentStatus = StudentStatus.REGISTERED,
+        )
+        return toDto(studentRepository.save(student))
+    }
+
+    fun validateAcademicAdmission(student: StudentProfile, req: StudentAcademicAdmissionRequest) {
+        require(req.courseNumber in 1..6) { "Kurs 1-6 oralig'ida bo'lishi shart" }
+        val group = req.groupId?.let { groupId ->
+            // Group ownership is checked in lifecycle service where GroupRepository is available.
+            groupId
+        }
+        validateDistanceAdmission(StudentCreateRequest(
+            pinfl = student.pinfl,
+            lastName = student.lastName,
+            firstName = student.firstName,
+            middleName = student.middleName,
+            birthDate = student.birthDate,
+            gender = student.gender,
+            citizenship = student.citizenship,
+            studentNumber = student.studentNumber,
+            universityId = req.universityId,
+            facultyId = req.facultyId,
+            departmentId = req.departmentId,
+            programId = req.programId,
+            degreeLevel = req.degreeLevel,
+            educationForm = req.educationForm,
+            educationLanguage = req.educationLanguage.trim(),
+            courseNumber = req.courseNumber,
+            groupId = group,
+            academicYear = req.academicYear,
+            admissionDate = req.effectiveDate,
+            paymentType = req.paymentType,
+            contractNumber = req.contractNumber,
+            contractAmount = req.contractAmount,
+        ))
+    }
+
+    @Transactional
     fun create(req: StudentCreateRequest): StudentDto {
         if (studentRepository.existsByPinfl(req.pinfl))
             throw IllegalArgumentException("Bu PINFL allaqachon ro'yxatdan o'tgan: ${req.pinfl}")
@@ -371,6 +449,7 @@ class StudentService(
     fun promote(id: Long): StudentDto {
         val student = studentRepository.findById(id)
             .orElseThrow { NoSuchElementException("Talaba topilmadi: $id") }
+        require(student.studentStatus == StudentStatus.ACTIVE) { "Faqat faol talaba keyingi kursga o'tkaziladi" }
         student.courseNumber += 1
         return toDto(studentRepository.save(student))
     }
@@ -413,13 +492,13 @@ class StudentService(
         universityId         = s.universityId,
         facultyId            = s.facultyId,
         departmentId         = s.departmentId,
-        programId            = s.programId,
-        degreeLevel          = s.degreeLevel,
-        educationForm        = s.educationForm,
-        educationLanguage    = s.educationLanguage,
-        courseNumber         = s.courseNumber,
-        groupId              = s.groupId,
-        academicYear         = s.academicYear,
+        programId            = s.programId.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        degreeLevel          = s.degreeLevel.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        educationForm        = s.educationForm.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        educationLanguage    = s.educationLanguage.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        courseNumber         = s.courseNumber.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        groupId              = s.groupId.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        academicYear         = s.academicYear.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         admissionDate        = s.admissionDate,
         admissionOrderNumber = s.admissionOrderNumber,
         studentStatus        = s.studentStatus,
@@ -442,10 +521,10 @@ class StudentService(
         pinfl         = s.pinfl,
         phoneNumber   = s.phoneNumber,
         email         = s.email,
-        facultyId     = s.facultyId,
-        groupId       = s.groupId,
-        courseNumber  = s.courseNumber,
-        degreeLevel   = s.degreeLevel,
+        facultyId     = s.facultyId.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        groupId       = s.groupId.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        courseNumber  = s.courseNumber.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        degreeLevel   = s.degreeLevel.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         studentStatus = s.studentStatus,
         photoUrl      = s.photoUrl,
         lmsOrientationRequired = s.lmsOrientationRequired,

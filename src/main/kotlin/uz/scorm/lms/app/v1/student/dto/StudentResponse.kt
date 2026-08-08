@@ -133,6 +133,34 @@ data class StudentCreateRequest(
     val password: String = "Student@123",
 )
 
+/** Talabaning faqat shaxsiy kartochkasini yaratadi; akademik qabul keyin bajariladi. */
+data class StudentRegistrationRequest(
+    val pinfl: String,
+    val lastName: String,
+    val firstName: String,
+    val middleName: String? = null,
+    val birthDate: LocalDate,
+    val gender: Gender,
+    val citizenship: Citizenship = Citizenship.UZBEKISTAN,
+    val passportType: PassportType? = null,
+    val passportSeries: String? = null,
+    val passportNumber: String? = null,
+    val passportIssuedDate: LocalDate? = null,
+    val passportExpiryDate: LocalDate? = null,
+    val passportIssuedBy: String? = null,
+    val photoUrl: String? = null,
+    val phoneNumber: String? = null,
+    val email: String? = null,
+    val permanentRegion: String? = null,
+    val permanentDistrict: String? = null,
+    val permanentAddress: String? = null,
+    val currentRegion: String? = null,
+    val currentDistrict: String? = null,
+    val currentAddress: String? = null,
+    val studentNumber: String,
+    val password: String = "Student@123",
+)
+
 data class StudentUpdateRequest(
     // Shaxsiy
     val lastName: String? = null,

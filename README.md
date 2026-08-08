@@ -59,9 +59,23 @@ PostgreSQL, upload, SCORM, assignment va xususiy UAT dalil storage'i uchun atoma
 
 559 UAT dalil kiritish paneli `GET /api/v1/compliance/559/uat/requirements` orqali buildga paketlangan yagona `docs/uat/decision-559-uat-evidence.json` katalogidan band nomi, baseline holati, tavsiya etilgan mas'ul, texnik dalil manbalari, `DEP-*` bog'liqligi va qolgan manual ishni ko'rsatadi. Backend katalogni ishga tushishda aynan 27 band va tasdiqlangan qaror PDF SHA-256 qiymati bo'yicha fail-fast tekshiradi.
 
+Static intake katalogi schema-v2da 14 `PARTIAL` band uchun jami 43 ta aniq `manualEvidence` topshirig'ini saqlaydi; automated bandlarga manual topshiriq yozilmaydi. `GET /api/v1/compliance/559/uat/requirements/manual-evidence-pack` ularni qaror SHA, band, mas'ul, `DEP-*` va to'ldirish ustuni bilan print-friendly HTMLda detached SHA orqali eksport qiladi; shu pack runtime panelidan ham yuklanadi.
+
+Yangi/tahrirlanadigan runtime run schema-v5 kontraktida ishlaydi: katalogdagi `PARTIAL` band `AUTOMATED_PASS` yoki `NOT_APPLICABLE` bilan yopilmaydi, final holat faqat bandning barcha checklistlari va kamida bitta haqiqiy private PDF/PNG/JPEGga ega `MANUAL_PASS` bo'ladi. Qoplangan checklist matnlari manifest va canonical `evidenceSetSha256` tarkibiga kiradi; reviewer aynan shu ro'yxatni ko'radi. Runtime verifier tasdiqlangan schema-v2 katalogdagi matn/tartibni ham aynan solishtiradi; `ops/uat/test-decision-559-runtime-manifest-v5.ps1` 27 band/43 checklist musbat fixtureini hamda missing-coverage, qayta hashlangan soxta matn va hash-tamper rad etilishini tekshiradi.
+
+V52 real dalil yig'ishni progressiv qiladi: `PARTIAL` yoki `BLOCKED_EXTERNAL` bandda hozircha qaytgan checklistlar real private fayl bilan saqlanadi, oxirgi fayl o'chirilsa qamrov ham tozalanadi. Run va runtime manifest `manualEvidenceCoveredCount/43` hamda final mustaqil qabul qilingan `manualEvidenceAcceptedCount/43`ni beradi. Non-final natijaga `ACCEPTED` review berilmaydi; barcha topshiriq qaytgach band `MANUAL_PASS`ga o'tkaziladi.
+
+V53 har bir schema-v5 run uchun 43 qatorli operatsion monitoringni beradi: har topshiriq `PENDING`, `COLLECTED` yoki `ACCEPTED` bo'lib katalog qamrovi va mustaqil reviewdan serverda hisoblanadi. UI mas'ul, tashqi bog'liqlik va fayl sonini ko'rsatadi; private CSV eksport detached SHA-256 bilan yuklanadi.
+
+V54 monitoringdagi har bir manual topshiriqqa mas'ul bo'lim yoki shaxs, kelajakdagi muddat va kuzatuv izohini audit bilan biriktiradi. Koordinatsiya faqat tahrirlanadigan run va `UAT_WRITE` vakolatida saqlanadi, muddati o'tgan topshiriqlar UI/CSVda ajratiladi; bu metadata evidence holati yoki imzolanadigan canonical hashni o'zgartirmaydi.
+
+V55 tayinlangan/tayinlanmagan/overdue hisoblarini beradi va hali koordinatsiya qilinmagan topshiriqlarni katalogdagi tavsiya etilgan bo'limlarga umumiy muddat hamda izoh bilan atomar taqsimlaydi. Avvalgi individual tayinlovlar o'zgarmaydi, takror bulk yopiladi va koordinatsiya canonical evidence-set SHAga ta'sir qilmaydi.
+
+V56 talabani yaratishni ikki sodda amalga ajratadi: avval faqat shaxsiy kartochka `REGISTERED` holatda saqlanadi, keyin registrar alohida `O'qishga biriktirish` formasida dastur, guruh, kontrakt va qabul buyrug'ini kiritadi. Muvaffaqiyatli qabuldan keyingina talaba `ACTIVE` bo'ladi va login ochiladi.
+
 27 bandning barchasi final natija va mustaqil `ACCEPTED` reviewga yetgach `GET /api/v1/compliance/559/uat/runs/{id}/protocol/draft` joriy run ID, qaror SHA, schema, canonical evidence-set SHA va barcha band natijalari oldindan yozilgan print-friendly HTMLni detached SHA bilan beradi. Uni PDFga chop etib komissiya imzolaydi; evidence-ready holatgacha draft ham, imzolangan protocol uploadi ham serverda bloklanadi.
 
-Yakuniy 559 UAT runidan eksport qilingan audit manifestini (legacy runlar uchun schema-v2/v3, yangi evidence-setga bog'langan protokolli runlar uchun schema-v4) detached HTTP SHA bilan tekshirish:
+Yakuniy 559 UAT runidan eksport qilingan audit manifestini (legacy final runlar uchun schema-v2/v3/v4, checklist qamrovi bog'langan yangi runlar uchun schema-v5) detached HTTP SHA bilan tekshirish:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ops/uat/verify-decision-559-runtime-manifest.ps1 `

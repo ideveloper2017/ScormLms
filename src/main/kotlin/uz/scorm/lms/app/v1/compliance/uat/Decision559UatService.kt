@@ -21,8 +21,10 @@ class Decision559UatService(
     private val runRepository: Decision559UatRunRepository,
     private val evidenceRepository: Decision559UatEvidenceRepository,
     private val evidenceFileRepository: Decision559UatEvidenceFileRepository,
+    private val manualTaskCoordinationRepository: Decision559UatManualTaskCoordinationRepository,
     private val userRepository: UserRepository,
     private val auditService: AuditService,
+    private val requirementCatalog: Decision559UatRequirementCatalog,
     @param:Value("\${uat.private-storage-dir:./private-uploads/uat-559}")
     private val privateStorageDir: String,
 ) {
@@ -64,6 +66,187 @@ class Decision559UatService(
     }
 
     @Transactional(readOnly = true)
+    fun manualEvidenceProgress(id: Long): Decision559UatManualEvidenceProgressDto {
+        val run = run(id)
+        require(run.manifestSchemaVersion >= 5) { "Manual dalil progressi faqat schema-v5 run uchun mavjud" }
+        val evidenceByBand = evidence(id).associateBy { it.band }
+        val fileCounts = evidenceFiles(id).groupingBy { requireNotNull(it.evidence.id) }.eachCount()
+        val coordinationByItem = manualTaskCoordinationRepository
+            .findAllByRunIdAndDeletedFalseOrderByBandAscItemIndexAsc(id)
+            .associateBy { it.requirementId to it.itemIndex }
+        val items = requirementCatalog.list().filter { it.manualEvidence.isNotEmpty() }.flatMap { guidance ->
+            val evidence = evidenceByBand[guidance.band]
+            val coverage = evidence?.let(::manualEvidenceIndexes).orEmpty().toSet()
+            guidance.manualEvidence.mapIndexed { index, description ->
+                val coordination = coordinationByItem[guidance.id to index]
+                val covered = index in coverage
+                val status = when {
+                    covered && evidence?.outcome == Decision559UatOutcome.MANUAL_PASS &&
+                        evidence.reviewStatus == Decision559UatReviewStatus.ACCEPTED ->
+                        Decision559UatManualEvidenceStatus.ACCEPTED
+                    covered -> Decision559UatManualEvidenceStatus.COLLECTED
+                    else -> Decision559UatManualEvidenceStatus.PENDING
+                }
+                Decision559UatManualEvidenceProgressItemDto(
+                    requirementId = guidance.id,
+                    band = guidance.band,
+                    itemIndex = index,
+                    description = description,
+                    recommendedOwner = guidance.owner,
+                    actualOwnerName = evidence?.ownerName,
+                    blockedBy = guidance.blockedBy,
+                    status = status,
+                    outcome = evidence?.outcome,
+                    reviewStatus = evidence?.reviewStatus,
+                    evidenceId = evidence?.id,
+                    fileCount = evidence?.id?.let { fileCounts[it] }.orZero(),
+                    submittedAt = evidence?.submittedAt,
+                    reviewedByName = evidence?.reviewedBy?.fullName ?: evidence?.reviewedBy?.username,
+                    reviewedAt = evidence?.reviewedAt,
+                    coordinationAssigneeName = coordination?.assigneeName,
+                    coordinationDueDate = coordination?.dueDate,
+                    coordinationNote = coordination?.note,
+                    coordinationOverdue = coordination?.dueDate?.isBefore(LocalDate.now()) == true &&
+                        status != Decision559UatManualEvidenceStatus.ACCEPTED,
+                    coordinatedByName = coordination?.coordinatedBy?.fullName ?: coordination?.coordinatedBy?.username,
+                    coordinationUpdatedAt = coordination?.updatedAt ?: coordination?.createdAt,
+                )
+            }
+        }
+        val collectedCount = items.count { it.status != Decision559UatManualEvidenceStatus.PENDING }
+        val coordinatedCount = items.count { it.coordinationAssigneeName != null }
+        return Decision559UatManualEvidenceProgressDto(
+            runId = requireNotNull(run.id),
+            requiredCount = items.size,
+            pendingCount = items.size - collectedCount,
+            collectedCount = collectedCount,
+            acceptedCount = items.count { it.status == Decision559UatManualEvidenceStatus.ACCEPTED },
+            coordinatedCount = coordinatedCount,
+            uncoordinatedCount = items.size - coordinatedCount,
+            overdueCount = items.count { it.coordinationOverdue },
+            items = items,
+        )
+    }
+
+    @Transactional
+    fun updateManualTaskCoordination(
+        id: Long,
+        requirementId: String,
+        itemIndex: Int,
+        request: UpdateDecision559UatManualTaskCoordinationRequest,
+        actorId: Long,
+    ): Decision559UatManualEvidenceProgressDto {
+        val run = editableRun(id)
+        require(run.manifestSchemaVersion >= 5) { "Manual topshiriq koordinatsiyasi faqat schema-v5 run uchun mavjud" }
+        val guidance = requirementCatalog.list().singleOrNull { it.id == requirementId }
+            ?: throw IllegalArgumentException("Manual topshiriq requirement ID katalogda topilmadi")
+        require(guidance.manualEvidence.isNotEmpty() && itemIndex in guidance.manualEvidence.indices) {
+            "Manual topshiriq indeksi katalogga mos emas"
+        }
+        val assigneeName = request.assigneeName.trim()
+        val note = request.note.trim()
+        require(assigneeName.length in 2..255) { "Mas'ul nomi 2-255 belgi bo'lishi kerak" }
+        require(note.length in 5..2000) { "Kuzatuv izohi 5-2000 belgi bo'lishi kerak" }
+        require(!request.dueDate.isBefore(LocalDate.now())) { "Muddat bugungi kundan oldin bo'lishi mumkin emas" }
+        val actor = user(actorId)
+        val coordination = manualTaskCoordinationRepository
+            .findByRunIdAndRequirementIdAndItemIndexAndDeletedFalse(id, requirementId, itemIndex)
+            ?.also {
+                it.assigneeName = assigneeName
+                it.dueDate = request.dueDate
+                it.note = note
+                it.coordinatedBy = actor
+            }
+            ?: Decision559UatManualTaskCoordination(
+                run = run,
+                requirementId = guidance.id,
+                band = guidance.band,
+                itemIndex = itemIndex,
+                assigneeName = assigneeName,
+                dueDate = request.dueDate,
+                note = note,
+                coordinatedBy = actor,
+            )
+        manualTaskCoordinationRepository.save(coordination)
+        auditService.logAction(
+            "DECISION_559_UAT_MANUAL_TASK_COORDINATED",
+            actorId,
+            "run=$id; requirement=$requirementId; item=$itemIndex; due=${request.dueDate}",
+        )
+        return manualEvidenceProgress(id)
+    }
+
+    @Transactional
+    fun bulkCoordinateManualTasks(
+        id: Long,
+        request: BulkCoordinateDecision559UatManualTasksRequest,
+        actorId: Long,
+    ): Decision559UatManualEvidenceProgressDto {
+        val run = editableRun(id)
+        require(run.manifestSchemaVersion >= 5) { "Manual topshiriq koordinatsiyasi faqat schema-v5 run uchun mavjud" }
+        val note = request.note.trim()
+        require(note.length in 5..2000) { "Kuzatuv izohi 5-2000 belgi bo'lishi kerak" }
+        require(!request.dueDate.isBefore(LocalDate.now())) { "Muddat bugungi kundan oldin bo'lishi mumkin emas" }
+        val existingKeys = manualTaskCoordinationRepository
+            .findAllByRunIdAndDeletedFalseOrderByBandAscItemIndexAsc(id)
+            .mapTo(mutableSetOf()) { it.requirementId to it.itemIndex }
+        val actor = user(actorId)
+        val targets = requirementCatalog.list().filter { it.manualEvidence.isNotEmpty() }.flatMap { guidance ->
+            guidance.manualEvidence.indices.mapNotNull { itemIndex ->
+                if ((guidance.id to itemIndex) in existingKeys) null else Decision559UatManualTaskCoordination(
+                    run = run,
+                    requirementId = guidance.id,
+                    band = guidance.band,
+                    itemIndex = itemIndex,
+                    assigneeName = guidance.owner,
+                    dueDate = request.dueDate,
+                    note = note,
+                    coordinatedBy = actor,
+                )
+            }
+        }
+        require(targets.isNotEmpty()) { "Barcha manual topshiriqlar allaqachon koordinatsiya qilingan" }
+        manualTaskCoordinationRepository.saveAll(targets)
+        auditService.logAction(
+            "DECISION_559_UAT_MANUAL_TASKS_BULK_COORDINATED",
+            actorId,
+            "run=$id; count=${targets.size}; due=${request.dueDate}",
+        )
+        return manualEvidenceProgress(id)
+    }
+
+    @Transactional(readOnly = true)
+    fun manualEvidenceProgressCsv(id: Long): PrivateEvidenceFile {
+        val progress = manualEvidenceProgress(id)
+        val header = listOf(
+            "requirementId", "band", "itemIndex", "status", "description", "recommendedOwner",
+            "actualOwnerName", "blockedBy", "outcome", "reviewStatus", "evidenceId", "fileCount",
+            "submittedAt", "reviewedByName", "reviewedAt", "coordinationAssigneeName",
+            "coordinationDueDate", "coordinationNote", "coordinationOverdue", "coordinatedByName",
+            "coordinationUpdatedAt",
+        )
+        val csv = buildString {
+            append('\uFEFF').append(header.joinToString(",") { csvCell(it) }).append('\n')
+            progress.items.forEach { item ->
+                append(listOf(
+                    item.requirementId, item.band, item.itemIndex, item.status, item.description,
+                    item.recommendedOwner, item.actualOwnerName, item.blockedBy.joinToString(";"), item.outcome,
+                    item.reviewStatus, item.evidenceId, item.fileCount, item.submittedAt, item.reviewedByName,
+                    item.reviewedAt, item.coordinationAssigneeName, item.coordinationDueDate, item.coordinationNote,
+                    item.coordinationOverdue, item.coordinatedByName, item.coordinationUpdatedAt,
+                ).joinToString(",") { csvCell(it) }).append('\n')
+            }
+        }
+        val bytes = csv.toByteArray(Charsets.UTF_8)
+        return PrivateEvidenceFile(
+            bytes = bytes,
+            contentType = "text/csv;charset=UTF-8",
+            originalName = "decision-559-uat-run-$id-manual-evidence-progress.csv",
+            sha256 = sha256(bytes),
+        )
+    }
+
+    @Transactional(readOnly = true)
     fun manifest(id: Long): Decision559UatManifestDto {
         val run = run(id)
         val evidence = evidence(id)
@@ -78,6 +261,13 @@ class Decision559UatService(
             status = run.status,
             evidenceSetSha256 = currentEvidenceSetSha256,
             readyToSubmit = isReady(run, evidence, files),
+            manualEvidenceRequiredCount = if (run.manifestSchemaVersion >= 5) manualEvidenceRequiredCount() else 0,
+            manualEvidenceCoveredCount = if (run.manifestSchemaVersion >= 5) evidence.sumOf {
+                manualEvidenceCoverage(it).size
+            } else 0,
+            manualEvidenceAcceptedCount = if (run.manifestSchemaVersion >= 5) evidence
+                .filter { it.outcome == Decision559UatOutcome.MANUAL_PASS && it.reviewStatus == Decision559UatReviewStatus.ACCEPTED }
+                .sumOf { manualEvidenceCoverage(it).size } else 0,
             protocol = Decision559UatManifestProtocolDto(
                 signed = !run.protocolSha256.isNullOrBlank(),
                 number = run.protocolNumber,
@@ -100,6 +290,7 @@ class Decision559UatService(
                     owner = item.ownerName,
                     summary = item.summary,
                     evidenceReference = item.evidenceReference,
+                    manualEvidenceCoverage = manualEvidenceCoverage(item),
                     file = if (run.manifestSchemaVersion != 2 || item.sha256 == null) null else Decision559UatManifestFileDto(
                         id = null,
                         bundlePath = null,
@@ -166,11 +357,31 @@ class Decision559UatService(
         file: MultipartFile?,
         actorId: Long,
         files: List<MultipartFile> = emptyList(),
+        manualEvidenceIndexes: List<Int> = emptyList(),
     ): Decision559UatEvidenceDto {
         val run = editableRun(runId)
         require(band in REQUIRED_BANDS) { "Band 3 yoki 8..33 oralig'ida bo'lishi kerak" }
         val expectedRequirement = "UAT-559-${band.toString().padStart(2, '0')}"
         require(requirementId.trim() == expectedRequirement) { "Requirement ID bandga mos emas: $expectedRequirement" }
+        val guidance = requirementCatalog.requirement(band, expectedRequirement)
+        val normalizedCoverage = manualEvidenceIndexes.distinct().sorted()
+        require(normalizedCoverage.all { it in guidance.manualEvidence.indices }) {
+            "Manual dalil checklist indeksi band talablariga mos emas"
+        }
+        if (run.manifestSchemaVersion >= 5 && guidance.baselineStatus == "PARTIAL") {
+            require(outcome !in setOf(Decision559UatOutcome.AUTOMATED_PASS, Decision559UatOutcome.NOT_APPLICABLE)) {
+                "PARTIAL baseline band faqat barcha checklistli MANUAL_PASS bilan final yopiladi"
+            }
+            if (outcome == Decision559UatOutcome.MANUAL_PASS) {
+                require(normalizedCoverage == guidance.manualEvidence.indices.toList()) {
+                    "MANUAL_PASS uchun banddagi barcha real dalil checklistlari qoplanishi kerak"
+                }
+            }
+        } else if (run.manifestSchemaVersion >= 5) {
+            require(normalizedCoverage.isEmpty()) {
+                "AUTOMATED_PASS baseline band uchun manual checklist qamrovi yuborilmaydi"
+            }
+        }
         val owner = ownerName.trim()
         require(owner.length in 2..255) { "Dalil egasi 2-255 belgi bo'lishi kerak" }
         val normalizedSummary = summary.trim()
@@ -187,6 +398,9 @@ class Decision559UatService(
             .orEmpty()
         require(existingFiles.size + incomingFiles.size <= MAX_FILES_PER_REQUIREMENT) {
             "Har bir band uchun ko'pi bilan $MAX_FILES_PER_REQUIREMENT ta dalil fayli saqlanadi"
+        }
+        require(normalizedCoverage.isEmpty() || incomingFiles.isNotEmpty() || existingFiles.isNotEmpty()) {
+            "Qoplangan manual checklist uchun kamida bitta haqiqiy private fayl majburiy"
         }
         when (outcome) {
             Decision559UatOutcome.MANUAL_PASS -> require(incomingFiles.isNotEmpty() || existingFiles.isNotEmpty()) {
@@ -227,6 +441,7 @@ class Decision559UatService(
         entity.ownerName = owner
         entity.summary = normalizedSummary
         entity.evidenceReference = reference
+        entity.manualEvidenceCoverage = normalizedCoverage.joinToString(",")
         entity.submittedBy = actor
         entity.submittedAt = Instant.now()
         entity.reviewStatus = Decision559UatReviewStatus.PENDING
@@ -242,12 +457,22 @@ class Decision559UatService(
         }
         val invalidatedProtocolSha = run.protocolSha256?.let { invalidateProtocol(run) }
         if (wasRejected) {
-            run.manifestSchemaVersion = 4
+            run.manifestSchemaVersion = 5
             run.status = Decision559UatRunStatus.DRAFT
             run.rejectionReason = null
             run.rejectedAt = null
             run.rejectedBy = null
             runRepository.save(run)
+            evidence(runId)
+                .filterNot { it.id == existing?.id }
+                .filterNot(::matchesCatalogCoverage)
+                .forEach { stale ->
+                    stale.reviewStatus = Decision559UatReviewStatus.PENDING
+                    stale.reviewNotes = null
+                    stale.reviewedBy = null
+                    stale.reviewedAt = null
+                    evidenceRepository.save(stale)
+                }
         }
         return try {
             val saved = evidenceRepository.save(entity)
@@ -267,7 +492,7 @@ class Decision559UatService(
             auditService.logAction(
                 "DECISION_559_UAT_EVIDENCE_SAVED",
                 actorId,
-                "run=$runId; band=$band; outcome=$outcome; addedFiles=${storedFiles.size}",
+                "run=$runId; band=$band; outcome=$outcome; manualCoverage=${normalizedCoverage.size}; addedFiles=${storedFiles.size}",
             )
             if (invalidatedProtocolSha != null) {
                 auditService.logAction(
@@ -301,9 +526,20 @@ class Decision559UatService(
             "Review faqat tahrirlanadigan UAT runida bajariladi"
         }
         require(item.submittedBy.id != actorId) { "Dalil muallifi o'z dalilini qabul qila olmaydi" }
+        if (request.status == Decision559UatReviewStatus.ACCEPTED) {
+            require(item.outcome in FINAL_OUTCOMES) {
+                "Faqat final AUTOMATED_PASS, MANUAL_PASS yoki NOT_APPLICABLE natija qabul qilinadi"
+            }
+        }
         val files = evidenceFileRepository.findAllByEvidenceIdAndDeletedFalseOrderByIdAsc(requireNotNull(item.id))
         if (request.status == Decision559UatReviewStatus.ACCEPTED && item.outcome == Decision559UatOutcome.MANUAL_PASS) {
             require(files.isNotEmpty()) { "MANUAL_PASS dalili kamida bitta private faylga ega bo'lishi kerak" }
+            val guidance = requirementCatalog.requirement(item.band, item.requirementId)
+            if (guidance.baselineStatus == "PARTIAL") {
+                require(manualEvidenceIndexes(item) == guidance.manualEvidence.indices.toList()) {
+                    "MANUAL_PASS qabulidan oldin barcha real dalil checklistlari qoplanishi kerak"
+                }
+            }
         }
         val notes = request.notes.trim()
         require(notes.length in 5..2000) { "Review izohi 5-2000 belgi bo'lishi kerak" }
@@ -477,9 +713,10 @@ class Decision559UatService(
             item.sizeBytes = primary?.sizeBytes
             item.sha256 = primary?.sha256
         }
+        if (remaining.isEmpty()) item.manualEvidenceCoverage = ""
         val invalidatedProtocolSha = run.protocolSha256?.let { invalidateProtocol(run) }
         if (wasRejected) {
-            run.manifestSchemaVersion = 4
+            run.manifestSchemaVersion = 5
             run.status = Decision559UatRunStatus.DRAFT
             run.rejectionReason = null
             run.rejectedAt = null
@@ -563,6 +800,7 @@ class Decision559UatService(
     ): Boolean =
         evidence.map { it.band }.toSet() == REQUIRED_BANDS &&
             evidence.all { it.reviewStatus == Decision559UatReviewStatus.ACCEPTED && it.outcome in FINAL_OUTCOMES } &&
+            (run.manifestSchemaVersion < 5 || evidence.all(::matchesCatalogCoverage)) &&
             evidence.all { item ->
                 item.outcome != Decision559UatOutcome.MANUAL_PASS ||
                     if (run.manifestSchemaVersion == 2) !item.storageName.isNullOrBlank()
@@ -615,11 +853,15 @@ class Decision559UatService(
         append("<table><thead><tr><th>Band</th><th>ID</th><th>Natija</th><th>Mas'ul</th><th>Xulosa va rekvizit</th><th>Fayl</th><th>Reviewer</th></tr></thead><tbody>\n")
         evidence.sortedBy { it.band }.forEach { item ->
             val itemFiles = files[requireNotNull(item.id)].orEmpty()
+            val coverage = manualEvidenceCoverage(item)
+            val requiredManualCount = requirementCatalog.requirement(item.band, item.requirementId).manualEvidence.size
             append("<tr data-requirement-id=\"").append(html(item.requirementId)).append("\"><td>")
                 .append(item.band).append("</td><td>").append(html(item.requirementId)).append("</td><td>")
                 .append(html(item.outcome.name)).append("</td><td>").append(html(item.ownerName)).append("</td><td class=\"summary\">")
                 .append(html(item.summary)).append(if (item.evidenceReference.isNullOrBlank()) "" else "<br><strong>Rekvizit:</strong> ${html(item.evidenceReference)}")
-                .append("</td><td>").append(itemFiles.size).append(" ta</td><td>")
+                .append("</td><td>").append(itemFiles.size).append(" ta fayl")
+            if (requiredManualCount > 0) append("<br>").append(coverage.size).append("/").append(requiredManualCount).append(" checklist")
+            append("</td><td>")
                 .append(html(item.reviewedBy?.fullName ?: item.reviewedBy?.username)).append("<br>")
                 .append(html(item.reviewStatus.name)).append("</td></tr>\n")
         }
@@ -675,7 +917,11 @@ class Decision559UatService(
         run: Decision559UatRun,
         evidence: List<Decision559UatEvidence>,
         files: Map<Long, List<Decision559UatEvidenceFile>>,
-    ): String = if (run.manifestSchemaVersion == 2) evidenceSetSha256V2(evidence) else evidenceSetSha256V3(evidence, files)
+    ): String = when (run.manifestSchemaVersion) {
+        2 -> evidenceSetSha256V2(evidence)
+        5 -> evidenceSetSha256V5(evidence, files)
+        else -> evidenceSetSha256V3(evidence, files)
+    }
 
     private fun evidenceSetSha256V2(evidence: List<Decision559UatEvidence>): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -745,6 +991,77 @@ class Decision559UatService(
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
+    private fun evidenceSetSha256V5(
+        evidence: List<Decision559UatEvidence>,
+        files: Map<Long, List<Decision559UatEvidenceFile>>,
+    ): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        evidence.sortedBy { it.band }.forEach { item ->
+            val itemFiles = files[requireNotNull(item.id)].orEmpty().sortedBy { it.id }
+            val coverage = manualEvidenceCoverage(item)
+            listOf(
+                item.requirementId,
+                item.band.toString(),
+                item.outcome.name,
+                item.ownerName,
+                item.summary,
+                item.evidenceReference.orEmpty(),
+                coverage.size.toString(),
+            ).forEach { updateHashValue(digest, it) }
+            coverage.forEach { updateHashValue(digest, it) }
+            listOf(
+                item.submittedBy.id?.toString().orEmpty(),
+                item.submittedAt.toString(),
+                item.reviewStatus.name,
+                item.reviewNotes.orEmpty(),
+                item.reviewedBy?.id?.toString().orEmpty(),
+                item.reviewedAt?.toString().orEmpty(),
+                itemFiles.size.toString(),
+            ).forEach { updateHashValue(digest, it) }
+            itemFiles.forEach { file ->
+                listOf(
+                    file.id?.toString().orEmpty(),
+                    file.originalName,
+                    file.contentType,
+                    file.sizeBytes.toString(),
+                    file.sha256,
+                    file.uploadedBy.id?.toString().orEmpty(),
+                    file.uploadedAt.toString(),
+                ).forEach { updateHashValue(digest, it) }
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private fun manualEvidenceIndexes(item: Decision559UatEvidence): List<Int> =
+        item.manualEvidenceCoverage.split(',')
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .map { it.toIntOrNull() ?: throw IllegalStateException("UAT manual checklist qamrovi buzilgan") }
+            .distinct()
+            .sorted()
+
+    private fun manualEvidenceCoverage(item: Decision559UatEvidence): List<String> {
+        val guidance = requirementCatalog.requirement(item.band, item.requirementId)
+        return manualEvidenceIndexes(item).map { index ->
+            guidance.manualEvidence.getOrNull(index)
+                ?: throw IllegalStateException("UAT manual checklist qamrovi katalogga mos emas")
+        }
+    }
+
+    private fun matchesCatalogCoverage(item: Decision559UatEvidence): Boolean = runCatching {
+        val guidance = requirementCatalog.requirement(item.band, item.requirementId)
+        val indexes = manualEvidenceIndexes(item)
+        when (guidance.baselineStatus) {
+            "PARTIAL" -> when (item.outcome) {
+                Decision559UatOutcome.MANUAL_PASS -> indexes == guidance.manualEvidence.indices.toList()
+                Decision559UatOutcome.PARTIAL, Decision559UatOutcome.BLOCKED_EXTERNAL -> true
+                else -> false
+            }
+            else -> indexes.isEmpty()
+        }
+    }.getOrDefault(false)
+
     private fun updateHashValue(digest: MessageDigest, value: String) {
         val bytes = value.toByteArray(Charsets.UTF_8)
         digest.update(bytes.size.toString().toByteArray(Charsets.US_ASCII))
@@ -766,7 +1083,18 @@ class Decision559UatService(
         status = run.status,
         evidenceCount = evidence.size,
         acceptedCount = evidence.count { it.reviewStatus == Decision559UatReviewStatus.ACCEPTED },
-        blockingCount = evidence.count { it.outcome !in FINAL_OUTCOMES || it.reviewStatus != Decision559UatReviewStatus.ACCEPTED },
+        blockingCount = evidence.count {
+            it.outcome !in FINAL_OUTCOMES ||
+                it.reviewStatus != Decision559UatReviewStatus.ACCEPTED ||
+                (run.manifestSchemaVersion >= 5 && !matchesCatalogCoverage(it))
+        },
+        manualEvidenceRequiredCount = if (run.manifestSchemaVersion >= 5) manualEvidenceRequiredCount() else 0,
+        manualEvidenceCoveredCount = if (run.manifestSchemaVersion >= 5) evidence.sumOf {
+            manualEvidenceCoverage(it).size
+        } else 0,
+        manualEvidenceAcceptedCount = if (run.manifestSchemaVersion >= 5) evidence
+            .filter { it.outcome == Decision559UatOutcome.MANUAL_PASS && it.reviewStatus == Decision559UatReviewStatus.ACCEPTED }
+            .sumOf { manualEvidenceCoverage(it).size } else 0,
         protocolNumber = run.protocolNumber,
         protocolSignedDate = run.protocolSignedDate,
         protocolSignatories = run.protocolSignatories,
@@ -799,6 +1127,7 @@ class Decision559UatService(
         ownerName = item.ownerName,
         summary = item.summary,
         evidenceReference = item.evidenceReference,
+        manualEvidenceCoverage = manualEvidenceCoverage(item),
         originalName = primary?.originalName ?: item.originalName,
         contentType = primary?.contentType ?: item.contentType,
         sizeBytes = primary?.sizeBytes ?: item.sizeBytes,
@@ -822,6 +1151,12 @@ class Decision559UatService(
         reviewedAt = item.reviewedAt,
         )
     }
+
+    private fun manualEvidenceRequiredCount(): Int = requirementCatalog.list().sumOf { it.manualEvidence.size }
+
+    private fun Int?.orZero(): Int = this ?: 0
+
+    private fun csvCell(value: Any?): String = "\"${value?.toString().orEmpty().replace("\"", "\"\"")}\""
 
     private data class Stored(
         val storageName: String,

@@ -2,7 +2,8 @@ import api from "@/lib/api";
 import {
     StudentDto,
     StudentSummaryDto,
-    StudentAdmissionRequest,
+    StudentAcademicAdmissionRequest,
+    StudentRegistrationRequest,
     StudentLifecycleEventDto,
     StudentLifecycleRequest,
     StudentLifecycleResultDto,
@@ -24,9 +25,14 @@ export async function getStudentByNumber(studentNumber: string): Promise<Student
     return res.data;
 }
 
-export async function createStudent(req: StudentAdmissionRequest): Promise<StudentLifecycleResultDto> {
+export async function createStudent(req: StudentRegistrationRequest): Promise<StudentDto> {
+    const res = await api.post<StudentDto>("/students", req);
+    return res.data;
+}
+
+export async function admitStudent(id: number, req: StudentAcademicAdmissionRequest): Promise<StudentLifecycleResultDto> {
     validateLifecycleEvidence(req);
-    const res = await api.post<StudentLifecycleResultDto>("/students", req);
+    const res = await api.post<StudentLifecycleResultDto>(`/students/${id}/admission`, req);
     return res.data;
 }
 

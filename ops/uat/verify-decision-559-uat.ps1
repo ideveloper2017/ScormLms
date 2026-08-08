@@ -36,7 +36,7 @@ $allowedStatuses = @(
     "NOT_IMPLEMENTED"
 )
 
-if ($manifest.schemaVersion -ne 1) { $errors.Add("schemaVersion must be 1") }
+if ($manifest.schemaVersion -ne 2) { $errors.Add("schemaVersion must be 2") }
 if ($manifest.decisionNumber -ne 559) { $errors.Add("decisionNumber must be 559") }
 
 $requirements = @($manifest.requirements)
@@ -58,6 +58,16 @@ if ($unexpectedBands.Count -gt 0) { $errors.Add("Unexpected bands: $($unexpected
 foreach ($requirement in $requirements) {
     if ([string]::IsNullOrWhiteSpace("$($requirement.id)")) {
         $errors.Add("Band $($requirement.band) has no ID")
+    }
+    $manualEvidence = @($requirement.manualEvidence | Where-Object { $null -ne $_ })
+    if ($requirement.status -eq "PARTIAL" -and $manualEvidence.Count -eq 0) {
+        $errors.Add("PARTIAL band $($requirement.band) must list manualEvidence")
+    }
+    if ($requirement.status -ne "PARTIAL" -and $manualEvidence.Count -gt 0) {
+        $errors.Add("Non-PARTIAL band $($requirement.band) must not list manualEvidence")
+    }
+    if (@($manualEvidence | Where-Object { [string]::IsNullOrWhiteSpace("$_") }).Count -gt 0) {
+        $errors.Add("Band $($requirement.band) contains blank manualEvidence")
     }
     if ("$($requirement.status)" -notin $allowedStatuses) {
         $errors.Add("$($requirement.id) has unsupported status '$($requirement.status)'")
@@ -140,6 +150,7 @@ $blockers = @(
 )
 $structurallyValid = $errors.Count -eq 0
 $requirementsReady = $blockers.Count -eq 0
+$manualEvidenceItemCount = @($requirements | ForEach-Object { $_.manualEvidence } | Where-Object { $null -ne $_ }).Count
 $protocolSigned = $manifest.protocol.signed -eq $true
 $readyForAcceptance = $structurallyValid -and $requirementsReady -and $protocolSigned
 
@@ -151,6 +162,7 @@ $report = [ordered]@{
     statusCounts = $statusCounts
     structurallyValid = $structurallyValid
     requirementsReady = $requirementsReady
+    manualEvidenceItemCount = $manualEvidenceItemCount
     protocolSigned = $protocolSigned
     readyForAcceptance = $readyForAcceptance
     errors = @($errors)
@@ -169,6 +181,7 @@ if (-not [string]::IsNullOrWhiteSpace($ReportPath)) {
 }
 
 Write-Host "UAT-559: bands=$($requirements.Count), structural=$structurallyValid, requirementsReady=$requirementsReady, protocolSigned=$protocolSigned, ready=$readyForAcceptance"
+Write-Host "MANUAL_EVIDENCE_ITEMS=$manualEvidenceItemCount"
 foreach ($status in $allowedStatuses) {
     Write-Host "$status=$($statusCounts[$status])"
 }

@@ -29,7 +29,7 @@ Natija qiymatlari: `PASS`, `FAIL`, `BLOCKED`, `NOT_APPLICABLE`. `NOT_APPLICABLE`
 6. `APPROVED` holatdagi audit manifest qayta yuklanadi; HTTP `X-Content-SHA256` qiymati `.sha256` sidecar fayliga yoziladi va quyidagi verifier bilan tekshiriladi.
 7. Faqat `APPROVED` run uchun **Qabul arxivi ZIP** yuklanadi. ZIPning HTTP `X-Content-SHA256` qiymati alohida sidecar fayliga yozilib, bundle verifier bilan tekshiriladi. Shu paytgacha offline manifest va runtime run `ready=false`/`DRAFT` bo'lib qolishi normal.
 
-Yakuniy reviewer runni `REJECTED` qilsa, qabul qilingan band qayta ishlanishi mumkin. Birinchi dalil qo'shish/o'chirishda review `PENDING`ga qaytadi, legacy schema-v2/v3 run schema-v4ga o'tadi va eski imzolangan protokol avtomatik bekor qilinadi; yangi evidence-set SHA bilan yangi protokol yuklanishi shart.
+Yakuniy reviewer runni `REJECTED` qilsa, qabul qilingan band qayta ishlanishi mumkin. Birinchi dalil qo'shish/o'chirishda legacy schema-v2/v3/v4 run schema-v5ga o'tadi, checklistga nomuvofiq partial bandlar `PENDING`ga qaytadi va eski imzolangan protokol avtomatik bekor qilinadi; 43 topshiriq qamrovi kiritilgan yangi evidence-set SHA bilan yangi protokol yuklanishi shart.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ops/uat/verify-decision-559-runtime-manifest.ps1 `
@@ -108,6 +108,12 @@ Statik `decision-559-uat-evidence.json` release baseline va offline verifier uch
 - Qabul qarori [qabul protokoli](decision-559-acceptance-protocol.md)da barcha vakolatli tomonlar tomonidan imzolanadi va shu haqiqiy PDF V45–V49 runiga yuklanadi.
 - V48 dalil-intake formasi ushbu checklist bilan bir xil `decision-559-uat-evidence.json` katalogidan band nomi, baseline holati, tavsiya etilgan mas'ul, `DEP-*` bog'liqligi va qolgan manual ish izohini ko'rsatadi; katalog backend startida to'liqlik va manba SHA bo'yicha tekshiriladi.
 - V49 `protocol/draft` eksporti faqat 27/27 final natija va mustaqil `ACCEPTED` reviewdan keyin ochiladi; server bergan HTMLdagi run ID, qaror SHA, canonical evidence-set SHA va 27 band natijasi tekshirilib PDFga chop etiladi, so'ng komissiya imzolaydi.
-- V45–V49 runi faqat 27/27 mustaqil qabul, final natijalar, imzolangan PDF va separation-of-duties talabidan keyin `APPROVED` bo'ladi; schema-v4da protokol evidence-set bindingi ham majburiy.
+- V50 static katalog schema-v2: 14 `PARTIAL` bandning har birida `manualEvidence[]` majburiy, 13 automated bandda esa bo'sh; jami 43 real hujjat/UAT topshirig'i `14 band manual dalil paketi` orqali mas'ullarga tarqatiladi.
+- V51 runtime schema-v5: partial band `AUTOMATED_PASS` yoki `NOT_APPLICABLE` bilan final yopilmaydi; `MANUAL_PASS` saqlash va qabul qilishdan oldin shu bandning barcha checklistlari belgilangan hamda kamida bitta haqiqiy private fayl bo'lishi shart. Reviewer reyestrda qoplangan topshiriqlarni matni bilan ko'radi.
+- V52 qisman yig'ish: mas'uldan qaytgan real hujjatga mos checklistlar `PARTIAL` yoki `BLOCKED_EXTERNAL` holatida fayl bilan saqlanadi; run tepasida `Manual yig'ildi x/43` ko'rinadi. Qisman bandni reviewer final qabul qila olmaydi; faylsiz qamrov saqlanmaydi va oxirgi fayl o'chirilsa qamrov 0 ga qaytadi.
+- V53 monitoringi: tanlangan run ichidagi `43 manual topshiriq yig'ish monitoringi`ni oching, `Kutilmoqda` qatorlarini mas'ul va `DEP-*` bo'yicha kuzating, yig'ilgan fayllar sonini solishtiring va ishchi reyestrni `Progress CSV` orqali detached SHA-256 bilan arxivlang.
+- V54 rejalash: `Koordinatsiya qilinadigan topshiriq`dan qatorni tanlang, mas'ul, kelajakdagi muddat va kuzatuv izohini saqlang. `Tayinlangan muddatlar` blokida kechikkanlarni yopib boring; koordinatsiya yozuvi dalil yuklanganini yoki qabul qilinganini anglatmaydi.
+- V55 ommaviy rejalash: individual istisnolarni avval V54 formasi bilan kiriting, so'ng `Tayinlanmaganlarni ommaviy taqsimlash`da umumiy muddat va izohni tekshirib qolgan qatorlarni tavsiya etilgan bo'limlarga bering. Natijada `Tayinlangan 43/43`, `Tayinlanmagan 0` bo'lishi kerak.
+- V45–V55 runi faqat 27/27 mustaqil qabul, 43/43 zarur manual checklist qamrovi, final natijalar, imzolangan PDF va separation-of-duties talabidan keyin `APPROVED` bo'ladi; schema-v5 runtime protokol evidence-set bindingi ham majburiy.
 - Imzodan oldingi `evidenceSetSha256` protokolda qayd etiladi; final runtime JSONning detached `X-Content-SHA256` qiymati va verifier hisoboti arxivlanadi.
 - `APPROVED` acceptance bundle ZIPi detached SHA bilan tekshiriladi; bundle verifier ichki runtime manifest, exact payloadlar, `SHA256SUMS`, safe path va hajm limitlarini tasdiqlaydi.

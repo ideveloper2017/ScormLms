@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("47", flyway.info().current()?.version?.toString())
+        assertEquals("50", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -95,6 +95,7 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "decision_559_uat_runs", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "decision_559_uat_evidence", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "decision_559_uat_evidence_files", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "decision_559_uat_manual_task_coordination", arrayOf("TABLE")).use { it.next() })
 
             val programColumns = buildSet {
                 metadata.getColumns(null, null, "programs", null).use { columns ->
@@ -122,6 +123,12 @@ class ScromLmsProjectsApplicationTests {
                 }
             }
             assertTrue(uatRunColumns.contains("protocol_evidence_set_sha256"))
+            val uatEvidenceColumns = buildSet {
+                metadata.getColumns(null, null, "decision_559_uat_evidence", null).use { columns ->
+                    while (columns.next()) add(columns.getString("COLUMN_NAME").lowercase())
+                }
+            }
+            assertTrue(uatEvidenceColumns.contains("manual_evidence_coverage"))
         }
     }
 

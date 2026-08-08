@@ -37,6 +37,7 @@ class Decision559UatProtocolBindingMigrationTest {
 
         val result = Flyway.configure().dataSource(url, "sa", "")
             .locations("classpath:db/migration")
+            .target(MigrationVersion.fromVersion("47"))
             .load()
             .migrate()
         assertEquals("47", result.targetSchemaVersion)

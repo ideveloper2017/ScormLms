@@ -8,6 +8,7 @@ import uz.scorm.lms.app.v1.group.repository.GroupRepository
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.student.dto.StudentAdmissionRequest
+import uz.scorm.lms.app.v1.student.dto.StudentAcademicAdmissionRequest
 import uz.scorm.lms.app.v1.student.dto.StudentLifecycleEventDto
 import uz.scorm.lms.app.v1.student.dto.StudentLifecycleRequest
 import uz.scorm.lms.app.v1.student.dto.StudentLifecycleResultDto
@@ -35,6 +36,88 @@ class StudentLifecycleService(
     private val userRepository: UserRepository,
     private val auditService: AuditService,
 ) {
+    @Transactional
+    fun admitRegistered(studentId: Long, request: StudentAcademicAdmissionRequest, actorId: Long): StudentLifecycleResultDto {
+        validateEvidence(request.orderNumber, request.orderDate, request.effectiveDate, request.legalBasis, request.reason)
+        val student = studentRepository.findByIdForUpdate(studentId)
+            ?: throw NoSuchElementException("Talaba topilmadi: $studentId")
+        require(student.studentStatus == StudentStatus.REGISTERED) {
+            "Faqat hali qabul qilinmagan REGISTERED talaba akademik biriktiriladi"
+        }
+        require(!eventRepository.existsByStudentIdAndEventTypeAndOrderNumber(
+            studentId, StudentLifecycleEventType.ADMISSION, request.orderNumber.trim(),
+        )) { "Ushbu talaba va buyruq raqami bilan qabul yozuvi mavjud" }
+
+        val program = programRepository.findById(request.programId)
+            .orElseThrow { IllegalArgumentException("Ta'lim dasturi topilmadi: ${request.programId}") }
+        require(program.active && !program.deleted) { "Faqat faol ta'lim dasturiga qabul qilish mumkin" }
+        require(program.degreeLevel.equals(request.degreeLevel.name, ignoreCase = true)) {
+            "Tanlangan ta'lim darajasi dastur darajasiga mos emas"
+        }
+        request.departmentId?.let { require(it == program.department?.id) { "Tanlangan kafedra ta'lim dasturiga tegishli emas" } }
+        request.facultyId?.let { require(it == program.department?.faculty?.id) { "Tanlangan fakultet ta'lim dasturiga tegishli emas" } }
+        val group = request.groupId?.let {
+            groupRepository.findById(it).orElseThrow { IllegalArgumentException("Guruh topilmadi: $it") }
+        }
+        if (group != null) {
+            require(group.active && !group.deleted) { "Faqat faol guruhga biriktirish mumkin" }
+            require(group.program?.id == program.id) {
+                "Tanlangan guruh ta'lim dasturiga tegishli emas"
+            }
+        }
+        studentService.validateAcademicAdmission(student, request)
+
+        student.universityId = request.universityId
+        student.facultyId = program.department?.faculty?.id
+        student.departmentId = program.department?.id
+        student.programId = program.id
+        student.degreeLevel = request.degreeLevel
+        student.educationForm = request.educationForm
+        student.educationLanguage = request.educationLanguage.trim()
+        student.courseNumber = request.courseNumber
+        student.groupId = group?.id
+        student.academicYear = request.academicYear?.trim()?.takeIf(String::isNotBlank)
+        student.admissionDate = request.effectiveDate
+        student.admissionOrderNumber = request.orderNumber.trim()
+        student.paymentType = request.paymentType
+        student.contractNumber = request.contractNumber?.trim()?.takeIf(String::isNotBlank)
+        student.contractAmount = request.contractAmount
+        student.studentStatus = StudentStatus.ACTIVE
+        student.lmsOrientationRequired = Decision559Rules.requiresLmsOrientation(
+            request.educationForm == EducationForm.DISTANCE,
+            student.citizenship != Citizenship.UZBEKISTAN,
+        )
+        student.user.status = UserStatus.ACTIVE
+        studentRepository.save(student)
+
+        val eventRequest = StudentLifecycleRequest(
+            eventType = StudentLifecycleEventType.ADMISSION,
+            orderNumber = request.orderNumber,
+            orderDate = request.orderDate,
+            effectiveDate = request.effectiveDate,
+            legalBasis = request.legalBasis,
+            reason = request.reason,
+        )
+        val event = saveEvent(
+            student = student,
+            eventType = StudentLifecycleEventType.ADMISSION,
+            fromStatus = StudentStatus.REGISTERED,
+            toStatus = StudentStatus.ACTIVE,
+            fromProgram = null,
+            toProgram = program,
+            fromGroupId = null,
+            toGroupId = group?.id,
+            request = eventRequest,
+            actorId = actorId,
+        )
+        auditService.logAction(
+            "STUDENT_ADMITTED",
+            actorId,
+            "student=$studentId; order=${event.orderNumber}; effective=${event.effectiveDate}; program=${program.id}; group=${group?.id}",
+        )
+        return StudentLifecycleResultDto(studentService.toDto(student), toDto(event))
+    }
+
     @Transactional
     fun admit(request: StudentAdmissionRequest, actorId: Long): StudentLifecycleResultDto {
         validateEvidence(request.orderNumber, request.orderDate, request.effectiveDate, request.legalBasis, request.reason)

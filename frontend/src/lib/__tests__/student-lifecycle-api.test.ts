@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '@/lib/api';
-import { createStudent, transitionStudent, validateLifecycleEvidence } from '../student-api';
+import { admitStudent, createStudent, transitionStudent, validateLifecycleEvidence } from '../student-api';
 
 vi.mock('@/lib/api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -37,18 +37,24 @@ describe('decision 559 student lifecycle guards', () => {
     }));
   });
 
-  it('posts admission data together with its legal evidence', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({ data: { student: { id: 8 }, event: { id: 12 } } } as never);
+  it('creates a personal student card without academic admission data', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { id: 8, studentStatus: 'REGISTERED' } } as never);
     await createStudent({
-      student: {
-        pinfl: '12345678901234', lastName: 'Karimov', firstName: 'Ali', birthDate: '2000-01-01',
-        gender: 'MALE', studentNumber: 'S-001',
-      },
-      ...evidence,
+      pinfl: '12345678901234', lastName: 'Karimov', firstName: 'Ali', birthDate: '2000-01-01',
+      gender: 'MALE', studentNumber: 'S-001',
     });
-    expect(api.post).toHaveBeenCalledWith('/students', expect.objectContaining({
-      student: expect.objectContaining({ studentNumber: 'S-001' }),
-      orderNumber: 'BUY-12/2025-17',
+    expect(api.post).toHaveBeenCalledWith('/students', expect.objectContaining({ studentNumber: 'S-001' }));
+    expect(api.post).not.toHaveBeenCalledWith('/students', expect.objectContaining({ orderNumber: expect.anything() }));
+  });
+
+  it('admits a registered student in a separate academic command', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { student: { id: 8 }, event: { id: 12 } } } as never);
+    await admitStudent(8, {
+      programId: 4, groupId: 9, degreeLevel: 'BACHELOR', educationForm: 'FULL_TIME',
+      educationLanguage: 'uz', courseNumber: 1, ...evidence,
+    });
+    expect(api.post).toHaveBeenCalledWith('/students/8/admission', expect.objectContaining({
+      programId: 4, groupId: 9, orderNumber: 'BUY-12/2025-17',
     }));
   });
 });

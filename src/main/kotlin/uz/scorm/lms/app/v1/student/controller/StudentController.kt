@@ -32,8 +32,16 @@ class StudentController(
 
     @PostMapping
     @PreAuthorize("hasAuthority('USER_MANAGE')")
-    fun create(@RequestBody req: StudentAdmissionRequest, @CurrentUser user: User): ResponseEntity<StudentLifecycleResultDto> =
-        ResponseEntity.status(HttpStatus.CREATED).body(lifecycleService.admit(req, requireNotNull(user.id)))
+    fun create(@RequestBody req: StudentRegistrationRequest): ResponseEntity<StudentDto> =
+        ResponseEntity.status(HttpStatus.CREATED).body(studentService.register(req))
+
+    @PostMapping("/{id}/admission")
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
+    fun admit(
+        @PathVariable id: Long,
+        @RequestBody req: StudentAcademicAdmissionRequest,
+        @CurrentUser user: User,
+    ): StudentLifecycleResultDto = lifecycleService.admitRegistered(id, req, requireNotNull(user.id))
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_MANAGE')")
