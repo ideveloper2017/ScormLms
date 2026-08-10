@@ -50,6 +50,9 @@ class StudentLifecycleService(
 
         val program = programRepository.findById(request.programId)
             .orElseThrow { IllegalArgumentException("Ta'lim dasturi topilmadi: ${request.programId}") }
+        val academicYear = requireNotNull(request.academicYear?.trim()?.takeIf(String::isNotBlank)) {
+            "O'quv yili tanlanishi shart"
+        }
         require(program.active && !program.deleted) { "Faqat faol ta'lim dasturiga qabul qilish mumkin" }
         require(program.degreeLevel.equals(request.degreeLevel.name, ignoreCase = true)) {
             "Tanlangan ta'lim darajasi dastur darajasiga mos emas"
@@ -64,6 +67,14 @@ class StudentLifecycleService(
             require(group.program?.id == program.id) {
                 "Tanlangan guruh ta'lim dasturiga tegishli emas"
             }
+            group.educationYear?.trim()?.takeIf(String::isNotBlank)?.let {
+                require(it == academicYear) { "Tanlangan guruh $academicYear o'quv yiliga tegishli emas" }
+            }
+            group.language?.trim()?.takeIf(String::isNotBlank)?.let {
+                require(it.equals(request.educationLanguage.trim(), ignoreCase = true)) {
+                    "Tanlangan guruh ta'lim tiliga mos emas"
+                }
+            }
         }
         studentService.validateAcademicAdmission(student, request)
 
@@ -75,8 +86,9 @@ class StudentLifecycleService(
         student.educationForm = request.educationForm
         student.educationLanguage = request.educationLanguage.trim()
         student.courseNumber = request.courseNumber
+        student.semesterNumber = request.semesterNumber
         student.groupId = group?.id
-        student.academicYear = request.academicYear?.trim()?.takeIf(String::isNotBlank)
+        student.academicYear = academicYear
         student.admissionDate = request.effectiveDate
         student.admissionOrderNumber = request.orderNumber.trim()
         student.paymentType = request.paymentType
@@ -185,31 +197,15 @@ class StudentLifecycleService(
         var toGroupId = fromGroupId
 
         if (request.eventType == StudentLifecycleEventType.TRANSFER) {
-            val targetProgramId = requireNotNull(request.targetProgramId) { "Ko'chirish uchun yangi ta'lim dasturi majburiy" }
-            toProgram = programRepository.findById(targetProgramId)
-                .orElseThrow { IllegalArgumentException("Ta'lim dasturi topilmadi: $targetProgramId") }
-            require(toProgram.active && !toProgram.deleted) { "Faqat faol ta'lim dasturiga ko'chirish mumkin" }
-            val targetGroup = request.targetGroupId?.let { groupId ->
-                groupRepository.findById(groupId).orElseThrow { IllegalArgumentException("Guruh topilmadi: $groupId") }
-            }
-            if (targetGroup != null) {
-                require(targetGroup.active && !targetGroup.deleted) { "Faqat faol guruhga ko'chirish mumkin" }
-                require(targetGroup.program?.id == targetProgramId) { "Tanlangan guruh yangi ta'lim dasturiga tegishli emas" }
-            }
-            toGroupId = targetGroup?.id
-            require(fromProgram?.id != targetProgramId || fromGroupId != toGroupId) {
-                "Ko'chirishda ta'lim dasturi yoki guruh o'zgarishi shart"
-            }
-            val targetAcademicYear = request.academicYear?.trim()?.takeIf(String::isNotBlank)
-                ?: targetGroup?.educationYear
-                ?: student.academicYear
-            studentService.validateLifecyclePlacement(student, targetProgramId, toStatus, targetAcademicYear, request.effectiveDate)
-            student.programId = targetProgramId
+            val plan = prepareTransfer(student, request, fromProgram, fromGroupId, toStatus)
+            toProgram = plan.program
+            toGroupId = plan.groupId
+            student.programId = requireNotNull(toProgram.id)
             student.departmentId = toProgram.department?.id
             student.facultyId = toProgram.department?.faculty?.id
             student.groupId = toGroupId
-            student.academicYear = targetAcademicYear
-            if (student.educationForm == EducationForm.DISTANCE && fromProgram?.id != targetProgramId) {
+            student.academicYear = plan.academicYear
+            if (student.educationForm == EducationForm.DISTANCE && fromProgram?.id != toProgram.id) {
                 student.lmsOrientationRequired = Decision559Rules.requiresLmsOrientation(
                     isDistanceEducation = true,
                     isForeignCitizen = student.citizenship != Citizenship.UZBEKISTAN,
@@ -226,7 +222,12 @@ class StudentLifecycleService(
         }
 
         student.studentStatus = toStatus
-        student.user.status = if (toStatus == StudentStatus.ACTIVE) UserStatus.ACTIVE else UserStatus.INACTIVE
+        student.user.status = when {
+            toStatus != StudentStatus.ACTIVE -> UserStatus.INACTIVE
+            fromStatus != StudentStatus.ACTIVE -> UserStatus.ACTIVE
+            student.user.status == UserStatus.BLOCKED -> UserStatus.BLOCKED
+            else -> UserStatus.ACTIVE
+        }
         studentRepository.save(student)
         val event = saveEvent(
             student,
@@ -246,6 +247,59 @@ class StudentLifecycleService(
             "student=$studentId; ${fromStatus.name}->${toStatus.name}; order=${event.orderNumber}; program=${fromProgram?.id}->${toProgram?.id}",
         )
         return StudentLifecycleResultDto(studentService.toDto(student), toDto(event))
+    }
+
+    @Transactional
+    fun validateTransferCandidate(studentId: Long, request: StudentLifecycleRequest) {
+        require(request.eventType == StudentLifecycleEventType.TRANSFER) { "Faqat TRANSFER hodisasi tekshiriladi" }
+        validateEvidence(request.orderNumber, request.orderDate, request.effectiveDate, request.legalBasis, request.reason)
+        val student = studentRepository.findByIdForUpdate(studentId)
+            ?: throw NoSuchElementException("Talaba topilmadi: $studentId")
+        require(!eventRepository.existsByStudentIdAndEventTypeAndOrderNumber(
+            studentId, StudentLifecycleEventType.TRANSFER, request.orderNumber.trim(),
+        )) { "Ushbu talaba, hodisa va buyruq raqami bilan lifecycle yozuvi mavjud" }
+        val fromProgram = student.programId?.let { programRepository.findById(it).orElse(null) }
+        val toStatus = targetStatus(StudentLifecycleEventType.TRANSFER, student.studentStatus)
+        prepareTransfer(student, request, fromProgram, student.groupId, toStatus)
+    }
+
+    private fun prepareTransfer(
+        student: StudentProfile,
+        request: StudentLifecycleRequest,
+        fromProgram: Program?,
+        fromGroupId: Long?,
+        toStatus: StudentStatus,
+    ): TransferPlan {
+        val targetProgramId = requireNotNull(request.targetProgramId) { "Ko'chirish uchun yangi ta'lim dasturi majburiy" }
+        val targetProgram = programRepository.findById(targetProgramId)
+            .orElseThrow { IllegalArgumentException("Ta'lim dasturi topilmadi: $targetProgramId") }
+        require(targetProgram.active && !targetProgram.deleted) { "Faqat faol ta'lim dasturiga ko'chirish mumkin" }
+        val targetGroup = request.targetGroupId?.let { groupId ->
+            groupRepository.findById(groupId).orElseThrow { IllegalArgumentException("Guruh topilmadi: $groupId") }
+        }
+        if (targetGroup != null) {
+            require(targetGroup.active && !targetGroup.deleted) { "Faqat faol guruhga ko'chirish mumkin" }
+            require(targetGroup.program?.id == targetProgramId) { "Tanlangan guruh yangi ta'lim dasturiga tegishli emas" }
+            request.academicYear?.trim()?.takeIf(String::isNotBlank)?.let { academicYear ->
+                targetGroup.educationYear?.trim()?.takeIf(String::isNotBlank)?.let {
+                    require(it == academicYear) { "Tanlangan guruh $academicYear o'quv yiliga tegishli emas" }
+                }
+            }
+            targetGroup.language?.trim()?.takeIf(String::isNotBlank)?.let {
+                require(it.equals(student.educationLanguage, ignoreCase = true)) {
+                    "Tanlangan guruh talabaning ta'lim tiliga mos emas"
+                }
+            }
+        }
+        val targetGroupId = targetGroup?.id
+        require(fromProgram?.id != targetProgramId || fromGroupId != targetGroupId) {
+            "Ko'chirishda ta'lim dasturi yoki guruh o'zgarishi shart"
+        }
+        val targetAcademicYear = request.academicYear?.trim()?.takeIf(String::isNotBlank)
+            ?: targetGroup?.educationYear
+            ?: student.academicYear
+        studentService.validateLifecyclePlacement(student, targetProgramId, toStatus, targetAcademicYear, request.effectiveDate)
+        return TransferPlan(targetProgram, targetGroupId, targetAcademicYear)
     }
 
     private fun targetStatus(eventType: StudentLifecycleEventType, current: StudentStatus): StudentStatus = when (eventType) {
@@ -277,6 +331,12 @@ class StudentLifecycleService(
             StudentStatus.GRADUATED
         }
     }
+
+    private data class TransferPlan(
+        val program: Program,
+        val groupId: Long?,
+        val academicYear: String?,
+    )
 
     private fun validateEvidence(
         orderNumber: String,

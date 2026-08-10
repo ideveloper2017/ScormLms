@@ -2,17 +2,42 @@ import api from "@/lib/api";
 import {
     StudentDto,
     StudentSummaryDto,
+    StudentRegistryPageDto,
+    StudentRegistryQuery,
     StudentAcademicAdmissionRequest,
+    StudentPersonalProfileUpdateRequest,
     StudentRegistrationRequest,
     StudentLifecycleEventDto,
     StudentLifecycleRequest,
     StudentLifecycleResultDto,
     StudentUpdateRequest,
+    StudentAccountAccessRequest,
+    StudentBulkTransferRequest,
+    StudentBulkTransferResultDto,
+    ReinstatementSubjectReportPageDto,
+    ReinstatementSubjectReportQuery,
 } from "@/types/student.types";
 
-export async function listStudents(): Promise<StudentSummaryDto[]> {
-    const res = await api.get<StudentSummaryDto[]>("/students");
+export async function listStudents(query: StudentRegistryQuery = {}): Promise<StudentRegistryPageDto> {
+    const res = await api.get<StudentRegistryPageDto>("/students", { params: query });
     return res.data;
+}
+
+export async function listReinstatementSubjectReport(
+    query: ReinstatementSubjectReportQuery = {},
+): Promise<ReinstatementSubjectReportPageDto> {
+    const res = await api.get<ReinstatementSubjectReportPageDto>(
+        "/students/reinstatements/subjects-report",
+        { params: query },
+    );
+    return res.data;
+}
+
+export async function exportStudentRegistry(query: Pick<StudentRegistryQuery, 'search' | 'status'>): Promise<{ blob: Blob; filename: string }> {
+    const res = await api.get<Blob>("/students/export", { params: query, responseType: 'blob' });
+    const disposition = String(res.headers['content-disposition'] ?? '');
+    const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? 'student-registry.xlsx';
+    return { blob: res.data, filename };
 }
 
 export async function getStudent(id: number): Promise<StudentDto> {
@@ -46,6 +71,26 @@ export async function listStudentLifecycle(id: number): Promise<StudentLifecycle
     return res.data;
 }
 
+export async function updateStudentPersonalProfile(
+    id: number,
+    req: StudentPersonalProfileUpdateRequest,
+): Promise<StudentDto> {
+    const res = await api.put<StudentDto>(`/students/${id}/personal-profile`, req);
+    return res.data;
+}
+
+export async function changeStudentAccountAccess(
+    id: number,
+    req: StudentAccountAccessRequest,
+): Promise<StudentSummaryDto> {
+    const reason = req.reason.trim();
+    if (reason.length < 5 || reason.length > 500) {
+        throw new Error("Akkaunt holatini o'zgartirish sababi 5-500 belgi bo'lishi shart");
+    }
+    const res = await api.patch<StudentSummaryDto>(`/students/${id}/account-access`, { ...req, reason });
+    return res.data;
+}
+
 export async function transitionStudent(id: number, request: StudentLifecycleRequest): Promise<StudentLifecycleResultDto> {
     validateLifecycleEvidence(request);
     if (request.eventType === 'TRANSFER' && !request.targetProgramId) {
@@ -55,6 +100,19 @@ export async function transitionStudent(id: number, request: StudentLifecycleReq
         throw new Error("Dastur va guruh faqat TRANSFER hodisasida beriladi");
     }
     const res = await api.post<StudentLifecycleResultDto>(`/students/${id}/lifecycle`, request);
+    return res.data;
+}
+
+export async function bulkTransferStudents(request: StudentBulkTransferRequest): Promise<StudentBulkTransferResultDto> {
+    if (request.studentIds.length < 2 || request.studentIds.length > 200) {
+        throw new Error("Ommaviy ko'chirish uchun 2-200 ta talaba tanlanishi shart");
+    }
+    if (new Set(request.studentIds).size !== request.studentIds.length) {
+        throw new Error("Ommaviy ko'chirish ro'yxatida takroriy talaba mavjud");
+    }
+    if (!request.targetProgramId) throw new Error("Yangi ta'lim dasturi majburiy");
+    validateLifecycleEvidence(request);
+    const res = await api.post<StudentBulkTransferResultDto>('/students/bulk-transfer', request);
     return res.data;
 }
 

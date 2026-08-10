@@ -73,6 +73,16 @@ V55 tayinlangan/tayinlanmagan/overdue hisoblarini beradi va hali koordinatsiya q
 
 V56 talabani yaratishni ikki sodda amalga ajratadi: avval faqat shaxsiy kartochka `REGISTERED` holatda saqlanadi, keyin registrar alohida `O'qishga biriktirish` formasida dastur, guruh, kontrakt va qabul buyrug'ini kiritadi. Muvaffaqiyatli qabuldan keyingina talaba `ACTIVE` bo'ladi va login ochiladi.
 
+V58 shaxsiy kartochkani akademik formaga tegmasdan kengaytiradi: otasining ismi, telefon/email, fuqarolik, pasport rekvizitlari, foto URL, doimiy va hozirgi manzil create/editda alohida bloklarda yuritiladi. Personal yangilash alohida endpointda to'liq almashtirish semantikasi, format validatsiyasi va normalizatsiya bilan ishlaydi.
+
+V59 akademik qabulni `o'quv yili -> dastur -> semestr -> guruh` kaskadiga o'tkazadi. Semestr talaba yozuvida saqlanadi, kurs avtomatik hisoblanadi va guruhning dastur, o'quv yili hamda ta'lim tiliga mosligi frontend va backendda tekshiriladi.
+
+V60 talaba reyestrini server-side qidiruv, status filtri va paginationga o'tkazadi. Excel eksport `USER_READ + REPORT_READ` bilan himoyalangan, JSHSHIR/telefon/emailni maskalaydi, pasport/manzilni chiqarmaydi, 10 000 qator bilan cheklanadi va PII kiritmasdan auditlanadi.
+
+V64 talaba geografiya klassifikatorlarini versiyalaydi: buildga paketlangan manifest 249 ISO 3166-1 mamlakat kodi, CLDR 48.2.0 o'zbekcha nomi, 14 SOATO hududi va 206 tuman/shaharni saqlaydi. `/admin/student-classifiers` sahifasida `ACADEMIC_READ` manba/versiya/SHA-256 va oxirgi importni ko'radi, `ACADEMIC_WRITE` esa faqat shu tekshirilgan paketni idempotent import qiladi. Takror import dublikat yaratmaydi; local admin yozuvlari saqlanadi.
+
+V65 PostgreSQL migratsiya/import UATini takrorlash uchun `PGPASSWORD` va zarur bo'lsa `POSTGRES_BIN` berib `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ops/classifiers/invoke-geography-classifier-uat.ps1` ishga tushiriladi. Skript faqat qat'iy prefiksli disposable baza yaratadi, V52→V53 upgrade, legacy student FK, local yozuv va ikkinchi no-op importni tekshiradi, bazani `finally`da o'chiradi hamda `docs/uat` ostida JSON + detached SHA-256 dalil beradi.
+
 27 bandning barchasi final natija va mustaqil `ACCEPTED` reviewga yetgach `GET /api/v1/compliance/559/uat/runs/{id}/protocol/draft` joriy run ID, qaror SHA, schema, canonical evidence-set SHA va barcha band natijalari oldindan yozilgan print-friendly HTMLni detached SHA bilan beradi. Uni PDFga chop etib komissiya imzolaydi; evidence-ready holatgacha draft ham, imzolangan protocol uploadi ham serverda bloklanadi.
 
 Yakuniy 559 UAT runidan eksport qilingan audit manifestini (legacy final runlar uchun schema-v2/v3/v4, checklist qamrovi bog'langan yangi runlar uchun schema-v5) detached HTTP SHA bilan tekshirish:

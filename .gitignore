@@ -33,6 +33,7 @@ out/
 private-uploads/
 ops/backup/drill-work/
 ops/backup/drill-reports/
+/tmp/v64-soato-analysis/
 
 ### NetBeans ###
 /nbproject/private/

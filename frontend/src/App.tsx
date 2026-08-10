@@ -46,6 +46,8 @@ import { AdminFaculties } from "@/pages/admin/faculties";
 import { AdminDepartments } from "@/pages/admin/departments";
 import { AdminPrograms } from "@/pages/admin/programs";
 import { AdminGroups } from "@/pages/admin/groups";
+import { AdminStudentClassifiers } from "@/pages/admin/student-classifiers";
+import { AdminReinstatementSubjectReport } from "@/pages/admin/reinstatement-subject-report";
 import { AdminSubjects } from "@/pages/admin/subjects";
 import { AdminStudyPlans } from "@/pages/admin/study-plans";
 import { AdminAdmissionPolicies } from "@/pages/admin/admission-policies";
@@ -254,12 +256,14 @@ function App() {
         <Route path="/admin/dashboard"    element={<P roles={STAFF_ROLES}><AdminDashboard /></P>} />
         <Route path="/admin/users"        element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
         <Route path="/admin/students"     element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
+        <Route path="/admin/student-movement/reinstatement-subjects" element={<P roles={STAFF_ROLES}><AdminReinstatementSubjectReport /></P>} />
         <Route path="/admin/teachers"     element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
         <Route path="/admin/roles"        element={<P roles={ADMIN_ROLES}><AdminRoles /></P>} />
         <Route path="/admin/faculties"    element={<P roles={STAFF_ROLES}><AdminFaculties /></P>} />
         <Route path="/admin/departments"  element={<P roles={STAFF_ROLES}><AdminDepartments /></P>} />
         <Route path="/admin/programs"     element={<P roles={STAFF_ROLES}><AdminPrograms /></P>} />
         <Route path="/admin/groups"       element={<P roles={STAFF_ROLES}><AdminGroups /></P>} />
+        <Route path="/admin/student-classifiers" element={<P roles={STAFF_ROLES}><AdminStudentClassifiers /></P>} />
         <Route path="/admin/subjects"     element={<P roles={STAFF_ROLES}><AdminSubjects /></P>} />
         <Route path="/admin/study-plans"  element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
         <Route path="/admin/admission-policies" element={<P roles={STAFF_ROLES}><AdminAdmissionPolicies /></P>} />

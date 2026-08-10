@@ -24,10 +24,12 @@ import uz.scorm.lms.app.v1.student.dto.StudentCreateRequest
 import uz.scorm.lms.app.v1.student.dto.StudentUpdateRequest
 import uz.scorm.lms.app.v1.student.dto.StudentRegistrationRequest
 import uz.scorm.lms.app.v1.student.dto.StudentAcademicAdmissionRequest
+import uz.scorm.lms.app.v1.student.dto.StudentPersonalProfileUpdateRequest
 import uz.scorm.lms.app.v1.student.model.DegreeLevel
 import uz.scorm.lms.app.v1.student.model.EducationForm
 import uz.scorm.lms.app.v1.student.model.Gender
 import uz.scorm.lms.app.v1.student.model.PaymentType
+import uz.scorm.lms.app.v1.student.model.PassportType
 import uz.scorm.lms.app.v1.student.model.StudentLifecycleEventType
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.model.StudentStatus
@@ -60,15 +62,27 @@ class StudentLifecycleWorkflowIntegrationTest {
     fun `shaxsiy kartochka va akademik qabul ikki alohida bosqichda bajariladi`() {
         val actor = user("two-step-registrar")
         val target = program("Kompyuter injiniringi", "60610500")
-        val targetGroup = groupRepository.save(Group(name = "KI-26", educationYear = "2026-2027", program = target))
+        val targetGroup = groupRepository.save(Group(name = "KI-26", educationYear = "2026-2027", language = "uz", program = target))
         val suffix = System.nanoTime().toString()
 
         val registered = studentService.register(StudentRegistrationRequest(
             pinfl = suffix.takeLast(14).padStart(14, '3'),
             lastName = "Saidov",
             firstName = "Bekzod",
+            middleName = "Aziz o'g'li",
             birthDate = LocalDate.of(2003, 5, 6),
             gender = Gender.MALE,
+            passportType = PassportType.ID_CARD,
+            passportSeries = "aa",
+            passportNumber = "1234567",
+            passportIssuedDate = LocalDate.now().minusYears(2),
+            passportExpiryDate = LocalDate.now().plusYears(8),
+            passportIssuedBy = "Namangan IIB",
+            phoneNumber = "+998 90 123 45 67",
+            email = "BEKZOD@EXAMPLE.UZ",
+            permanentRegion = "Namangan",
+            permanentDistrict = "Namangan shahri",
+            permanentAddress = "Istiqlol ko'chasi, 1-uy",
             studentNumber = "REG-$suffix",
             password = "Student@12345",
         ))
@@ -80,7 +94,27 @@ class StudentLifecycleWorkflowIntegrationTest {
         assertEquals(null, registered.educationForm)
         assertEquals(null, registered.courseNumber)
         assertFalse(registered.accountEnabled)
+        assertEquals("AA", registered.passportSeries)
+        assertEquals("1234567", registered.passportNumber)
+        assertEquals("bekzod@example.uz", registered.email)
+        assertEquals("+998 90 123 45 67", registered.phoneNumber)
         assertTrue(lifecycleService.history(requireNotNull(registered.id)).isEmpty())
+
+        val updated = studentService.updatePersonalProfile(requireNotNull(registered.id), StudentPersonalProfileUpdateRequest(
+            lastName = "Saidov",
+            firstName = "Bekzodbek",
+            middleName = null,
+            phoneNumber = null,
+            email = "bekzodbek@example.uz",
+            currentRegion = "Toshkent shahri",
+            currentDistrict = "Yunusobod",
+            currentAddress = "Amir Temur ko'chasi",
+        ))
+        assertEquals("Bekzodbek", updated.firstName)
+        assertEquals(null, updated.middleName)
+        assertEquals(null, updated.phoneNumber)
+        assertEquals(null, updated.passportType)
+        assertEquals("Toshkent shahri", updated.currentRegion)
 
         val admitted = lifecycleService.admitRegistered(
             requireNotNull(registered.id),
@@ -90,7 +124,8 @@ class StudentLifecycleWorkflowIntegrationTest {
                 degreeLevel = DegreeLevel.BACHELOR,
                 educationForm = EducationForm.FULL_TIME,
                 educationLanguage = "uz",
-                courseNumber = 1,
+                semesterNumber = 3,
+                courseNumber = 2,
                 groupId = requireNotNull(targetGroup.id),
                 academicYear = "2026-2027",
                 paymentType = PaymentType.CONTRACT,
@@ -106,9 +141,83 @@ class StudentLifecycleWorkflowIntegrationTest {
         assertEquals(StudentStatus.ACTIVE, admitted.student.studentStatus)
         assertEquals(target.id, admitted.student.programId)
         assertEquals(targetGroup.id, admitted.student.groupId)
+        assertEquals(3, admitted.student.semesterNumber)
+        assertEquals(2, admitted.student.courseNumber)
         assertTrue(admitted.student.accountEnabled)
         assertEquals(StudentStatus.REGISTERED, admitted.event.fromStatus)
         assertEquals(StudentLifecycleEventType.ADMISSION, admitted.event.eventType)
+    }
+
+    @Test
+    fun `qabul kaskadi boshqa o'quv yilidagi guruhni serverda rad etadi`() {
+        val actor = user("cascade-registrar")
+        val target = program("Axborot tizimlari", "60610100")
+        val wrongYearGroup = groupRepository.save(Group(
+            name = "AT-25", educationYear = "2025-2026", language = "uz", program = target,
+        ))
+        val suffix = System.nanoTime().toString()
+        val registered = studentService.register(StudentRegistrationRequest(
+            pinfl = suffix.takeLast(14).padStart(14, '7'),
+            lastName = "Nosirov",
+            firstName = "Nodir",
+            birthDate = LocalDate.of(2004, 2, 3),
+            gender = Gender.MALE,
+            studentNumber = "CASCADE-$suffix",
+            password = "Student@12345",
+        ))
+
+        val error = assertThrows<IllegalArgumentException> {
+            lifecycleService.admitRegistered(
+                requireNotNull(registered.id),
+                StudentAcademicAdmissionRequest(
+                    programId = requireNotNull(target.id),
+                    degreeLevel = DegreeLevel.BACHELOR,
+                    educationForm = EducationForm.FULL_TIME,
+                    educationLanguage = "uz",
+                    semesterNumber = 1,
+                    courseNumber = 1,
+                    groupId = requireNotNull(wrongYearGroup.id),
+                    academicYear = "2026-2027",
+                    orderNumber = "QABUL-CASCADE/2026",
+                    orderDate = LocalDate.now().minusDays(2),
+                    effectiveDate = LocalDate.now().minusDays(1),
+                    legalBasis = "Universitet qabul komissiyasi reglamenti",
+                    reason = "Akademik joylashuv mosligini tekshirish",
+                ),
+                requireNotNull(actor.id),
+            )
+        }
+        assertTrue(error.message.orEmpty().contains("2026-2027 o'quv yiliga tegishli emas"))
+    }
+
+    @Test
+    fun `personal kartochka noto'g'ri telefon va pasport sanasini rad etadi`() {
+        val suffix = System.nanoTime().toString()
+        assertThrows<IllegalArgumentException> {
+            studentService.register(StudentRegistrationRequest(
+                pinfl = suffix.takeLast(14).padStart(14, '4'),
+                lastName = "Valiyev",
+                firstName = "Vali",
+                birthDate = LocalDate.of(2001, 1, 1),
+                gender = Gender.MALE,
+                phoneNumber = "telefon-emas",
+                studentNumber = "BAD-PHONE-$suffix",
+            ))
+        }
+        assertThrows<IllegalArgumentException> {
+            studentService.register(StudentRegistrationRequest(
+                pinfl = suffix.takeLast(14).padStart(14, '5'),
+                lastName = "Aliyeva",
+                firstName = "Aliya",
+                birthDate = LocalDate.of(2001, 1, 1),
+                gender = Gender.FEMALE,
+                passportType = PassportType.ID_CARD,
+                passportNumber = "1234567",
+                passportIssuedDate = LocalDate.now(),
+                passportExpiryDate = LocalDate.now().minusDays(1),
+                studentNumber = "BAD-PASSPORT-$suffix",
+            ))
+        }
     }
 
     @Test

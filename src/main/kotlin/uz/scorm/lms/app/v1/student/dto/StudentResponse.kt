@@ -1,6 +1,7 @@
 package uz.scorm.lms.app.v1.student.dto
 
 import uz.scorm.lms.app.v1.student.model.*
+import uz.scorm.lms.app.v1.user.model.UserStatus
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.Instant
@@ -18,6 +19,7 @@ data class StudentDto(
     val birthDate: LocalDate?,
     val gender: Gender?,
     val citizenship: Citizenship?,
+    val citizenshipCountryId: Long? = null,
     // Pasport
     val passportType: PassportType?,
     val passportSeries: String?,
@@ -31,11 +33,15 @@ data class StudentDto(
     val email: String?,
     // Doimiy manzil
     val permanentRegion: String?,
+    val permanentRegionId: Long? = null,
     val permanentDistrict: String?,
+    val permanentDistrictId: Long? = null,
     val permanentAddress: String?,
     // Hozirgi manzil
     val currentRegion: String?,
+    val currentRegionId: Long? = null,
     val currentDistrict: String?,
+    val currentDistrictId: Long? = null,
     val currentAddress: String?,
     // Ta'lim
     val studentNumber: String,
@@ -47,6 +53,7 @@ data class StudentDto(
     val educationForm: EducationForm?,
     val educationLanguage: String?,
     val courseNumber: Int?,
+    val semesterNumber: Int?,
     val groupId: Long?,
     val academicYear: String?,
     val admissionDate: LocalDate?,
@@ -75,10 +82,14 @@ data class StudentSummaryDto(
     val facultyId: Long?,
     val groupId: Long?,
     val courseNumber: Int?,
+    val semesterNumber: Int?,
     val degreeLevel: DegreeLevel?,
     val studentStatus: StudentStatus?,
     val photoUrl: String?,
     val lmsOrientationRequired: Boolean,
+    val username: String,
+    val accountStatus: UserStatus,
+    val accountEnabled: Boolean,
 )
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
@@ -142,6 +153,7 @@ data class StudentRegistrationRequest(
     val birthDate: LocalDate,
     val gender: Gender,
     val citizenship: Citizenship = Citizenship.UZBEKISTAN,
+    val citizenshipCountryId: Long? = null,
     val passportType: PassportType? = null,
     val passportSeries: String? = null,
     val passportNumber: String? = null,
@@ -152,13 +164,49 @@ data class StudentRegistrationRequest(
     val phoneNumber: String? = null,
     val email: String? = null,
     val permanentRegion: String? = null,
+    val permanentRegionId: Long? = null,
     val permanentDistrict: String? = null,
+    val permanentDistrictId: Long? = null,
     val permanentAddress: String? = null,
     val currentRegion: String? = null,
+    val currentRegionId: Long? = null,
     val currentDistrict: String? = null,
+    val currentDistrictId: Long? = null,
     val currentAddress: String? = null,
     val studentNumber: String,
     val password: String = "Student@123",
+)
+
+/** Personal kartochkaning tahrirlanadigan qismini to'liq almashtiradi. */
+data class StudentPersonalProfileUpdateRequest(
+    val lastName: String,
+    val firstName: String,
+    val middleName: String? = null,
+    val passportType: PassportType? = null,
+    val passportSeries: String? = null,
+    val passportNumber: String? = null,
+    val passportIssuedDate: LocalDate? = null,
+    val passportExpiryDate: LocalDate? = null,
+    val passportIssuedBy: String? = null,
+    val photoUrl: String? = null,
+    val phoneNumber: String? = null,
+    val email: String? = null,
+    val permanentRegion: String? = null,
+    val permanentRegionId: Long? = null,
+    val permanentDistrict: String? = null,
+    val permanentDistrictId: Long? = null,
+    val permanentAddress: String? = null,
+    val currentRegion: String? = null,
+    val currentRegionId: Long? = null,
+    val currentDistrict: String? = null,
+    val currentDistrictId: Long? = null,
+    val currentAddress: String? = null,
+)
+
+/** Talaba akkauntini akademik holatdan mustaqil ravishda ma'muriy bloklash yoki qayta yoqish. */
+data class StudentAccountAccessRequest(
+    val enabled: Boolean,
+    val reason: String,
 )
 
 data class StudentUpdateRequest(

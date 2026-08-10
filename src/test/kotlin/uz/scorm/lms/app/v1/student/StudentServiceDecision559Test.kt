@@ -31,6 +31,8 @@ import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.service.UserService
 import uz.scorm.lms.app.v1.restriction.service.DistanceProgramRestrictionService
+import uz.scorm.lms.app.v1.audit.service.AuditService
+import uz.scorm.lms.app.v1.classifier.service.GeographyClassifierService
 import java.time.LocalDate
 import java.math.BigDecimal
 import java.util.Optional
@@ -44,7 +46,9 @@ class StudentServiceDecision559Test {
     private val admissionPolicyRepository = mockk<DistanceAdmissionPolicyRepository>()
     private val licenseScopeRepository = mockk<NonStateLicenseProgramScopeRepository>()
     private val restrictionService = mockk<DistanceProgramRestrictionService>()
-    private val service = StudentService(studentRepository, userService, programRepository, teacherRepository, admissionPolicyRepository, licenseScopeRepository, restrictionService)
+    private val auditService = mockk<AuditService>(relaxed = true)
+    private val classifierService = mockk<GeographyClassifierService>(relaxed = true)
+    private val service = StudentService(studentRepository, userService, programRepository, teacherRepository, admissionPolicyRepository, licenseScopeRepository, restrictionService, auditService, classifierService)
 
     @BeforeEach
     fun defaults() {

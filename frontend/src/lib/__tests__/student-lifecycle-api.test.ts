@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '@/lib/api';
-import { admitStudent, createStudent, transitionStudent, validateLifecycleEvidence } from '../student-api';
+import { admitStudent, bulkTransferStudents, changeStudentAccountAccess, createStudent, transitionStudent, updateStudentPersonalProfile, validateLifecycleEvidence } from '../student-api';
 
 vi.mock('@/lib/api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -51,10 +51,43 @@ describe('decision 559 student lifecycle guards', () => {
     vi.mocked(api.post).mockResolvedValueOnce({ data: { student: { id: 8 }, event: { id: 12 } } } as never);
     await admitStudent(8, {
       programId: 4, groupId: 9, degreeLevel: 'BACHELOR', educationForm: 'FULL_TIME',
-      educationLanguage: 'uz', courseNumber: 1, ...evidence,
+      educationLanguage: 'uz', academicYear: '2025-2026', semesterNumber: 1, courseNumber: 1, ...evidence,
     });
     expect(api.post).toHaveBeenCalledWith('/students/8/admission', expect.objectContaining({
-      programId: 4, groupId: 9, orderNumber: 'BUY-12/2025-17',
+      programId: 4, groupId: 9, academicYear: '2025-2026', semesterNumber: 1, orderNumber: 'BUY-12/2025-17',
     }));
+  });
+
+  it('updates only the full personal profile endpoint', async () => {
+    vi.mocked(api.put).mockResolvedValueOnce({ data: { id: 8, firstName: 'Alibek' } } as never);
+    await updateStudentPersonalProfile(8, {
+      firstName: 'Alibek', lastName: 'Karimov', middleName: null,
+      phoneNumber: '+998901234567', passportType: 'ID_CARD', passportNumber: '1234567',
+      currentRegion: 'Namangan', currentAddress: "Istiqlol ko'chasi",
+    });
+    expect(api.put).toHaveBeenCalledWith('/students/8/personal-profile', expect.objectContaining({
+      firstName: 'Alibek', passportType: 'ID_CARD', currentRegion: 'Namangan',
+    }));
+  });
+
+  it('changes account access through the separate audited command', async () => {
+    vi.mocked(api.patch).mockResolvedValueOnce({ data: { id: 8, accountStatus: 'BLOCKED' } } as never);
+    await changeStudentAccountAccess(8, { enabled: false, reason: 'Axborot xavfsizligi murojaati' });
+    expect(api.patch).toHaveBeenCalledWith('/students/8/account-access', {
+      enabled: false, reason: 'Axborot xavfsizligi murojaati',
+    });
+    await expect(changeStudentAccountAccess(8, { enabled: true, reason: 'yoq' })).rejects.toThrow('5-500');
+  });
+
+  it('posts one atomic bulk transfer command for distinct students', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { processedCount: 2, items: [] } } as never);
+    await bulkTransferStudents({
+      studentIds: [8, 9], targetProgramId: 4, targetGroupId: 11, academicYear: '2025-2026', ...evidence,
+    });
+    expect(api.post).toHaveBeenCalledWith('/students/bulk-transfer', expect.objectContaining({
+      studentIds: [8, 9], targetProgramId: 4, targetGroupId: 11, orderNumber: 'BUY-12/2025-17',
+    }));
+    await expect(bulkTransferStudents({ studentIds: [8], targetProgramId: 4, ...evidence })).rejects.toThrow('2-200');
+    await expect(bulkTransferStudents({ studentIds: [8, 8], targetProgramId: 4, ...evidence })).rejects.toThrow('takroriy');
   });
 });

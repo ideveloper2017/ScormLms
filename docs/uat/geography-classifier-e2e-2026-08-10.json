@@ -1,0 +1,51 @@
+{
+  "outcome": "VERIFIED",
+  "verifiedAt": "2026-08-10",
+  "environment": {
+    "type": "disposable PostgreSQL and local HTTP/browser",
+    "backendPort": 18080,
+    "frontendPort": 15173,
+    "cleaned": true
+  },
+  "httpRbac": {
+    "unauthenticatedImportStatus": 401,
+    "teacherReadStatus": 200,
+    "teacherImportStatus": 403
+  },
+  "imports": {
+    "first": {
+      "created": 429,
+      "updated": 40
+    },
+    "second": {
+      "unchanged": 469,
+      "created": 0,
+      "updated": 0,
+      "deactivated": 0
+    }
+  },
+  "browser": {
+    "adminPanelCounts": {
+      "countries": 249,
+      "regions": 14,
+      "districts": 206
+    },
+    "importToastObserved": true,
+    "countryOptions": 249,
+    "selectedCountry": "Uzbekistan",
+    "regionOptions": 14,
+    "selectedRegion": "Namangan viloyati",
+    "selectedDistrict": "Mingbuloq tumani",
+    "newStudentSaved": false,
+    "newConsoleErrors": 0
+  },
+  "checks": [
+    "HTTP_RBAC_401_200_403",
+    "FIRST_IMPORT_429_CREATED_40_UPDATED",
+    "SECOND_IMPORT_469_UNCHANGED",
+    "ADMIN_COUNTS_249_14_206",
+    "COUNTRY_REGION_DISTRICT_CASCADE",
+    "NO_TEST_STUDENT_PERSISTED",
+    "DISPOSABLE_ENVIRONMENT_CLEANED"
+  ]
+}

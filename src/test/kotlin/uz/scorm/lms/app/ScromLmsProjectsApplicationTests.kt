@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("50", flyway.info().current()?.version?.toString())
+        assertEquals("53", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -30,6 +30,18 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "scorm_packages", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "scorm_attempts", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_enrollments", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "students", "semester_number").use { it.next() })
+            assertTrue(metadata.getTables(null, null, "country_classifiers", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "region_classifiers", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "district_classifiers", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "classifier_import_runs", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "classifier_import_control", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "country_classifiers", "source_code").use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "region_classifiers", "managed_source").use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "district_classifiers", "source_version").use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "students", "citizenship_country_id").use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "students", "permanent_region_id").use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "students", "current_district_id").use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_modules", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_contents", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_content_progress", arrayOf("TABLE")).use { it.next() })

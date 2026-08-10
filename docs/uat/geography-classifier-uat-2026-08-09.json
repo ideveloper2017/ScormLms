@@ -1,0 +1,77 @@
+{
+  "outcome" : "VERIFIED",
+  "startedAt" : "2026-08-09T14:59:45.048831500Z",
+  "finishedAt" : "2026-08-09T15:00:16.850700Z",
+  "database" : {
+    "urlWithoutCredentials" : "jdbc:postgresql://localhost:5432/scorm_lms_classifier_uat_20260809195912_27868",
+    "product" : "PostgreSQL",
+    "disposable" : true
+  },
+  "migration" : {
+    "legacyVersion" : "52",
+    "targetVersion" : "53",
+    "validated" : true
+  },
+  "dataset" : {
+    "id" : "GEOGRAPHY_UZ_V64",
+    "version" : "SOATO-2022-04-20__ISO-3166-1__CLDR-48.2.0",
+    "manifestSha256" : "5C2CC4EA41E75D19F5CB4E570A8E6781ECF1DB0F790C76C67F6619065F359A93",
+    "countries" : 249,
+    "regions" : 14,
+    "districts" : 206
+  },
+  "countsBeforeImport" : {
+    "countries" : 15,
+    "regions" : 15,
+    "districts" : 14
+  },
+  "countsAfterImport" : {
+    "countries" : 249,
+    "regions" : 15,
+    "districts" : 209
+  },
+  "firstImport" : {
+    "id" : 1,
+    "datasetVersion" : "SOATO-2022-04-20__ISO-3166-1__CLDR-48.2.0",
+    "manifestSha256" : "5C2CC4EA41E75D19F5CB4E570A8E6781ECF1DB0F790C76C67F6619065F359A93",
+    "status" : "COMPLETED",
+    "countriesTotal" : 249,
+    "regionsTotal" : 14,
+    "districtsTotal" : 206,
+    "createdCount" : 429,
+    "updatedCount" : 40,
+    "unchangedCount" : 0,
+    "deactivatedCount" : 0,
+    "startedAt" : "2026-08-09T15:00:13.915983500Z",
+    "finishedAt" : "2026-08-09T15:00:15.914723600Z"
+  },
+  "secondImport" : {
+    "id" : 2,
+    "datasetVersion" : "SOATO-2022-04-20__ISO-3166-1__CLDR-48.2.0",
+    "manifestSha256" : "5C2CC4EA41E75D19F5CB4E570A8E6781ECF1DB0F790C76C67F6619065F359A93",
+    "status" : "COMPLETED",
+    "countriesTotal" : 249,
+    "regionsTotal" : 14,
+    "districtsTotal" : 206,
+    "createdCount" : 0,
+    "updatedCount" : 0,
+    "unchangedCount" : 469,
+    "deactivatedCount" : 0,
+    "startedAt" : "2026-08-09T15:00:15.937849Z",
+    "finishedAt" : "2026-08-09T15:00:16.562073300Z"
+  },
+  "legacyPreservation" : {
+    "studentId" : 1,
+    "namanganRegionIdBefore" : 7,
+    "namanganRegionIdAfter" : 7,
+    "mingbuloqDistrictIdBefore" : 2,
+    "mingbuloqDistrictIdAfter" : 2,
+    "studentForeignKeysPreserved" : true
+  },
+  "localAdminRows" : {
+    "regionActive" : true,
+    "districtActive" : true,
+    "managedSourceRemainsNull" : true
+  },
+  "checks" : [ "V52_TO_V53_MIGRATION_VALID", "OFFICIAL_COUNTS_249_14_206", "LEGACY_IDS_PRESERVED", "STUDENT_FKS_PRESERVED", "LOCAL_ROWS_PRESERVED", "SECOND_IMPORT_NO_OP" ]
+}

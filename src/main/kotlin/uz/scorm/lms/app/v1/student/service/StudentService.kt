@@ -21,6 +21,8 @@ import uz.scorm.lms.app.v1.license.repository.NonStateLicenseProgramScopeReposit
 import uz.scorm.lms.app.v1.user.model.UserStatus
 import uz.scorm.lms.app.v1.user.service.UserService
 import uz.scorm.lms.app.v1.restriction.service.DistanceProgramRestrictionService
+import uz.scorm.lms.app.v1.audit.service.AuditService
+import uz.scorm.lms.app.v1.classifier.service.GeographyClassifierService
 import java.time.LocalDate
 
 @Service
@@ -32,6 +34,8 @@ class StudentService(
     private val admissionPolicyRepository: DistanceAdmissionPolicyRepository,
     private val licenseScopeRepository: NonStateLicenseProgramScopeRepository,
     private val restrictionService: DistanceProgramRestrictionService,
+    private val auditService: AuditService,
+    private val classifierService: GeographyClassifierService,
 ) {
 
     @Transactional(readOnly = true)
@@ -48,11 +52,32 @@ class StudentService(
             ?: throw NoSuchElementException("Talaba topilmadi: $studentNumber"))
 
     @Transactional
-    fun register(req: StudentRegistrationRequest): StudentDto {
-        require(req.pinfl.matches(Regex("\\d{14}"))) { "JSHSHIR 14 ta raqamdan iborat bo'lishi shart" }
-        require(req.firstName.trim().isNotBlank() && req.lastName.trim().isNotBlank()) {
-            "Talabaning ism va familiyasi majburiy"
-        }
+    fun register(req: StudentRegistrationRequest, actorId: Long? = null): StudentDto {
+        val resolvedCitizenship = classifierService.resolveCitizenship(req.citizenshipCountryId, req.citizenship)
+        val permanent = classifierService.resolveAddress(req.permanentRegionId, req.permanentDistrictId, req.permanentRegion, req.permanentDistrict)
+        val current = classifierService.resolveAddress(req.currentRegionId, req.currentDistrictId, req.currentRegion, req.currentDistrict)
+        validatePersonalData(
+            pinfl = req.pinfl,
+            firstName = req.firstName,
+            lastName = req.lastName,
+            middleName = req.middleName,
+            birthDate = req.birthDate,
+            passportType = req.passportType,
+            passportSeries = req.passportSeries,
+            passportNumber = req.passportNumber,
+            passportIssuedDate = req.passportIssuedDate,
+            passportExpiryDate = req.passportExpiryDate,
+            passportIssuedBy = req.passportIssuedBy,
+            phoneNumber = req.phoneNumber,
+            email = req.email,
+            photoUrl = req.photoUrl,
+            permanentRegion = permanent.regionName,
+            permanentDistrict = permanent.districtName,
+            permanentAddress = req.permanentAddress,
+            currentRegion = current.regionName,
+            currentDistrict = current.districtName,
+            currentAddress = req.currentAddress,
+        )
         require(req.studentNumber.trim().isNotBlank()) { "Talaba raqami majburiy" }
         if (studentRepository.existsByPinfl(req.pinfl))
             throw IllegalArgumentException("Bu PINFL allaqachon ro'yxatdan o'tgan: ${req.pinfl}")
@@ -60,8 +85,9 @@ class StudentService(
             throw IllegalArgumentException("Bu talaba raqami band: ${req.studentNumber}")
 
         val user = userService.register(req.studentNumber.trim(), req.password, "student")
-        user.email = req.email
-        user.phone = req.phoneNumber
+        user.fullName = listOf(req.lastName.trim(), req.firstName.trim(), normalized(req.middleName)).filterNotNull().joinToString(" ")
+        user.email = normalized(req.email)?.lowercase()
+        user.phone = normalized(req.phoneNumber)
         user.status = UserStatus.INACTIVE
         val student = StudentProfile(
             user = user,
@@ -71,30 +97,184 @@ class StudentService(
             middleName = req.middleName?.trim()?.takeIf(String::isNotBlank),
             birthDate = req.birthDate,
             gender = req.gender,
-            citizenship = req.citizenship,
+            citizenship = resolvedCitizenship.citizenship,
+            citizenshipCountryId = resolvedCitizenship.countryId,
+            passportType = req.passportType,
+            passportSeries = normalized(req.passportSeries)?.uppercase(),
+            passportNumber = normalized(req.passportNumber)?.uppercase(),
+            passportIssuedDate = req.passportIssuedDate,
+            passportExpiryDate = req.passportExpiryDate,
+            passportIssuedBy = normalized(req.passportIssuedBy),
+            photoUrl = normalized(req.photoUrl),
+            phoneNumber = normalized(req.phoneNumber),
+            email = normalized(req.email)?.lowercase(),
+            permanentRegion = permanent.regionName,
+            permanentRegionId = permanent.regionId,
+            permanentDistrict = permanent.districtName,
+            permanentDistrictId = permanent.districtId,
+            permanentAddress = normalized(req.permanentAddress),
+            currentRegion = current.regionName,
+            currentRegionId = current.regionId,
+            currentDistrict = current.districtName,
+            currentDistrictId = current.districtId,
+            currentAddress = normalized(req.currentAddress),
+            studentNumber = req.studentNumber.trim(),
+            studentStatus = StudentStatus.REGISTERED,
+        )
+        val saved = studentRepository.save(student)
+        actorId?.let {
+            auditService.logAction(
+                "STUDENT_PERSONAL_CARD_CREATED",
+                it,
+                "student=${saved.id}; account=INACTIVE; academic=UNASSIGNED",
+            )
+        }
+        return toDto(saved)
+    }
+
+    @Transactional
+    fun updatePersonalProfile(id: Long, req: StudentPersonalProfileUpdateRequest, actorId: Long? = null): StudentDto {
+        val student = studentRepository.findById(id)
+            .orElseThrow { NoSuchElementException("Talaba topilmadi: $id") }
+        val permanent = classifierService.resolveAddress(req.permanentRegionId, req.permanentDistrictId, req.permanentRegion, req.permanentDistrict)
+        val current = classifierService.resolveAddress(req.currentRegionId, req.currentDistrictId, req.currentRegion, req.currentDistrict)
+        validatePersonalData(
+            pinfl = student.pinfl,
+            firstName = req.firstName,
+            lastName = req.lastName,
+            middleName = req.middleName,
+            birthDate = student.birthDate,
             passportType = req.passportType,
             passportSeries = req.passportSeries,
             passportNumber = req.passportNumber,
             passportIssuedDate = req.passportIssuedDate,
             passportExpiryDate = req.passportExpiryDate,
             passportIssuedBy = req.passportIssuedBy,
-            photoUrl = req.photoUrl,
             phoneNumber = req.phoneNumber,
             email = req.email,
-            permanentRegion = req.permanentRegion,
-            permanentDistrict = req.permanentDistrict,
+            photoUrl = req.photoUrl,
+            permanentRegion = permanent.regionName,
+            permanentDistrict = permanent.districtName,
             permanentAddress = req.permanentAddress,
-            currentRegion = req.currentRegion,
-            currentDistrict = req.currentDistrict,
+            currentRegion = current.regionName,
+            currentDistrict = current.districtName,
             currentAddress = req.currentAddress,
-            studentNumber = req.studentNumber.trim(),
-            studentStatus = StudentStatus.REGISTERED,
         )
-        return toDto(studentRepository.save(student))
+        student.lastName = req.lastName.trim()
+        student.firstName = req.firstName.trim()
+        student.middleName = normalized(req.middleName)
+        student.passportType = req.passportType
+        student.passportSeries = normalized(req.passportSeries)?.uppercase()
+        student.passportNumber = normalized(req.passportNumber)?.uppercase()
+        student.passportIssuedDate = req.passportIssuedDate
+        student.passportExpiryDate = req.passportExpiryDate
+        student.passportIssuedBy = normalized(req.passportIssuedBy)
+        student.photoUrl = normalized(req.photoUrl)
+        student.phoneNumber = normalized(req.phoneNumber)
+        student.email = normalized(req.email)?.lowercase()
+        student.permanentRegion = permanent.regionName
+        student.permanentRegionId = permanent.regionId
+        student.permanentDistrict = permanent.districtName
+        student.permanentDistrictId = permanent.districtId
+        student.permanentAddress = normalized(req.permanentAddress)
+        student.currentRegion = current.regionName
+        student.currentRegionId = current.regionId
+        student.currentDistrict = current.districtName
+        student.currentDistrictId = current.districtId
+        student.currentAddress = normalized(req.currentAddress)
+        student.user.fullName = student.fullName
+        student.user.phone = student.phoneNumber
+        student.user.email = student.email
+        val saved = studentRepository.save(student)
+        actorId?.let {
+            auditService.logAction(
+                "STUDENT_PERSONAL_PROFILE_UPDATED",
+                it,
+                "student=$id",
+            )
+        }
+        return toDto(saved)
     }
 
+    private fun validatePersonalData(
+        pinfl: String,
+        firstName: String,
+        lastName: String,
+        middleName: String?,
+        birthDate: LocalDate,
+        passportType: uz.scorm.lms.app.v1.student.model.PassportType?,
+        passportSeries: String?,
+        passportNumber: String?,
+        passportIssuedDate: LocalDate?,
+        passportExpiryDate: LocalDate?,
+        passportIssuedBy: String?,
+        phoneNumber: String?,
+        email: String?,
+        photoUrl: String?,
+        permanentRegion: String?,
+        permanentDistrict: String?,
+        permanentAddress: String?,
+        currentRegion: String?,
+        currentDistrict: String?,
+        currentAddress: String?,
+    ) {
+        require(pinfl.matches(Regex("\\d{14}"))) { "JSHSHIR 14 ta raqamdan iborat bo'lishi shart" }
+        require(birthDate.isBefore(LocalDate.now())) { "Tug'ilgan sana bugundan oldin bo'lishi shart" }
+        require(firstName.trim().length in 2..100) { "Ism 2-100 belgi bo'lishi shart" }
+        require(lastName.trim().length in 2..100) { "Familiya 2-100 belgi bo'lishi shart" }
+        require(middleName == null || middleName.trim().length <= 100) { "Otasining ismi 100 belgidan oshmasligi kerak" }
+        val series = normalized(passportSeries)
+        val number = normalized(passportNumber)
+        val hasPassportDetails = passportType != null || series != null || number != null ||
+            passportIssuedDate != null || passportExpiryDate != null || normalized(passportIssuedBy) != null
+        if (hasPassportDetails) {
+            require(passportType != null) { "Pasport turi majburiy" }
+            require(number != null && number.length in 5..20) { "Pasport raqami 5-20 belgi bo'lishi shart" }
+            require(series == null || series.length <= 10) { "Pasport seriyasi 10 belgidan oshmasligi kerak" }
+        }
+        require(passportIssuedDate == null || !passportIssuedDate.isAfter(LocalDate.now())) {
+            "Pasport berilgan sana kelajakda bo'lishi mumkin emas"
+        }
+        require(passportIssuedDate == null || passportExpiryDate == null || passportExpiryDate.isAfter(passportIssuedDate)) {
+            "Pasport amal qilish sanasi berilgan sanadan keyin bo'lishi shart"
+        }
+        normalized(phoneNumber)?.let {
+            require(it.matches(Regex("\\+?[0-9 ()-]{7,20}"))) { "Telefon raqami formati noto'g'ri" }
+        }
+        normalized(email)?.let {
+            require(it.length <= 150 && it.matches(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))) { "Email formati noto'g'ri" }
+        }
+        require(normalized(passportIssuedBy)?.length?.let { it <= 300 } != false) { "Pasport bergan organ 300 belgidan oshmasligi kerak" }
+        normalized(photoUrl)?.let {
+            require(it.length <= 500 && it.startsWith("https://", ignoreCase = true)) {
+                "Foto URL xavfsiz HTTPS manzil bo'lishi shart"
+            }
+        }
+        listOf(permanentRegion, permanentDistrict, currentRegion, currentDistrict).forEach {
+            require(normalized(it)?.length?.let { length -> length <= 100 } != false) { "Hudud yoki tuman nomi 100 belgidan oshmasligi kerak" }
+        }
+        listOf(permanentAddress, currentAddress).forEach {
+            require(normalized(it)?.length?.let { length -> length <= 500 } != false) { "Manzil 500 belgidan oshmasligi kerak" }
+        }
+    }
+
+    private fun normalized(value: String?): String? = value?.trim()?.takeIf(String::isNotBlank)
+
     fun validateAcademicAdmission(student: StudentProfile, req: StudentAcademicAdmissionRequest) {
+        require(req.semesterNumber in 1..12) { "Semestr 1-12 oralig'ida bo'lishi shart" }
+        val calculatedCourse = ((req.semesterNumber - 1) / 2) + 1
+        require(req.courseNumber == calculatedCourse) {
+            "Kurs tanlangan semestrga mos emas: ${req.semesterNumber}-semestr uchun $calculatedCourse-kurs"
+        }
         require(req.courseNumber in 1..6) { "Kurs 1-6 oralig'ida bo'lishi shart" }
+        val academicYear = requireNotNull(req.academicYear?.trim()?.takeIf(String::isNotBlank)) {
+            "O'quv yili tanlanishi shart"
+        }
+        require(academicYear.matches(Regex("\\d{4}-\\d{4}"))) {
+            "O'quv yili YYYY-YYYY formatida bo'lishi kerak"
+        }
+        val (startYear, endYear) = academicYear.split("-").map(String::toInt)
+        require(endYear == startYear + 1) { "O'quv yili ketma-ket ikki yildan iborat bo'lishi kerak" }
         val group = req.groupId?.let { groupId ->
             // Group ownership is checked in lifecycle service where GroupRepository is available.
             groupId
@@ -451,6 +631,7 @@ class StudentService(
             .orElseThrow { NoSuchElementException("Talaba topilmadi: $id") }
         require(student.studentStatus == StudentStatus.ACTIVE) { "Faqat faol talaba keyingi kursga o'tkaziladi" }
         student.courseNumber += 1
+        student.semesterNumber = student.semesterNumber?.let { (it + 2).coerceAtMost(12) }
         return toDto(studentRepository.save(student))
     }
 
@@ -473,6 +654,7 @@ class StudentService(
         birthDate            = s.birthDate,
         gender               = s.gender,
         citizenship          = s.citizenship,
+        citizenshipCountryId = s.citizenshipCountryId,
         passportType         = s.passportType,
         passportSeries       = s.passportSeries,
         passportNumber       = s.passportNumber,
@@ -483,10 +665,14 @@ class StudentService(
         phoneNumber          = s.phoneNumber,
         email                = s.email,
         permanentRegion      = s.permanentRegion,
+        permanentRegionId    = s.permanentRegionId,
         permanentDistrict    = s.permanentDistrict,
+        permanentDistrictId  = s.permanentDistrictId,
         permanentAddress     = s.permanentAddress,
         currentRegion        = s.currentRegion,
+        currentRegionId      = s.currentRegionId,
         currentDistrict      = s.currentDistrict,
+        currentDistrictId    = s.currentDistrictId,
         currentAddress       = s.currentAddress,
         studentNumber        = s.studentNumber,
         universityId         = s.universityId,
@@ -497,6 +683,7 @@ class StudentService(
         educationForm        = s.educationForm.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         educationLanguage    = s.educationLanguage.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         courseNumber         = s.courseNumber.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        semesterNumber       = s.semesterNumber.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         groupId              = s.groupId.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         academicYear         = s.academicYear.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         admissionDate        = s.admissionDate,
@@ -524,9 +711,13 @@ class StudentService(
         facultyId     = s.facultyId.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         groupId       = s.groupId.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         courseNumber  = s.courseNumber.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
+        semesterNumber = s.semesterNumber.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         degreeLevel   = s.degreeLevel.takeUnless { s.studentStatus == StudentStatus.REGISTERED },
         studentStatus = s.studentStatus,
         photoUrl      = s.photoUrl,
         lmsOrientationRequired = s.lmsOrientationRequired,
+        username      = s.user.username,
+        accountStatus = s.user.status,
+        accountEnabled = s.user.status == UserStatus.ACTIVE,
     )
 }

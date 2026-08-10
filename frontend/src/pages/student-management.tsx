@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { qk } from '@/lib/query-keys';
@@ -11,21 +11,38 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AcademicSelect } from '@/components/admin/academic-select';
+import { listGroups, listPrograms } from '@/lib/academic-api';
+import { listCountries, listDistricts, listRegions } from '@/lib/classifier-api';
+import {
+  academicYearOptions,
+  courseNumberFromSemester,
+  filterAdmissionGroups,
+  filterAdmissionPrograms,
+  programDegreeLevel,
+  semesterOptionsForDegree,
+} from '@/lib/student-admission-cascade';
 import {
   admitStudent,
+  bulkTransferStudents,
+  changeStudentAccountAccess,
   createStudent,
+  exportStudentRegistry,
   getStudent,
   listStudentLifecycle,
   listStudents,
   promoteStudent,
   transitionStudent,
-  updateStudent,
+  updateStudentPersonalProfile,
 } from '@/lib/student-api';
 import type {
   DegreeLevel,
+  Citizenship,
   EducationForm,
   Gender,
+  PassportType,
   PaymentType,
   StudentDto,
   StudentLifecycleEventType,
@@ -33,10 +50,13 @@ import type {
   StudentStatus,
   StudentSummaryDto,
 } from '@/types/student.types';
-import { Loader2, ArrowUpCircle, Edit, History, UserPlus, RefreshCcw, GraduationCap } from 'lucide-react';
+import { Loader2, ArrowUpCircle, Download, Edit, History, UserPlus, RefreshCcw, GraduationCap, Lock, LockOpen, UserRoundCog, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
+import { hasAuthority } from '@/lib/rbac-api';
 
 type LifecycleAction = Exclude<StudentLifecycleEventType, 'ADMISSION'>;
+type StudentWorkspace = 'personal' | 'academic' | 'accounts';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const emptyEvidence = () => ({
@@ -47,11 +67,16 @@ const emptyEvidence = () => ({
   reason: '',
 });
 const emptyPersonalForm = () => ({
-  firstName: '', lastName: '', pinfl: '', studentNumber: '', birthDate: '', gender: 'MALE' as Gender,
-  email: '',
+  firstName: '', lastName: '', middleName: '', pinfl: '', studentNumber: '', birthDate: '', gender: 'MALE' as Gender,
+  citizenship: 'UZBEKISTAN' as Citizenship, phoneNumber: '', email: '', photoUrl: '',
+  citizenshipCountryId: '',
+  passportType: 'NONE' as PassportType | 'NONE', passportSeries: '', passportNumber: '',
+  passportIssuedDate: '', passportExpiryDate: '', passportIssuedBy: '',
+  permanentRegion: '', permanentRegionId: '', permanentDistrict: '', permanentDistrictId: '', permanentAddress: '',
+  currentRegion: '', currentRegionId: '', currentDistrict: '', currentDistrictId: '', currentAddress: '',
 });
 const emptyAdmissionForm = () => ({
-  groupId: '', facultyId: '', programId: '', course: '1', language: 'uz', academicYear: '',
+  groupId: '', programId: '', semester: '', language: 'uz', academicYear: '',
   degreeLevel: 'BACHELOR' as DegreeLevel, educationForm: 'FULL_TIME' as EducationForm,
   paymentType: 'CONTRACT' as PaymentType, contractNumber: '', contractAmount: '',
   ...emptyEvidence(),
@@ -79,7 +104,33 @@ const availableActions: Record<StudentStatus, LifecycleAction[]> = {
 export function StudentManagement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: students = [], isLoading } = useQuery({ queryKey: qk.students(), queryFn: listStudents });
+  const { user } = useAuth();
+  const canManagePersonal = hasAuthority(user, 'USER_MANAGE');
+  const canReadAcademic = hasAuthority(user, 'ACADEMIC_READ') || hasAuthority(user, 'ACADEMIC_WRITE');
+  const canManageAcademic = hasAuthority(user, 'ACADEMIC_WRITE');
+  const canManageAccounts = hasAuthority(user, 'USER_MANAGE');
+  const canExport = hasAuthority(user, 'USER_READ') && hasAuthority(user, 'REPORT_READ');
+  const [activeWorkspace, setActiveWorkspace] = useState<StudentWorkspace>('personal');
+  const [registrySearch, setRegistrySearch] = useState('');
+  const [debouncedRegistrySearch, setDebouncedRegistrySearch] = useState('');
+  const [registryStatus, setRegistryStatus] = useState<StudentStatus | 'ALL'>('ALL');
+  const [registryPage, setRegistryPage] = useState(0);
+  const [registryPageSize, setRegistryPageSize] = useState(20);
+  const [exportingRegistry, setExportingRegistry] = useState(false);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedRegistrySearch(registrySearch.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [registrySearch]);
+  const { data: registry, isLoading } = useQuery({
+    queryKey: [...qk.students(), activeWorkspace, debouncedRegistrySearch, registryStatus, registryPage, registryPageSize],
+    queryFn: () => listStudents({
+      search: debouncedRegistrySearch || undefined,
+      status: registryStatus === 'ALL' ? undefined : registryStatus,
+      page: registryPage,
+      size: registryPageSize,
+    }),
+  });
+  const students = registry?.items ?? [];
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState(emptyPersonalForm);
@@ -88,7 +139,64 @@ export function StudentManagement() {
   const [lifecycleTarget, setLifecycleTarget] = useState<{ student: StudentSummaryDto; action: LifecycleAction } | null>(null);
   const [lifecycleForm, setLifecycleForm] = useState(emptyLifecycle);
   const [historyStudent, setHistoryStudent] = useState<StudentSummaryDto | null>(null);
+  const [accountTarget, setAccountTarget] = useState<{ student: StudentSummaryDto; enabled: boolean } | null>(null);
+  const [accountReason, setAccountReason] = useState('');
+  const [selectedAcademicIds, setSelectedAcademicIds] = useState<number[]>([]);
+  const [bulkTransferOpen, setBulkTransferOpen] = useState(false);
+  const [bulkTransferForm, setBulkTransferForm] = useState(emptyLifecycle);
   const [saving, setSaving] = useState(false);
+  const admissionPrograms = useQuery({
+    queryKey: [...qk.programs(), 'admission'],
+    queryFn: () => listPrograms(),
+    staleTime: 60_000,
+  });
+  const countriesQuery = useQuery({ queryKey: ['classifiers', 'countries'], queryFn: listCountries, staleTime: 300_000 });
+  const regionsQuery = useQuery({ queryKey: ['classifiers', 'regions'], queryFn: listRegions, staleTime: 300_000 });
+  const permanentDistrictsQuery = useQuery({
+    queryKey: ['classifiers', 'districts', formData.permanentRegionId],
+    queryFn: () => listDistricts(Number(formData.permanentRegionId)), enabled: !!formData.permanentRegionId, staleTime: 300_000,
+  });
+  const currentDistrictsQuery = useQuery({
+    queryKey: ['classifiers', 'districts', formData.currentRegionId],
+    queryFn: () => listDistricts(Number(formData.currentRegionId)), enabled: !!formData.currentRegionId, staleTime: 300_000,
+  });
+  useEffect(() => {
+    if (isAdding && !formData.citizenshipCountryId) {
+      const uz = countriesQuery.data?.find(item => item.code === 'UZ');
+      if (uz) setFormData(value => ({ ...value, citizenshipCountryId: String(uz.id), citizenship: 'UZBEKISTAN' }));
+    }
+  }, [countriesQuery.data, isAdding, formData.citizenshipCountryId]);
+  const admissionYearGroups = useQuery({
+    queryKey: [...qk.groups(), 'admission-years'],
+    queryFn: () => listGroups(),
+    staleTime: 60_000,
+  });
+  const admissionProgramGroups = useQuery({
+    queryKey: [...qk.groups(), 'admission-program', admissionForm.programId],
+    queryFn: () => listGroups(Number(admissionForm.programId)),
+    enabled: !!admissionForm.programId,
+    staleTime: 60_000,
+  });
+  const bulkTransferGroups = useQuery({
+    queryKey: [...qk.groups(), 'bulk-transfer-program', bulkTransferForm.targetProgramId],
+    queryFn: () => listGroups(Number(bulkTransferForm.targetProgramId)),
+    enabled: !!bulkTransferForm.targetProgramId,
+    staleTime: 60_000,
+  });
+  const availableAcademicYears = academicYearOptions(admissionYearGroups.data ?? []);
+  const availablePrograms = filterAdmissionPrograms(
+    admissionPrograms.data ?? [], admissionYearGroups.data ?? [], admissionForm.academicYear,
+  );
+  const selectedAdmissionProgram = availablePrograms.find((program) => String(program.id) === admissionForm.programId);
+  const availableSemesters = semesterOptionsForDegree(admissionForm.degreeLevel);
+  const availableAdmissionGroups = filterAdmissionGroups(
+    admissionProgramGroups.data ?? [], admissionForm.academicYear, admissionForm.language,
+  );
+  const availableBulkPrograms = filterAdmissionPrograms(
+    admissionPrograms.data ?? [], admissionYearGroups.data ?? [], bulkTransferForm.academicYear,
+  );
+  const availableBulkGroups = (bulkTransferGroups.data ?? []).filter(group => group.active
+    && group.educationYear?.trim() === bulkTransferForm.academicYear);
   const history = useQuery({
     queryKey: ['student-lifecycle', historyStudent?.id],
     queryFn: () => listStudentLifecycle(historyStudent!.id!),
@@ -97,6 +205,7 @@ export function StudentManagement() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.students() });
   const optionalId = (value: string) => value ? Number(value) : null;
+  const optionalText = (value: string) => value.trim() || null;
   const closeStudentDialog = () => { setIsAdding(false); setEditingStudent(null); setFormData(emptyPersonalForm()); };
   const showError = (error: unknown) => toast({
     title: 'Amal rad etildi',
@@ -110,20 +219,41 @@ export function StudentManagement() {
       toast({ title: 'Majburiy maydonlar', description: "Ism, familiya, JSHSHIR, talaba raqami va tug'ilgan sanani kiriting", variant: 'destructive' });
       return;
     }
+    if (!/^\d{14}$/.test(formData.pinfl.trim())) {
+      toast({ title: "JSHSHIR noto'g'ri", description: "JSHSHIR 14 ta raqamdan iborat bo'lishi kerak", variant: 'destructive' });
+      return;
+    }
+    const hasPassport = formData.passportType !== 'NONE' || !!formData.passportSeries.trim()
+      || !!formData.passportNumber.trim() || !!formData.passportIssuedDate || !!formData.passportExpiryDate;
+    if (hasPassport && (formData.passportType === 'NONE' || formData.passportNumber.trim().length < 5)) {
+      toast({ title: "Pasport ma'lumoti to'liq emas", description: "Pasport turi va kamida 5 belgili raqamini kiriting", variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
       const personalPayload = {
         firstName: formData.firstName.trim(), lastName: formData.lastName.trim(),
-        email: formData.email.trim() || null,
+        middleName: optionalText(formData.middleName), phoneNumber: optionalText(formData.phoneNumber),
+        email: optionalText(formData.email), photoUrl: optionalText(formData.photoUrl),
+        passportType: formData.passportType === 'NONE' ? null : formData.passportType,
+        passportSeries: optionalText(formData.passportSeries), passportNumber: optionalText(formData.passportNumber),
+        passportIssuedDate: formData.passportIssuedDate || null, passportExpiryDate: formData.passportExpiryDate || null,
+        passportIssuedBy: optionalText(formData.passportIssuedBy),
+        permanentRegion: optionalText(formData.permanentRegion), permanentRegionId: optionalId(formData.permanentRegionId),
+        permanentDistrict: optionalText(formData.permanentDistrict), permanentDistrictId: optionalId(formData.permanentDistrictId),
+        permanentAddress: optionalText(formData.permanentAddress), currentRegion: optionalText(formData.currentRegion),
+        currentRegionId: optionalId(formData.currentRegionId), currentDistrict: optionalText(formData.currentDistrict),
+        currentDistrictId: optionalId(formData.currentDistrictId), currentAddress: optionalText(formData.currentAddress),
       };
       if (editingStudent?.id != null) {
-        await updateStudent(editingStudent.id, personalPayload);
+        await updateStudentPersonalProfile(editingStudent.id, personalPayload);
         toast({ title: 'Muvaffaqiyatli', description: "Talabaning shaxsiy ma'lumotlari yangilandi" });
       } else {
         await createStudent({
           ...personalPayload,
           pinfl: formData.pinfl.trim(), studentNumber: formData.studentNumber.trim(), birthDate: formData.birthDate,
-          gender: formData.gender, citizenship: 'UZBEKISTAN',
+          gender: formData.gender, citizenship: formData.citizenship,
+          citizenshipCountryId: optionalId(formData.citizenshipCountryId),
         });
         toast({ title: "Kartochka yaratildi", description: "Endi talabani alohida o'qishga biriktirish mumkin" });
       }
@@ -138,30 +268,52 @@ export function StudentManagement() {
       const student = await getStudent(summary.id);
       setEditingStudent(student);
       setFormData({
-        firstName: student.firstName || '', lastName: student.lastName || '', pinfl: student.pinfl || '',
+        firstName: student.firstName || '', lastName: student.lastName || '', middleName: student.middleName || '', pinfl: student.pinfl || '',
         studentNumber: student.studentNumber || '', birthDate: student.birthDate || '', gender: student.gender || 'MALE',
-        email: student.email || '',
+        citizenship: student.citizenship || 'UZBEKISTAN', citizenshipCountryId: student.citizenshipCountryId ? String(student.citizenshipCountryId) : '', phoneNumber: student.phoneNumber || '', email: student.email || '',
+        photoUrl: student.photoUrl || '', passportType: student.passportType || 'NONE',
+        passportSeries: student.passportSeries || '', passportNumber: student.passportNumber || '',
+        passportIssuedDate: student.passportIssuedDate || '', passportExpiryDate: student.passportExpiryDate || '',
+        passportIssuedBy: student.passportIssuedBy || '', permanentRegion: student.permanentRegion || '', permanentRegionId: student.permanentRegionId ? String(student.permanentRegionId) : '',
+        permanentDistrict: student.permanentDistrict || '', permanentDistrictId: student.permanentDistrictId ? String(student.permanentDistrictId) : '', permanentAddress: student.permanentAddress || '',
+        currentRegion: student.currentRegion || '', currentRegionId: student.currentRegionId ? String(student.currentRegionId) : '', currentDistrict: student.currentDistrict || '', currentDistrictId: student.currentDistrictId ? String(student.currentDistrictId) : '', currentAddress: student.currentAddress || '',
       });
     } catch (error) { showError(error); }
   };
 
   const openAdmission = (student: StudentSummaryDto) => {
     setAdmissionStudent(student);
-    setAdmissionForm(emptyAdmissionForm());
+    setAdmissionForm({ ...emptyAdmissionForm(), academicYear: availableAcademicYears[0] ?? '' });
+  };
+  const exportRegistry = async () => {
+    setExportingRegistry(true);
+    try {
+      const file = await exportStudentRegistry({
+        search: debouncedRegistrySearch || undefined,
+        status: registryStatus === 'ALL' ? undefined : registryStatus,
+      });
+      const url = URL.createObjectURL(file.blob);
+      const anchor = document.createElement('a');
+      anchor.href = url; anchor.download = file.filename; anchor.click();
+      URL.revokeObjectURL(url);
+      toast({ title: 'Excel eksport tayyor', description: "JSHSHIR, telefon va email maskalangan" });
+    } catch (error) { showError(error); } finally { setExportingRegistry(false); }
   };
   const submitAdmission = async () => {
     if (admissionStudent?.id == null) return;
-    if (!admissionForm.programId) {
-      toast({ title: "Ta'lim dasturi majburiy", description: "Talabani qabul qilishdan oldin ta'lim dasturini tanlang", variant: 'destructive' });
+    if (!admissionForm.academicYear || !admissionForm.programId || !admissionForm.semester || !admissionForm.groupId) {
+      toast({ title: "Akademik joylashuv to'liq emas", description: "O'quv yili, ta'lim dasturi, semestr va guruhni ketma-ket tanlang", variant: 'destructive' });
       return;
     }
+    const semesterNumber = Number(admissionForm.semester);
     setSaving(true);
     try {
       await admitStudent(admissionStudent.id, {
-        facultyId: optionalId(admissionForm.facultyId), programId: Number(admissionForm.programId),
+        programId: Number(admissionForm.programId),
         groupId: optionalId(admissionForm.groupId), academicYear: admissionForm.academicYear.trim() || null,
         degreeLevel: admissionForm.degreeLevel, educationForm: admissionForm.educationForm,
-        educationLanguage: admissionForm.language, courseNumber: Number(admissionForm.course),
+        educationLanguage: admissionForm.language, semesterNumber,
+        courseNumber: courseNumberFromSemester(semesterNumber),
         paymentType: admissionForm.paymentType, contractNumber: admissionForm.contractNumber.trim() || null,
         contractAmount: admissionForm.contractAmount ? Number(admissionForm.contractAmount) : null,
         orderNumber: admissionForm.orderNumber, orderDate: admissionForm.orderDate,
@@ -199,64 +351,228 @@ export function StudentManagement() {
     } catch (error) { showError(error); } finally { setSaving(false); }
   };
 
-  const columns: ColumnDef<StudentSummaryDto>[] = [
+  const submitBulkTransfer = async () => {
+    if (selectedAcademicIds.length < 2) {
+      toast({ title: 'Kamida 2 ta talaba tanlang', variant: 'destructive' });
+      return;
+    }
+    if (!bulkTransferForm.academicYear || !bulkTransferForm.targetProgramId) {
+      toast({ title: "O'quv yili va yangi dastur majburiy", variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await bulkTransferStudents({
+        studentIds: selectedAcademicIds,
+        targetProgramId: Number(bulkTransferForm.targetProgramId),
+        targetGroupId: optionalId(bulkTransferForm.targetGroupId),
+        academicYear: bulkTransferForm.academicYear,
+        orderNumber: bulkTransferForm.orderNumber,
+        orderDate: bulkTransferForm.orderDate,
+        effectiveDate: bulkTransferForm.effectiveDate,
+        legalBasis: bulkTransferForm.legalBasis,
+        reason: bulkTransferForm.reason,
+      });
+      toast({ title: `${result.processedCount} ta talaba ko'chirildi`, description: `${result.orderNumber} buyrug'i atomar qo'llandi` });
+      setBulkTransferOpen(false); setBulkTransferForm(emptyLifecycle()); setSelectedAcademicIds([]); await invalidate();
+    } catch (error) { showError(error); } finally { setSaving(false); }
+  };
+
+  const submitAccountAccess = async () => {
+    if (accountTarget?.student.id == null) return;
+    setSaving(true);
+    try {
+      await changeStudentAccountAccess(accountTarget.student.id, { enabled: accountTarget.enabled, reason: accountReason });
+      toast({
+        title: accountTarget.enabled ? 'Akkaunt qayta yoqildi' : 'Akkaunt bloklandi',
+        description: 'Sabab va amal audit jurnaliga yozildi',
+      });
+      setAccountTarget(null); setAccountReason(''); await invalidate();
+    } catch (error) { showError(error); } finally { setSaving(false); }
+  };
+
+  const commonColumns: ColumnDef<StudentSummaryDto>[] = [
     { accessorKey: 'fullName', header: 'Ism', cell: ({ row }) => <span className="font-medium">{row.original.fullName}</span> },
     { accessorKey: 'studentNumber', header: 'Talaba raqami' },
+  ];
+  const statusColumn: ColumnDef<StudentSummaryDto> = { accessorKey: 'studentStatus', header: 'Akademik holat', cell: ({ row }) => {
+    const status = row.original.studentStatus;
+    return <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>{status ? statusLabel[status] : '—'}</Badge>;
+  } };
+  const personalColumns: ColumnDef<StudentSummaryDto>[] = [
+    ...commonColumns,
     { accessorKey: 'pinfl', header: 'JSHSHIR' },
+    { accessorKey: 'phoneNumber', header: 'Telefon', cell: ({ row }) => row.original.phoneNumber ?? '—' },
+    { accessorKey: 'email', header: 'Email', cell: ({ row }) => row.original.email ?? '—' },
+    statusColumn,
+    ...(canManagePersonal ? [{ id: 'personal-actions', header: () => <div className="text-right">Shaxsiy amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) =>
+      <div className="text-right"><Button size="sm" variant="outline" onClick={() => handleEditClick(student)}><Edit className="mr-1 h-4 w-4" />Tahrirlash</Button></div>
+    } satisfies ColumnDef<StudentSummaryDto>] : []),
+  ];
+  const eligiblePageIds = students
+    .filter(student => student.studentStatus === 'ACTIVE' || student.studentStatus === 'SUSPENDED')
+    .map(student => student.id)
+    .filter((id): id is number => id != null);
+  const allEligiblePageSelected = eligiblePageIds.length > 0 && eligiblePageIds.every(id => selectedAcademicIds.includes(id));
+  const someEligiblePageSelected = eligiblePageIds.some(id => selectedAcademicIds.includes(id));
+  const selectionColumn: ColumnDef<StudentSummaryDto> = {
+    id: 'bulk-select', enableSorting: false, enableHiding: false,
+    header: () => <Checkbox
+      aria-label="Sahifadagi ko'chiriladigan talabalarni tanlash"
+      checked={allEligiblePageSelected ? true : someEligiblePageSelected ? 'indeterminate' : false}
+      disabled={eligiblePageIds.length === 0}
+      onCheckedChange={checked => setSelectedAcademicIds(current => {
+        if (!checked) return current.filter(id => !eligiblePageIds.includes(id));
+        const combined = [...new Set([...current, ...eligiblePageIds])];
+        if (combined.length > 200) {
+          toast({ title: "Bir paketda ko'pi bilan 200 ta talaba", variant: 'destructive' });
+          return current;
+        }
+        return combined;
+      })}
+    />,
+    cell: ({ row: { original: student } }) => {
+      const id = student.id;
+      const eligible = student.studentStatus === 'ACTIVE' || student.studentStatus === 'SUSPENDED';
+      return <Checkbox
+        aria-label={`${student.fullName}ni ommaviy ko'chirishga tanlash`}
+        checked={id != null && selectedAcademicIds.includes(id)} disabled={!eligible || id == null}
+        onCheckedChange={checked => id != null && setSelectedAcademicIds(current => {
+          if (!checked) return current.filter(value => value !== id);
+          if (current.includes(id)) return current;
+          if (current.length >= 200) {
+            toast({ title: "Bir paketda ko'pi bilan 200 ta talaba", variant: 'destructive' });
+            return current;
+          }
+          return [...current, id];
+        })}
+      />;
+    },
+  };
+  const academicColumns: ColumnDef<StudentSummaryDto>[] = [
+    ...(canManageAcademic ? [selectionColumn] : []),
+    ...commonColumns,
     { accessorKey: 'groupId', header: 'Guruh ID', cell: ({ row }) => row.original.groupId ?? '—' },
+    { accessorKey: 'semesterNumber', header: 'Semestr', cell: ({ row }) => row.original.semesterNumber ?? '—' },
     { accessorKey: 'courseNumber', header: 'Kurs', cell: ({ row }) => row.original.courseNumber ?? '—' },
-    { accessorKey: 'studentStatus', header: 'Holat', cell: ({ row }) => {
-      const status = row.original.studentStatus;
-      return <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>{status ? statusLabel[status] : '—'}</Badge>;
-    } },
-    { id: 'actions', header: () => <div className="text-right">Amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
+    statusColumn,
+    { id: 'academic-actions', header: () => <div className="text-right">Akademik amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
       const status = student.studentStatus ?? 'REGISTERED';
       return <div className="flex flex-wrap justify-end gap-1">
-        <Button size="sm" variant="ghost" onClick={() => handleEditClick(student)} title="Shaxsiy ma'lumot"><Edit className="h-4 w-4" /></Button>
-        {status === 'REGISTERED' && <Button size="sm" variant="default" onClick={() => openAdmission(student)}><GraduationCap className="mr-1 h-4 w-4" />O'qishga biriktirish</Button>}
-        {status === 'ACTIVE' && <Button size="sm" variant="ghost" onClick={() => runPromotion(student.id)} title="Kursdan o'tkazish"><ArrowUpCircle className="h-4 w-4" /></Button>}
+        {canManageAcademic && status === 'REGISTERED' && <Button size="sm" variant="default" onClick={() => openAdmission(student)}><GraduationCap className="mr-1 h-4 w-4" />O'qishga biriktirish</Button>}
+        {canManageAcademic && status === 'ACTIVE' && <Button size="sm" variant="ghost" onClick={() => runPromotion(student.id)} title="Kursdan o'tkazish"><ArrowUpCircle className="h-4 w-4" /></Button>}
         <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)} title="Lifecycle tarixi"><History className="h-4 w-4" /></Button>
-        {availableActions[status].map(action => <Button key={action} size="sm" variant="outline" onClick={() => openLifecycle(student, action)}>{actionLabel[action]}</Button>)}
+        {canManageAcademic && availableActions[status].map(action => <Button key={action} size="sm" variant="outline" onClick={() => openLifecycle(student, action)}>{actionLabel[action]}</Button>)}
       </div>;
     } },
   ];
+  const accountColumns: ColumnDef<StudentSummaryDto>[] = [
+    ...commonColumns,
+    { accessorKey: 'username', header: 'Login' },
+    statusColumn,
+    { accessorKey: 'accountStatus', header: 'Akkaunt holati', cell: ({ row }) => <Badge variant={row.original.accountEnabled ? 'default' : 'destructive'}>{row.original.accountStatus}</Badge> },
+    { id: 'account-actions', header: () => <div className="text-right">Akkaunt amali</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
+      const shouldEnable = !student.accountEnabled;
+      const enableAllowed = student.studentStatus === 'ACTIVE';
+      return <div className="text-right"><Button
+        size="sm" variant={shouldEnable ? 'outline' : 'destructive'} disabled={shouldEnable && !enableAllowed}
+        title={shouldEnable && !enableAllowed ? "Akkauntni yoqish uchun akademik holat ACTIVE bo'lishi kerak" : undefined}
+        onClick={() => { setAccountTarget({ student, enabled: shouldEnable }); setAccountReason(''); }}
+      >{shouldEnable ? <LockOpen className="mr-1 h-4 w-4" /> : <Lock className="mr-1 h-4 w-4" />}{shouldEnable ? 'Qayta yoqish' : 'Bloklash'}</Button></div>;
+    } },
+  ];
+  const columns = activeWorkspace === 'academic' ? academicColumns : activeWorkspace === 'accounts' ? accountColumns : personalColumns;
+  const workspaceTitle = activeWorkspace === 'academic' ? 'Akademik biriktirish va harakat' : activeWorkspace === 'accounts' ? 'Talaba akkauntlari' : 'Shaxsiy kartochkalar';
 
   if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return <div className="space-y-6 p-3 sm:p-4 md:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-2xl font-bold">Talabalar</h1><p className="text-sm text-muted-foreground">Avval shaxsiy kartochka yaratiladi, keyin talaba o'qishga alohida biriktiriladi.</p></div>
-      <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Talaba qo'shish</Button>
+      {activeWorkspace === 'personal' && canManagePersonal && <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Shaxsiy kartochka yaratish</Button>}
     </div>
-    <Card><CardHeader><CardTitle>Barcha talabalar</CardTitle></CardHeader><CardContent><DataTable columns={columns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi" /></CardContent></Card>
+    <Tabs value={activeWorkspace} onValueChange={value => {
+      const workspace = value as StudentWorkspace;
+      setActiveWorkspace(workspace); setRegistryStatus(workspace === 'academic' ? 'REGISTERED' : 'ALL'); setRegistryPage(0); setSelectedAcademicIds([]);
+    }}>
+      <TabsList className="h-auto flex-wrap justify-start">
+        <TabsTrigger value="personal"><Edit className="mr-2 h-4 w-4" />Shaxsiy kartochkalar</TabsTrigger>
+        {canReadAcademic && <TabsTrigger value="academic"><GraduationCap className="mr-2 h-4 w-4" />Akademik amallar</TabsTrigger>}
+        {canManageAccounts && <TabsTrigger value="accounts"><UserRoundCog className="mr-2 h-4 w-4" />Akkaunt boshqaruvi</TabsTrigger>}
+      </TabsList>
+    </Tabs>
+    <Card><CardHeader><CardTitle>{workspaceTitle}</CardTitle></CardHeader><CardContent><DataTable
+      columns={columns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi"
+      serverSearch={{ value: registrySearch, onChange: value => { setRegistrySearch(value); setRegistryPage(0); } }}
+      serverPagination={{
+        pageIndex: registry?.page ?? registryPage, pageSize: registry?.size ?? registryPageSize,
+        pageCount: registry?.totalPages ?? 0, totalElements: registry?.totalElements ?? 0,
+        onPageChange: setRegistryPage,
+        onPageSizeChange: size => { setRegistryPageSize(size); setRegistryPage(0); },
+      }}
+      toolbar={<div className="flex flex-wrap items-center gap-2">
+        <Select value={registryStatus} onValueChange={(value: StudentStatus | 'ALL') => { setRegistryStatus(value); setRegistryPage(0); }}><SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">Barcha holatlar</SelectItem><SelectItem value="REGISTERED">Qabul qilinmagan</SelectItem><SelectItem value="ACTIVE">Faol</SelectItem><SelectItem value="SUSPENDED">To'xtatilgan</SelectItem><SelectItem value="EXPELLED">Chetlashtirilgan</SelectItem><SelectItem value="GRADUATED">Bitirgan</SelectItem></SelectContent></Select>
+        {activeWorkspace === 'academic' && canManageAcademic && <Button variant="outline" disabled={selectedAcademicIds.length < 2} onClick={() => {
+          setBulkTransferForm({ ...emptyLifecycle(), academicYear: availableAcademicYears[0] ?? '' }); setBulkTransferOpen(true);
+        }}><ArrowRightLeft className="mr-2 h-4 w-4" />Ommaviy ko'chirish ({selectedAcademicIds.length})</Button>}
+        {activeWorkspace === 'personal' && canExport && <Button variant="outline" disabled={exportingRegistry} onClick={exportRegistry}>{exportingRegistry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Excel eksport</Button>}
+      </div>}
+    /></CardContent></Card>
 
     <Dialog open={isAdding || !!editingStudent} onOpenChange={open => { if (!open) closeStudentDialog(); }}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{editingStudent ? "Shaxsiy ma'lumotlarni tahrirlash" : "Talabaning shaxsiy kartochkasi"}</DialogTitle></DialogHeader>
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto"><DialogHeader><DialogTitle>{editingStudent ? "Shaxsiy ma'lumotlarni tahrirlash" : "Talabaning shaxsiy kartochkasi"}</DialogTitle></DialogHeader>
         {!editingStudent && <p className="text-sm text-muted-foreground">Bu yerda faqat shaxsiy ma'lumotlar saqlanadi. O'qishga biriktirish keyingi alohida amalda bajariladi.</p>}
         <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
+          <h3 className="border-b pb-2 font-semibold sm:col-span-2">Asosiy ma'lumotlar</h3>
           <Field label="Ism *"><Input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} /></Field>
           <Field label="Familiya *"><Input value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} /></Field>
+          <Field label="Otasining ismi"><Input value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} /></Field>
           <Field label="JSHSHIR *"><Input value={formData.pinfl} disabled={!!editingStudent} onChange={e => setFormData({...formData, pinfl: e.target.value})} /></Field>
           <Field label="Talaba raqami *"><Input value={formData.studentNumber} disabled={!!editingStudent} onChange={e => setFormData({...formData, studentNumber: e.target.value})} /></Field>
           <Field label="Tug'ilgan sana *"><Input type="date" value={formData.birthDate} disabled={!!editingStudent} onChange={e => setFormData({...formData, birthDate: e.target.value})} /></Field>
           <Field label="Jinsi *"><Select value={formData.gender} disabled={!!editingStudent} onValueChange={(value: Gender) => setFormData({...formData, gender: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="MALE">Erkak</SelectItem><SelectItem value="FEMALE">Ayol</SelectItem></SelectContent></Select></Field>
+          <Field label="Fuqarolik mamlakati *"><Select value={formData.citizenshipCountryId} disabled={!!editingStudent || countriesQuery.isLoading} onValueChange={value => { const country = countriesQuery.data?.find(item => String(item.id) === value); setFormData({...formData, citizenshipCountryId: value, citizenship: country?.code === 'UZ' ? 'UZBEKISTAN' : 'OTHER'}); }}><SelectTrigger><SelectValue placeholder="Mamlakatni tanlang" /></SelectTrigger><SelectContent>{(countriesQuery.data ?? []).map(country => <SelectItem key={country.id} value={String(country.id)}>{country.name} ({country.code})</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Telefon"><Input type="tel" placeholder="+998 90 123 45 67" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} /></Field>
           <Field label="Email"><Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></Field>
+          <Field label="Foto URL"><Input type="url" value={formData.photoUrl} onChange={e => setFormData({...formData, photoUrl: e.target.value})} /></Field>
+
+          <h3 className="border-b pb-2 pt-2 font-semibold sm:col-span-2">Pasport ma'lumotlari</h3>
+          <Field label="Hujjat turi"><Select value={formData.passportType} onValueChange={(value: PassportType | 'NONE') => setFormData({...formData, passportType: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Kiritilmagan</SelectItem><SelectItem value="ID_CARD">ID karta</SelectItem><SelectItem value="BIOMETRIC_PASSPORT">Biometrik pasport</SelectItem><SelectItem value="PASSPORT">Pasport</SelectItem><SelectItem value="BIRTH_CERTIFICATE">Tug'ilganlik guvohnomasi</SelectItem></SelectContent></Select></Field>
+          <Field label="Seriya"><Input maxLength={10} value={formData.passportSeries} onChange={e => setFormData({...formData, passportSeries: e.target.value.toUpperCase()})} /></Field>
+          <Field label="Raqam"><Input maxLength={20} value={formData.passportNumber} onChange={e => setFormData({...formData, passportNumber: e.target.value.toUpperCase()})} /></Field>
+          <Field label="Berilgan sana"><Input type="date" max={today()} value={formData.passportIssuedDate} onChange={e => setFormData({...formData, passportIssuedDate: e.target.value})} /></Field>
+          <Field label="Amal qilish sanasi"><Input type="date" min={formData.passportIssuedDate || undefined} value={formData.passportExpiryDate} onChange={e => setFormData({...formData, passportExpiryDate: e.target.value})} /></Field>
+          <Field label="Kim tomonidan berilgan"><Input value={formData.passportIssuedBy} onChange={e => setFormData({...formData, passportIssuedBy: e.target.value})} /></Field>
+
+          <h3 className="border-b pb-2 pt-2 font-semibold sm:col-span-2">Doimiy yashash manzili</h3>
+          <Field label="Hudud"><Select value={formData.permanentRegionId} onValueChange={value => setFormData({...formData, permanentRegionId: value, permanentDistrictId: ''})}><SelectTrigger><SelectValue placeholder={formData.permanentRegion || "Hududni tanlang"} /></SelectTrigger><SelectContent>{(regionsQuery.data ?? []).map(region => <SelectItem key={region.id} value={String(region.id)}>{region.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Tuman yoki shahar"><Select value={formData.permanentDistrictId} disabled={!formData.permanentRegionId || permanentDistrictsQuery.isLoading} onValueChange={value => setFormData({...formData, permanentDistrictId: value})}><SelectTrigger><SelectValue placeholder={formData.permanentDistrict || "Avval hududni tanlang"} /></SelectTrigger><SelectContent>{(permanentDistrictsQuery.data ?? []).map(district => <SelectItem key={district.id} value={String(district.id)}>{district.name}</SelectItem>)}</SelectContent></Select></Field>
+          <div className="space-y-2 sm:col-span-2"><Label>Manzil</Label><Textarea value={formData.permanentAddress} onChange={e => setFormData({...formData, permanentAddress: e.target.value})} /></div>
+
+          <h3 className="border-b pb-2 pt-2 font-semibold sm:col-span-2">Hozirgi yashash manzili</h3>
+          <Field label="Hudud"><Select value={formData.currentRegionId} onValueChange={value => setFormData({...formData, currentRegionId: value, currentDistrictId: ''})}><SelectTrigger><SelectValue placeholder={formData.currentRegion || "Hududni tanlang"} /></SelectTrigger><SelectContent>{(regionsQuery.data ?? []).map(region => <SelectItem key={region.id} value={String(region.id)}>{region.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Tuman yoki shahar"><Select value={formData.currentDistrictId} disabled={!formData.currentRegionId || currentDistrictsQuery.isLoading} onValueChange={value => setFormData({...formData, currentDistrictId: value})}><SelectTrigger><SelectValue placeholder={formData.currentDistrict || "Avval hududni tanlang"} /></SelectTrigger><SelectContent>{(currentDistrictsQuery.data ?? []).map(district => <SelectItem key={district.id} value={String(district.id)}>{district.name}</SelectItem>)}</SelectContent></Select></Field>
+          <div className="space-y-2 sm:col-span-2"><Label>Manzil</Label><Textarea value={formData.currentAddress} onChange={e => setFormData({...formData, currentAddress: e.target.value})} /></div>
         </div><DialogFooter><Button variant="outline" onClick={closeStudentDialog}>Bekor qilish</Button><Button disabled={saving} onClick={handleSave}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Saqlash</Button></DialogFooter>
       </DialogContent>
     </Dialog>
 
     <Dialog open={!!admissionStudent} onOpenChange={open => { if (!open) setAdmissionStudent(null); }}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{admissionStudent?.fullName}: o'qishga biriktirish</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Bu bosqichda ta'lim dasturi, guruh, kontrakt va qabul buyrug'i kiritiladi.</p>
+        <p className="text-sm text-muted-foreground">Akademik joylashuvni o'quv yili, dastur, semestr va guruh tartibida tanlang.</p>
         <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
-          <Field label="Fakultet"><AcademicSelect kind="faculty" valueMode="id" value={admissionForm.facultyId} onChange={value => setAdmissionForm({...admissionForm, facultyId: value})} /></Field>
-          <Field label="Ta'lim dasturi"><AcademicSelect kind="program" valueMode="id" value={admissionForm.programId} onChange={value => setAdmissionForm({...admissionForm, programId: value, groupId: ''})} /></Field>
-          <Field label="Guruh"><AcademicSelect kind="group" valueMode="id" value={admissionForm.groupId} onChange={value => setAdmissionForm({...admissionForm, groupId: value})} /></Field>
-          <Field label="O'quv yili"><Input value={admissionForm.academicYear} placeholder="2026-2027" onChange={e => setAdmissionForm({...admissionForm, academicYear: e.target.value})} /></Field>
-          <Field label="Ta'lim darajasi"><Select value={admissionForm.degreeLevel} onValueChange={(value: DegreeLevel) => setAdmissionForm({...admissionForm, degreeLevel: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="BACHELOR">Bakalavriat</SelectItem><SelectItem value="MASTER">Magistratura</SelectItem><SelectItem value="PHD">PhD</SelectItem><SelectItem value="ASSOCIATE">Associate</SelectItem></SelectContent></Select></Field>
+          <h3 className="border-b pb-2 font-semibold sm:col-span-2">Akademik joylashuv</h3>
+          <Field label="1. O'quv yili *"><Select value={admissionForm.academicYear} onValueChange={value => setAdmissionForm({...admissionForm, academicYear: value, programId: '', semester: '', groupId: ''})}><SelectTrigger><SelectValue placeholder="O'quv yilini tanlang" /></SelectTrigger><SelectContent>{availableAcademicYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="2. Ta'lim dasturi *"><Select value={admissionForm.programId} disabled={!admissionForm.academicYear || admissionPrograms.isLoading} onValueChange={value => { const program = availablePrograms.find(item => String(item.id) === value); setAdmissionForm({...admissionForm, programId: value, degreeLevel: programDegreeLevel(program), language: program?.educationLanguage?.trim() || 'uz', semester: '', groupId: ''}); }}><SelectTrigger><SelectValue placeholder="Dastur tanlang" /></SelectTrigger><SelectContent>{availablePrograms.map(program => <SelectItem key={program.id} value={String(program.id)}>{program.name}</SelectItem>)}</SelectContent></Select></Field>
+          {!!admissionForm.academicYear && !admissionPrograms.isLoading && !admissionYearGroups.isLoading && availablePrograms.length === 0 && <p className="text-sm text-destructive sm:col-span-2">Bu o'quv yilida faol guruhi mavjud ta'lim dasturi topilmadi.</p>}
+          <Field label="3. Semestr *"><Select value={admissionForm.semester} disabled={!selectedAdmissionProgram} onValueChange={value => setAdmissionForm({...admissionForm, semester: value, groupId: ''})}><SelectTrigger><SelectValue placeholder="Semestr tanlang" /></SelectTrigger><SelectContent>{availableSemesters.map(semester => <SelectItem key={semester} value={String(semester)}>{semester}-semestr ({courseNumberFromSemester(semester)}-kurs)</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="4. Guruh *"><Select value={admissionForm.groupId} disabled={!admissionForm.semester || admissionProgramGroups.isLoading} onValueChange={value => setAdmissionForm({...admissionForm, groupId: value})}><SelectTrigger><SelectValue placeholder="Mos guruhni tanlang" /></SelectTrigger><SelectContent>{availableAdmissionGroups.map(group => <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>)}</SelectContent></Select></Field>
+          {!!admissionForm.semester && !admissionProgramGroups.isLoading && availableAdmissionGroups.length === 0 && <p className="text-sm text-destructive sm:col-span-2">Tanlangan o'quv yili, dastur va tilga mos faol guruh topilmadi. Avval akademik klassifikatorda guruhni sozlang.</p>}
+          <h3 className="border-b pb-2 pt-2 font-semibold sm:col-span-2">Ta'lim parametrlari</h3>
+          <Field label="Ta'lim darajasi"><Input value={admissionForm.degreeLevel} disabled /></Field>
           <Field label="Ta'lim shakli"><Select value={admissionForm.educationForm} onValueChange={(value: EducationForm) => setAdmissionForm({...admissionForm, educationForm: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="FULL_TIME">Kunduzgi</SelectItem><SelectItem value="DISTANCE">Masofaviy</SelectItem><SelectItem value="PART_TIME">Sirtqi</SelectItem><SelectItem value="EVENING">Kechki</SelectItem></SelectContent></Select></Field>
-          <Field label="Ta'lim tili"><Select value={admissionForm.language} onValueChange={value => setAdmissionForm({...admissionForm, language: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uz">O'zbek</SelectItem><SelectItem value="ru">Rus</SelectItem><SelectItem value="en">Ingliz</SelectItem></SelectContent></Select></Field>
-          <Field label="Kurs"><Input type="number" min="1" max="6" value={admissionForm.course} onChange={e => setAdmissionForm({...admissionForm, course: e.target.value})} /></Field>
+          <Field label="Ta'lim tili"><Select value={admissionForm.language} onValueChange={value => setAdmissionForm({...admissionForm, language: value, groupId: ''})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uz">O'zbek</SelectItem><SelectItem value="ru">Rus</SelectItem><SelectItem value="en">Ingliz</SelectItem></SelectContent></Select></Field>
+          <Field label="Kurs"><Input value={admissionForm.semester ? `${courseNumberFromSemester(Number(admissionForm.semester))}-kurs` : ''} disabled /></Field>
           <Field label="To'lov turi"><Select value={admissionForm.paymentType} onValueChange={(value: PaymentType) => setAdmissionForm({...admissionForm, paymentType: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="CONTRACT">Kontrakt</SelectItem><SelectItem value="GRANT">Grant</SelectItem></SelectContent></Select></Field>
           <Field label="Kontrakt raqami"><Input value={admissionForm.contractNumber} onChange={e => setAdmissionForm({...admissionForm, contractNumber: e.target.value})} /></Field>
           <Field label="Kontrakt summasi"><Input type="number" min="0" value={admissionForm.contractAmount} onChange={e => setAdmissionForm({...admissionForm, contractAmount: e.target.value})} /></Field>
@@ -272,9 +588,35 @@ export function StudentManagement() {
       </div><DialogFooter><Button variant="outline" onClick={() => setLifecycleTarget(null)}>Bekor qilish</Button><Button disabled={saving} onClick={submitLifecycle}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Buyruqni qo'llash</Button></DialogFooter></DialogContent>
     </Dialog>
 
+    <Dialog open={bulkTransferOpen} onOpenChange={open => { setBulkTransferOpen(open); if (!open) setBulkTransferForm(emptyLifecycle()); }}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{selectedAcademicIds.length} ta talabani ommaviy ko'chirish</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Barcha talabalar avval tekshiriladi. Bittasi mos kelmasa, paketdagi hech bir yozuv o'zgarmaydi.</p>
+        <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
+          <Field label="1. Yangi o'quv yili *"><Select value={bulkTransferForm.academicYear} onValueChange={value => setBulkTransferForm({...bulkTransferForm, academicYear: value, targetProgramId: '', targetGroupId: ''})}><SelectTrigger><SelectValue placeholder="O'quv yilini tanlang" /></SelectTrigger><SelectContent>{availableAcademicYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="2. Yangi ta'lim dasturi *"><Select value={bulkTransferForm.targetProgramId} disabled={!bulkTransferForm.academicYear} onValueChange={value => setBulkTransferForm({...bulkTransferForm, targetProgramId: value, targetGroupId: ''})}><SelectTrigger><SelectValue placeholder="Dastur tanlang" /></SelectTrigger><SelectContent>{availableBulkPrograms.map(program => <SelectItem key={program.id} value={String(program.id)}>{program.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="3. Yangi guruh"><Select value={bulkTransferForm.targetGroupId || 'NONE'} disabled={!bulkTransferForm.targetProgramId || bulkTransferGroups.isLoading} onValueChange={value => setBulkTransferForm({...bulkTransferForm, targetGroupId: value === 'NONE' ? '' : value})}><SelectTrigger><SelectValue placeholder="Guruh tanlang" /></SelectTrigger><SelectContent><SelectItem value="NONE">Guruhsiz</SelectItem>{availableBulkGroups.map(group => <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>)}</SelectContent></Select></Field>
+          <div className="flex items-end"><Badge variant="secondary">Tanlangan: {selectedAcademicIds.length} / 200</Badge></div>
+          {!!bulkTransferForm.academicYear && !admissionPrograms.isLoading && availableBulkPrograms.length === 0 && <p className="text-sm text-destructive sm:col-span-2">Bu o'quv yilida faol guruhi mavjud dastur topilmadi.</p>}
+          <EvidenceFields value={bulkTransferForm} onChange={patch => setBulkTransferForm({...bulkTransferForm, ...patch})} />
+        </div>
+        <DialogFooter><Button variant="outline" onClick={() => { setBulkTransferOpen(false); setBulkTransferForm(emptyLifecycle()); }}>Bekor qilish</Button><Button disabled={saving || selectedAcademicIds.length < 2 || !bulkTransferForm.targetProgramId || !bulkTransferForm.academicYear} onClick={submitBulkTransfer}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Hammasini ko'chirish</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <Dialog open={!!historyStudent} onOpenChange={open => { if (!open) setHistoryStudent(null); }}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{historyStudent?.fullName}: lifecycle tarixi</DialogTitle></DialogHeader>
       {history.isLoading ? <Loader2 className="mx-auto animate-spin" /> : <div className="space-y-3">{(history.data ?? []).map(event => <Card key={event.id}><CardContent className="space-y-2 pt-4"><div className="flex flex-wrap justify-between gap-2"><Badge>{event.eventType}</Badge><span className="text-sm font-medium">{event.fromStatus ?? '—'} → {event.toStatus}</span></div><p className="text-sm"><b>Buyruq:</b> {event.orderNumber} / {event.orderDate}; <b>amal:</b> {event.effectiveDate}</p>{event.eventType === 'TRANSFER' && <p className="text-sm"><b>Dastur:</b> {event.fromProgramName ?? '—'} → {event.toProgramName ?? '—'}; <b>guruh:</b> {event.fromGroupId ?? '—'} → {event.toGroupId ?? '—'}</p>}<p className="text-sm"><b>Asos:</b> {event.legalBasis}</p><p className="text-sm"><b>Sabab:</b> {event.reason}</p><p className="text-xs text-muted-foreground">{event.recordedByName} · {new Date(event.recordedAt).toLocaleString('uz-Latn')}</p></CardContent></Card>)}{history.data?.length === 0 && <p className="py-8 text-center text-muted-foreground">Lifecycle yozuvi mavjud emas.</p>}</div>}
       <DialogFooter><Button variant="outline" onClick={() => history.refetch()}><RefreshCcw className="mr-2 h-4 w-4" />Yangilash</Button></DialogFooter></DialogContent>
+    </Dialog>
+
+    <Dialog open={!!accountTarget} onOpenChange={open => { if (!open) { setAccountTarget(null); setAccountReason(''); } }}>
+      <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{accountTarget?.student.fullName}: {accountTarget?.enabled ? 'akkauntni qayta yoqish' : 'akkauntni bloklash'}</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-3">
+          <p className="text-sm text-muted-foreground">Login: <b>{accountTarget?.student.username}</b>. Amal va sabab audit jurnalida saqlanadi.</p>
+          <Field label="Sabab *"><Textarea maxLength={500} value={accountReason} placeholder="Kamida 5 belgi" onChange={event => setAccountReason(event.target.value)} /></Field>
+          {accountTarget?.enabled && <p className="text-sm text-muted-foreground">Qayta yoqish faqat akademik holati ACTIVE bo'lgan talaba uchun ruxsat etiladi.</p>}
+        </div>
+        <DialogFooter><Button variant="outline" onClick={() => { setAccountTarget(null); setAccountReason(''); }}>Bekor qilish</Button><Button variant={accountTarget?.enabled ? 'default' : 'destructive'} disabled={saving || accountReason.trim().length < 5} onClick={submitAccountAccess}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{accountTarget?.enabled ? 'Qayta yoqish' : 'Bloklash'}</Button></DialogFooter>
+      </DialogContent>
     </Dialog>
   </div>;
 }

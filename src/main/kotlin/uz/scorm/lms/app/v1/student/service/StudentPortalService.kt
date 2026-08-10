@@ -18,6 +18,7 @@ import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
+import uz.scorm.lms.app.v1.classifier.service.GeographyClassifierService
 import java.time.LocalDate
 
 @Service
@@ -33,6 +34,7 @@ class StudentPortalService(
     private val learningSessionService: LearningSessionService,
     private val examSessionService: ExamSessionService,
     private val examResultService: ExamResultService,
+    private val classifierService: GeographyClassifierService,
 ) {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -53,8 +55,16 @@ class StudentPortalService(
         val s = profileOrThrow(user)
         req.phoneNumber?.let  { s.phoneNumber = it; user.phone = it }
         req.email?.let        { s.email = it; user.email = it }
-        req.currentRegion?.let    { s.currentRegion = it }
-        req.currentDistrict?.let  { s.currentDistrict = it }
+        if (req.currentRegionId != null || req.currentDistrictId != null) {
+            val current = classifierService.resolveAddress(req.currentRegionId, req.currentDistrictId, req.currentRegion, req.currentDistrict)
+            s.currentRegion = current.regionName
+            s.currentRegionId = current.regionId
+            s.currentDistrict = current.districtName
+            s.currentDistrictId = current.districtId
+        } else {
+            req.currentRegion?.let { s.currentRegion = it }
+            req.currentDistrict?.let { s.currentDistrict = it }
+        }
         req.currentAddress?.let   { s.currentAddress = it }
         req.photoUrl?.let         { s.photoUrl = it }
         userRepository.save(user)
@@ -304,14 +314,19 @@ class StudentPortalService(
         birthDate        = s.birthDate,
         gender           = s.gender,
         citizenship      = s.citizenship,
+        citizenshipCountryId = s.citizenshipCountryId,
         photoUrl         = s.photoUrl,
         phoneNumber      = s.phoneNumber,
         email            = s.email,
         permanentRegion  = s.permanentRegion,
+        permanentRegionId = s.permanentRegionId,
         permanentDistrict= s.permanentDistrict,
+        permanentDistrictId = s.permanentDistrictId,
         permanentAddress = s.permanentAddress,
         currentRegion    = s.currentRegion,
+        currentRegionId  = s.currentRegionId,
         currentDistrict  = s.currentDistrict,
+        currentDistrictId = s.currentDistrictId,
         currentAddress   = s.currentAddress,
         studentNumber    = s.studentNumber,
         degreeLevel      = s.degreeLevel,

@@ -3,6 +3,7 @@ package uz.scorm.lms.app.v1.student.repository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.jpa.repository.Lock
 import jakarta.persistence.LockModeType
@@ -11,10 +12,14 @@ import uz.scorm.lms.app.v1.student.model.StudentStatus
 import uz.scorm.lms.app.v1.student.model.Citizenship
 import uz.scorm.lms.app.v1.student.model.EducationForm
 
-interface StudentRepository : JpaRepository<StudentProfile, Long> {
+interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificationExecutor<StudentProfile> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM StudentProfile s WHERE s.id = :id")
     fun findByIdForUpdate(id: Long): StudentProfile?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM StudentProfile s WHERE s.id IN :ids ORDER BY s.id")
+    fun findAllByIdForUpdate(ids: Collection<Long>): List<StudentProfile>
 
     fun countByStudentStatus(status: StudentStatus): Long
     fun findByUserUsername(username: String): StudentProfile?

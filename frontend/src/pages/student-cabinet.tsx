@@ -21,6 +21,7 @@ import {
 import { Separator } from '@/components/ui/separator.tsx';
 import { useToast } from '@/hooks/use-toast.ts';
 import { getMyProfile, updateMyProfile } from '@/lib/student-portal-api';
+import { listDistricts, listRegions } from '@/lib/classifier-api';
 import { qk } from '@/lib/query-keys';
 import type { UpdateStudentProfileRequest } from '@/types/student.types';
 
@@ -78,6 +79,13 @@ export function StudentCabinet() {
     queryFn: getMyProfile,
     staleTime: 30_000,
   });
+  const regionsQuery = useQuery({ queryKey: ['classifiers', 'regions'], queryFn: listRegions, staleTime: 300_000 });
+  const districtsQuery = useQuery({
+    queryKey: ['classifiers', 'districts', editForm.currentRegionId],
+    queryFn: () => listDistricts(Number(editForm.currentRegionId)),
+    enabled: isEditing && !!editForm.currentRegionId,
+    staleTime: 300_000,
+  });
 
   const updateMutation = useMutation({
     mutationFn: updateMyProfile,
@@ -94,7 +102,9 @@ export function StudentCabinet() {
       phoneNumber:     profile?.phoneNumber     ?? '',
       email:           profile?.email           ?? '',
       currentRegion:   profile?.currentRegion   ?? '',
+      currentRegionId: profile?.currentRegionId ?? null,
       currentDistrict: profile?.currentDistrict ?? '',
+      currentDistrictId: profile?.currentDistrictId ?? null,
       currentAddress:  profile?.currentAddress  ?? '',
       photoUrl:        profile?.photoUrl        ?? '',
     });
@@ -434,19 +444,11 @@ export function StudentCabinet() {
               <CardContent className="space-y-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Viloyat</Label>
-                  <Input
-                    value={isEditing ? (editForm.currentRegion ?? '') : (profile?.currentRegion ?? '')}
-                    disabled={!isEditing}
-                    onChange={(e) => setEditForm(f => ({ ...f, currentRegion: e.target.value }))}
-                  />
+                  {isEditing ? <Select value={editForm.currentRegionId ? String(editForm.currentRegionId) : ''} onValueChange={value => setEditForm(f => ({ ...f, currentRegionId: Number(value), currentDistrictId: null }))}><SelectTrigger><SelectValue placeholder={profile?.currentRegion || "Viloyatni tanlang"} /></SelectTrigger><SelectContent>{(regionsQuery.data ?? []).map(region => <SelectItem key={region.id} value={String(region.id)}>{region.name}</SelectItem>)}</SelectContent></Select> : <Input value={profile?.currentRegion ?? ''} disabled />}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Tuman</Label>
-                  <Input
-                    value={isEditing ? (editForm.currentDistrict ?? '') : (profile?.currentDistrict ?? '')}
-                    disabled={!isEditing}
-                    onChange={(e) => setEditForm(f => ({ ...f, currentDistrict: e.target.value }))}
-                  />
+                  {isEditing ? <Select value={editForm.currentDistrictId ? String(editForm.currentDistrictId) : ''} disabled={!editForm.currentRegionId || districtsQuery.isLoading} onValueChange={value => setEditForm(f => ({ ...f, currentDistrictId: Number(value) }))}><SelectTrigger><SelectValue placeholder={profile?.currentDistrict || "Tumanni tanlang"} /></SelectTrigger><SelectContent>{(districtsQuery.data ?? []).map(district => <SelectItem key={district.id} value={String(district.id)}>{district.name}</SelectItem>)}</SelectContent></Select> : <Input value={profile?.currentDistrict ?? ''} disabled />}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">To'liq manzil</Label>

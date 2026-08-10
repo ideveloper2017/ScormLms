@@ -7,12 +7,18 @@ export type DegreeLevel    = 'BACHELOR' | 'MASTER' | 'PHD' | 'ASSOCIATE';
 export type EducationForm  = 'FULL_TIME' | 'PART_TIME' | 'DISTANCE' | 'EVENING';
 export type PaymentType    = 'CONTRACT' | 'GRANT';
 export type StudentStatus  = 'REGISTERED' | 'ACTIVE' | 'SUSPENDED' | 'EXPELLED' | 'GRADUATED';
+export type UserStatus     = 'ACTIVE' | 'INACTIVE' | 'BLOCKED' | 'GRADUATED' | 'EXPELLED' | 'ARCHIVED';
 export type StudentLifecycleEventType = 'ADMISSION' | 'SUSPENSION' | 'REINSTATEMENT' | 'TRANSFER' | 'EXPULSION' | 'GRADUATION';
 
 // ── Admin response (to'liq) ───────────────────────────────────────────────────
 
 export interface StudentDto {
     id: number | null;
+    citizenshipCountryId: number | null;
+    permanentRegionId: number | null;
+    permanentDistrictId: number | null;
+    currentRegionId: number | null;
+    currentDistrictId: number | null;
     // Shaxsiy
     pinfl: string;
     lastName: string;
@@ -51,6 +57,7 @@ export interface StudentDto {
     educationForm: EducationForm | null;
     educationLanguage: string | null;
     courseNumber: number | null;
+    semesterNumber: number | null;
     groupId: number | null;
     academicYear: string | null;
     admissionDate: string | null;
@@ -79,9 +86,14 @@ export interface StudentSummaryDto {
     facultyId: number | null;
     groupId: number | null;
     courseNumber: number | null;
+    semesterNumber: number | null;
     degreeLevel: DegreeLevel | null;
     studentStatus: StudentStatus | null;
     photoUrl: string | null;
+    lmsOrientationRequired: boolean;
+    username: string;
+    accountStatus: UserStatus;
+    accountEnabled: boolean;
 }
 
 // ── Create / Update ───────────────────────────────────────────────────────────
@@ -129,6 +141,21 @@ export interface StudentCreateRequest {
     password?: string;
 }
 
+export interface StudentRegistryPageDto {
+    items: StudentSummaryDto[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+}
+
+export interface StudentRegistryQuery {
+    search?: string;
+    status?: StudentStatus;
+    page?: number;
+    size?: number;
+}
+
 export interface StudentRegistrationRequest {
     pinfl: string;
     lastName: string;
@@ -137,6 +164,7 @@ export interface StudentRegistrationRequest {
     birthDate: string;
     gender: Gender;
     citizenship?: Citizenship;
+    citizenshipCountryId?: number | null;
     passportType?: PassportType | null;
     passportSeries?: string | null;
     passportNumber?: string | null;
@@ -147,13 +175,47 @@ export interface StudentRegistrationRequest {
     phoneNumber?: string | null;
     email?: string | null;
     permanentRegion?: string | null;
+    permanentRegionId?: number | null;
     permanentDistrict?: string | null;
+    permanentDistrictId?: number | null;
     permanentAddress?: string | null;
     currentRegion?: string | null;
+    currentRegionId?: number | null;
     currentDistrict?: string | null;
+    currentDistrictId?: number | null;
     currentAddress?: string | null;
     studentNumber: string;
     password?: string;
+}
+
+export interface StudentPersonalProfileUpdateRequest {
+    lastName: string;
+    firstName: string;
+    middleName?: string | null;
+    passportType?: PassportType | null;
+    passportSeries?: string | null;
+    passportNumber?: string | null;
+    passportIssuedDate?: string | null;
+    passportExpiryDate?: string | null;
+    passportIssuedBy?: string | null;
+    photoUrl?: string | null;
+    phoneNumber?: string | null;
+    email?: string | null;
+    permanentRegion?: string | null;
+    permanentRegionId?: number | null;
+    permanentDistrict?: string | null;
+    permanentDistrictId?: number | null;
+    permanentAddress?: string | null;
+    currentRegion?: string | null;
+    currentRegionId?: number | null;
+    currentDistrict?: string | null;
+    currentDistrictId?: number | null;
+    currentAddress?: string | null;
+}
+
+export interface StudentAccountAccessRequest {
+    enabled: boolean;
+    reason: string;
 }
 
 export interface StudentAcademicAdmissionRequest {
@@ -164,6 +226,7 @@ export interface StudentAcademicAdmissionRequest {
     degreeLevel: DegreeLevel;
     educationForm: EducationForm;
     educationLanguage: string;
+    semesterNumber: number;
     courseNumber: number;
     groupId?: number | null;
     academicYear?: string | null;
@@ -227,6 +290,90 @@ export interface StudentLifecycleResultDto {
     event: StudentLifecycleEventDto;
 }
 
+export interface StudentBulkTransferRequest {
+    studentIds: number[];
+    targetProgramId: number;
+    targetGroupId?: number | null;
+    academicYear?: string | null;
+    orderNumber: string;
+    orderDate: string;
+    effectiveDate: string;
+    legalBasis: string;
+    reason: string;
+}
+
+export interface StudentBulkTransferItemDto {
+    studentId: number;
+    studentNumber: string;
+    studentName: string;
+    studentStatus: StudentStatus;
+    eventId: number;
+    fromProgramId: number | null;
+    toProgramId: number | null;
+    fromGroupId: number | null;
+    toGroupId: number | null;
+}
+
+export interface StudentBulkTransferResultDto {
+    orderNumber: string;
+    processedCount: number;
+    targetProgramId: number;
+    targetGroupId: number | null;
+    items: StudentBulkTransferItemDto[];
+}
+
+export type CourseEnrollmentStatus = 'ACTIVE' | 'COMPLETED' | 'WITHDRAWN';
+
+export interface ReinstatementSubjectDto {
+    enrollmentId: number;
+    courseId: number;
+    courseTitle: string;
+    subjectCode: string | null;
+    subjectName: string;
+    academicYear: string;
+    semester: number;
+    credits: number;
+    required: boolean;
+    status: CourseEnrollmentStatus;
+    progress: number;
+    enrolledAt: string;
+    completedAt: string | null;
+}
+
+export interface ReinstatementSubjectReportItemDto {
+    reinstatementEventId: number;
+    studentId: number;
+    studentNumber: string;
+    studentName: string;
+    studentStatus: StudentStatus;
+    programId: number | null;
+    programName: string | null;
+    groupId: number | null;
+    groupName: string | null;
+    academicYear: string | null;
+    semesterNumber: number | null;
+    orderNumber: string;
+    orderDate: string;
+    effectiveDate: string;
+    reason: string;
+    subjects: ReinstatementSubjectDto[];
+}
+
+export interface ReinstatementSubjectReportPageDto {
+    items: ReinstatementSubjectReportItemDto[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+}
+
+export interface ReinstatementSubjectReportQuery {
+    search?: string;
+    academicYear?: string;
+    page?: number;
+    size?: number;
+}
+
 export interface StudentUpdateRequest {
     lastName?: string | null;
     firstName?: string | null;
@@ -273,6 +420,7 @@ export interface StudentProfileResponse {
     birthDate: string | null;
     gender: Gender | null;
     citizenship: Citizenship | null;
+    citizenshipCountryId: number | null;
     passportType: PassportType | null;
     passportSeries: string | null;
     passportNumber: string | null;
@@ -283,10 +431,14 @@ export interface StudentProfileResponse {
     phoneNumber: string | null;
     email: string | null;
     permanentRegion: string | null;
+    permanentRegionId: number | null;
     permanentDistrict: string | null;
+    permanentDistrictId: number | null;
     permanentAddress: string | null;
     currentRegion: string | null;
+    currentRegionId: number | null;
     currentDistrict: string | null;
+    currentDistrictId: number | null;
     currentAddress: string | null;
     studentNumber: string;
     facultyId: number | null;
@@ -310,7 +462,9 @@ export interface UpdateStudentProfileRequest {
     phoneNumber?: string | null;
     email?: string | null;
     currentRegion?: string | null;
+    currentRegionId?: number | null;
     currentDistrict?: string | null;
+    currentDistrictId?: number | null;
     currentAddress?: string | null;
     photoUrl?: string | null;
 }

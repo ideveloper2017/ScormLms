@@ -88,12 +88,14 @@ const ITEMS = {
   aDashboard:    { name: "Dashboard",           href: "/admin/dashboard",    icon: LayoutDashboard },
   aUsers:        { name: "Foydalanuvchilar",    href: "/admin/users",        icon: Users           },
   aStudents:     { name: "Talabalar",           href: "/admin/students",     icon: UserCheck       },
+  aReinstatementSubjects: { name: "Tiklanganlar fanlari", href: "/admin/student-movement/reinstatement-subjects", icon: FileSearch },
   aTeachers:     { name: "O'qituvchilar",       href: "/admin/teachers",     icon: UserCog         },
   aRoles:        { name: "Rollar",              href: "/admin/roles",        icon: Shield          },
   aFaculties:    { name: "Fakultetlar",         href: "/admin/faculties",    icon: Building2       },
   aDepartments:  { name: "Kafedralar",          href: "/admin/departments",  icon: Building        },
   aPrograms:     { name: "Yo'nalishlar",        href: "/admin/programs",     icon: FolderTree      },
   aGroups:       { name: "Guruhlar",            href: "/admin/groups",       icon: Layers3         },
+  aStudentClassifiers: { name: "Talaba klassifikatorlari", href: "/admin/student-classifiers", icon: Globe2 },
   aSubjects:     { name: "Fanlar",              href: "/admin/subjects",     icon: NotebookText    },
   aStudyPlans:   { name: "O'quv reja",          href: "/admin/study-plans",  icon: BookMarked      },
   aAdmissionPolicies: { name: "Qabul va kontrakt", href: "/admin/admission-policies", icon: Landmark },
@@ -128,8 +130,8 @@ function buildNav(role: string): NavGroup[] {
 
   const ADMIN_NAV: NavGroup[] = [
     { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-    { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.aRoles] },
-    { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
+    { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.aRoles] },
+    { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aStudentClassifiers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
     { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aContentStandard, ITEMS.aCalendar, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves] },
     { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aCompliance559, ITEMS.aAccountability, ITEMS.aBiometric, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.support, ITEMS.aSettings] },
   ];
@@ -140,8 +142,8 @@ function buildNav(role: string): NavGroup[] {
     METODIST: [
       { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
       { label: "Ta'lim",           items: [ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.resources, ITEMS.teaching, ITEMS.exams] },
-      { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
-      { label: "Boshqaruv",        items: [ITEMS.aStudents, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.contingent, ITEMS.comms] },
+      { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aStudentClassifiers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
+      { label: "Boshqaruv",        items: [ITEMS.aStudents, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.contingent, ITEMS.comms] },
       { label: "Tahlil",           items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.stats, ITEMS.aIntegrations, ITEMS.support] },
     ],
     TEACHER: [

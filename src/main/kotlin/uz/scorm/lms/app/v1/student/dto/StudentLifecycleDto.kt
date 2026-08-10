@@ -26,6 +26,7 @@ data class StudentAcademicAdmissionRequest(
     val degreeLevel: DegreeLevel,
     val educationForm: EducationForm,
     val educationLanguage: String,
+    val semesterNumber: Int = 1,
     val courseNumber: Int = 1,
     val groupId: Long? = null,
     val academicYear: String? = null,
@@ -78,4 +79,36 @@ data class StudentLifecycleEventDto(
 data class StudentLifecycleResultDto(
     val student: StudentDto,
     val event: StudentLifecycleEventDto,
+)
+
+data class StudentBulkTransferRequest(
+    val studentIds: List<Long>,
+    val targetProgramId: Long,
+    val targetGroupId: Long? = null,
+    val academicYear: String? = null,
+    val orderNumber: String,
+    val orderDate: LocalDate,
+    val effectiveDate: LocalDate,
+    val legalBasis: String,
+    val reason: String,
+)
+
+data class StudentBulkTransferItemDto(
+    val studentId: Long,
+    val studentNumber: String,
+    val studentName: String,
+    val studentStatus: StudentStatus,
+    val eventId: Long,
+    val fromProgramId: Long?,
+    val toProgramId: Long?,
+    val fromGroupId: Long?,
+    val toGroupId: Long?,
+)
+
+data class StudentBulkTransferResultDto(
+    val orderNumber: String,
+    val processedCount: Int,
+    val targetProgramId: Long,
+    val targetGroupId: Long?,
+    val items: List<StudentBulkTransferItemDto>,
 )

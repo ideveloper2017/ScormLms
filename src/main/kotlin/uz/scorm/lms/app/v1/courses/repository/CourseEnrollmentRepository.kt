@@ -24,6 +24,11 @@ interface CourseEnrollmentRepository : JpaRepository<CourseEnrollment, Long> {
         statuses: Collection<CourseEnrollmentStatus>,
     ): List<CourseEnrollment>
 
+    @EntityGraph(attributePaths = ["student", "course", "course.subject"])
+    fun findAllByStudentIdInAndDeletedFalseOrderByStudentIdAscAcademicYearAscSemesterAscEnrolledAtAsc(
+        studentIds: Collection<Long>,
+    ): List<CourseEnrollment>
+
     fun findByCourseIdAndStudentId(courseId: Long, studentId: Long): CourseEnrollment?
 
     @EntityGraph(attributePaths = ["student", "student.user", "course"])

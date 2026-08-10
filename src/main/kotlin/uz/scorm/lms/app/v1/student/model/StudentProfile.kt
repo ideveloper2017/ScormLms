@@ -53,6 +53,9 @@ class StudentProfile(
     @Column(name = "citizenship", nullable = false, length = 20)
     var citizenship: Citizenship = Citizenship.UZBEKISTAN,
 
+    @Column(name = "citizenship_country_id")
+    var citizenshipCountryId: Long? = null,
+
     // ── Pasport ───────────────────────────────────────────────────────────────
     @Enumerated(EnumType.STRING)
     @Column(name = "passport_type", length = 25)
@@ -87,8 +90,14 @@ class StudentProfile(
     @Column(name = "permanent_region", length = 100)
     var permanentRegion: String? = null,
 
+    @Column(name = "permanent_region_id")
+    var permanentRegionId: Long? = null,
+
     @Column(name = "permanent_district", length = 100)
     var permanentDistrict: String? = null,
+
+    @Column(name = "permanent_district_id")
+    var permanentDistrictId: Long? = null,
 
     @Column(name = "permanent_address", length = 500)
     var permanentAddress: String? = null,
@@ -97,8 +106,14 @@ class StudentProfile(
     @Column(name = "current_region", length = 100)
     var currentRegion: String? = null,
 
+    @Column(name = "current_region_id")
+    var currentRegionId: Long? = null,
+
     @Column(name = "current_district", length = 100)
     var currentDistrict: String? = null,
+
+    @Column(name = "current_district_id")
+    var currentDistrictId: Long? = null,
 
     @Column(name = "current_address", length = 500)
     var currentAddress: String? = null,
@@ -132,6 +147,9 @@ class StudentProfile(
 
     @Column(name = "course_number")
     var courseNumber: Int = 1,
+
+    @Column(name = "semester_number")
+    var semesterNumber: Int? = null,
 
     @Column(name = "group_id")
     var groupId: Long? = null,
