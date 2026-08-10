@@ -98,8 +98,8 @@ Lokal kodda o'quv reja/curriculum versiyalash, fanlar, guruhlar, kurslar, indivi
 | UX-EDU-01 | Ta'lim jarayoni navigatsiyasi va mavjud kontraktlarni gap-audit qilish | BAJARILDI | V68 mavjud curriculum, admission, course enrollment, fan, jadval, nazorat va baho modullarini xaritaladi; alohida curriculum assignment jadvali ma'lumotni takrorlashi aniqlandi |
 | UX-EDU-02 | O'quv reja va unga talabalarni biriktirishni yagona workflow qilish | BAJARILDI | V68 `programId + academicYear` admission bog'lanishidan hosil qilinadigan read-only roster yaratdi; `REGISTERED` kartochkalar chiqarib tashlanadi, status/qidiruv/pagination serverda ishlaydi va yangi jadval/migratsiya kiritilmadi |
 | UX-EDU-03A | O'quv yili va semestrni boshqariladigan katalogga ajratish | BAJARILDI | V69 V54 orqali tarixiy snapshotlarni o'zgartirmaydigan yil/semestr katalogi, `ACADEMIC_READ/WRITE` API, admin sahifa va admission/curriculum faol-katalog gate'larini qo'shdi |
-| UX-EDU-03B | Fan guruhini curriculum va semestrga bog'langan katalog qilish | KEYINGI | Fan guruhi dastur, curriculum, o'quv yili, semestr va fan kesimida unique bo'ladi; mavjud course/group ma'lumotlari taxminiy bog'lanmaydi |
-| UX-EDU-04 | Baholash va vedmostni mavjud exam/gradebook bilan birlashtirish | REJADA | Alohida parallel baho modeli yaratilmaydi; yopilgan nazorat, attendance va auditli natijadan rasmiy vedmost hosil qilinadi |
+| UX-EDU-03B | Fan guruhini curriculum va semestrga bog'langan katalog qilish | BAJARILDI | V70 tasdiqlangan curriculum faniga bog'langan alohida fan guruhi va keyingi bosqichda biriktiriladigan talaba a'zoligini yaratdi; asosiy `study_groups` va mavjud course yozuvlari taxminiy ko'chirilmadi |
+| UX-EDU-04 | Baholash va vedmostni mavjud exam/gradebook bilan birlashtirish | KEYINGI | Alohida parallel baho modeli yaratilmaydi; yopilgan nazorat, attendance va auditli natijadan rasmiy vedmost hosil qilinadi |
 
 ## Tavsiya etilgan ketma-ketlik
 
@@ -116,4 +116,5 @@ Lokal kodda o'quv reja/curriculum versiyalash, fanlar, guruhlar, kurslar, indivi
 11. ~~`UX-EDU-01` — Ta'lim jarayonidagi mavjud imkoniyatlarni bitta xaritaga solish va birinchi real gapni tanlash.~~ BAJARILDI.
 12. ~~`UX-EDU-02` — o'quv rejaga biriktirilgan talabalarni admission ma'lumotidan hosil qilish.~~ BAJARILDI.
 13. ~~`UX-EDU-03A` — o'quv yili va semestr kataloglarini normalizatsiya qilish.~~ BAJARILDI.
-14. `UX-EDU-03B` — fan guruhini curriculum, davr va fanga bog'lash.
+14. ~~`UX-EDU-03B` — fan guruhini curriculum, davr va fanga bog'lash.~~ BAJARILDI.
+15. `UX-EDU-04` — yopilgan nazorat natijalaridan auditli vedmost hosil qilish.

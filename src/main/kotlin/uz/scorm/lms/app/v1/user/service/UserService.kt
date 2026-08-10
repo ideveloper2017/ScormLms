@@ -53,6 +53,31 @@ class UserService(
         )
     }
 
+    fun registerPendingCredentials(username: String, roleName: String = "student"): User {
+        if (userRepository.existsByUsername(username)) {
+            throw IllegalArgumentException("Username already exists: $username")
+        }
+        val role = roleService.getByName(roleName)
+        val unknownCredential = UUID.randomUUID().toString() + UUID.randomUUID().toString()
+        return userRepository.save(User(
+            username = username,
+            password = passwordEncoder.encode(unknownCredential),
+            credentialsInitialized = false,
+            role = role,
+            status = UserStatus.INACTIVE,
+        ))
+    }
+
+    fun initializePassword(user: User, rawPassword: String): User {
+        require(!user.credentialsInitialized) { "Talaba akkaunti uchun parol allaqachon o'rnatilgan" }
+        passwordPolicy.validate(rawPassword, user.username)
+        user.password = passwordEncoder.encode(rawPassword)
+        user.credentialsInitialized = true
+        val saved = userRepository.save(user)
+        refreshTokenRepository.deleteByUser(saved)
+        return saved
+    }
+
     @Transactional
     fun create(request: UserCreateRequest): UserDto {
         passwordPolicy.validate(request.password, request.username)
@@ -201,6 +226,7 @@ class UserService(
 
         passwordPolicy.validate(request.newPassword, resetToken.user.username)
         resetToken.user.password = passwordEncoder.encode(request.newPassword)
+        resetToken.user.credentialsInitialized = true
         resetToken.used = true
         userRepository.save(resetToken.user)
         refreshTokenRepository.deleteByUser(resetToken.user)
@@ -213,6 +239,7 @@ class UserService(
             .orElseThrow { NoSuchElementException("User not found: $id") }
         passwordPolicy.validate(request.newPassword, user.username)
         user.password = passwordEncoder.encode(request.newPassword)
+        user.credentialsInitialized = true
         val saved = userRepository.save(user)
         refreshTokenRepository.deleteByUser(saved)
         return userMapper.toDto(saved)

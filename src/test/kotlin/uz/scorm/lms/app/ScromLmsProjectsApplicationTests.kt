@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("55", flyway.info().current()?.version?.toString())
+        assertEquals("56", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -40,6 +40,7 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "academic_semester_definitions", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "academic_subject_groups", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "academic_subject_group_memberships", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "users", "credentials_initialized").use { it.next() })
             assertTrue(metadata.getColumns(null, null, "country_classifiers", "source_code").use { it.next() })
             assertTrue(metadata.getColumns(null, null, "region_classifiers", "managed_source").use { it.next() })
             assertTrue(metadata.getColumns(null, null, "district_classifiers", "source_version").use { it.next() })

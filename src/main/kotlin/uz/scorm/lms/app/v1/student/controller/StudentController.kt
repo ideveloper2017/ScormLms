@@ -131,6 +131,14 @@ class StudentController(
         @CurrentUser user: User,
     ): StudentSummaryDto = accountService.changeAccess(id, req, requireNotNull(user.id))
 
+    @PatchMapping("/{id}/credentials")
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
+    fun setupCredentials(
+        @PathVariable id: Long,
+        @RequestBody req: StudentCredentialSetupRequest,
+        @CurrentUser user: User,
+    ): StudentSummaryDto = accountService.setupCredentials(id, req, requireNotNull(user.id))
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_MANAGE')")
     fun delete(@PathVariable id: Long): ResponseEntity<Void> {

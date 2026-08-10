@@ -67,6 +67,7 @@ data class StudentDto(
     // Tizim
     val username: String,
     val accountEnabled: Boolean,
+    val credentialsInitialized: Boolean,
     val lastLoginAt: Instant?,
     val createdAt: Instant?,
     val updatedAt: Instant?,
@@ -90,6 +91,7 @@ data class StudentSummaryDto(
     val username: String,
     val accountStatus: UserStatus,
     val accountEnabled: Boolean,
+    val credentialsInitialized: Boolean,
 )
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
@@ -141,7 +143,7 @@ data class StudentCreateRequest(
     val contractNumber: String? = null,
     val contractAmount: BigDecimal? = null,
     // Tizimga kirish
-    val password: String = "Student@123",
+    val password: String = "",
 )
 
 /** Talabaning faqat shaxsiy kartochkasini yaratadi; akademik qabul keyin bajariladi. */
@@ -174,7 +176,6 @@ data class StudentRegistrationRequest(
     val currentDistrictId: Long? = null,
     val currentAddress: String? = null,
     val studentNumber: String,
-    val password: String = "Student@123",
 )
 
 /** Personal kartochkaning tahrirlanadigan qismini to'liq almashtiradi. */
@@ -208,6 +209,8 @@ data class StudentAccountAccessRequest(
     val enabled: Boolean,
     val reason: String,
 )
+
+data class StudentCredentialSetupRequest(val newPassword: String)
 
 data class StudentUpdateRequest(
     // Shaxsiy

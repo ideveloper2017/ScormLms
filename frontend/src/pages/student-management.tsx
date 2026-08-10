@@ -34,6 +34,7 @@ import {
   listStudentLifecycle,
   listStudents,
   promoteStudent,
+  setupStudentCredentials,
   transitionStudent,
   updateStudentPersonalProfile,
 } from '@/lib/student-api';
@@ -50,7 +51,7 @@ import type {
   StudentStatus,
   StudentSummaryDto,
 } from '@/types/student.types';
-import { Loader2, ArrowUpCircle, Download, Edit, History, UserPlus, RefreshCcw, GraduationCap, Lock, LockOpen, UserRoundCog, ArrowRightLeft } from 'lucide-react';
+import { Loader2, ArrowUpCircle, Download, Edit, History, UserPlus, RefreshCcw, GraduationCap, KeyRound, Lock, LockOpen, UserRoundCog, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { hasAuthority } from '@/lib/rbac-api';
@@ -141,6 +142,9 @@ export function StudentManagement() {
   const [historyStudent, setHistoryStudent] = useState<StudentSummaryDto | null>(null);
   const [accountTarget, setAccountTarget] = useState<{ student: StudentSummaryDto; enabled: boolean } | null>(null);
   const [accountReason, setAccountReason] = useState('');
+  const [credentialTarget, setCredentialTarget] = useState<StudentSummaryDto | null>(null);
+  const [credentialPassword, setCredentialPassword] = useState('');
+  const [credentialConfirmation, setCredentialConfirmation] = useState('');
   const [selectedAcademicIds, setSelectedAcademicIds] = useState<number[]>([]);
   const [bulkTransferOpen, setBulkTransferOpen] = useState(false);
   const [bulkTransferForm, setBulkTransferForm] = useState(emptyLifecycle);
@@ -391,6 +395,24 @@ export function StudentManagement() {
     } catch (error) { showError(error); } finally { setSaving(false); }
   };
 
+  const submitCredentials = async () => {
+    if (credentialTarget?.id == null) return;
+    if (credentialPassword.length < 12 || credentialPassword.length > 128) {
+      toast({ title: 'Parol noto\'g\'ri', description: "Parol 12 dan 128 tagacha belgidan iborat bo'lishi kerak", variant: 'destructive' });
+      return;
+    }
+    if (credentialPassword !== credentialConfirmation) {
+      toast({ title: 'Parollar mos emas', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await setupStudentCredentials(credentialTarget.id, { newPassword: credentialPassword });
+      toast({ title: 'Talaba paroli o\'rnatildi', description: credentialTarget.studentStatus === 'ACTIVE' ? 'Akkaunt foydalanishga tayyor' : "Akkaunt o'qishga biriktirilgach faollashadi" });
+      setCredentialTarget(null); setCredentialPassword(''); setCredentialConfirmation(''); await invalidate();
+    } catch (error) { showError(error); } finally { setSaving(false); }
+  };
+
   const commonColumns: ColumnDef<StudentSummaryDto>[] = [
     { accessorKey: 'fullName', header: 'Ism', cell: ({ row }) => <span className="font-medium">{row.original.fullName}</span> },
     { accessorKey: 'studentNumber', header: 'Talaba raqami' },
@@ -470,8 +492,9 @@ export function StudentManagement() {
     ...commonColumns,
     { accessorKey: 'username', header: 'Login' },
     statusColumn,
-    { accessorKey: 'accountStatus', header: 'Akkaunt holati', cell: ({ row }) => <Badge variant={row.original.accountEnabled ? 'default' : 'destructive'}>{row.original.accountStatus}</Badge> },
+    { accessorKey: 'accountStatus', header: 'Akkaunt holati', cell: ({ row }) => <Badge variant={row.original.accountEnabled ? 'default' : 'destructive'}>{row.original.credentialsInitialized ? row.original.accountStatus : 'PAROL BERILMAGAN'}</Badge> },
     { id: 'account-actions', header: () => <div className="text-right">Akkaunt amali</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
+      if (!student.credentialsInitialized) return <div className="text-right"><Button size="sm" variant="outline" onClick={() => { setCredentialTarget(student); setCredentialPassword(''); setCredentialConfirmation(''); }}><KeyRound className="mr-1 h-4 w-4" />Parol berish</Button></div>;
       const shouldEnable = !student.accountEnabled;
       const enableAllowed = student.studentStatus === 'ACTIVE';
       return <div className="text-right"><Button
@@ -520,7 +543,7 @@ export function StudentManagement() {
     /></CardContent></Card>
 
     <Dialog open={isAdding || !!editingStudent} onOpenChange={open => { if (!open) closeStudentDialog(); }}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto"><DialogHeader><DialogTitle>{editingStudent ? "Shaxsiy ma'lumotlarni tahrirlash" : "Talabaning shaxsiy kartochkasi"}</DialogTitle></DialogHeader>
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-6xl"><DialogHeader><DialogTitle>{editingStudent ? "Shaxsiy ma'lumotlarni tahrirlash" : "Talabaning shaxsiy kartochkasi"}</DialogTitle></DialogHeader>
         {!editingStudent && <p className="text-sm text-muted-foreground">Bu yerda faqat shaxsiy ma'lumotlar saqlanadi. O'qishga biriktirish keyingi alohida amalda bajariladi.</p>}
         <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
           <h3 className="border-b pb-2 font-semibold sm:col-span-2">Asosiy ma'lumotlar</h3>
@@ -616,6 +639,18 @@ export function StudentManagement() {
           {accountTarget?.enabled && <p className="text-sm text-muted-foreground">Qayta yoqish faqat akademik holati ACTIVE bo'lgan talaba uchun ruxsat etiladi.</p>}
         </div>
         <DialogFooter><Button variant="outline" onClick={() => { setAccountTarget(null); setAccountReason(''); }}>Bekor qilish</Button><Button variant={accountTarget?.enabled ? 'default' : 'destructive'} disabled={saving || accountReason.trim().length < 5} onClick={submitAccountAccess}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{accountTarget?.enabled ? 'Qayta yoqish' : 'Bloklash'}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={!!credentialTarget} onOpenChange={open => { if (!open) { setCredentialTarget(null); setCredentialPassword(''); setCredentialConfirmation(''); } }}>
+      <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{credentialTarget?.fullName}: dastlabki parolni berish</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-3">
+          <p className="text-sm text-muted-foreground">Login: <b>{credentialTarget?.username}</b>. Kartochka parolsiz yaratilgan; parol faqat shu alohida amalda o'rnatiladi.</p>
+          <Field label="Yangi parol *"><Input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={credentialPassword} onChange={event => setCredentialPassword(event.target.value)} /></Field>
+          <Field label="Parolni takrorlang *"><Input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={credentialConfirmation} onChange={event => setCredentialConfirmation(event.target.value)} /></Field>
+          <p className="text-xs text-muted-foreground">12-128 belgi. Parol login nomini o'z ichiga olmasligi kerak.</p>
+        </div>
+        <DialogFooter><Button variant="outline" onClick={() => { setCredentialTarget(null); setCredentialPassword(''); setCredentialConfirmation(''); }}>Bekor qilish</Button><Button disabled={saving || credentialPassword.length < 12 || credentialPassword !== credentialConfirmation} onClick={submitCredentials}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Parolni o'rnatish</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </div>;

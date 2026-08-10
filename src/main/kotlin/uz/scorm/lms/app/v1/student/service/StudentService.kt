@@ -86,7 +86,7 @@ class StudentService(
         if (studentRepository.existsByStudentNumber(req.studentNumber.trim()))
             throw IllegalArgumentException("Bu talaba raqami band: ${req.studentNumber}")
 
-        val user = userService.register(req.studentNumber.trim(), req.password, "student")
+        val user = userService.registerPendingCredentials(req.studentNumber.trim(), "student")
         user.fullName = listOf(req.lastName.trim(), req.firstName.trim(), normalized(req.middleName)).filterNotNull().joinToString(" ")
         user.email = normalized(req.email)?.lowercase()
         user.phone = normalized(req.phoneNumber)
@@ -317,7 +317,11 @@ class StudentService(
 
         validateDistanceAdmission(req)
 
-        val user = userService.register(req.studentNumber, req.password, "student")
+        val user = if (req.password.isBlank()) {
+            userService.registerPendingCredentials(req.studentNumber, "student")
+        } else {
+            userService.register(req.studentNumber, req.password, "student")
+        }
         user.email = req.email
         user.phone = req.phoneNumber
 
@@ -699,6 +703,7 @@ class StudentService(
         lmsOrientationCompletedAt = s.lmsOrientationCompletedAt,
         username             = s.user.username,
         accountEnabled       = s.user.status == UserStatus.ACTIVE,
+        credentialsInitialized = s.user.credentialsInitialized,
         lastLoginAt          = s.user.lastLoginAt,
         createdAt            = s.createdAt,
         updatedAt            = s.updatedAt,
@@ -722,5 +727,6 @@ class StudentService(
         username      = s.user.username,
         accountStatus = s.user.status,
         accountEnabled = s.user.status == UserStatus.ACTIVE,
+        credentialsInitialized = s.user.credentialsInitialized,
     )
 }

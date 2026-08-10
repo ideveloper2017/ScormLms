@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '@/lib/api';
-import { admitStudent, bulkTransferStudents, changeStudentAccountAccess, createStudent, transitionStudent, updateStudentPersonalProfile, validateLifecycleEvidence } from '../student-api';
+import { admitStudent, bulkTransferStudents, changeStudentAccountAccess, createStudent, setupStudentCredentials, transitionStudent, updateStudentPersonalProfile, validateLifecycleEvidence } from '../student-api';
 
 vi.mock('@/lib/api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -77,6 +77,13 @@ describe('decision 559 student lifecycle guards', () => {
       enabled: false, reason: 'Axborot xavfsizligi murojaati',
     });
     await expect(changeStudentAccountAccess(8, { enabled: true, reason: 'yoq' })).rejects.toThrow('5-500');
+  });
+
+  it('sets the first password only in the separate credential command', async () => {
+    vi.mocked(api.patch).mockResolvedValueOnce({ data: { id: 8, credentialsInitialized: true } } as never);
+    await setupStudentCredentials(8, { newPassword: 'Safe-Initial-2026!' });
+    expect(api.patch).toHaveBeenCalledWith('/students/8/credentials', { newPassword: 'Safe-Initial-2026!' });
+    await expect(setupStudentCredentials(8, { newPassword: 'short' })).rejects.toThrow('12 dan 128');
   });
 
   it('posts one atomic bulk transfer command for distinct students', async () => {

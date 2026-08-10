@@ -84,7 +84,6 @@ class StudentLifecycleWorkflowIntegrationTest {
             permanentDistrict = "Namangan shahri",
             permanentAddress = "Istiqlol ko'chasi, 1-uy",
             studentNumber = "REG-$suffix",
-            password = "Student@12345",
         ))
 
         assertEquals(StudentStatus.REGISTERED, registered.studentStatus)
@@ -143,7 +142,8 @@ class StudentLifecycleWorkflowIntegrationTest {
         assertEquals(targetGroup.id, admitted.student.groupId)
         assertEquals(3, admitted.student.semesterNumber)
         assertEquals(2, admitted.student.courseNumber)
-        assertTrue(admitted.student.accountEnabled)
+        assertFalse(admitted.student.accountEnabled)
+        assertFalse(admitted.student.credentialsInitialized)
         assertEquals(StudentStatus.REGISTERED, admitted.event.fromStatus)
         assertEquals(StudentLifecycleEventType.ADMISSION, admitted.event.eventType)
     }
@@ -163,7 +163,6 @@ class StudentLifecycleWorkflowIntegrationTest {
             birthDate = LocalDate.of(2004, 2, 3),
             gender = Gender.MALE,
             studentNumber = "CASCADE-$suffix",
-            password = "Student@12345",
         ))
 
         val error = assertThrows<IllegalArgumentException> {

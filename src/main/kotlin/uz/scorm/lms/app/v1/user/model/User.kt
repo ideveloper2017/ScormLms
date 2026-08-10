@@ -27,6 +27,9 @@ class User(
     @Column(name = "password_hash", nullable = false)
     var password: String = "",
 
+    @Column(name = "credentials_initialized", nullable = false)
+    var credentialsInitialized: Boolean = true,
+
     @Column(unique = true, name = "jshshir")
     var jshshir: String? = null,
 

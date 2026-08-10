@@ -69,6 +69,7 @@ export interface StudentDto {
     // Tizim
     username: string;
     accountEnabled: boolean;
+    credentialsInitialized: boolean;
     lastLoginAt: string | null;
     createdAt: string | null;
     updatedAt: string | null;
@@ -94,6 +95,7 @@ export interface StudentSummaryDto {
     username: string;
     accountStatus: UserStatus;
     accountEnabled: boolean;
+    credentialsInitialized: boolean;
 }
 
 // ── Create / Update ───────────────────────────────────────────────────────────
@@ -185,7 +187,10 @@ export interface StudentRegistrationRequest {
     currentDistrictId?: number | null;
     currentAddress?: string | null;
     studentNumber: string;
-    password?: string;
+}
+
+export interface StudentCredentialSetupRequest {
+    newPassword: string;
 }
 
 export interface StudentPersonalProfileUpdateRequest {

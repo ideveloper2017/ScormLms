@@ -12,6 +12,7 @@ import {
     StudentLifecycleResultDto,
     StudentUpdateRequest,
     StudentAccountAccessRequest,
+    StudentCredentialSetupRequest,
     StudentBulkTransferRequest,
     StudentBulkTransferResultDto,
     ReinstatementSubjectReportPageDto,
@@ -88,6 +89,17 @@ export async function changeStudentAccountAccess(
         throw new Error("Akkaunt holatini o'zgartirish sababi 5-500 belgi bo'lishi shart");
     }
     const res = await api.patch<StudentSummaryDto>(`/students/${id}/account-access`, { ...req, reason });
+    return res.data;
+}
+
+export async function setupStudentCredentials(
+    id: number,
+    req: StudentCredentialSetupRequest,
+): Promise<StudentSummaryDto> {
+    if (req.newPassword.length < 12 || req.newPassword.length > 128) {
+        throw new Error("Parol 12 dan 128 tagacha belgidan iborat bo'lishi kerak");
+    }
+    const res = await api.patch<StudentSummaryDto>(`/students/${id}/credentials`, req);
     return res.data;
 }
 

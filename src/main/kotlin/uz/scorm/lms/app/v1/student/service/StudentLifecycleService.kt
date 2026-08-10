@@ -99,7 +99,7 @@ class StudentLifecycleService(
             request.educationForm == EducationForm.DISTANCE,
             student.citizenship != Citizenship.UZBEKISTAN,
         )
-        student.user.status = UserStatus.ACTIVE
+        student.user.status = if (student.user.credentialsInitialized) UserStatus.ACTIVE else UserStatus.INACTIVE
         studentRepository.save(student)
 
         val eventRequest = StudentLifecycleRequest(
@@ -224,6 +224,7 @@ class StudentLifecycleService(
         student.studentStatus = toStatus
         student.user.status = when {
             toStatus != StudentStatus.ACTIVE -> UserStatus.INACTIVE
+            !student.user.credentialsInitialized -> UserStatus.INACTIVE
             fromStatus != StudentStatus.ACTIVE -> UserStatus.ACTIVE
             student.user.status == UserStatus.BLOCKED -> UserStatus.BLOCKED
             else -> UserStatus.ACTIVE

@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.patch
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.audit.repository.AuditLogRepository
 import uz.scorm.lms.app.v1.student.dto.StudentAccountAccessRequest
+import uz.scorm.lms.app.v1.student.dto.StudentCredentialSetupRequest
 import uz.scorm.lms.app.v1.student.dto.StudentPersonalProfileUpdateRequest
 import uz.scorm.lms.app.v1.student.dto.StudentRegistrationRequest
 import uz.scorm.lms.app.v1.student.model.Gender
@@ -88,8 +89,8 @@ class StudentAccountWorkflowIntegrationTest {
             birthDate = LocalDate.of(2003, 4, 5),
             gender = Gender.MALE,
             studentNumber = "CARD-$suffix",
-            password = "Student@12345",
         ), requireNotNull(actor.id))
+        assertFalse(created.credentialsInitialized)
         studentService.updatePersonalProfile(requireNotNull(created.id), StudentPersonalProfileUpdateRequest(
             lastName = "Rahimov",
             firstName = "Azizbek",
@@ -100,6 +101,42 @@ class StudentAccountWorkflowIntegrationTest {
         assertTrue(audits.any { it.action == "STUDENT_PERSONAL_CARD_CREATED" })
         assertTrue(audits.any { it.action == "STUDENT_PERSONAL_PROFILE_UPDATED" })
         assertFalse(audits.joinToString("|") { it.details.orEmpty() }.contains(pinfl))
+    }
+
+    @Test
+    fun `kartochka parolsiz yaratiladi va dastlabki parol alohida beriladi`() {
+        val actor = user("credential-admin")
+        val suffix = System.nanoTime().toString()
+        val created = studentService.register(StudentRegistrationRequest(
+            pinfl = suffix.takeLast(14).padStart(14, '5'),
+            lastName = "Oripov",
+            firstName = "Aziz",
+            birthDate = LocalDate.of(2003, 3, 3),
+            gender = Gender.MALE,
+            studentNumber = "CRED-$suffix",
+        ), requireNotNull(actor.id))
+
+        assertFalse(created.credentialsInitialized)
+        assertFalse(created.accountEnabled)
+        assertThrows<IllegalArgumentException> {
+            accountService.setupCredentials(
+                requireNotNull(created.id), StudentCredentialSetupRequest("short"), requireNotNull(actor.id),
+            )
+        }
+
+        val initialized = accountService.setupCredentials(
+            requireNotNull(created.id), StudentCredentialSetupRequest("Safe-Initial-2026!"), requireNotNull(actor.id),
+        )
+        assertTrue(initialized.credentialsInitialized)
+        assertFalse(initialized.accountEnabled)
+        assertEquals(UserStatus.INACTIVE, initialized.accountStatus)
+        assertThrows<IllegalArgumentException> {
+            accountService.setupCredentials(
+                requireNotNull(created.id), StudentCredentialSetupRequest("Another-Safe-2026!"), requireNotNull(actor.id),
+            )
+        }
+        assertTrue(auditLogRepository.findByUsernameOrderByTimestampDesc(requireNotNull(actor.id).toString())
+            .any { it.action == "STUDENT_ACCOUNT_CREDENTIALS_INITIALIZED" })
     }
 
     @Test
