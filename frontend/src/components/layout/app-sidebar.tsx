@@ -95,7 +95,7 @@ const ITEMS = {
   aDepartments:  { name: "Kafedralar",          href: "/admin/departments",  icon: Building        },
   aPrograms:     { name: "Yo'nalishlar",        href: "/admin/programs",     icon: FolderTree      },
   aGroups:       { name: "Guruhlar",            href: "/admin/groups",       icon: Layers3         },
-  aStudentClassifiers: { name: "Talaba klassifikatorlari", href: "/admin/student-classifiers", icon: Globe2 },
+  aStudentClassifiers: { name: "Ma'lumotnomalar", href: "/admin/student-classifiers", icon: Globe2 },
   aSubjects:     { name: "Fanlar",              href: "/admin/subjects",     icon: NotebookText    },
   aStudyPlans:   { name: "O'quv reja",          href: "/admin/study-plans",  icon: BookMarked      },
   aAcademicPeriods: { name: "O'quv yili va semestr", href: "/admin/academic-periods", icon: Calendar },
@@ -133,9 +133,10 @@ function buildNav(role: string): NavGroup[] {
   const ADMIN_NAV: NavGroup[] = [
     { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
     { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.aRoles] },
-    { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aAcademicPeriods, ITEMS.aStudentClassifiers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
+    { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aAcademicPeriods, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
     { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aContentStandard, ITEMS.aCalendar, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves] },
-    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aCompliance559, ITEMS.aAccountability, ITEMS.aBiometric, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.support, ITEMS.aSettings] },
+    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aCompliance559, ITEMS.aAccountability, ITEMS.aBiometric, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.support] },
+    { label: "Sozlamalar",       items: [ITEMS.aStudentClassifiers, ITEMS.aSettings] },
   ];
 
   const groups: Record<string, NavGroup[]> = {
@@ -144,9 +145,10 @@ function buildNav(role: string): NavGroup[] {
     METODIST: [
       { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
       { label: "Ta'lim",           items: [ITEMS.aStudyPlans, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.resources, ITEMS.teaching, ITEMS.exams] },
-      { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aAcademicPeriods, ITEMS.aStudentClassifiers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
+      { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aAcademicPeriods, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
       { label: "Boshqaruv",        items: [ITEMS.aStudents, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.contingent, ITEMS.comms] },
       { label: "Tahlil",           items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.stats, ITEMS.aIntegrations, ITEMS.support] },
+      { label: "Sozlamalar",       items: [ITEMS.aStudentClassifiers] },
     ],
     TEACHER: [
       { label: "Asosiy",         items: [ITEMS.tDashboard] },

@@ -56,7 +56,7 @@ export function AdminStudentClassifiers() {
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ['classifiers'] }); setDialog(null);
-      toast({ title: 'Klassifikator saqlandi' });
+      toast({ title: "Ma'lumotnoma saqlandi" });
     },
     onError: (error) => toast({ title: 'Saqlash rad etildi', description: error instanceof Error ? error.message : 'Server xatosi', variant: 'destructive' }),
   });
@@ -65,7 +65,7 @@ export function AdminStudentClassifiers() {
     onSuccess: async data => {
       client.setQueryData(['classifiers', 'admin', 'import-status'], data);
       await client.invalidateQueries({ queryKey: ['classifiers'], exact: false });
-      toast({ title: 'Rasmiy klassifikator paketi import qilindi', description: `${data.countriesTotal} mamlakat, ${data.regionsTotal} hudud va ${data.districtsTotal} tuman/shahar.` });
+      toast({ title: "Rasmiy ma'lumotnomalar paketi import qilindi", description: `${data.countriesTotal} mamlakat, ${data.regionsTotal} hudud va ${data.districtsTotal} tuman/shahar.` });
     },
     onError: error => toast({ title: 'Import rad etildi', description: error instanceof Error ? error.message : 'Server xatosi', variant: 'destructive' }),
   });
@@ -85,7 +85,7 @@ export function AdminStudentClassifiers() {
   const add = (kind: Kind, disabled = false) => canWrite && <Button disabled={disabled} onClick={() => open(kind)}><Plus className="mr-2 h-4 w-4" />Qo'shish</Button>;
 
   return <div className="space-y-6">
-    <div><h1 className="text-2xl font-bold">Talaba klassifikatorlari</h1><p className="text-sm text-muted-foreground">Fuqarolik mamlakati, hudud va hududga bog'langan tumanlar. Nofaol yozuvlar yangi kartochkalarda ko'rinmaydi.</p></div>
+    <div><h1 className="text-2xl font-bold">Manzil va fuqarolik ma'lumotnomalari</h1><p className="text-sm text-muted-foreground">Fuqarolik mamlakati, hudud va hududga bog'langan tumanlar. Nofaol yozuvlar yangi kartochkalarda ko'rinmaydi.</p></div>
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-4">
         <div className="space-y-1"><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />Rasmiy ma'lumotlar paketi</CardTitle><p className="text-sm text-muted-foreground">ISO 3166-1 mamlakat kodlari, CLDR o'zbekcha nomlari va MHOBT/SOATO hududlari.</p></div>
@@ -109,7 +109,7 @@ export function AdminStudentClassifiers() {
       <TabsContent value="regions"><Card><CardHeader className="flex-row items-center justify-between"><CardTitle>O'zbekiston hududlari</CardTitle>{add('region')}</CardHeader><CardContent>{list(regions.data, 'region')}</CardContent></Card></TabsContent>
       <TabsContent value="districts"><Card><CardHeader className="flex-row items-center justify-between"><CardTitle>Tuman va shaharlar</CardTitle>{add('district', !selectedRegionId)}</CardHeader><CardContent className="space-y-4"><Select value={selectedRegionId} onValueChange={setSelectedRegionId}><SelectTrigger className="max-w-md"><SelectValue placeholder="Hududni tanlang" /></SelectTrigger><SelectContent>{(regions.data ?? []).map(region => <SelectItem key={region.id} value={String(region.id)}>{region.name}</SelectItem>)}</SelectContent></Select>{list(districts.data, 'district')}</CardContent></Card></TabsContent>
     </Tabs>
-    <Dialog open={!!dialog} onOpenChange={value => { if (!value) setDialog(null); }}><DialogContent><DialogHeader><DialogTitle>{dialog?.item ? 'Klassifikatorni tahrirlash' : 'Klassifikator qo\'shish'}</DialogTitle></DialogHeader><div className="space-y-4 py-2">
+    <Dialog open={!!dialog} onOpenChange={value => { if (!value) setDialog(null); }}><DialogContent><DialogHeader><DialogTitle>{dialog?.item ? "Ma'lumotnomani tahrirlash" : "Ma'lumotnoma qo'shish"}</DialogTitle></DialogHeader><div className="space-y-4 py-2">
       {dialog?.kind === 'district' && <div className="space-y-2"><Label>Hudud *</Label><Select value={form.regionId} onValueChange={value => setForm({...form, regionId: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(regions.data ?? []).map(region => <SelectItem key={region.id} value={String(region.id)}>{region.name}</SelectItem>)}</SelectContent></Select></div>}
       <div className="space-y-2"><Label>Kod *</Label><Input value={form.code} maxLength={dialog?.kind === 'country' ? 2 : 30} onChange={event => setForm({...form, code: event.target.value.toUpperCase()})} /></div>
       <div className="space-y-2"><Label>Nomi *</Label><Input value={form.name} onChange={event => setForm({...form, name: event.target.value})} /></div>
