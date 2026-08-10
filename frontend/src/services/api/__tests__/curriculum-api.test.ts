@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { canApproveCurriculum, curriculumInputError, type CurriculumVersion, type SaveCurriculumVersionInput } from "../curriculum-api";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import api from "@/lib/api";
+import { canApproveCurriculum, curriculumApi, curriculumInputError, type CurriculumStudentPage, type CurriculumVersion, type SaveCurriculumVersionInput } from "../curriculum-api";
+
+vi.mock("@/lib/api");
 
 const input = (patch: Partial<SaveCurriculumVersionInput> = {}): SaveCurriculumVersionInput => ({
   programId: 1,
@@ -22,6 +25,8 @@ const version = (patch: Partial<CurriculumVersion> = {}): CurriculumVersion => (
 });
 
 describe("decision 559 curriculum guards", () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it("matches credential and normative basis", () => {
     expect(curriculumInputError(input())).toBeNull();
     expect(curriculumInputError(input({ normativeBasisType: "PROFESSIONAL_STANDARD" }))).toContain("Davlat diplomi");
@@ -38,5 +43,29 @@ describe("decision 559 curriculum guards", () => {
     expect(canApproveCurriculum(version({ subjectCount: 1 }))).toBe(true);
     expect(canApproveCurriculum(version({ status: "APPROVED", subjectCount: 1 }))).toBe(false);
   });
-});
 
+  it("loads students derived from the selected curriculum program and year", async () => {
+    const page: CurriculumStudentPage = {
+      items: [{
+        studentId: 7,
+        studentNumber: "ST-007",
+        fullName: "Karimov Ali",
+        status: "ACTIVE",
+        groupId: 3,
+        groupName: "KI-26",
+        courseNumber: 2,
+        semesterNumber: 3,
+        educationForm: "DISTANCE",
+        educationLanguage: "uz",
+      }],
+      page: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    };
+    vi.mocked(api.get).mockResolvedValue({ data: page });
+
+    await expect(curriculumApi.listStudents(11, { search: "karimov", status: "ACTIVE", page: 0, size: 20 })).resolves.toEqual(page);
+    expect(api.get).toHaveBeenCalledWith("/curricula/11/students", { params: { search: "karimov", status: "ACTIVE", page: 0, size: 20 } });
+  });
+});

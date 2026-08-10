@@ -20,6 +20,10 @@ import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
+import uz.scorm.lms.app.v1.student.model.Gender
+import uz.scorm.lms.app.v1.student.model.StudentProfile
+import uz.scorm.lms.app.v1.student.model.StudentStatus
+import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.LocalDate
@@ -32,6 +36,7 @@ class ProgramCurriculumWorkflowIntegrationTest {
     @Autowired private lateinit var programRepository: ProgramRepository
     @Autowired private lateinit var subjectRepository: SubjectRepository
     @Autowired private lateinit var userRepository: UserRepository
+    @Autowired private lateinit var studentRepository: StudentRepository
 
     @Test
     fun `19-band curriculum normativ asos fan snapshoti va mustaqil tasdiq bilan yuritiladi`() {
@@ -96,6 +101,29 @@ class ProgramCurriculumWorkflowIntegrationTest {
         assertTrue(noItems.message.orEmpty().contains("kamida bitta fan"))
     }
 
+    @Test
+    fun `rejaga biriktirilgan talabalar qabuldagi dastur va oquv yilidan hosil qilinadi`() {
+        val author = user("curriculum-student-author")
+        val program = program("curriculum-student-program")
+        val curriculum = service.create(request(requireNotNull(program.id), versionSuffix = "students"), requireNotNull(author.id))
+        student(program, "Karimov", StudentStatus.ACTIVE, "2026-2027")
+        student(program, "Tursunov", StudentStatus.SUSPENDED, "2026-2027")
+        student(program, "Ro'yxat", StudentStatus.REGISTERED, "2026-2027")
+        student(program, "Boshqa yil", StudentStatus.ACTIVE, "2025-2026")
+
+        val allAssigned = service.students(curriculum.id, null, null, 0, 10)
+        assertEquals(2, allAssigned.totalElements)
+        assertEquals(setOf(StudentStatus.ACTIVE, StudentStatus.SUSPENDED), allAssigned.items.map { it.status }.toSet())
+
+        val activeSearch = service.students(curriculum.id, "karimov", StudentStatus.ACTIVE, 0, 10)
+        assertEquals(1, activeSearch.totalElements)
+        assertTrue(activeSearch.items.single().fullName.startsWith("Karimov"))
+
+        assertThrows<IllegalArgumentException> {
+            service.students(curriculum.id, null, StudentStatus.REGISTERED, 0, 10)
+        }
+    }
+
     private fun request(
         programId: Long,
         basis: CurriculumNormativeBasisType = CurriculumNormativeBasisType.STATE_EDUCATION_STANDARD,
@@ -133,6 +161,21 @@ class ProgramCurriculumWorkflowIntegrationTest {
         credits = credits,
         active = true,
         program = program,
+    ))
+
+    private fun student(program: Program, lastName: String, status: StudentStatus, academicYear: String) = studentRepository.save(StudentProfile(
+        user = user("curriculum-student"),
+        pinfl = System.nanoTime().toString().takeLast(14).padStart(14, '7'),
+        lastName = lastName,
+        firstName = "Ali",
+        birthDate = LocalDate.of(2002, 2, 2),
+        gender = Gender.MALE,
+        studentNumber = "CUR-ST-${System.nanoTime()}",
+        programId = program.id,
+        academicYear = academicYear,
+        semesterNumber = 3,
+        courseNumber = 2,
+        studentStatus = status,
     ))
 
     private fun user(username: String) = userRepository.save(User(

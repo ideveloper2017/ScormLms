@@ -2,10 +2,15 @@ package uz.scorm.lms.app.v1.curriculum.service
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
+import uz.scorm.lms.app.v1.academicperiod.service.AcademicPeriodService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.curriculum.dto.AddCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.ApproveCurriculumRequest
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSubjectDto
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumStudentDto
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumStudentPageDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumVersionDto
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
@@ -16,6 +21,9 @@ import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
+import uz.scorm.lms.app.v1.group.repository.GroupRepository
+import uz.scorm.lms.app.v1.student.model.StudentStatus
+import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.Instant
@@ -27,6 +35,9 @@ class ProgramCurriculumService(
     private val subjectItemRepository: ProgramCurriculumSubjectRepository,
     private val programRepository: ProgramRepository,
     private val subjectRepository: SubjectRepository,
+    private val studentRepository: StudentRepository,
+    private val groupRepository: GroupRepository,
+    private val academicPeriodService: AcademicPeriodService,
     private val userRepository: UserRepository,
     private val auditService: AuditService,
 ) {
@@ -36,6 +47,55 @@ class ProgramCurriculumService(
 
     @Transactional(readOnly = true)
     fun get(id: Long): CurriculumVersionDto = toDto(requireVersion(id))
+
+    @Transactional(readOnly = true)
+    fun students(
+        id: Long,
+        search: String?,
+        status: StudentStatus?,
+        page: Int,
+        size: Int,
+    ): CurriculumStudentPageDto {
+        require(page >= 0) { "Sahifa manfiy bo'lishi mumkin emas" }
+        require(size in 10..100) { "Sahifa hajmi 10-100 oralig'ida bo'lishi shart" }
+        val normalizedSearch = search?.trim()?.lowercase().orEmpty()
+        require(normalizedSearch.length <= 100) { "Qidiruv matni 100 belgidan oshmasligi kerak" }
+        require(status != StudentStatus.REGISTERED) { "REGISTERED talaba o'quv rejaga akademik biriktirilmagan" }
+
+        val version = requireVersion(id)
+        val students = studentRepository.findCurriculumStudents(
+            programId = requireNotNull(version.program.id),
+            academicYear = version.academicYear,
+            unassignedStatus = StudentStatus.REGISTERED,
+            status = status,
+            search = normalizedSearch,
+            pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("lastName").ascending().and(Sort.by("firstName").ascending()).and(Sort.by("id").ascending()),
+            ),
+        )
+        val groupNames = groupRepository.findAllById(students.content.mapNotNull { it.groupId }.distinct())
+            .associate { requireNotNull(it.id) to it.name }
+        return CurriculumStudentPageDto(
+            items = students.content.map { student -> CurriculumStudentDto(
+                studentId = requireNotNull(student.id),
+                studentNumber = student.studentNumber,
+                fullName = student.fullName,
+                status = student.studentStatus,
+                groupId = student.groupId,
+                groupName = student.groupId?.let(groupNames::get),
+                courseNumber = student.courseNumber,
+                semesterNumber = student.semesterNumber,
+                educationForm = student.educationForm,
+                educationLanguage = student.educationLanguage,
+            ) },
+            page = students.number,
+            size = students.size,
+            totalElements = students.totalElements,
+            totalPages = students.totalPages,
+        )
+    }
 
     @Transactional
     fun create(request: SaveCurriculumVersionRequest, actorId: Long): CurriculumVersionDto {
@@ -100,7 +160,7 @@ class ProgramCurriculumService(
         require(!code.isNullOrBlank() && code.length <= 100) { "Curriculum fanining kodi majburiy" }
         val credits = subject.credits
         require(credits != null && credits in 1..60) { "Curriculum fanining krediti 1..60 oralig'ida bo'lishi kerak" }
-        require(request.semester in 1..12) { "Semestr 1..12 oralig'ida bo'lishi kerak" }
+        academicPeriodService.requireActiveSemester(request.semester)
         require(!subjectItemRepository.existsByCurriculumVersionIdAndSubjectIdAndDeletedFalse(id, request.subjectId)) {
             "Fan ushbu curriculumga allaqachon qo'shilgan"
         }
@@ -188,6 +248,7 @@ class ProgramCurriculumService(
         require(request.academicYear.matches(Regex("\\d{4}-\\d{4}"))) { "O'quv yili YYYY-YYYY formatida bo'lishi kerak" }
         val (firstYear, secondYear) = request.academicYear.split("-").map(String::toInt)
         require(secondYear == firstYear + 1) { "O'quv yili ketma-ket ikki yildan iborat bo'lishi kerak" }
+        academicPeriodService.requireActiveYear(request.academicYear)
         val academicFrom = LocalDate.of(firstYear, 9, 1)
         val academicUntil = LocalDate.of(secondYear, 8, 31)
         require(!request.validFrom.isAfter(academicFrom) && !request.validUntil.isBefore(academicUntil)) {
@@ -244,4 +305,3 @@ class ProgramCurriculumService(
         )
     }
 }
-

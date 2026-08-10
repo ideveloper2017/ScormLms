@@ -4,8 +4,10 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
+import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.repository.query.Param
 import jakarta.persistence.LockModeType
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.model.StudentStatus
@@ -87,4 +89,58 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
         educationForm: EducationForm,
         studentStatus: StudentStatus,
     ): List<StudentProfile>
+
+    @EntityGraph(attributePaths = ["user"])
+    @Query("""
+        select student from StudentProfile student
+        where student.programId = :programId
+          and student.academicYear = :academicYear
+          and student.studentStatus <> :unassignedStatus
+          and (:status is null or student.studentStatus = :status)
+          and (
+            :search = ''
+            or lower(student.studentNumber) like concat('%', :search, '%')
+            or lower(student.lastName) like concat('%', :search, '%')
+            or lower(student.firstName) like concat('%', :search, '%')
+            or lower(coalesce(student.middleName, '')) like concat('%', :search, '%')
+          )
+    """)
+    fun findCurriculumStudents(
+        @Param("programId") programId: Long,
+        @Param("academicYear") academicYear: String,
+        @Param("unassignedStatus") unassignedStatus: StudentStatus,
+        @Param("status") status: StudentStatus?,
+        @Param("search") search: String,
+        pageable: Pageable,
+    ): Page<StudentProfile>
+
+    @EntityGraph(attributePaths = ["user"])
+    @Query("""
+        select student from StudentProfile student
+        where student.programId = :programId
+          and student.academicYear = :academicYear
+          and student.semesterNumber = :semester
+          and student.studentStatus = :status
+          and (
+            :search = ''
+            or lower(student.studentNumber) like concat('%', :search, '%')
+            or lower(student.lastName) like concat('%', :search, '%')
+            or lower(student.firstName) like concat('%', :search, '%')
+            or lower(coalesce(student.middleName, '')) like concat('%', :search, '%')
+          )
+          and not exists (
+            select membership.id from AcademicSubjectGroupMembership membership
+            where membership.student.id = student.id
+              and membership.curriculumSubject.id = :curriculumSubjectId
+          )
+    """)
+    fun findAcademicSubjectGroupCandidates(
+        @Param("programId") programId: Long,
+        @Param("academicYear") academicYear: String,
+        @Param("semester") semester: Int,
+        @Param("status") status: StudentStatus,
+        @Param("curriculumSubjectId") curriculumSubjectId: Long,
+        @Param("search") search: String,
+        pageable: Pageable,
+    ): Page<StudentProfile>
 }

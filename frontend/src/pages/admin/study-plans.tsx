@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, BookMarked, CheckCircle2, Plus, Search, Trash2 } from "lucide-react";
+import { Archive, BookMarked, CheckCircle2, Plus, Search, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { listPrograms, listSubjects } from "@/lib/academic-api";
 import { hasAuthority } from "@/lib/rbac-api";
-import { canApproveCurriculum, curriculumApi, curriculumInputError, type CurriculumCredentialType, type CurriculumPlanItemType, type CurriculumVersion, type SaveCurriculumVersionInput } from "@/services/api/curriculum-api";
+import { academicPeriodApi } from "@/services/api/academic-period-api";
+import { canApproveCurriculum, curriculumApi, curriculumInputError, type CurriculumCredentialType, type CurriculumPlanItemType, type CurriculumStudentStatus, type CurriculumVersion, type SaveCurriculumVersionInput } from "@/services/api/curriculum-api";
 
 const currentAcademicYear = () => {
   const now = new Date();
@@ -44,16 +45,40 @@ export function AdminStudyPlans() {
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<SaveCurriculumVersionInput>(initialForm);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedPanel, setSelectedPanel] = useState<"subjects" | "students">("subjects");
+  const [studentSearchInput, setStudentSearchInput] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [studentStatus, setStudentStatus] = useState<CurriculumStudentStatus | "">("");
+  const [studentPage, setStudentPage] = useState(0);
   const [subjectForm, setSubjectForm] = useState<{ subjectId: number; semester: number; planItemType: CurriculumPlanItemType }>({ subjectId: 0, semester: 1, planItemType: "REQUIRED" });
   const [approving, setApproving] = useState<CurriculumVersion | null>(null);
   const [approval, setApproval] = useState({ approvalOrderNumber: "", approvalOrderDate: new Date().toISOString().slice(0, 10) });
   const curricula = useQuery({ queryKey: ["curricula"], queryFn: curriculumApi.list });
   const programs = useQuery({ queryKey: ["programs", "curriculum-options"], queryFn: () => listPrograms() });
+  const academicYears = useQuery({ queryKey: ["academic-periods", "years", "active"], queryFn: () => academicPeriodApi.listYears() });
+  const semesterDefinitions = useQuery({ queryKey: ["academic-periods", "semesters", "active"], queryFn: () => academicPeriodApi.listSemesters() });
   const selected = curricula.data?.find((item) => item.id === selectedId) ?? null;
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setStudentSearch(studentSearchInput.trim());
+      setStudentPage(0);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [studentSearchInput]);
   const subjects = useQuery({
     queryKey: ["subjects", "curriculum-options", selected?.programId],
     queryFn: () => listSubjects(selected!.programId),
     enabled: !!selected && selected.status === "DRAFT",
+  });
+  const assignedStudents = useQuery({
+    queryKey: ["curricula", selectedId, "students", studentSearch, studentStatus, studentPage],
+    queryFn: () => curriculumApi.listStudents(selectedId!, {
+      search: studentSearch || undefined,
+      status: studentStatus || undefined,
+      page: studentPage,
+      size: 20,
+    }),
+    enabled: !!selectedId && selectedPanel === "students",
   });
   const refresh = () => client.invalidateQueries({ queryKey: ["curricula"] });
   const fail = (error: Error) => toast({ variant: "destructive", title: "Amal bajarilmadi", description: error.message });
@@ -91,6 +116,11 @@ export function AdminStudyPlans() {
     normativeBasisType: credentialType === "STATE_DIPLOMA" ? "STATE_EDUCATION_STANDARD" : "PROFESSIONAL_STANDARD",
   });
   const setAcademicYear = (academicYear: string) => setForm({ ...form, academicYear, ...datesForYear(academicYear) });
+  const openPanel = (id: number, panel: "subjects" | "students") => {
+    setSelectedId(id);
+    setSelectedPanel(panel);
+    setStudentPage(0);
+  };
 
   return <div className="space-y-6 p-3 sm:p-6">
     <div><h1 className="text-2xl font-bold">O'quv reja va curriculum</h1><p className="text-sm text-muted-foreground">559-son qaror 19-bandi: dastur, standart, malaka talabi, fanlar snapshoti va mustaqil tasdiq.</p></div>
@@ -98,7 +128,7 @@ export function AdminStudyPlans() {
     {canWrite && <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookMarked className="h-5 w-5" />Yangi curriculum versiyasi</CardTitle><CardDescription>Faqat faol masofaviy dastur uchun; amal qilish muddati butun o'quv yilini qoplashi kerak.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
       <div className="space-y-2"><Label>Ta'lim dasturi</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.programId} onChange={(event) => setForm({ ...form, programId: Number(event.target.value) })}><option value={0}>Dastur tanlang</option>{(programs.data ?? []).filter((program) => program.active && program.distanceEnabled).map((program) => <option key={program.id} value={program.id}>{program.code ? `${program.code} - ` : ""}{program.name}</option>)}</select></div>
       <div className="space-y-2"><Label>Versiya kodi</Label><Input value={form.versionCode} onChange={(event) => setForm({ ...form, versionCode: event.target.value })} placeholder="CUR-2026-01" /></div>
-      <div className="space-y-2"><Label>O'quv yili</Label><Input value={form.academicYear} onChange={(event) => setAcademicYear(event.target.value)} /></div>
+      <div className="space-y-2"><Label>O'quv yili</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.academicYear} onChange={(event) => setAcademicYear(event.target.value)}><option value="">O'quv yilini tanlang</option>{(academicYears.data ?? []).map((year) => <option key={year.id} value={year.code}>{year.code}{year.current ? " (joriy)" : ""}</option>)}</select></div>
       <div className="space-y-2"><Label>Beriladigan hujjat</Label><div className="flex gap-2"><Button type="button" variant={form.credentialType === "STATE_DIPLOMA" ? "default" : "outline"} onClick={() => setCredential("STATE_DIPLOMA")}>Davlat diplomi</Button><Button type="button" variant={form.credentialType === "NON_STATE_CREDENTIAL" ? "default" : "outline"} onClick={() => setCredential("NON_STATE_CREDENTIAL")}>Nodavlat hujjat</Button></div></div>
       <div className="space-y-2 md:col-span-2"><Label>{form.credentialType === "STATE_DIPLOMA" ? "Davlat ta'lim standarti rekviziti" : "Kasbiy standart rekviziti"}</Label><Input value={form.standardReference} onChange={(event) => setForm({ ...form, standardReference: event.target.value })} placeholder="Rasmiy hujjat raqami va reestr manzili" /></div>
       <div className="space-y-2 md:col-span-2"><Label>Malaka talablari rekviziti</Label><Input value={form.qualificationRequirementsReference} onChange={(event) => setForm({ ...form, qualificationRequirementsReference: event.target.value })} /></div>
@@ -109,9 +139,43 @@ export function AdminStudyPlans() {
     </CardContent></Card>}
 
     <div className="relative max-w-md"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-10" placeholder="Dastur, versiya yoki standart bo'yicha qidiring" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
-    <div className="grid gap-4 lg:grid-cols-2">{filtered.map((version) => <Card key={version.id} className={selectedId === version.id ? "ring-2 ring-primary" : ""}><CardHeader><div className="flex justify-between gap-3"><div><CardTitle className="text-lg">{version.programName}</CardTitle><CardDescription>{version.versionCode} · {version.academicYear}</CardDescription></div><Badge>{version.status}</Badge></div></CardHeader><CardContent className="space-y-3"><p className="text-sm"><b>Asos:</b> {version.normativeBasisType === "STATE_EDUCATION_STANDARD" ? "Davlat ta'lim standarti" : "Kasbiy standart"}<br/>{version.standardReference}</p><p className="text-sm"><b>Malaka talabi:</b> {version.qualificationRequirementsReference}</p><p className="rounded-md bg-muted p-3 text-sm">{version.subjectCount} fan · {version.totalCredits} kredit · {version.validFrom} - {version.validUntil}</p>{version.approvalOrderNumber && <p className="text-sm text-emerald-700"><CheckCircle2 className="mr-1 inline h-4 w-4" />{version.approvalOrderNumber}, {version.approvalOrderDate} · {version.approvedByName}</p>}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedId(version.id)}>Fanlar</Button>{canWrite && canApproveCurriculum(version) && <Button size="sm" onClick={() => setApproving(version)}>Tasdiqlash</Button>}{canWrite && version.status === "APPROVED" && <Button size="sm" variant="outline" onClick={() => archive.mutate(version.id)}><Archive className="mr-1 h-3 w-3" />Arxivlash</Button>}</div></CardContent></Card>)}{filtered.length === 0 && <Card className="lg:col-span-2"><CardContent className="py-10 text-center text-muted-foreground">Curriculum versiyasi topilmadi.</CardContent></Card>}</div>
+    <div className="grid gap-4 lg:grid-cols-2">{filtered.map((version) => <Card key={version.id} className={selectedId === version.id ? "ring-2 ring-primary" : ""}><CardHeader><div className="flex justify-between gap-3"><div><CardTitle className="text-lg">{version.programName}</CardTitle><CardDescription>{version.versionCode} · {version.academicYear}</CardDescription></div><Badge>{version.status}</Badge></div></CardHeader><CardContent className="space-y-3"><p className="text-sm"><b>Asos:</b> {version.normativeBasisType === "STATE_EDUCATION_STANDARD" ? "Davlat ta'lim standarti" : "Kasbiy standart"}<br/>{version.standardReference}</p><p className="text-sm"><b>Malaka talabi:</b> {version.qualificationRequirementsReference}</p><p className="rounded-md bg-muted p-3 text-sm">{version.subjectCount} fan · {version.totalCredits} kredit · {version.validFrom} - {version.validUntil}</p>{version.approvalOrderNumber && <p className="text-sm text-emerald-700"><CheckCircle2 className="mr-1 inline h-4 w-4" />{version.approvalOrderNumber}, {version.approvalOrderDate} · {version.approvedByName}</p>}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => openPanel(version.id, "subjects")}>Fanlar</Button><Button size="sm" variant="outline" onClick={() => openPanel(version.id, "students")}><Users className="mr-1 h-3 w-3" />Biriktirilgan talabalar</Button>{canWrite && canApproveCurriculum(version) && <Button size="sm" onClick={() => setApproving(version)}>Tasdiqlash</Button>}{canWrite && version.status === "APPROVED" && <Button size="sm" variant="outline" onClick={() => archive.mutate(version.id)}><Archive className="mr-1 h-3 w-3" />Arxivlash</Button>}</div></CardContent></Card>)}{filtered.length === 0 && <Card className="lg:col-span-2"><CardContent className="py-10 text-center text-muted-foreground">Curriculum versiyasi topilmadi.</CardContent></Card>}</div>
 
-    {selected && <Card><CardHeader><CardTitle>{selected.versionCode}: fanlar snapshoti</CardTitle><CardDescription>{selected.status === "DRAFT" ? "Fanlar faqat qoralamada o'zgartiriladi; tasdiqda joriy kod, nom va kredit snapshot qilinadi." : "Tasdiqlangan tarkib o'zgarmas audit dalilidir."}</CardDescription></CardHeader><CardContent className="space-y-3">{canWrite && selected.status === "DRAFT" && <div className="grid gap-2 rounded-md border p-3 md:grid-cols-4"><select className="h-10 rounded-md border bg-background px-3 text-sm md:col-span-2" value={subjectForm.subjectId} onChange={(event) => setSubjectForm({ ...subjectForm, subjectId: Number(event.target.value) })}><option value={0}>Faol fanni tanlang</option>{(subjects.data ?? []).filter((subject) => subject.active && subject.code && subject.credits && !selected.subjects.some((item) => item.subjectId === subject.id)).map((subject) => <option key={subject.id} value={subject.id}>{subject.code} - {subject.name} ({subject.credits} kr)</option>)}</select><Input type="number" min={1} max={12} value={subjectForm.semester} onChange={(event) => setSubjectForm({ ...subjectForm, semester: Number(event.target.value) })} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={subjectForm.planItemType} onChange={(event) => setSubjectForm({ ...subjectForm, planItemType: event.target.value as CurriculumPlanItemType })}><option value="REQUIRED">Majburiy</option><option value="ELECTIVE">Tanlov</option></select><Button className="md:col-span-4 md:w-fit" disabled={!subjectForm.subjectId || subjectForm.semester < 1 || subjectForm.semester > 12 || addSubject.isPending} onClick={() => addSubject.mutate()}>Fan qo'shish</Button></div>}{selected.subjects.map((subject) => <div key={subject.id} className="flex flex-col justify-between gap-2 rounded-md border p-3 sm:flex-row sm:items-center"><div><p className="font-medium">{subject.subjectCode} · {subject.subjectName}</p><p className="text-xs text-muted-foreground">{subject.semester}-semestr · {subject.credits} kredit · {subject.planItemType === "REQUIRED" ? "Majburiy" : "Tanlov"}</p></div>{canWrite && selected.status === "DRAFT" && <Button size="sm" variant="ghost" onClick={() => removeSubject.mutate({ versionId: selected.id, itemId: subject.id })}><Trash2 className="h-4 w-4 text-destructive" /></Button>}</div>)}{selected.subjects.length === 0 && <p className="py-6 text-center text-muted-foreground">Fanlar hali qo'shilmagan.</p>}</CardContent></Card>}
+    {selected && <Card>
+      <CardHeader><CardTitle>{selected.versionCode}: fanlar snapshoti</CardTitle><CardDescription>{selected.status === "DRAFT" ? "Fanlar faqat qoralamada o'zgartiriladi; tasdiqda joriy kod, nom va kredit snapshot qilinadi." : "Tasdiqlangan tarkib o'zgarmas audit dalilidir."}</CardDescription></CardHeader>
+      <CardContent className="space-y-3">
+        {canWrite && selected.status === "DRAFT" && <div className="grid gap-2 rounded-md border p-3 md:grid-cols-4">
+          <select className="h-10 rounded-md border bg-background px-3 text-sm md:col-span-2" value={subjectForm.subjectId} onChange={(event) => setSubjectForm({ ...subjectForm, subjectId: Number(event.target.value) })}><option value={0}>Faol fanni tanlang</option>{(subjects.data ?? []).filter((subject) => subject.active && subject.code && subject.credits && !selected.subjects.some((item) => item.subjectId === subject.id)).map((subject) => <option key={subject.id} value={subject.id}>{subject.code} - {subject.name} ({subject.credits} kr)</option>)}</select>
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={subjectForm.semester} onChange={(event) => setSubjectForm({ ...subjectForm, semester: Number(event.target.value) })}>{(semesterDefinitions.data ?? []).map((semester) => <option key={semester.id} value={semester.semesterNumber}>{semester.nameUz} ({semester.courseNumber}-kurs)</option>)}</select>
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={subjectForm.planItemType} onChange={(event) => setSubjectForm({ ...subjectForm, planItemType: event.target.value as CurriculumPlanItemType })}><option value="REQUIRED">Majburiy</option><option value="ELECTIVE">Tanlov</option></select>
+          <Button className="md:col-span-4 md:w-fit" disabled={!subjectForm.subjectId || !(semesterDefinitions.data ?? []).some((semester) => semester.semesterNumber === subjectForm.semester) || addSubject.isPending} onClick={() => addSubject.mutate()}>Fan qo'shish</Button>
+        </div>}
+        {selected.subjects.map((subject) => <div key={subject.id} className="flex flex-col justify-between gap-2 rounded-md border p-3 sm:flex-row sm:items-center"><div><p className="font-medium">{subject.subjectCode} · {subject.subjectName}</p><p className="text-xs text-muted-foreground">{subject.semester}-semestr · {subject.credits} kredit · {subject.planItemType === "REQUIRED" ? "Majburiy" : "Tanlov"}</p></div>{canWrite && selected.status === "DRAFT" && <Button size="sm" variant="ghost" onClick={() => removeSubject.mutate({ versionId: selected.id, itemId: subject.id })}><Trash2 className="h-4 w-4 text-destructive" /></Button>}</div>)}
+        {selected.subjects.length === 0 && <p className="py-6 text-center text-muted-foreground">Fanlar hali qo'shilmagan.</p>}
+      </CardContent>
+    </Card>}
+
+    {selected && selectedPanel === "students" && <Card>
+      <CardHeader>
+        <CardTitle>{selected.versionCode}: rejaga biriktirilgan talabalar</CardTitle>
+        <CardDescription>Ro'yxat alohida nusxa emas: {selected.programName} va {selected.academicYear} bo'yicha akademik qabul ma'lumotidan avtomatik hosil qilinadi.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-10" value={studentSearchInput} onChange={(event) => setStudentSearchInput(event.target.value)} placeholder="F.I.Sh. yoki talaba raqami" /></div>
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={studentStatus} onChange={(event) => { setStudentStatus(event.target.value as CurriculumStudentStatus | ""); setStudentPage(0); }}>
+            <option value="">Barcha akademik statuslar</option><option value="ACTIVE">Faol</option><option value="SUSPENDED">Akademik ta'til</option><option value="EXPELLED">Chetlashtirilgan</option><option value="GRADUATED">Bitirgan</option>
+          </select>
+        </div>
+        {assignedStudents.isLoading && <p className="py-6 text-center text-muted-foreground">Talabalar yuklanmoqda...</p>}
+        {assignedStudents.isError && <p className="py-6 text-center text-destructive">Talabalar ro'yxatini yuklab bo'lmadi.</p>}
+        {assignedStudents.data?.items.map((student) => <div key={student.studentId} className="grid gap-2 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div><p className="font-medium">{student.fullName}</p><p className="text-xs text-muted-foreground">{student.studentNumber} · {student.groupName ?? "Guruh biriktirilmagan"} · {student.courseNumber}-kurs · {student.semesterNumber ?? "—"}-semestr</p></div><Badge variant="outline">{student.status}</Badge>
+        </div>)}
+        {assignedStudents.data && assignedStudents.data.items.length === 0 && <p className="py-6 text-center text-muted-foreground">Ushbu reja bo'yicha akademik biriktirilgan talaba topilmadi.</p>}
+        {assignedStudents.data && assignedStudents.data.totalPages > 0 && <div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Jami: {assignedStudents.data.totalElements}</p><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={studentPage === 0} onClick={() => setStudentPage((page) => page - 1)}>Oldingi</Button><span className="text-sm">{assignedStudents.data.page + 1} / {assignedStudents.data.totalPages}</span><Button variant="outline" size="sm" disabled={assignedStudents.data.page + 1 >= assignedStudents.data.totalPages} onClick={() => setStudentPage((page) => page + 1)}>Keyingi</Button></div></div>}
+      </CardContent>
+    </Card>}
 
     <Dialog open={!!approving} onOpenChange={(open) => { if (!open) setApproving(null); }}><DialogContent><DialogHeader><DialogTitle>Curriculumni tasdiqlash</DialogTitle><DialogDescription>Muallifdan boshqa akademik vakolatli foydalanuvchi buyruq rekvizitini kiritadi. Tasdiqdan keyin tarkib tahrirlanmaydi.</DialogDescription></DialogHeader><div className="space-y-3"><div className="space-y-2"><Label>Tasdiqlash buyrug'i raqami</Label><Input value={approval.approvalOrderNumber} onChange={(event) => setApproval({ ...approval, approvalOrderNumber: event.target.value })} /></div><div className="space-y-2"><Label>Buyruq sanasi</Label><Input type="date" max={new Date().toISOString().slice(0, 10)} value={approval.approvalOrderDate} onChange={(event) => setApproval({ ...approval, approvalOrderDate: event.target.value })} /></div></div><DialogFooter><Button variant="outline" onClick={() => setApproving(null)}>Bekor qilish</Button><Button disabled={!approval.approvalOrderNumber.trim() || !approval.approvalOrderDate || approve.isPending} onClick={() => approve.mutate()}>Tasdiqlash</Button></DialogFooter></DialogContent></Dialog>
   </div>;

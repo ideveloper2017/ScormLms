@@ -95,9 +95,10 @@ Lokal kodda o'quv reja/curriculum versiyalash, fanlar, guruhlar, kurslar, indivi
 
 | ID | Ish | Holat | Qabul mezoni |
 |---|---|---|---|
-| UX-EDU-01 | Ta'lim jarayoni navigatsiyasi va mavjud kontraktlarni gap-audit qilish | KEYINGI | `O'quv reja → biriktirilgan talabalar → curriculum → o'quv yili → semestr → fan guruhi → fan → baholash → vedmost` xaritasi mavjud backend/frontend bilan hujjatlashtiriladi, dublikat modul yaratilmaydi |
-| UX-EDU-02 | O'quv reja va unga talabalarni biriktirishni yagona workflow qilish | REJADA | Tasdiqlangan curriculum/reja, akademik yil va semestr bo'yicha talabalar atomar biriktiriladi; mavjud admission va enrollment qoidalari qayta ishlatiladi |
-| UX-EDU-03 | O'quv yili, semestr va fan guruhini boshqariladigan klassifikatorga ajratish | REJADA | Faol davrlar, semestr chegaralari va fan guruhlari backendda tekshiriladi; erkin matnli yil/semestr yozuvi yangi oqimlarda ishlatilmaydi |
+| UX-EDU-01 | Ta'lim jarayoni navigatsiyasi va mavjud kontraktlarni gap-audit qilish | BAJARILDI | V68 mavjud curriculum, admission, course enrollment, fan, jadval, nazorat va baho modullarini xaritaladi; alohida curriculum assignment jadvali ma'lumotni takrorlashi aniqlandi |
+| UX-EDU-02 | O'quv reja va unga talabalarni biriktirishni yagona workflow qilish | BAJARILDI | V68 `programId + academicYear` admission bog'lanishidan hosil qilinadigan read-only roster yaratdi; `REGISTERED` kartochkalar chiqarib tashlanadi, status/qidiruv/pagination serverda ishlaydi va yangi jadval/migratsiya kiritilmadi |
+| UX-EDU-03A | O'quv yili va semestrni boshqariladigan katalogga ajratish | BAJARILDI | V69 V54 orqali tarixiy snapshotlarni o'zgartirmaydigan yil/semestr katalogi, `ACADEMIC_READ/WRITE` API, admin sahifa va admission/curriculum faol-katalog gate'larini qo'shdi |
+| UX-EDU-03B | Fan guruhini curriculum va semestrga bog'langan katalog qilish | KEYINGI | Fan guruhi dastur, curriculum, o'quv yili, semestr va fan kesimida unique bo'ladi; mavjud course/group ma'lumotlari taxminiy bog'lanmaydi |
 | UX-EDU-04 | Baholash va vedmostni mavjud exam/gradebook bilan birlashtirish | REJADA | Alohida parallel baho modeli yaratilmaydi; yopilgan nazorat, attendance va auditli natijadan rasmiy vedmost hosil qilinadi |
 
 ## Tavsiya etilgan ketma-ketlik
@@ -112,4 +113,7 @@ Lokal kodda o'quv reja/curriculum versiyalash, fanlar, guruhlar, kurslar, indivi
 8. ~~`UX-STU-05-UAT` — V52 legacy PostgreSQL nusxasida V53 va ikki importni tekshirish.~~ BAJARILDI.
 9. ~~`UX-STU-05-E2E` — real HTTP RBAC, admin import paneli va kaskad selectorlarni tekshirish.~~ BAJARILDI.
 10. ~~`UX-STU-07` — tiklangan talabalar fanlari hisobotini qo'shish.~~ BAJARILDI.
-11. `UX-EDU-01` — Ta'lim jarayonidagi mavjud imkoniyatlarni bitta xaritaga solish va birinchi real gapni tanlash.
+11. ~~`UX-EDU-01` — Ta'lim jarayonidagi mavjud imkoniyatlarni bitta xaritaga solish va birinchi real gapni tanlash.~~ BAJARILDI.
+12. ~~`UX-EDU-02` — o'quv rejaga biriktirilgan talabalarni admission ma'lumotidan hosil qilish.~~ BAJARILDI.
+13. ~~`UX-EDU-03A` — o'quv yili va semestr kataloglarini normalizatsiya qilish.~~ BAJARILDI.
+14. `UX-EDU-03B` — fan guruhini curriculum, davr va fanga bog'lash.

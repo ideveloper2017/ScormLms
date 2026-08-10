@@ -4,6 +4,7 @@ export type CurriculumCredentialType = "STATE_DIPLOMA" | "NON_STATE_CREDENTIAL";
 export type CurriculumNormativeBasisType = "STATE_EDUCATION_STANDARD" | "PROFESSIONAL_STANDARD";
 export type CurriculumPlanItemType = "REQUIRED" | "ELECTIVE";
 export type CurriculumStatus = "DRAFT" | "APPROVED" | "ARCHIVED";
+export type CurriculumStudentStatus = "ACTIVE" | "SUSPENDED" | "EXPELLED" | "GRADUATED";
 
 export interface CurriculumSubject {
   id: number;
@@ -36,6 +37,34 @@ export interface CurriculumVersion {
   approvedAt?: string | null;
   approvedByName?: string | null;
   archivedAt?: string | null;
+}
+
+export interface CurriculumStudent {
+  studentId: number;
+  studentNumber: string;
+  fullName: string;
+  status: CurriculumStudentStatus;
+  groupId?: number | null;
+  groupName?: string | null;
+  courseNumber: number;
+  semesterNumber?: number | null;
+  educationForm: "FULL_TIME" | "PART_TIME" | "EVENING" | "DISTANCE";
+  educationLanguage: string;
+}
+
+export interface CurriculumStudentPage {
+  items: CurriculumStudent[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface CurriculumStudentQuery {
+  search?: string;
+  status?: CurriculumStudentStatus;
+  page?: number;
+  size?: number;
 }
 
 export interface SaveCurriculumVersionInput {
@@ -79,6 +108,9 @@ export const canApproveCurriculum = (version: CurriculumVersion) => version.stat
 export const curriculumApi = {
   list: async () => (await api.get<CurriculumVersion[]>("/curricula")).data,
   get: async (id: number) => (await api.get<CurriculumVersion>(`/curricula/${id}`)).data,
+  listStudents: async (id: number, query: CurriculumStudentQuery = {}) => (
+    await api.get<CurriculumStudentPage>(`/curricula/${id}/students`, { params: query })
+  ).data,
   create: async (input: SaveCurriculumVersionInput) => (await api.post<CurriculumVersion>("/curricula", input)).data,
   update: async (id: number, input: SaveCurriculumVersionInput) => (await api.put<CurriculumVersion>(`/curricula/${id}`, input)).data,
   addSubject: async (id: number, input: AddCurriculumSubjectInput) => (await api.post<CurriculumVersion>(`/curricula/${id}/subjects`, input)).data,
@@ -86,4 +118,3 @@ export const curriculumApi = {
   approve: async (id: number, input: ApproveCurriculumInput) => (await api.post<CurriculumVersion>(`/curricula/${id}/approve`, input)).data,
   archive: async (id: number) => (await api.post<CurriculumVersion>(`/curricula/${id}/archive`)).data,
 };
-

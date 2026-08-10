@@ -3,6 +3,8 @@ package uz.scorm.lms.app.v1.curriculum.dto
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
+import uz.scorm.lms.app.v1.student.model.EducationForm
+import uz.scorm.lms.app.v1.student.model.StudentStatus
 import java.time.Instant
 import java.time.LocalDate
 
@@ -62,3 +64,23 @@ data class CurriculumVersionDto(
     val archivedAt: Instant?,
 )
 
+data class CurriculumStudentDto(
+    val studentId: Long,
+    val studentNumber: String,
+    val fullName: String,
+    val status: StudentStatus,
+    val groupId: Long?,
+    val groupName: String?,
+    val courseNumber: Int,
+    val semesterNumber: Int?,
+    val educationForm: EducationForm,
+    val educationLanguage: String,
+)
+
+data class CurriculumStudentPageDto(
+    val items: List<CurriculumStudentDto>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)

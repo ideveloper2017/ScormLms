@@ -23,6 +23,7 @@ import uz.scorm.lms.app.v1.user.service.UserService
 import uz.scorm.lms.app.v1.restriction.service.DistanceProgramRestrictionService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.classifier.service.GeographyClassifierService
+import uz.scorm.lms.app.v1.academicperiod.service.AcademicPeriodService
 import java.time.LocalDate
 
 @Service
@@ -36,6 +37,7 @@ class StudentService(
     private val restrictionService: DistanceProgramRestrictionService,
     private val auditService: AuditService,
     private val classifierService: GeographyClassifierService,
+    private val academicPeriodService: AcademicPeriodService,
 ) {
 
     @Transactional(readOnly = true)
@@ -261,7 +263,7 @@ class StudentService(
     private fun normalized(value: String?): String? = value?.trim()?.takeIf(String::isNotBlank)
 
     fun validateAcademicAdmission(student: StudentProfile, req: StudentAcademicAdmissionRequest) {
-        require(req.semesterNumber in 1..12) { "Semestr 1-12 oralig'ida bo'lishi shart" }
+        academicPeriodService.requireActiveSemester(req.semesterNumber)
         val calculatedCourse = ((req.semesterNumber - 1) / 2) + 1
         require(req.courseNumber == calculatedCourse) {
             "Kurs tanlangan semestrga mos emas: ${req.semesterNumber}-semestr uchun $calculatedCourse-kurs"
@@ -275,6 +277,7 @@ class StudentService(
         }
         val (startYear, endYear) = academicYear.split("-").map(String::toInt)
         require(endYear == startYear + 1) { "O'quv yili ketma-ket ikki yildan iborat bo'lishi kerak" }
+        academicPeriodService.requireActiveYear(academicYear)
         val group = req.groupId?.let { groupId ->
             // Group ownership is checked in lifecycle service where GroupRepository is available.
             groupId

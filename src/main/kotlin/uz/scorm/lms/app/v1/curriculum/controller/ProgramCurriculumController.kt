@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.curriculum.dto.AddCurriculumSubjectRequest
@@ -17,6 +18,7 @@ import uz.scorm.lms.app.v1.curriculum.dto.ApproveCurriculumRequest
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
 import uz.scorm.lms.app.v1.user.model.User
+import uz.scorm.lms.app.v1.student.model.StudentStatus
 
 @RestController
 @RequestMapping("/api/v1/curricula")
@@ -28,6 +30,16 @@ class ProgramCurriculumController(private val service: ProgramCurriculumService)
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")
     fun get(@PathVariable id: Long) = service.get(id)
+
+    @GetMapping("/{id}/students")
+    @PreAuthorize("hasAuthority('ACADEMIC_READ')")
+    fun students(
+        @PathVariable id: Long,
+        @RequestParam(required = false) search: String?,
+        @RequestParam(required = false) status: StudentStatus?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+    ) = service.students(id, search, status, page, size)
 
     @PostMapping
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
@@ -58,4 +70,3 @@ class ProgramCurriculumController(private val service: ProgramCurriculumService)
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
     fun archive(@PathVariable id: Long, @CurrentUser user: User) = service.archive(id, requireNotNull(user.id))
 }
-

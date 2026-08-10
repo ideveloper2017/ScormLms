@@ -55,7 +55,7 @@ class StudentMovementReportIntegrationTest {
     fun `latest reinstatement and current subjects are returned as one read-only report`() {
         val fixture = fixture()
 
-        val report = reportService.reinstatementSubjects("karimov", "2026-2027", 0, 10)
+        val report = reportService.reinstatementSubjects(fixture.student.studentNumber, "2026-2027", 0, 10)
 
         assertEquals(1, report.totalElements)
         val item = report.items.single()
