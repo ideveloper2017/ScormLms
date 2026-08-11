@@ -6,7 +6,7 @@ import {
   Sparkles, Building2, Layers3, NotebookText, UserCog,
   LayoutDashboard, Shield, Building, FolderTree, Calendar,
   Plug, ScrollText, BookMarked, CalendarDays, FileQuestion,
-  Star, Bell, CircleUser, Video, Megaphone, Scale, Award, ClipboardCheck, FileCheck2, LifeBuoy, Presentation, FileSearch, BriefcaseBusiness, Landmark, BadgeCheck, Globe2, Gavel, ShieldAlert, Fingerprint, ServerCog, ListChecks,
+  Star, Bell, CircleUser, Video, Megaphone, Scale, Award, ClipboardCheck, FileCheck2, LifeBuoy, Presentation, FileSearch, BriefcaseBusiness, Landmark, BadgeCheck, Globe2, Gavel, ShieldAlert, Fingerprint, ServerCog, ListChecks, ChevronRight,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
@@ -18,6 +18,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -30,6 +31,7 @@ interface NavItem {
 interface NavGroup {
   label: string;
   items: NavItem[];
+  collapsible?: boolean;
 }
 
 const ITEMS = {
@@ -94,11 +96,11 @@ const ITEMS = {
   aFaculties:    { name: "Fakultetlar",         href: "/admin/faculties",    icon: Building2       },
   aDepartments:  { name: "Kafedralar",          href: "/admin/departments",  icon: Building        },
   aPrograms:     { name: "Yo'nalishlar",        href: "/admin/programs",     icon: FolderTree      },
-  aGroups:       { name: "Guruhlar",            href: "/admin/groups",       icon: Layers3         },
+  aGroups:       { name: "Asosiy guruhlar",     href: "/admin/groups",       icon: Layers3         },
   aStudentClassifiers: { name: "Ma'lumotnomalar", href: "/admin/student-classifiers", icon: Globe2 },
   aSubjects:     { name: "Fanlar",              href: "/admin/subjects",     icon: NotebookText    },
-  aStudyPlans:   { name: "O'quv reja",          href: "/admin/study-plans",  icon: BookMarked      },
-  aAcademicPeriods: { name: "O'quv yili va semestr", href: "/admin/academic-periods", icon: Calendar },
+  aStudyPlans:   { name: "O'quv rejalari",      href: "/admin/study-plans",  icon: BookMarked      },
+  aAcademicPeriods: { name: "O'quv davrlari",   href: "/admin/academic-periods", icon: Calendar },
   aSubjectGroups: { name: "Fan guruhlari", href: "/admin/subject-groups", icon: Layers3 },
   aAdmissionPolicies: { name: "Qabul va kontrakt", href: "/admin/admission-policies", icon: Landmark },
   aNonStateLicenses: { name: "Nodavlat litsenziyalari", href: "/admin/non-state-licenses", icon: BadgeCheck },
@@ -120,7 +122,7 @@ const ITEMS = {
   aCompliance559: { name: "559-son qaror",        href: "/admin/compliance-559",   icon: Scale           },
   aSurveys:       { name: "Anonim so'rovlar",     href: "/admin/surveys",          icon: ClipboardCheck  },
   aQualityStudies:{ name: "Sifat monitoringi",    href: "/admin/quality-monitoring", icon: FileSearch     },
-  aContentReviews:{ name: "Kontent ekspertizasi", href: "/admin/content-reviews",  icon: FileCheck2       },
+  aContentReviews:{ name: "Kontent tekshiruvi",  href: "/admin/content-reviews",  icon: FileCheck2       },
   aSettings:      { name: "Sozlamalar",          href: "/admin/settings",         icon: Settings        },
   aNotifications: { name: "Bildirishnomalar",    href: "/admin/notifications",     icon: Bell            },
   tNotifications: { name: "Bildirishnomalar",    href: "/teacher/notifications",   icon: Bell            },
@@ -131,24 +133,24 @@ function buildNav(role: string): NavGroup[] {
   const r = role.replace(/^ROLE_/i, "").toUpperCase();
 
   const ADMIN_NAV: NavGroup[] = [
-    { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-    { label: "Foydalanuvchilar", items: [ITEMS.aUsers, ITEMS.aStudents, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.aRoles] },
-    { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aAcademicPeriods, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
-    { label: "Kontent",          items: [ITEMS.aStudyPlans, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aContentStandard, ITEMS.aCalendar, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves] },
-    { label: "Tahlil va tizim",  items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aCompliance559, ITEMS.aAccountability, ITEMS.aBiometric, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.support] },
-    { label: "Sozlamalar",       items: [ITEMS.aStudentClassifiers, ITEMS.aSettings] },
+    { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
+    { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers] },
+    { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aCalendar] },
+    { label: "Nazorat va hisobot", items: [ITEMS.aReports, ITEMS.aContentReviews, ITEMS.aQualityStudies, ITEMS.aSurveys] },
+    { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers, ITEMS.aSettings] },
+    { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aUsers, ITEMS.aRoles, ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aCompliance559, ITEMS.aAccountability, ITEMS.aBiometric, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.support] },
   ];
 
   const groups: Record<string, NavGroup[]> = {
     SUPER_ADMIN: ADMIN_NAV,
     ADMIN:       ADMIN_NAV,
     METODIST: [
-      { label: "Asosiy",           items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-      { label: "Ta'lim",           items: [ITEMS.aStudyPlans, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aContentReviews, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.resources, ITEMS.teaching, ITEMS.exams] },
-      { label: "Akademik tuzilma", items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aPrograms, ITEMS.aAcademicPeriods, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aGroups, ITEMS.aSubjects] },
-      { label: "Boshqaruv",        items: [ITEMS.aStudents, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.aForeignTeachers, ITEMS.contingent, ITEMS.comms] },
-      { label: "Tahlil",           items: [ITEMS.aReports, ITEMS.aSurveys, ITEMS.aQualityStudies, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.stats, ITEMS.aIntegrations, ITEMS.support] },
-      { label: "Sozlamalar",       items: [ITEMS.aStudentClassifiers] },
+      { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
+      { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.contingent] },
+      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.exams] },
+      { label: "Nazorat va hisobot", items: [ITEMS.aContentReviews, ITEMS.aReports, ITEMS.aQualityStudies, ITEMS.aSurveys, ITEMS.stats] },
+      { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers] },
+      { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.teaching, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },
     ],
     TEACHER: [
       { label: "Asosiy",         items: [ITEMS.tDashboard] },
@@ -231,27 +233,47 @@ export function AppSidebar() {
 
       {/* ── Navigation ────────────────────────────────────────── */}
       <SidebarContent>
-        {navGroups.map((group) => (
-          <SidebarGroup key={group.label}>
+        {navGroups.map((group) => {
+          const groupContent = <SidebarGroupContent>
+            <SidebarMenu>
+              {group.items.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    tooltip={item.name}
+                    isActive={isActive(item.href)}
+                    onClick={() => go(item.href)}
+                  >
+                    <item.icon />
+                    <span>{item.name}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>;
+
+          if (group.collapsible) {
+            return <Collapsible
+              key={group.label}
+              defaultOpen={group.items.some(item => isActive(item.href))}
+              className="group/collapsible"
+            >
+              <SidebarGroup>
+                <SidebarGroupLabel asChild>
+                  <CollapsibleTrigger className="w-full cursor-pointer justify-between">
+                    <span>{group.label}</span>
+                    <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  </CollapsibleTrigger>
+                </SidebarGroupLabel>
+                <CollapsibleContent>{groupContent}</CollapsibleContent>
+              </SidebarGroup>
+            </Collapsible>;
+          }
+
+          return <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      tooltip={item.name}
-                      isActive={isActive(item.href)}
-                      onClick={() => go(item.href)}
-                    >
-                      <item.icon />
-                      <span>{item.name}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+            {groupContent}
+          </SidebarGroup>;
+        })}
       </SidebarContent>
 
       {/* ── User footer + dropdown ────────────────────────────── */}

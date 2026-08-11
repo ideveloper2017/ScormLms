@@ -99,6 +99,7 @@ Lokal kodda o'quv reja/curriculum versiyalash, fanlar, guruhlar, kurslar, indivi
 | UX-EDU-02 | O'quv reja va unga talabalarni biriktirishni yagona workflow qilish | BAJARILDI | V68 `programId + academicYear` admission bog'lanishidan hosil qilinadigan read-only roster yaratdi; `REGISTERED` kartochkalar chiqarib tashlanadi, status/qidiruv/pagination serverda ishlaydi va yangi jadval/migratsiya kiritilmadi |
 | UX-EDU-03A | O'quv yili va semestrni boshqariladigan katalogga ajratish | BAJARILDI | V69 V54 orqali tarixiy snapshotlarni o'zgartirmaydigan yil/semestr katalogi, `ACADEMIC_READ/WRITE` API, admin sahifa va admission/curriculum faol-katalog gate'larini qo'shdi |
 | UX-EDU-03B | Fan guruhini curriculum va semestrga bog'langan katalog qilish | BAJARILDI | V70 tasdiqlangan curriculum faniga bog'langan alohida fan guruhi va keyingi bosqichda biriktiriladigan talaba a'zoligini yaratdi; asosiy `study_groups` va mavjud course yozuvlari taxminiy ko'chirilmadi |
+| UX-SIMPLIFY-01 | Kundalik navigatsiya va talaba yaratish oqimini soddalashtirish | BAJARILDI | V73 admin/metodist uchun beshta kundalik menyu guruhini qoldirdi, texnik boshqaruvlarni default yopiq `Kengaytirilgan` bo'limga yig'di va talaba ishini `Kartochka -> Parol va kirish -> O'qishga biriktirish` bosqichlari bilan ko'rsatdi; URL, backend va RBAC o'zgarmadi |
 | UX-EDU-04 | Baholash va vedmostni mavjud exam/gradebook bilan birlashtirish | KEYINGI | Alohida parallel baho modeli yaratilmaydi; yopilgan nazorat, attendance va auditli natijadan rasmiy vedmost hosil qilinadi |
 
 ## Tavsiya etilgan ketma-ketlik
@@ -117,4 +118,5 @@ Lokal kodda o'quv reja/curriculum versiyalash, fanlar, guruhlar, kurslar, indivi
 12. ~~`UX-EDU-02` — o'quv rejaga biriktirilgan talabalarni admission ma'lumotidan hosil qilish.~~ BAJARILDI.
 13. ~~`UX-EDU-03A` — o'quv yili va semestr kataloglarini normalizatsiya qilish.~~ BAJARILDI.
 14. ~~`UX-EDU-03B` — fan guruhini curriculum, davr va fanga bog'lash.~~ BAJARILDI.
-15. `UX-EDU-04` — yopilgan nazorat natijalaridan auditli vedmost hosil qilish.
+15. ~~`UX-SIMPLIFY-01` — kundalik navigatsiya va talaba yaratish oqimini soddalashtirish.~~ BAJARILDI.
+16. `UX-EDU-04` — yopilgan nazorat natijalaridan auditli vedmost hosil qilish.

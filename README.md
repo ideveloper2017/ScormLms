@@ -55,6 +55,8 @@ npm audit
 
 SCORM paketlari, upload va xususiy UAT dalil kataloglari Git'ga kiritilmaydi; deploymentda alohida saqlash, backup va restore siyosati talab qilinadi.
 
+GitHub Actions orqali Ubuntu VPS, Nginx va tashqi Tomcat'ga CI/CD sozlash tartibi [CI/CD runbookida](docs/cicd-ubuntu-vps.md) berilgan.
+
 PostgreSQL, upload, SCORM, assignment va xususiy UAT dalil storage'i uchun atomar backup, xavfsiz restore va disposable drill tartibi [backup/restore runbookida](docs/backup-restore-runbook.md) berilgan. Amaliy skriptlar `ops/backup` katalogida joylashgan.
 
 559 UAT dalil kiritish paneli `GET /api/v1/compliance/559/uat/requirements` orqali buildga paketlangan yagona `docs/uat/decision-559-uat-evidence.json` katalogidan band nomi, baseline holati, tavsiya etilgan mas'ul, texnik dalil manbalari, `DEP-*` bog'liqligi va qolgan manual ishni ko'rsatadi. Backend katalogni ishga tushishda aynan 27 band va tasdiqlangan qaror PDF SHA-256 qiymati bo'yicha fail-fast tekshiradi.

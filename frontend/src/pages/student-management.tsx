@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AcademicSelect } from '@/components/admin/academic-select';
 import { listGroups, listPrograms } from '@/lib/academic-api';
@@ -51,7 +50,7 @@ import type {
   StudentStatus,
   StudentSummaryDto,
 } from '@/types/student.types';
-import { Loader2, ArrowUpCircle, Download, Edit, History, UserPlus, RefreshCcw, GraduationCap, KeyRound, Lock, LockOpen, UserRoundCog, ArrowRightLeft } from 'lucide-react';
+import { Loader2, ArrowUpCircle, Download, Edit, History, UserPlus, RefreshCcw, GraduationCap, KeyRound, Lock, LockOpen, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { hasAuthority } from '@/lib/rbac-api';
@@ -259,7 +258,7 @@ export function StudentManagement() {
           gender: formData.gender, citizenship: formData.citizenship,
           citizenshipCountryId: optionalId(formData.citizenshipCountryId),
         });
-        toast({ title: "Kartochka yaratildi", description: "Endi talabani alohida o'qishga biriktirish mumkin" });
+        toast({ title: "1-bosqich yakunlandi", description: "Kartochka yaratildi. Endi akkaunt bo'limida parol bering" });
       }
       closeStudentDialog();
       await invalidate();
@@ -323,7 +322,12 @@ export function StudentManagement() {
         orderNumber: admissionForm.orderNumber, orderDate: admissionForm.orderDate,
         effectiveDate: admissionForm.effectiveDate, legalBasis: admissionForm.legalBasis, reason: admissionForm.reason,
       });
-      toast({ title: "O'qishga biriktirildi", description: "Akademik ma'lumot va qabul buyrug'i saqlandi" });
+      toast({
+        title: "3-bosqich yakunlandi",
+        description: admissionStudent.credentialsInitialized
+          ? "Akademik ma'lumot va qabul buyrug'i saqlandi; akkaunt foydalanishga tayyor"
+          : "Talaba o'qishga biriktirildi; akkauntni ishlatish uchun parol berish kerak",
+      });
       setAdmissionStudent(null); setAdmissionForm(emptyAdmissionForm()); await invalidate();
     } catch (error) { showError(error); } finally { setSaving(false); }
   };
@@ -408,7 +412,7 @@ export function StudentManagement() {
     setSaving(true);
     try {
       await setupStudentCredentials(credentialTarget.id, { newPassword: credentialPassword });
-      toast({ title: 'Talaba paroli o\'rnatildi', description: credentialTarget.studentStatus === 'ACTIVE' ? 'Akkaunt foydalanishga tayyor' : "Akkaunt o'qishga biriktirilgach faollashadi" });
+      toast({ title: '2-bosqich yakunlandi', description: credentialTarget.studentStatus === 'ACTIVE' ? 'Parol o\'rnatildi, akkaunt foydalanishga tayyor' : "Parol o'rnatildi. Endi talabani o'qishga biriktiring" });
       setCredentialTarget(null); setCredentialPassword(''); setCredentialConfirmation(''); await invalidate();
     } catch (error) { showError(error); } finally { setSaving(false); }
   };
@@ -506,24 +510,40 @@ export function StudentManagement() {
   ];
   const columns = activeWorkspace === 'academic' ? academicColumns : activeWorkspace === 'accounts' ? accountColumns : personalColumns;
   const workspaceTitle = activeWorkspace === 'academic' ? 'Akademik biriktirish va harakat' : activeWorkspace === 'accounts' ? 'Talaba akkauntlari' : 'Shaxsiy kartochkalar';
+  const switchWorkspace = (workspace: StudentWorkspace) => {
+    setActiveWorkspace(workspace);
+    setRegistryStatus(workspace === 'academic' ? 'REGISTERED' : 'ALL');
+    setRegistryPage(0);
+    setSelectedAcademicIds([]);
+  };
+  const workflowSteps: Array<{ workspace: StudentWorkspace; title: string; description: string; visible: boolean }> = [
+    { workspace: 'personal', title: 'Kartochka', description: "Shaxsiy ma'lumotlarni kiriting", visible: true },
+    { workspace: 'accounts', title: 'Parol va kirish', description: 'Akkauntni foydalanishga tayyorlang', visible: canManageAccounts },
+    { workspace: 'academic', title: "O'qishga biriktirish", description: 'Dastur, davr va guruhni tanlang', visible: canReadAcademic },
+  ];
 
   if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return <div className="space-y-6 p-3 sm:p-4 md:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h1 className="text-2xl font-bold">Talabalar</h1><p className="text-sm text-muted-foreground">Avval shaxsiy kartochka yaratiladi, keyin talaba o'qishga alohida biriktiriladi.</p></div>
+      <div><h1 className="text-2xl font-bold">Talabalar</h1><p className="text-sm text-muted-foreground">Ish tartibi: kartochka yarating, parol bering, keyin o'qishga biriktiring.</p></div>
       {activeWorkspace === 'personal' && canManagePersonal && <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Shaxsiy kartochka yaratish</Button>}
     </div>
-    <Tabs value={activeWorkspace} onValueChange={value => {
-      const workspace = value as StudentWorkspace;
-      setActiveWorkspace(workspace); setRegistryStatus(workspace === 'academic' ? 'REGISTERED' : 'ALL'); setRegistryPage(0); setSelectedAcademicIds([]);
-    }}>
-      <TabsList className="h-auto flex-wrap justify-start">
-        <TabsTrigger value="personal"><Edit className="mr-2 h-4 w-4" />Shaxsiy kartochkalar</TabsTrigger>
-        {canReadAcademic && <TabsTrigger value="academic"><GraduationCap className="mr-2 h-4 w-4" />Akademik amallar</TabsTrigger>}
-        {canManageAccounts && <TabsTrigger value="accounts"><UserRoundCog className="mr-2 h-4 w-4" />Akkaunt boshqaruvi</TabsTrigger>}
-      </TabsList>
-    </Tabs>
+    <Card>
+      <CardContent className="grid gap-2 p-3 md:grid-cols-3">
+        {workflowSteps.filter(step => step.visible).map((step, index) => <Button
+          key={step.workspace}
+          type="button"
+          variant={activeWorkspace === step.workspace ? 'default' : 'outline'}
+          className="h-auto min-h-20 justify-start gap-3 whitespace-normal px-4 py-3 text-left"
+          aria-current={activeWorkspace === step.workspace ? 'step' : undefined}
+          onClick={() => switchWorkspace(step.workspace)}
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border bg-background font-semibold text-foreground">{index + 1}</span>
+          <span><span className="block font-semibold">{step.title}</span><span className="mt-1 block text-xs opacity-80">{step.description}</span></span>
+        </Button>)}
+      </CardContent>
+    </Card>
     <Card><CardHeader><CardTitle>{workspaceTitle}</CardTitle></CardHeader><CardContent><DataTable
       columns={columns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi"
       serverSearch={{ value: registrySearch, onChange: value => { setRegistrySearch(value); setRegistryPage(0); } }}
@@ -590,7 +610,7 @@ export function StudentManagement() {
           {!!admissionForm.academicYear && !admissionPrograms.isLoading && !admissionYearGroups.isLoading && availablePrograms.length === 0 && <p className="text-sm text-destructive sm:col-span-2">Bu o'quv yilida faol guruhi mavjud ta'lim dasturi topilmadi.</p>}
           <Field label="3. Semestr *"><Select value={admissionForm.semester} disabled={!selectedAdmissionProgram} onValueChange={value => setAdmissionForm({...admissionForm, semester: value, groupId: ''})}><SelectTrigger><SelectValue placeholder="Semestr tanlang" /></SelectTrigger><SelectContent>{availableSemesters.map(semester => <SelectItem key={semester} value={String(semester)}>{semester}-semestr ({courseNumberFromSemester(semester)}-kurs)</SelectItem>)}</SelectContent></Select></Field>
           <Field label="4. Guruh *"><Select value={admissionForm.groupId} disabled={!admissionForm.semester || admissionProgramGroups.isLoading} onValueChange={value => setAdmissionForm({...admissionForm, groupId: value})}><SelectTrigger><SelectValue placeholder="Mos guruhni tanlang" /></SelectTrigger><SelectContent>{availableAdmissionGroups.map(group => <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>)}</SelectContent></Select></Field>
-          {!!admissionForm.semester && !admissionProgramGroups.isLoading && availableAdmissionGroups.length === 0 && <p className="text-sm text-destructive sm:col-span-2">Tanlangan o'quv yili, dastur va tilga mos faol guruh topilmadi. Avval akademik klassifikatorda guruhni sozlang.</p>}
+          {!!admissionForm.semester && !admissionProgramGroups.isLoading && availableAdmissionGroups.length === 0 && <p className="text-sm text-destructive sm:col-span-2">Tanlangan o'quv yili, dastur va tilga mos faol guruh topilmadi. Avval “Asosiy guruhlar” bo'limida mos guruh yarating.</p>}
           <h3 className="border-b pb-2 pt-2 font-semibold sm:col-span-2">Ta'lim parametrlari</h3>
           <Field label="Ta'lim darajasi"><Input value={admissionForm.degreeLevel} disabled /></Field>
           <Field label="Ta'lim shakli"><Select value={admissionForm.educationForm} onValueChange={(value: EducationForm) => setAdmissionForm({...admissionForm, educationForm: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="FULL_TIME">Kunduzgi</SelectItem><SelectItem value="DISTANCE">Masofaviy</SelectItem><SelectItem value="PART_TIME">Sirtqi</SelectItem><SelectItem value="EVENING">Kechki</SelectItem></SelectContent></Select></Field>

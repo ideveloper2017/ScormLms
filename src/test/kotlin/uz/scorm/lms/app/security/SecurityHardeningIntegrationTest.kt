@@ -22,6 +22,7 @@ import uz.scorm.lms.app.v1.audit.repository.AuditLogRepository
     "app.security.rate-limit.login-per-ip=3",
     "app.security.trusted-proxy-ips=127.0.0.1",
     "app.cors.allowed-origins=https://lms.test",
+    "management.endpoint.health.probes.enabled=true",
 ])
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -29,6 +30,14 @@ import uz.scorm.lms.app.v1.audit.repository.AuditLogRepository
 class SecurityHardeningIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var auditRepository: AuditLogRepository
+
+    @Test
+    fun `readiness probe deploy health check uchun ochiq`() {
+        mockMvc.get("/actuator/health/readiness").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("UP") }
+        }
+    }
 
     @Test
     fun `himoyalangan endpoint security headerlar bilan 401 qaytaradi`() {

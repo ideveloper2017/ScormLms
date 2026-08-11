@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend test and WAR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Test and build ROOT.war
+        run: ./gradlew test bootWar --no-daemon
+
+      - name: Upload backend artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-${{ github.sha }}
+          path: build/libs/ROOT.war
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  frontend:
+    name: Frontend lint, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://localhost:8080/api/v1' }}
+      VITE_WS_URL: ${{ vars.VITE_WS_URL || 'ws://localhost:8080/ws' }}
+      VITE_SCORM_CONTENT_ORIGIN: ${{ vars.VITE_SCORM_CONTENT_ORIGIN || 'http://localhost:8080' }}
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Require production frontend variables on main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CONFIGURED_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          CONFIGURED_WS_URL: ${{ vars.VITE_WS_URL }}
+          CONFIGURED_SCORM_ORIGIN: ${{ vars.VITE_SCORM_CONTENT_ORIGIN }}
+        run: |
+          test -n "$CONFIGURED_API_BASE_URL" || { echo "VITE_API_BASE_URL repository variable is required" >&2; exit 1; }
+          test -n "$CONFIGURED_WS_URL" || { echo "VITE_WS_URL repository variable is required" >&2; exit 1; }
+          test -n "$CONFIGURED_SCORM_ORIGIN" || { echo "VITE_SCORM_CONTENT_ORIGIN repository variable is required" >&2; exit 1; }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload frontend artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-${{ github.sha }}
+          path: frontend/dist
+          if-no-files-found: error
+          retention-days: 7
+

@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly CONFIG_FILE="/etc/scorm-lms/deploy.conf"
+
+log() {
+  printf '[scorm-lms-deploy] %s\n' "$*"
+}
+
+fail() {
+  printf '[scorm-lms-deploy] ERROR: %s\n' "$*" >&2
+  return 1
+}
+
+[[ $EUID -eq 0 ]] || fail "This command must run as root"
+[[ $# -eq 1 ]] || fail "Usage: scorm-lms-deploy <40-char-sha>-<run-id>-<attempt>"
+[[ -r "$CONFIG_FILE" ]] || fail "$CONFIG_FILE is missing or unreadable"
+
+# shellcheck source=/dev/null
+source "$CONFIG_FILE"
+
+: "${DEPLOY_INCOMING_DIR:?DEPLOY_INCOMING_DIR is required}"
+: "${FRONTEND_BASE_DIR:?FRONTEND_BASE_DIR is required}"
+: "${TOMCAT_WEBAPPS_DIR:?TOMCAT_WEBAPPS_DIR is required}"
+: "${TOMCAT_SERVICE:?TOMCAT_SERVICE is required}"
+: "${HEALTHCHECK_URL:?HEALTHCHECK_URL is required}"
+: "${DEPLOY_BACKUP_DIR:?DEPLOY_BACKUP_DIR is required}"
+
+readonly RELEASE_ID="$1"
+[[ "$RELEASE_ID" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]] || fail "Invalid release id"
+
+for path in "$DEPLOY_INCOMING_DIR" "$FRONTEND_BASE_DIR" "$TOMCAT_WEBAPPS_DIR" "$DEPLOY_BACKUP_DIR"; do
+  [[ "$path" == /* && "$path" != "/" && "$path" != *".."* ]] || fail "Unsafe configured path: $path"
+done
+[[ "$TOMCAT_SERVICE" =~ ^[A-Za-z0-9@_.-]+$ ]] || fail "Invalid TOMCAT_SERVICE"
+[[ "$HEALTHCHECK_URL" =~ ^https?://(127\.0\.0\.1|localhost)(:[0-9]+)?/[-A-Za-z0-9_./]+$ ]] || \
+  fail "HEALTHCHECK_URL must use localhost or 127.0.0.1"
+
+readonly INCOMING_DIR="$DEPLOY_INCOMING_DIR/$RELEASE_ID"
+readonly INCOMING_WAR="$INCOMING_DIR/ROOT.war"
+readonly INCOMING_FRONTEND="$INCOMING_DIR/frontend.tar.gz"
+readonly RELEASES_DIR="$FRONTEND_BASE_DIR/releases"
+readonly NEW_FRONTEND_RELEASE="$RELEASES_DIR/$RELEASE_ID"
+readonly CURRENT_LINK="$FRONTEND_BASE_DIR/current"
+readonly TOMCAT_WAR="$TOMCAT_WEBAPPS_DIR/ROOT.war"
+readonly TOMCAT_EXPLODED="$TOMCAT_WEBAPPS_DIR/ROOT"
+readonly BACKUP_DIR="$DEPLOY_BACKUP_DIR/$RELEASE_ID"
+
+[[ -f "$INCOMING_WAR" ]] || fail "$INCOMING_WAR is missing"
+[[ -f "$INCOMING_FRONTEND" ]] || fail "$INCOMING_FRONTEND is missing"
+[[ -f "$INCOMING_DIR/checksums.sha256" ]] || fail "checksums.sha256 is missing"
+
+cd "$INCOMING_DIR"
+sha256sum -c checksums.sha256
+
+install -d -m 755 "$RELEASES_DIR"
+install -d -m 700 "$BACKUP_DIR"
+
+previous_frontend=""
+if [[ -L "$CURRENT_LINK" ]]; then
+  previous_frontend="$(readlink -f "$CURRENT_LINK")"
+elif [[ -e "$CURRENT_LINK" ]]; then
+  fail "$CURRENT_LINK must be a symlink"
+fi
+
+had_previous_war=false
+if [[ -f "$TOMCAT_WAR" ]]; then
+  cp --preserve=mode,timestamps "$TOMCAT_WAR" "$BACKUP_DIR/ROOT.war"
+  had_previous_war=true
+fi
+
+frontend_switched=false
+backend_switched=false
+
+rollback() {
+  local original_exit=$?
+  trap - ERR
+  log "Deployment failed; rolling back"
+
+  if [[ "$frontend_switched" == true ]]; then
+    if [[ -n "$previous_frontend" && -d "$previous_frontend" ]]; then
+      ln -sfn "$previous_frontend" "$FRONTEND_BASE_DIR/.current-rollback"
+      mv -Tf "$FRONTEND_BASE_DIR/.current-rollback" "$CURRENT_LINK"
+    else
+      rm -f "$CURRENT_LINK"
+    fi
+  fi
+
+  if [[ "$backend_switched" == true ]]; then
+    systemctl stop "$TOMCAT_SERVICE" || true
+    rm -f "$TOMCAT_WAR"
+    rm -rf --one-file-system "$TOMCAT_EXPLODED"
+    if [[ "$had_previous_war" == true ]]; then
+      install -m 0644 "$BACKUP_DIR/ROOT.war" "$TOMCAT_WAR"
+    fi
+    systemctl start "$TOMCAT_SERVICE" || true
+  fi
+
+  exit "$original_exit"
+}
+trap rollback ERR
+
+rm -rf --one-file-system "$NEW_FRONTEND_RELEASE"
+install -d -m 755 "$NEW_FRONTEND_RELEASE"
+tar -xzf "$INCOMING_FRONTEND" -C "$NEW_FRONTEND_RELEASE" \
+  --no-same-owner --no-same-permissions
+[[ -f "$NEW_FRONTEND_RELEASE/index.html" ]] || fail "Frontend artifact has no index.html"
+
+ln -sfn "$NEW_FRONTEND_RELEASE" "$FRONTEND_BASE_DIR/.current-$RELEASE_ID"
+mv -Tf "$FRONTEND_BASE_DIR/.current-$RELEASE_ID" "$CURRENT_LINK"
+frontend_switched=true
+
+log "Stopping $TOMCAT_SERVICE"
+systemctl stop "$TOMCAT_SERVICE"
+install -m 0644 "$INCOMING_WAR" "$TOMCAT_WAR"
+rm -rf --one-file-system "$TOMCAT_EXPLODED"
+backend_switched=true
+systemctl start "$TOMCAT_SERVICE"
+
+log "Waiting for readiness: $HEALTHCHECK_URL"
+ready=false
+for attempt in $(seq 1 60); do
+  if curl --fail --silent --show-error --max-time 5 "$HEALTHCHECK_URL" >/dev/null; then
+    ready=true
+    break
+  fi
+  sleep 5
+done
+[[ "$ready" == true ]] || fail "Application did not become ready within 5 minutes"
+
+trap - ERR
+rm -rf --one-file-system "$INCOMING_DIR"
+log "Release $RELEASE_ID deployed successfully"
