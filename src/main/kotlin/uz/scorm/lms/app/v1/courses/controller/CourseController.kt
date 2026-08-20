@@ -1,7 +1,11 @@
 package uz.scorm.lms.app.v1.courses.controller
 
 import org.springframework.http.HttpStatus
+import org.springframework.http.CacheControl
+import org.springframework.http.ContentDisposition
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.core.io.InputStreamResource
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -12,7 +16,9 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
 import uz.scorm.lms.app.common.ApiResponse
 import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.courses.dto.CourseCreateRequest
@@ -22,6 +28,7 @@ import uz.scorm.lms.app.v1.courses.dto.CourseEnrollmentRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseModuleDto
 import uz.scorm.lms.app.v1.courses.dto.CourseModuleRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentDto
+import uz.scorm.lms.app.v1.courses.dto.CourseContentAssetDto
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRevisionDto
 import uz.scorm.lms.app.v1.courses.dto.CourseContentReviewDto
@@ -32,8 +39,10 @@ import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
 import uz.scorm.lms.app.v1.courses.service.CourseService
 import uz.scorm.lms.app.v1.courses.service.CourseModuleService
 import uz.scorm.lms.app.v1.courses.service.CourseContentService
+import uz.scorm.lms.app.v1.courses.service.CourseContentAssetService
 import uz.scorm.lms.app.v1.courses.service.CourseContentReviewService
 import uz.scorm.lms.app.v1.user.model.User
+import java.nio.charset.StandardCharsets
 
 @RestController
 @RequestMapping("/api/v1/courses")
@@ -42,6 +51,7 @@ class CourseController(
     private val enrollmentService: CourseEnrollmentService,
     private val moduleService: CourseModuleService,
     private val contentService: CourseContentService,
+    private val contentAssetService: CourseContentAssetService,
     private val contentReviewService: CourseContentReviewService,
 ) {
     @GetMapping("/owned")
@@ -69,7 +79,14 @@ class CourseController(
         @RequestBody request: CourseCreateRequest,
         @CurrentUser user: User,
     ): ResponseEntity<ApiResponse<CourseDto>> = ResponseEntity.status(HttpStatus.CREATED).body(
-        ApiResponse.success("Kurs qoralama sifatida yaratildi", courseService.create(request, requireNotNull(user.id)))
+        ApiResponse.success(
+            "Kurs qoralama sifatida yaratildi",
+            courseService.create(
+                request,
+                requireNotNull(user.id),
+                enforceTeachingScope = user.role?.name.equals("teacher", ignoreCase = true),
+            ),
+        )
     )
 
     @PutMapping("/{courseId}")
@@ -206,6 +223,20 @@ class CourseController(
         contentService.list(courseId, requireNotNull(user.id), mayManageAll(authentication))
     ))
 
+    @PostMapping("/{courseId}/assets", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun uploadContentAsset(
+        @PathVariable courseId: Long,
+        @RequestParam("file") file: MultipartFile,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<CourseContentAssetDto>> = ResponseEntity.status(HttpStatus.CREATED).body(
+        ApiResponse.success(
+            "Fayl xavfsiz saqlandi",
+            contentAssetService.upload(courseId, file, requireNotNull(user.id), mayManageAll(authentication)),
+        )
+    )
+
     @PostMapping("/{courseId}/modules/{moduleId}/contents")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun createContent(
@@ -229,6 +260,28 @@ class CourseController(
     ): ResponseEntity<ApiResponse<CourseContentDto>> = ResponseEntity.ok(ApiResponse.success(
         contentService.update(courseId, contentId, request, requireNotNull(user.id), mayManageAll(authentication))
     ))
+
+    @GetMapping("/{courseId}/contents/{contentId}/file")
+    @PreAuthorize("hasAuthority('COURSE_READ')")
+    fun downloadContentFile(
+        @PathVariable courseId: Long,
+        @PathVariable contentId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<InputStreamResource> {
+        val download = contentAssetService.download(courseId, contentId, requireNotNull(user.id), mayManageAll(authentication))
+        val disposition = ContentDisposition.attachment()
+            .filename(download.fileName, StandardCharsets.UTF_8)
+            .build()
+            .toString()
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore())
+            .header("Content-Disposition", disposition)
+            .header("X-Content-Type-Options", "nosniff")
+            .contentType(MediaType.parseMediaType(download.mediaType))
+            .contentLength(download.sizeBytes)
+            .body(download.resource)
+    }
 
     @PatchMapping("/{courseId}/contents/{contentId}/status")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")

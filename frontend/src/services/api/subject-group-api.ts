@@ -11,12 +11,23 @@ export interface AcademicSubjectGroup {
   curriculumVersionCode: string;
   programId: number;
   programName: string;
+  programLanguage: string;
   academicYear: string;
   curriculumSubjectId: number;
   subjectId?: number | null;
   subjectCode: string;
   subjectName: string;
   semester: number;
+  credits: number;
+  planItemType: "REQUIRED" | "ELECTIVE";
+}
+
+export interface AcademicSubjectGroupTeacher {
+  teacherId: number;
+  fullName: string;
+  departmentName?: string | null;
+  position?: string | null;
+  active: boolean;
 }
 
 export interface AcademicSubjectGroupStudent {
@@ -47,6 +58,9 @@ export interface CreateAcademicSubjectGroupInput {
 export type UpdateAcademicSubjectGroupInput = Omit<CreateAcademicSubjectGroupInput, "curriculumSubjectId">;
 
 export const subjectGroupApi = {
+  teachingOptions: async () => (
+    await api.get<AcademicSubjectGroup[]>("/subject-groups/teaching-options")
+  ).data,
   list: async (params: {
     curriculumId?: number;
     academicYear?: string;
@@ -72,5 +86,17 @@ export const subjectGroupApi = {
   ).data,
   removeStudent: async (id: number, studentId: number) => (
     await api.delete<AcademicSubjectGroup>(`/subject-groups/${id}/students/${studentId}`)
+  ).data,
+  teachers: async (id: number) => (
+    await api.get<AcademicSubjectGroupTeacher[]>(`/subject-groups/${id}/teachers`)
+  ).data,
+  teacherCandidates: async (id: number) => (
+    await api.get<AcademicSubjectGroupTeacher[]>(`/subject-groups/${id}/teacher-candidates`)
+  ).data,
+  assignTeacher: async (id: number, teacherId: number) => (
+    await api.post<AcademicSubjectGroup>(`/subject-groups/${id}/teachers`, { teacherId })
+  ).data,
+  removeTeacher: async (id: number, teacherId: number) => (
+    await api.delete<AcademicSubjectGroup>(`/subject-groups/${id}/teachers/${teacherId}`)
   ).data,
 };

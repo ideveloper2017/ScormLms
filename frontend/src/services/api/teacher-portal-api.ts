@@ -33,6 +33,11 @@ export interface TeacherCourse {
   programName?: string | null;
   programLanguage?: string | null;
   groupName?: string | null;
+  subjectGroupId?: number | null;
+  curriculumSubjectId?: number | null;
+  academicYear?: string | null;
+  semester?: number | null;
+  credits?: number | null;
   students: number;
   progress: number;
   status: 'published' | 'draft' | 'archived';
@@ -47,6 +52,7 @@ export interface CourseCreatePayload {
   description?: string;
   subjectName?: string;
   subjectId?: number;
+  subjectGroupId?: number;
   groupName?: string;
   startDate?: string;
   endDate?: string;
@@ -95,8 +101,10 @@ export interface CourseContent {
   moduleTitle: string;
   title: string;
   description?: string | null;
-  contentType: 'video' | 'document' | 'link' | 'file';
+  contentType: 'video' | 'document' | 'link' | 'file' | 'text';
   contentUrl?: string | null;
+  contentBody?: string | null;
+  asset?: CourseContentAsset | null;
   durationMinutes?: number | null;
   position: number;
   status: 'draft' | 'published';
@@ -113,6 +121,16 @@ export interface CourseContent {
   reviewStatus: 'draft' | 'in_review' | 'approved' | 'changes_requested';
   approvedRevisionNumber?: number | null;
   compatibility: ContentCompatibility;
+}
+
+export interface CourseContentAsset {
+  id: number;
+  courseId: number;
+  originalFileName: string;
+  mediaType: string;
+  sizeBytes: number;
+  sha256: string;
+  uploadedAt?: string | null;
 }
 
 export interface ContentCompatibilityIssue {
@@ -141,6 +159,8 @@ export interface CourseContentRevision {
   description?: string | null;
   contentType: CourseContent['contentType'];
   contentUrl?: string | null;
+  contentBody?: string | null;
+  asset?: CourseContentAsset | null;
   durationMinutes?: number | null;
   languageCode: string;
   authorName: string;
@@ -156,8 +176,10 @@ export interface CourseContentRevision {
 export interface CourseContentPayload {
   title: string;
   description?: string;
-  contentType: 'VIDEO' | 'DOCUMENT' | 'LINK' | 'FILE';
+  contentType: 'VIDEO' | 'DOCUMENT' | 'LINK' | 'FILE' | 'TEXT';
   contentUrl?: string;
+  contentBody?: string;
+  assetId?: number;
   durationMinutes?: number;
   languageCode: string;
   authorName: string;
@@ -179,6 +201,8 @@ export interface CourseContentReview {
   description?: string | null;
   contentType: CourseContent['contentType'];
   contentUrl?: string | null;
+  contentBody?: string | null;
+  asset?: CourseContentAsset | null;
   languageCode: string;
   authorName: string;
   sourceName: string;
@@ -502,6 +526,21 @@ export const teacherPortalApi = {
   },
   getContents: async (courseId: string): Promise<CourseContent[]> => {
     return dataOf(await api.get<ApiResponse<CourseContent[]>>(`/courses/${courseId}/contents`), 'Kontentlar yuklanmadi');
+  },
+  uploadContentAsset: async (courseId: string, file: File): Promise<CourseContentAsset> => {
+    const form = new FormData();
+    form.append('file', file);
+    return dataOf(await api.post<ApiResponse<CourseContentAsset>>(`/courses/${courseId}/assets`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180_000,
+    }), 'Fayl yuklanmadi');
+  },
+  downloadContentFile: async (courseId: string, contentId: number): Promise<Blob> => {
+    const response = await api.get(`/courses/${courseId}/contents/${contentId}/file`, {
+      responseType: 'blob',
+      timeout: 180_000,
+    });
+    return response.data as Blob;
   },
   createContent: async (courseId: string, moduleId: number, payload: CourseContentPayload): Promise<CourseContent> => {
     return dataOf(await api.post<ApiResponse<CourseContent>>(`/courses/${courseId}/modules/${moduleId}/contents`, payload), 'Kontent yaratilmadi');

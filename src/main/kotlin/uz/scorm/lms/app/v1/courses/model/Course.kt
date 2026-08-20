@@ -4,6 +4,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import jakarta.persistence.*
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.subject.model.Subject
+import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroup
 import java.time.Instant
 import java.time.LocalDate
 
@@ -51,6 +52,10 @@ class Course(
 
     @Column(name = "group_name")
     var groupName: String? = null,
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "subject_group_id")
+    var subjectGroup: AcademicSubjectGroup? = null,
 
     @Column(name = "start_date")
     var startDate: LocalDate? = null,

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.subjectgroup.dto.AssignAcademicSubjectGroupStudentsRequest
+import uz.scorm.lms.app.v1.subjectgroup.dto.AssignAcademicSubjectGroupTeacherRequest
 import uz.scorm.lms.app.v1.subjectgroup.dto.CreateAcademicSubjectGroupRequest
 import uz.scorm.lms.app.v1.subjectgroup.dto.UpdateAcademicSubjectGroupRequest
 import uz.scorm.lms.app.v1.subjectgroup.service.AcademicSubjectGroupService
@@ -22,6 +23,10 @@ import uz.scorm.lms.app.v1.user.model.User
 @RestController
 @RequestMapping("/api/v1/subject-groups")
 class AcademicSubjectGroupController(private val service: AcademicSubjectGroupService) {
+    @GetMapping("/teaching-options")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun teachingOptions(@CurrentUser user: User) = service.teachingOptions(requireNotNull(user.id))
+
     @GetMapping
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")
     fun list(
@@ -74,4 +79,25 @@ class AcademicSubjectGroupController(private val service: AcademicSubjectGroupSe
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
     fun removeStudent(@PathVariable id: Long, @PathVariable studentId: Long, @CurrentUser user: User) =
         service.removeStudent(id, studentId, requireNotNull(user.id))
+
+    @GetMapping("/{id}/teachers")
+    @PreAuthorize("hasAuthority('ACADEMIC_READ')")
+    fun teachers(@PathVariable id: Long) = service.assignedTeachers(id)
+
+    @GetMapping("/{id}/teacher-candidates")
+    @PreAuthorize("hasAuthority('ACADEMIC_READ')")
+    fun teacherCandidates(@PathVariable id: Long) = service.teacherCandidates(id)
+
+    @PostMapping("/{id}/teachers")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun assignTeacher(
+        @PathVariable id: Long,
+        @RequestBody request: AssignAcademicSubjectGroupTeacherRequest,
+        @CurrentUser user: User,
+    ) = service.assignTeacher(id, request, requireNotNull(user.id))
+
+    @DeleteMapping("/{id}/teachers/{teacherId}")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun removeTeacher(@PathVariable id: Long, @PathVariable teacherId: Long, @CurrentUser user: User) =
+        service.removeTeacher(id, teacherId, requireNotNull(user.id))
 }

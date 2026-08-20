@@ -9,6 +9,7 @@ import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
+import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupMembershipRepository
 import java.time.Instant
 
 @Service
@@ -17,6 +18,7 @@ class CourseEnrollmentService(
     private val studentRepository: StudentRepository,
     private val accessService: CourseAccessService,
     private val compatibilityService: ContentCompatibilityService,
+    private val subjectGroupMemberships: AcademicSubjectGroupMembershipRepository,
 ) {
     @Transactional(readOnly = true)
     fun list(courseId: Long, userId: Long, mayManageAll: Boolean): List<CourseEnrollmentDto> {
@@ -48,17 +50,24 @@ class CourseEnrollmentService(
                 "559-son qarorning 21-bandiga ko'ra talaba LMS bilan shaxsan tanishtirilib, yo'riqnomani tasdiqlamaguncha kursga biriktirilmaydi"
             }
             compatibilityService.requireEnrollmentCompatible(course, student)
+            val curriculumItem = course.subjectGroup?.curriculumSubject
+            if (course.subjectGroup != null) {
+                require(subjectGroupMemberships.findBySubjectGroupIdAndStudentId(
+                    requireNotNull(course.subjectGroup?.id), studentId,
+                ) != null) { "Talaba kursning fan guruhiga biriktirilmagan" }
+            }
             val item = enrollmentRepository.findByCourseIdAndStudentId(courseId, studentId)
                 ?: CourseEnrollment(course = course, student = student)
             item.deleted = false
             item.status = CourseEnrollmentStatus.ACTIVE
             item.completedAt = null
-            item.academicYear = request.academicYear?.takeIf(String::isNotBlank)
+            item.academicYear = curriculumItem?.curriculumVersion?.academicYear
+                ?: request.academicYear?.takeIf(String::isNotBlank)
                 ?: student.academicYear?.takeIf(String::isNotBlank)
                 ?: currentAcademicYear()
-            item.semester = request.semester
-            item.credits = request.credits
-            item.required = request.required
+            item.semester = curriculumItem?.semester ?: request.semester
+            item.credits = curriculumItem?.creditsSnapshot ?: request.credits
+            item.required = curriculumItem?.planItemType?.name?.let { it == "REQUIRED" } ?: request.required
             if (item.enrolledAt.isAfter(Instant.now())) item.enrolledAt = Instant.now()
             enrollmentRepository.save(item)
         }

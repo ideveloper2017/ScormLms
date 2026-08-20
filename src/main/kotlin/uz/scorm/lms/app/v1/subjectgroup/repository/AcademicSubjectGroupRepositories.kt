@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroup
 import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroupMembership
+import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroupTeacherAssignment
 
 interface AcademicSubjectGroupRepository : JpaRepository<AcademicSubjectGroup, Long> {
     fun findByIdAndDeletedFalse(id: Long): AcademicSubjectGroup?
@@ -45,4 +46,11 @@ interface AcademicSubjectGroupMembershipRepository : JpaRepository<AcademicSubje
     fun countBySubjectGroupId(subjectGroupId: Long): Long
     fun findBySubjectGroupIdAndStudentId(subjectGroupId: Long, studentId: Long): AcademicSubjectGroupMembership?
     fun existsByStudentIdAndCurriculumSubjectId(studentId: Long, curriculumSubjectId: Long): Boolean
+}
+
+interface AcademicSubjectGroupTeacherAssignmentRepository : JpaRepository<AcademicSubjectGroupTeacherAssignment, Long> {
+    fun findAllBySubjectGroupIdAndActiveTrueOrderByTeacherFullNameAsc(subjectGroupId: Long): List<AcademicSubjectGroupTeacherAssignment>
+    fun findAllByTeacherUserIdAndActiveTrueOrderBySubjectGroupCodeAsc(userId: Long): List<AcademicSubjectGroupTeacherAssignment>
+    fun findBySubjectGroupIdAndTeacherId(subjectGroupId: Long, teacherId: Long): AcademicSubjectGroupTeacherAssignment?
+    fun existsBySubjectGroupIdAndTeacherUserIdAndActiveTrue(subjectGroupId: Long, userId: Long): Boolean
 }

@@ -15,6 +15,10 @@ import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
+import uz.scorm.lms.app.v1.courses.dto.CourseCreateRequest
+import uz.scorm.lms.app.v1.courses.dto.CourseEnrollmentRequest
+import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
+import uz.scorm.lms.app.v1.courses.service.CourseService
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.student.model.Gender
@@ -24,8 +28,11 @@ import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import uz.scorm.lms.app.v1.subjectgroup.dto.AssignAcademicSubjectGroupStudentsRequest
+import uz.scorm.lms.app.v1.subjectgroup.dto.AssignAcademicSubjectGroupTeacherRequest
 import uz.scorm.lms.app.v1.subjectgroup.dto.CreateAcademicSubjectGroupRequest
 import uz.scorm.lms.app.v1.subjectgroup.service.AcademicSubjectGroupService
+import uz.scorm.lms.app.v1.teacher.model.Teacher
+import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.LocalDate
@@ -40,6 +47,9 @@ class AcademicSubjectGroupServiceIntegrationTest {
     @Autowired private lateinit var subjects: SubjectRepository
     @Autowired private lateinit var students: StudentRepository
     @Autowired private lateinit var users: UserRepository
+    @Autowired private lateinit var teachers: TeacherRepository
+    @Autowired private lateinit var courses: CourseService
+    @Autowired private lateinit var enrollments: CourseEnrollmentService
 
     @Test
     fun `subject group derives program year semester and subject from approved curriculum`() {
@@ -108,6 +118,65 @@ class AcademicSubjectGroupServiceIntegrationTest {
         assertTrue(error.message.orEmpty().contains("tasdiqlangan curriculum"))
     }
 
+    @Test
+    fun `teacher creates course only for assigned curriculum subject group`() {
+        val fixture = approvedCurriculum()
+        val group = service.create(CreateAcademicSubjectGroupRequest(
+            fixture.curriculumSubjectId, "DAST-T", "Dasturlash teacher guruhi", 25,
+        ), fixture.authorId)
+        val teacherUser = user("subject-group-teacher")
+        val teacher = teachers.save(Teacher(
+            fullName = "Professor Test",
+            active = true,
+            user = teacherUser,
+            subjects = mutableSetOf(fixture.subject),
+        ))
+
+        val missingScope = assertThrows<IllegalArgumentException> {
+            courses.create(CourseCreateRequest(title = "Rejasiz kurs"), requireNotNull(teacherUser.id))
+        }
+        assertTrue(missingScope.message.orEmpty().contains("fan guruhi"))
+        assertTrue(service.teachingOptions(requireNotNull(teacherUser.id)).isEmpty())
+
+        service.assignTeacher(
+            group.id,
+            AssignAcademicSubjectGroupTeacherRequest(requireNotNull(teacher.id)),
+            fixture.authorId,
+        )
+        assertEquals(listOf(group.id), service.teachingOptions(requireNotNull(teacherUser.id)).map { it.id })
+
+        val course = courses.create(CourseCreateRequest(
+            title = "Curriculumga bog'langan kurs",
+            subjectGroupId = group.id,
+        ), requireNotNull(teacherUser.id))
+        assertEquals(group.id, course.subjectGroupId)
+        assertEquals(fixture.curriculumSubjectId, course.curriculumSubjectId)
+        assertEquals(fixture.subject.id, course.subjectId)
+        assertEquals("2026-2027", course.academicYear)
+        assertEquals(3, course.semester)
+        assertEquals(6, course.credits)
+        assertEquals("DAST-T", course.groupName)
+
+        val eligible = student(fixture.program, "Kurs talabasi", semester = 3)
+        service.assign(group.id, AssignAcademicSubjectGroupStudentsRequest(setOf(requireNotNull(eligible.id))), fixture.authorId)
+        val enrollment = enrollments.enroll(
+            course.id,
+            CourseEnrollmentRequest(
+                studentIds = setOf(requireNotNull(eligible.id)),
+                academicYear = "2099-2100",
+                semester = 12,
+                credits = 99,
+                required = false,
+            ),
+            requireNotNull(teacherUser.id),
+            false,
+        ).single()
+        assertEquals("2026-2027", enrollment.academicYear)
+        assertEquals(3, enrollment.semester)
+        assertEquals(6, enrollment.credits)
+        assertTrue(enrollment.required)
+    }
+
     private fun approvedCurriculum(): Fixture {
         val author = user("subject-group-author")
         val approver = user("subject-group-approver")
@@ -141,6 +210,9 @@ class AcademicSubjectGroupServiceIntegrationTest {
         distanceEnabled = true,
         fullTimeAvailable = true,
         fullTimeBasisReference = "BUYRUQ-3/2026",
+        fullTimeDurationMonths = 48,
+        distanceDurationMonths = 48,
+        educationLanguage = "uz",
     ))
 
     private fun subject(program: Program) = subjects.save(Subject(

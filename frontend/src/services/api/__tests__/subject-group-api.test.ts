@@ -25,4 +25,22 @@ describe("subjectGroupApi", () => {
     await subjectGroupApi.removeStudent(7, 41);
     expect(api.delete).toHaveBeenCalledWith("/subject-groups/7/students/41");
   });
+
+  it("loads only the current teacher teaching options", async () => {
+    const groups = [{ id: 7, code: "DAST-A", subjectName: "Dasturlash" }];
+    vi.mocked(api.get).mockResolvedValue({ data: groups });
+    await expect(subjectGroupApi.teachingOptions()).resolves.toEqual(groups);
+    expect(api.get).toHaveBeenCalledWith("/subject-groups/teaching-options");
+  });
+
+  it("assigns and removes a teacher in the operational subject group", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { id: 7 } });
+    vi.mocked(api.delete).mockResolvedValue({ data: { id: 7 } });
+
+    await subjectGroupApi.assignTeacher(7, 15);
+    await subjectGroupApi.removeTeacher(7, 15);
+
+    expect(api.post).toHaveBeenCalledWith("/subject-groups/7/teachers", { teacherId: 15 });
+    expect(api.delete).toHaveBeenCalledWith("/subject-groups/7/teachers/15");
+  });
 });

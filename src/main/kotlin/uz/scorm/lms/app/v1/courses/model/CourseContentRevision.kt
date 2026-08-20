@@ -44,6 +44,13 @@ class CourseContentRevision(
     @Column(name = "content_url", length = 2000)
     var contentUrl: String?,
 
+    @Column(name = "content_body", columnDefinition = "TEXT")
+    var contentBody: String? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asset_id")
+    var asset: CourseContentAsset? = null,
+
     @Column(name = "duration_minutes")
     var durationMinutes: Int?,
 

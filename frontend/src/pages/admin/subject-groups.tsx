@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpenCheck, Plus, Search, UserMinus, UserPlus, Users } from "lucide-react";
+import { BookOpenCheck, Plus, Search, UserCheck, UserMinus, UserPlus, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +41,16 @@ export function AdminSubjectGroups() {
     queryFn: () => subjectGroupApi.candidates(selectedGroupId!, { search: candidateSearch.trim() || undefined, size: 20 }),
     enabled: !!selectedGroupId && !!selectedGroup?.active,
   });
+  const assignedTeachers = useQuery({
+    queryKey: ["subject-groups", selectedGroupId, "teachers"],
+    queryFn: () => subjectGroupApi.teachers(selectedGroupId!),
+    enabled: !!selectedGroupId,
+  });
+  const teacherCandidates = useQuery({
+    queryKey: ["subject-groups", selectedGroupId, "teacher-candidates"],
+    queryFn: () => subjectGroupApi.teacherCandidates(selectedGroupId!),
+    enabled: !!selectedGroupId && !!selectedGroup?.active,
+  });
   const refresh = async () => {
     await client.invalidateQueries({ queryKey: ["subject-groups"] });
   };
@@ -65,6 +75,16 @@ export function AdminSubjectGroups() {
     onSuccess: async () => { await refresh(); toast({ title: "Talaba fan guruhidan chiqarildi" }); },
     onError: fail,
   });
+  const assignTeacher = useMutation({
+    mutationFn: (teacherId: number) => subjectGroupApi.assignTeacher(selectedGroupId!, teacherId),
+    onSuccess: async () => { await refresh(); toast({ title: "O'qituvchi fan guruhiga biriktirildi" }); },
+    onError: fail,
+  });
+  const removeTeacher = useMutation({
+    mutationFn: (teacherId: number) => subjectGroupApi.removeTeacher(selectedGroupId!, teacherId),
+    onSuccess: async () => { await refresh(); toast({ title: "O'qituvchi fan guruhidan chiqarildi" }); },
+    onError: fail,
+  });
 
   return <div className="space-y-6 p-3 sm:p-6">
     <div><h1 className="text-2xl font-bold">Fan guruhlari</h1><p className="text-sm text-muted-foreground">Fan guruhi asosiy talabalar guruhidan alohida yuritiladi va tasdiqlangan curriculum faniga bog'lanadi.</p></div>
@@ -85,6 +105,8 @@ export function AdminSubjectGroups() {
       <Card><CardHeader><CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />{selectedGroup ? `${selectedGroup.code} talabalari` : "Talabalarni biriktirish"}</CardTitle><CardDescription>{selectedGroup ? "Faqat shu dastur, o'quv yili va semestrdagi ACTIVE talabalar ko'rsatiladi." : "Boshqarish uchun chap tomondan fan guruhini tanlang."}</CardDescription></CardHeader>{selectedGroup && <CardContent className="space-y-5">
         <div><h3 className="mb-2 text-sm font-semibold">Biriktirilganlar</h3><div className="space-y-2">{(members.data ?? []).map((student) => <div key={student.studentId} className="flex items-center justify-between rounded-md border p-2"><div><p className="text-sm font-medium">{student.fullName}</p><p className="text-xs text-muted-foreground">{student.studentNumber}</p></div>{canWrite && <Button size="sm" variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(student.studentId)}><UserMinus className="mr-1 h-4 w-4" />Chiqarish</Button>}</div>)}{members.data?.length === 0 && <p className="text-sm text-muted-foreground">Talaba biriktirilmagan.</p>}</div></div>
         {selectedGroup.active && <div><h3 className="mb-2 text-sm font-semibold">Mos talabalar</h3><div className="relative mb-2"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={candidateSearch} onChange={(event) => setCandidateSearch(event.target.value)} placeholder="F.I.Sh. yoki talaba raqami" /></div><div className="space-y-2">{(candidates.data?.items ?? []).map((student) => <div key={student.studentId} className="flex items-center justify-between rounded-md border p-2"><div><p className="text-sm font-medium">{student.fullName}</p><p className="text-xs text-muted-foreground">{student.studentNumber} · {student.semesterNumber}-semestr</p></div>{canWrite && <Button size="sm" variant="outline" disabled={assign.isPending || selectedGroup.memberCount >= selectedGroup.capacity} onClick={() => assign.mutate(student.studentId)}><UserPlus className="mr-1 h-4 w-4" />Biriktirish</Button>}</div>)}{candidates.data?.items.length === 0 && <p className="text-sm text-muted-foreground">Mos bo'sh talaba topilmadi.</p>}</div></div>}
+        <div className="border-t pt-4"><h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><UserCheck className="h-4 w-4" />Biriktirilgan o'qituvchilar</h3><div className="space-y-2">{(assignedTeachers.data ?? []).map((teacher) => <div key={teacher.teacherId} className="flex items-center justify-between rounded-md border p-2"><div><p className="text-sm font-medium">{teacher.fullName}</p><p className="text-xs text-muted-foreground">{teacher.position ?? "Lavozim kiritilmagan"} · {teacher.departmentName ?? "Kafedra kiritilmagan"}</p></div>{canWrite && <Button size="sm" variant="ghost" disabled={removeTeacher.isPending} onClick={() => removeTeacher.mutate(teacher.teacherId)}><UserMinus className="mr-1 h-4 w-4" />Chiqarish</Button>}</div>)}{assignedTeachers.data?.length === 0 && <p className="text-sm text-muted-foreground">O'qituvchi biriktirilmagan.</p>}</div></div>
+        {selectedGroup.active && canWrite && <div><h3 className="mb-2 text-sm font-semibold">Fan bo'yicha mos o'qituvchilar</h3><div className="space-y-2">{(teacherCandidates.data ?? []).map((teacher) => <div key={teacher.teacherId} className="flex items-center justify-between rounded-md border p-2"><div><p className="text-sm font-medium">{teacher.fullName}</p><p className="text-xs text-muted-foreground">{teacher.position ?? "Lavozim kiritilmagan"} · {teacher.departmentName ?? "Kafedra kiritilmagan"}</p></div><Button size="sm" variant="outline" disabled={assignTeacher.isPending} onClick={() => assignTeacher.mutate(teacher.teacherId)}><UserPlus className="mr-1 h-4 w-4" />Biriktirish</Button></div>)}{teacherCandidates.data?.length === 0 && <p className="text-sm text-muted-foreground">Mos bo'sh o'qituvchi topilmadi.</p>}</div></div>}
       </CardContent>}</Card>
     </div>
   </div>;

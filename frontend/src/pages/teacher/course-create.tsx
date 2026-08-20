@@ -2,42 +2,36 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BookOpen, Save } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { teacherPortalApi } from "@/services/api/teacher-portal-api";
-import { listPrograms, listSubjects } from "@/lib/academic-api";
-
-const GROUPS = ["CS-22-01", "CS-22-02", "CS-22-03", "CS-21-01", "CS-21-02", "CS-23-01"];
+import { subjectGroupApi } from "@/services/api/subject-group-api";
 
 export function TeacherCourseCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    title: "", description: "", subjectId: "", language: "", group: "",
-    startDate: "", endDate: "", isPublic: false, hasCertificate: false,
+    title: "", description: "", subjectGroupId: "", startDate: "", endDate: "",
   });
-  const subjects = useQuery({ queryKey: ["academic", "subjects"], queryFn: () => listSubjects() });
-  const programs = useQuery({ queryKey: ["academic", "programs"], queryFn: () => listPrograms() });
-  const programById = new Map((programs.data ?? []).map(program => [program.id, program]));
-  const eligibleSubjects = (subjects.data ?? []).filter(subject => {
-    const program = subject.programId == null ? undefined : programById.get(subject.programId);
-    return subject.active && program?.active && program.distanceEnabled;
+  const teachingOptions = useQuery({
+    queryKey: ["subject-groups", "teaching-options"],
+    queryFn: subjectGroupApi.teachingOptions,
   });
+  const selectedGroup = (teachingOptions.data ?? []).find(item => String(item.id) === form.subjectGroupId);
 
-  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
     if (!form.title.trim()) { toast({ variant: "destructive", title: "Kurs nomi majburiy" }); return; }
-    if (!form.subjectId) { toast({ variant: "destructive", title: "Ta'lim dasturiga bog'langan fan majburiy" }); return; }
+    if (!form.subjectGroupId) { toast({ variant: "destructive", title: "Sizga biriktirilgan fan guruhi majburiy" }); return; }
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       toast({ variant: "destructive", title: "Tugash sanasi boshlanish sanasidan oldin bo'lmaydi" });
       return;
@@ -47,11 +41,9 @@ export function TeacherCourseCreate() {
       const created = await teacherPortalApi.createCourse({
         title: form.title.trim(),
         description: form.description.trim() || undefined,
-        subjectId: Number(form.subjectId),
-        groupName: form.group || undefined,
+        subjectGroupId: Number(form.subjectGroupId),
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
-        language: form.language,
       });
       toast({ title: "Kurs qoralama sifatida yaratildi", description: created.title });
       navigate(`/teacher/courses/${created.id}`);
@@ -93,31 +85,26 @@ export function TeacherCourseCreate() {
             <Label>Tavsif</Label>
             <Textarea placeholder="Kurs haqida qisqacha ma'lumot..." rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Fan <span className="text-destructive">*</span></Label>
-              <Select value={form.subjectId} onValueChange={(value) => {
-                const subject = eligibleSubjects.find(item => String(item.id) === value);
-                const program = subject?.programId == null ? undefined : programById.get(subject.programId);
-                setForm(current => ({ ...current, subjectId: value, language: program?.educationLanguage ?? "" }));
-              }} disabled={subjects.isLoading || programs.isLoading}>
-                <SelectTrigger><SelectValue placeholder="Tanlang" /></SelectTrigger>
-                <SelectContent>{eligibleSubjects.map(subject => {
-                  const program = subject.programId == null ? undefined : programById.get(subject.programId);
-                  return <SelectItem key={subject.id} value={String(subject.id)}>{subject.name} · {program?.name} ({program?.educationLanguage})</SelectItem>;
-                })}</SelectContent>
-              </Select>
-              {!subjects.isLoading && !programs.isLoading && eligibleSubjects.length === 0 && <p className="text-xs text-destructive">Faol masofaviy dasturga bog'langan fan topilmadi.</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Guruh</Label>
-              <Select value={form.group} onValueChange={(v) => set("group", v)}>
-                <SelectTrigger><SelectValue placeholder="Tanlang" /></SelectTrigger>
-                <SelectContent>{GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <Label>Biriktirilgan fan guruhi <span className="text-destructive">*</span></Label>
+            <Select value={form.subjectGroupId} onValueChange={(value) => set("subjectGroupId", value)} disabled={teachingOptions.isLoading}>
+              <SelectTrigger><SelectValue placeholder="Fan guruhini tanlang" /></SelectTrigger>
+              <SelectContent>{(teachingOptions.data ?? []).map(group => (
+                <SelectItem key={group.id} value={String(group.id)}>
+                  {group.subjectCode} · {group.subjectName} · {group.code}
+                </SelectItem>
+              ))}</SelectContent>
+            </Select>
+            {!teachingOptions.isLoading && teachingOptions.data?.length === 0 && <p className="text-xs text-destructive">Sizga tasdiqlangan curriculum bo'yicha faol fan guruhi biriktirilmagan. Administratorga murojaat qiling.</p>}
           </div>
-          <div className="space-y-1.5"><Label>Kurs va kontent tili</Label><Input value={form.language || "Fan tanlang"} readOnly /></div>
+          {selectedGroup && <div className="grid gap-2 rounded-md border bg-muted/30 p-3 text-sm sm:grid-cols-2">
+            <p><span className="text-muted-foreground">Dastur:</span> {selectedGroup.programName}</p>
+            <p><span className="text-muted-foreground">O'quv yili:</span> {selectedGroup.academicYear}</p>
+            <p><span className="text-muted-foreground">Semestr:</span> {selectedGroup.semester}</p>
+            <p><span className="text-muted-foreground">Kredit:</span> {selectedGroup.credits}</p>
+            <p><span className="text-muted-foreground">Til:</span> {selectedGroup.programLanguage}</p>
+            <p><span className="text-muted-foreground">Turi:</span> {selectedGroup.planItemType === "REQUIRED" ? "Majburiy" : "Tanlov"}</p>
+          </div>}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Boshlanish sanasi</Label>
@@ -128,28 +115,12 @@ export function TeacherCourseCreate() {
               <Input type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} />
             </div>
           </div>
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Ochiq kurs</Label>
-                <p className="text-xs text-muted-foreground">Barcha talabalar ko'ra oladi</p>
-              </div>
-              <Switch checked={form.isPublic} onCheckedChange={(v) => set("isPublic", v)} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Sertifikat</Label>
-                <p className="text-xs text-muted-foreground">Yakunlaganda sertifikat beriladi</p>
-              </div>
-              <Switch checked={form.hasCertificate} onCheckedChange={(v) => set("hasCertificate", v)} />
-            </div>
-          </div>
         </CardContent>
       </Card>
 
       <div className="flex gap-3 justify-end">
         <Button variant="outline" onClick={() => navigate("/teacher/courses")}>Bekor qilish</Button>
-        <Button onClick={handleSave} disabled={saving || !form.subjectId || !form.language} className="gap-2">
+        <Button onClick={handleSave} disabled={saving || !form.subjectGroupId} className="gap-2">
           <Save className="h-4 w-4" />{saving ? "Saqlanmoqda..." : "Kurs yaratish"}
         </Button>
       </div>

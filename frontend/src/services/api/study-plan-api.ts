@@ -1,4 +1,5 @@
 import api, { type ApiResponse } from '@/lib/api';
+import type { CourseContentAsset } from './teacher-portal-api';
 
 export interface StudyPlanCourse {
   enrollmentId: number;
@@ -49,8 +50,10 @@ export interface LearningContent {
   moduleTitle: string;
   title: string;
   description?: string | null;
-  contentType: 'video' | 'document' | 'link' | 'file';
+  contentType: 'video' | 'document' | 'link' | 'file' | 'text';
   contentUrl?: string | null;
+  contentBody?: string | null;
+  asset?: CourseContentAsset | null;
   durationMinutes?: number | null;
   position: number;
   languageCode: string;

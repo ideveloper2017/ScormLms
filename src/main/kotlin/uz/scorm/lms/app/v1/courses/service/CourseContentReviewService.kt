@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.courses.dto.ContentReviewDecisionRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentReviewDto
+import uz.scorm.lms.app.v1.courses.dto.CourseContentAssetDto
 import uz.scorm.lms.app.v1.courses.model.ContentReviewDecision
 import uz.scorm.lms.app.v1.courses.model.ContentReviewStatus
 import uz.scorm.lms.app.v1.courses.model.CourseContent
@@ -151,6 +152,18 @@ class CourseContentReviewService(
             description = revision.description,
             contentType = revision.contentType.name.lowercase(),
             contentUrl = revision.contentUrl,
+            contentBody = revision.contentBody,
+            asset = revision.asset?.let { asset ->
+                CourseContentAssetDto(
+                    id = requireNotNull(asset.id),
+                    courseId = requireNotNull(asset.course.id),
+                    originalFileName = asset.originalFileName,
+                    mediaType = asset.mediaType,
+                    sizeBytes = asset.sizeBytes,
+                    sha256 = asset.sha256,
+                    uploadedAt = asset.createdAt,
+                )
+            },
             languageCode = revision.languageCode,
             authorName = revision.authorName,
             sourceName = revision.sourceName,

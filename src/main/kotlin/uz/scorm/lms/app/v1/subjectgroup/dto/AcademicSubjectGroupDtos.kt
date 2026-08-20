@@ -19,6 +19,8 @@ data class UpdateAcademicSubjectGroupRequest(
 
 data class AssignAcademicSubjectGroupStudentsRequest(val studentIds: Set<Long>)
 
+data class AssignAcademicSubjectGroupTeacherRequest(val teacherId: Long)
+
 data class AcademicSubjectGroupDto(
     val id: Long,
     val code: String,
@@ -30,12 +32,15 @@ data class AcademicSubjectGroupDto(
     val curriculumVersionCode: String,
     val programId: Long,
     val programName: String,
+    val programLanguage: String,
     val academicYear: String,
     val curriculumSubjectId: Long,
     val subjectId: Long?,
     val subjectCode: String,
     val subjectName: String,
     val semester: Int,
+    val credits: Int,
+    val planItemType: String,
 )
 
 data class AcademicSubjectGroupStudentDto(
@@ -53,4 +58,12 @@ data class AcademicSubjectGroupCandidatePageDto(
     val size: Int,
     val totalElements: Long,
     val totalPages: Int,
+)
+
+data class AcademicSubjectGroupTeacherDto(
+    val teacherId: Long,
+    val fullName: String,
+    val departmentName: String?,
+    val position: String?,
+    val active: Boolean,
 )

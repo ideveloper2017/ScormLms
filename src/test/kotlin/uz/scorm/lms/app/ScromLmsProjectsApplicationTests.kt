@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("56", flyway.info().current()?.version?.toString())
+        assertEquals("58", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -40,6 +40,7 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "academic_semester_definitions", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "academic_subject_groups", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "academic_subject_group_memberships", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "academic_subject_group_teacher_assignments", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getColumns(null, null, "users", "credentials_initialized").use { it.next() })
             assertTrue(metadata.getColumns(null, null, "country_classifiers", "source_code").use { it.next() })
             assertTrue(metadata.getColumns(null, null, "region_classifiers", "managed_source").use { it.next() })
@@ -49,6 +50,7 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getColumns(null, null, "students", "current_district_id").use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_modules", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_contents", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "course_content_assets", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_content_progress", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_attendance_sessions", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "learning_activity_events", arrayOf("TABLE")).use { it.next() })
@@ -133,7 +135,13 @@ class ScromLmsProjectsApplicationTests {
                     while (columns.next()) add(columns.getString("COLUMN_NAME").lowercase())
                 }
             }
-            assertTrue(courseColumns.contains("subject_id"))
+            assertTrue(courseColumns.containsAll(setOf("subject_id", "subject_group_id")))
+            val contentColumns = buildSet {
+                metadata.getColumns(null, null, "course_contents", null).use { columns ->
+                    while (columns.next()) add(columns.getString("COLUMN_NAME").lowercase())
+                }
+            }
+            assertTrue(contentColumns.containsAll(setOf("content_body", "asset_id")))
             val uatRunColumns = buildSet {
                 metadata.getColumns(null, null, "decision_559_uat_runs", null).use { columns ->
                     while (columns.next()) add(columns.getString("COLUMN_NAME").lowercase())

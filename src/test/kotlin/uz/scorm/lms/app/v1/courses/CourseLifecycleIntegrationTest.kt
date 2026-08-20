@@ -8,6 +8,8 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
+import org.springframework.mock.web.MockMultipartFile
 import uz.scorm.lms.app.v1.courses.dto.CourseCreateRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseEnrollmentRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseUpdateRequest
@@ -23,6 +25,7 @@ import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
 import uz.scorm.lms.app.v1.courses.service.CourseService
 import uz.scorm.lms.app.v1.courses.service.CourseModuleService
 import uz.scorm.lms.app.v1.courses.service.CourseContentService
+import uz.scorm.lms.app.v1.courses.service.CourseContentAssetService
 import uz.scorm.lms.app.v1.courses.service.CourseContentReviewService
 import uz.scorm.lms.app.v1.courses.service.StudyPlanService
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
@@ -47,6 +50,7 @@ import java.time.LocalDate
 
 @SpringBootTest
 @ActiveProfiles("test")
+@TestPropertySource(properties = ["app.course-content.storage-dir=build/test-course-content"])
 @Transactional
 class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var courseService: CourseService
@@ -57,6 +61,7 @@ class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var studentPortalService: StudentPortalService
     @Autowired private lateinit var moduleService: CourseModuleService
     @Autowired private lateinit var contentService: CourseContentService
+    @Autowired private lateinit var contentAssetService: CourseContentAssetService
     @Autowired private lateinit var contentReviewService: CourseContentReviewService
     @Autowired private lateinit var studyPlanService: StudyPlanService
     @Autowired private lateinit var courseRepository: CourseRepository
@@ -65,6 +70,75 @@ class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var learningActivityEventRepository: LearningActivityEventRepository
     @Autowired private lateinit var programRepository: ProgramRepository
     @Autowired private lateinit var subjectRepository: SubjectRepository
+
+    @Test
+    fun `private fayl asseti va matnli dars revision bilan saqlanadi`() {
+        val teacher = user("course-asset-teacher")
+        val outsider = user("course-asset-outsider")
+        val course = courseService.create(CourseCreateRequest(title = "Private materiallar"), requireNotNull(teacher.id))
+        val module = moduleService.create(
+            course.id,
+            CourseModuleRequest(title = "Materiallar"),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val pdfBytes = "%PDF-1.7 private lesson".toByteArray()
+        val asset = contentAssetService.upload(
+            course.id,
+            MockMultipartFile("file", "mavzu.pdf", "application/pdf", pdfBytes),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val fileContent = contentService.create(
+            course.id,
+            module.id,
+            CourseContentRequest(
+                title = "PDF mavzu",
+                contentType = CourseContentType.DOCUMENT,
+                assetId = asset.id,
+                languageCode = "uz",
+                authorName = "Test muallifi",
+                contentVersion = "1.0",
+                sourceName = "Universitet",
+                validFrom = LocalDate.of(2026, 1, 1),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+        assertEquals("mavzu.pdf", fileContent.asset?.originalFileName)
+        assertEquals(asset.id, contentService.revisions(course.id, fileContent.id, requireNotNull(teacher.id), false).single().asset?.id)
+        assertTrue(contentAssetService.download(course.id, fileContent.id, requireNotNull(teacher.id), false).resource.inputStream.readAllBytes().contentEquals(pdfBytes))
+        assertThrows<IllegalArgumentException> {
+            contentAssetService.download(course.id, fileContent.id, requireNotNull(outsider.id), false)
+        }
+
+        val text = contentService.create(
+            course.id,
+            module.id,
+            CourseContentRequest(
+                title = "Matnli mavzu",
+                contentType = CourseContentType.TEXT,
+                contentBody = "Bu haqiqiy dars mazmuni.",
+                languageCode = "uz",
+                authorName = "Test muallifi",
+                contentVersion = "1.0",
+                sourceName = "Universitet",
+                validFrom = LocalDate.of(2026, 1, 1),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+        assertEquals("Bu haqiqiy dars mazmuni.", text.contentBody)
+        assertEquals(text.contentBody, contentService.revisions(course.id, text.id, requireNotNull(teacher.id), false).single().contentBody)
+        assertThrows<IllegalArgumentException> {
+            contentAssetService.upload(
+                course.id,
+                MockMultipartFile("file", "virus.exe", "application/octet-stream", byteArrayOf(1)),
+                requireNotNull(teacher.id),
+                false,
+            )
+        }
+    }
 
     @Test
     fun `oqituvchi draft yaratadi publish qiladi va biriktirilgan talaba kursni ochadi`() {

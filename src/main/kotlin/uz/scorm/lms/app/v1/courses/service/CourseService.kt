@@ -11,6 +11,8 @@ import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
+import uz.scorm.lms.app.v1.subjectgroup.service.AcademicSubjectGroupService
+import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import java.time.Instant
 
 @Service
@@ -20,6 +22,8 @@ class CourseService(
     private val accessService: CourseAccessService,
     private val subjectRepository: SubjectRepository,
     private val compatibilityService: ContentCompatibilityService,
+    private val subjectGroupService: AcademicSubjectGroupService,
+    private val teacherRepository: TeacherRepository,
 ) {
     @Transactional(readOnly = true)
     fun owned(userId: Long, mayManageAll: Boolean): List<CourseDto> =
@@ -31,9 +35,26 @@ class CourseService(
         toDto(accessService.requireRead(courseId, userId, mayManageAll))
 
     @Transactional
-    fun create(request: CourseCreateRequest, ownerUserId: Long): CourseDto {
+    fun create(request: CourseCreateRequest, ownerUserId: Long, enforceTeachingScope: Boolean = false): CourseDto {
         validate(request.title, request.startDate, request.endDate)
-        val subject = request.subjectId?.let(::subject)
+        val teacher = teacherRepository.findByUserId(ownerUserId)
+        require(!enforceTeachingScope || teacher != null) {
+            "O'qituvchi LMS profili va fan vakolati sozlanmagan"
+        }
+        require(teacher?.active != false) { "Nofaol o'qituvchi kurs yarata olmaydi" }
+        val subjectGroup = request.subjectGroupId?.let { groupId ->
+            if (teacher == null) subjectGroupService.requireOperationalGroup(groupId)
+            else subjectGroupService.requireTeachingAssignment(groupId, ownerUserId)
+        }
+        require((teacher == null && !enforceTeachingScope) || subjectGroup != null) {
+            "O'qituvchi kursni faqat o'ziga biriktirilgan fan guruhi uchun yaratishi mumkin"
+        }
+        val curriculumItem = subjectGroup?.curriculumSubject
+        val subject = curriculumItem?.subject ?: request.subjectId?.let(::subject)
+        if (subjectGroup != null && request.subjectId != null) {
+            require(request.subjectId == subject?.id) { "Tanlangan fan fan guruhidagi curriculum faniga mos emas" }
+        }
+        val curriculum = curriculumItem?.curriculumVersion
         val course = Course(
             title = request.title.trim(),
             slug = slug(request.title),
@@ -41,12 +62,13 @@ class CourseService(
             description = request.description?.trim(),
             userId = ownerUserId,
             status = CourseStatus.DRAFT.name,
-            subjectName = subject?.name ?: request.subjectName?.trim(),
+            subjectName = curriculumItem?.subjectNameSnapshot ?: subject?.name ?: request.subjectName?.trim(),
             subject = subject,
-            groupName = request.groupName?.trim(),
+            groupName = subjectGroup?.code ?: request.groupName?.trim(),
+            subjectGroup = subjectGroup,
             startDate = request.startDate,
             endDate = request.endDate,
-            language = request.language?.trim()?.lowercase(),
+            language = curriculum?.program?.educationLanguage ?: request.language?.trim()?.lowercase(),
             level = request.level?.trim(),
         )
         return toDto(courseRepository.save(course))
@@ -63,15 +85,28 @@ class CourseService(
         title?.let { course.title = it; course.slug = slug(it) }
         request.description?.let { course.description = it.trim(); course.shortDescription = it.trim() }
         request.subjectId?.let {
+            require(course.subjectGroup == null) { "Curriculumga bog'langan kurs fanini almashtirib bo'lmaydi" }
             val subject = subject(it)
             course.subject = subject
             course.subjectName = subject.name
         }
-        if (request.subjectId == null) request.subjectName?.let { course.subjectName = it.trim() }
-        request.groupName?.let { course.groupName = it.trim() }
+        if (request.subjectId == null) request.subjectName?.let {
+            require(course.subjectGroup == null) { "Curriculumga bog'langan kurs fan nomini almashtirib bo'lmaydi" }
+            course.subjectName = it.trim()
+        }
+        request.groupName?.let {
+            require(course.subjectGroup == null) { "Curriculumga bog'langan kurs guruhini almashtirib bo'lmaydi" }
+            course.groupName = it.trim()
+        }
         request.startDate?.let { course.startDate = it }
         request.endDate?.let { course.endDate = it }
-        request.language?.let { course.language = it.trim().lowercase() }
+        request.language?.let {
+            val curriculumLanguage = course.subjectGroup?.curriculumSubject?.curriculumVersion?.program?.educationLanguage
+            require(curriculumLanguage == null || it.equals(curriculumLanguage, ignoreCase = true)) {
+                "Kurs tili curriculum dasturi tiliga mos bo'lishi kerak"
+            }
+            course.language = it.trim().lowercase()
+        }
         request.level?.let { course.level = it.trim() }
         compatibilityService.requirePublishedContentsCompatible(course)
         return toDto(courseRepository.save(course))
@@ -83,6 +118,7 @@ class CourseService(
         when (target) {
             CourseStatus.PUBLISHED -> {
                 validate(course.title.orEmpty(), course.startDate, course.endDate)
+                validateOperationalBinding(course)
                 course.publishedAt = course.publishedAt ?: Instant.now()
                 course.archivedAt = null
             }
@@ -111,6 +147,11 @@ class CourseService(
         programName = course.subject?.program?.name,
         programLanguage = course.subject?.program?.educationLanguage,
         groupName = course.groupName,
+        subjectGroupId = course.subjectGroup?.id,
+        curriculumSubjectId = course.subjectGroup?.curriculumSubject?.id,
+        academicYear = course.subjectGroup?.curriculumSubject?.curriculumVersion?.academicYear,
+        semester = course.subjectGroup?.curriculumSubject?.semester,
+        credits = course.subjectGroup?.curriculumSubject?.creditsSnapshot,
         status = course.status?.lowercase() ?: "draft",
         startDate = course.startDate,
         endDate = course.endDate,
@@ -134,6 +175,16 @@ class CourseService(
 
     private fun subject(id: Long) = subjectRepository.findById(id)
         .orElseThrow { IllegalArgumentException("Fan topilmadi: $id") }
+
+    private fun validateOperationalBinding(course: Course) {
+        val ownerId = requireNotNull(course.userId)
+        val teacher = teacherRepository.findByUserId(ownerId) ?: return
+        require(teacher.active) { "Nofaol o'qituvchi kursi nashr qilinmaydi" }
+        val groupId = requireNotNull(course.subjectGroup?.id) {
+            "O'qituvchi kursi tasdiqlangan curriculum fan guruhiga bog'lanmagan"
+        }
+        subjectGroupService.requireTeachingAssignment(groupId, ownerId)
+    }
 
     private fun slug(value: String): String = value.trim().lowercase()
         .replace(Regex("[^a-z0-9\\p{L}]+"), "-")

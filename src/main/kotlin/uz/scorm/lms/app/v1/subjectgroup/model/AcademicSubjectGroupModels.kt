@@ -13,6 +13,7 @@ import jakarta.persistence.UniqueConstraint
 import uz.scorm.lms.app.common.DateAudit
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumSubject
 import uz.scorm.lms.app.v1.student.model.StudentProfile
+import uz.scorm.lms.app.v1.teacher.model.Teacher
 
 @Entity
 @Table(
@@ -66,6 +67,30 @@ class AcademicSubjectGroupMembership(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
     var student: StudentProfile,
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long? = null,
+) : DateAudit()
+
+@Entity
+@Table(
+    name = "academic_subject_group_teacher_assignments",
+    uniqueConstraints = [UniqueConstraint(
+        name = "uq_academic_subject_group_teacher",
+        columnNames = ["subject_group_id", "teacher_id"],
+    )],
+)
+class AcademicSubjectGroupTeacherAssignment(
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "subject_group_id", nullable = false)
+    var subjectGroup: AcademicSubjectGroup,
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "teacher_id", nullable = false)
+    var teacher: Teacher,
+
+    @Column(nullable = false)
+    var active: Boolean = true,
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

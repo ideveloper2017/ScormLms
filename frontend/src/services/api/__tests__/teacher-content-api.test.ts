@@ -48,6 +48,26 @@ describe('teacherPortalApi content provenance', () => {
     expect(api.post).toHaveBeenCalledWith('/courses/3/modules/5/contents', payload);
   });
 
+  it('private kurs faylini multipart orqali yuklaydi', async () => {
+    const file = new File(['%PDF-test'], 'mavzu.pdf', { type: 'application/pdf' });
+    const asset = { id: 44, courseId: 3, originalFileName: file.name, mediaType: file.type, sizeBytes: file.size, sha256: 'abc' };
+    vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: asset } });
+
+    await expect(teacherPortalApi.uploadContentAsset('3', file)).resolves.toEqual(asset);
+    const [url, body, config] = vi.mocked(api.post).mock.calls[0];
+    expect(url).toBe('/courses/3/assets');
+    expect((body as FormData).get('file')).toBe(file);
+    expect(config).toMatchObject({ headers: { 'Content-Type': 'multipart/form-data' }, timeout: 180_000 });
+  });
+
+  it('himoyalangan kontent faylini blob sifatida yuklaydi', async () => {
+    const blob = new Blob(['lesson']);
+    vi.mocked(api.get).mockResolvedValue({ data: blob });
+
+    await expect(teacherPortalApi.downloadContentFile('3', 9)).resolves.toBe(blob);
+    expect(api.get).toHaveBeenCalledWith('/courses/3/contents/9/file', { responseType: 'blob', timeout: 180_000 });
+  });
+
   it('yangi versiyani update endpointiga yuboradi', async () => {
     vi.mocked(api.put).mockResolvedValue({ data: { success: true, data: { id: 9, ...payload } } });
 

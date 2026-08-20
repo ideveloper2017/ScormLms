@@ -15,19 +15,27 @@ import uz.scorm.lms.app.v1.subjectgroup.dto.AcademicSubjectGroupCandidatePageDto
 import uz.scorm.lms.app.v1.subjectgroup.dto.AcademicSubjectGroupDto
 import uz.scorm.lms.app.v1.subjectgroup.dto.AcademicSubjectGroupStudentDto
 import uz.scorm.lms.app.v1.subjectgroup.dto.AssignAcademicSubjectGroupStudentsRequest
+import uz.scorm.lms.app.v1.subjectgroup.dto.AssignAcademicSubjectGroupTeacherRequest
+import uz.scorm.lms.app.v1.subjectgroup.dto.AcademicSubjectGroupTeacherDto
 import uz.scorm.lms.app.v1.subjectgroup.dto.CreateAcademicSubjectGroupRequest
 import uz.scorm.lms.app.v1.subjectgroup.dto.UpdateAcademicSubjectGroupRequest
 import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroup
 import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroupMembership
+import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroupTeacherAssignment
 import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupMembershipRepository
 import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupRepository
+import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupTeacherAssignmentRepository
+import uz.scorm.lms.app.v1.teacher.model.Teacher
+import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 
 @Service
 class AcademicSubjectGroupService(
     private val groups: AcademicSubjectGroupRepository,
     private val memberships: AcademicSubjectGroupMembershipRepository,
+    private val teacherAssignments: AcademicSubjectGroupTeacherAssignmentRepository,
     private val curriculumSubjects: ProgramCurriculumSubjectRepository,
     private val students: StudentRepository,
+    private val teachers: TeacherRepository,
     private val academicPeriods: AcademicPeriodService,
     private val auditService: AuditService,
 ) {
@@ -44,6 +52,30 @@ class AcademicSubjectGroupService(
 
     @Transactional(readOnly = true)
     fun get(id: Long): AcademicSubjectGroupDto = toDto(requireGroup(id))
+
+    @Transactional(readOnly = true)
+    fun teachingOptions(userId: Long): List<AcademicSubjectGroupDto> = teacherAssignments
+        .findAllByTeacherUserIdAndActiveTrueOrderBySubjectGroupCodeAsc(userId)
+        .map { it.subjectGroup }
+        .filter { it.active && runCatching { requireOperational(it) }.isSuccess }
+        .map(::toDto)
+
+    @Transactional(readOnly = true)
+    fun requireTeachingAssignment(groupId: Long, userId: Long): AcademicSubjectGroup {
+        val group = requireOperationalGroup(groupId)
+        require(teacherAssignments.existsBySubjectGroupIdAndTeacherUserIdAndActiveTrue(groupId, userId)) {
+            "O'qituvchi ushbu fan guruhiga biriktirilmagan"
+        }
+        return group
+    }
+
+    @Transactional(readOnly = true)
+    fun requireOperationalGroup(groupId: Long): AcademicSubjectGroup {
+        val group = requireGroup(groupId)
+        require(group.active) { "Nofaol fan guruhi uchun kurs yaratilmaydi" }
+        requireOperational(group)
+        return group
+    }
 
     @Transactional
     fun create(request: CreateAcademicSubjectGroupRequest, actorId: Long): AcademicSubjectGroupDto {
@@ -160,6 +192,66 @@ class AcademicSubjectGroupService(
         return toDto(group)
     }
 
+    @Transactional(readOnly = true)
+    fun assignedTeachers(id: Long): List<AcademicSubjectGroupTeacherDto> {
+        requireGroup(id)
+        return teacherAssignments.findAllBySubjectGroupIdAndActiveTrueOrderByTeacherFullNameAsc(id)
+            .map { teacherDto(it.teacher) }
+    }
+
+    @Transactional(readOnly = true)
+    fun teacherCandidates(id: Long): List<AcademicSubjectGroupTeacherDto> {
+        val group = requireGroup(id)
+        val subjectId = group.curriculumSubject.subject?.id ?: return emptyList()
+        val assignedIds = teacherAssignments.findAllBySubjectGroupIdAndActiveTrueOrderByTeacherFullNameAsc(id)
+            .mapTo(mutableSetOf()) { requireNotNull(it.teacher.id) }
+        return teachers.findAllByActiveTrueOrderByFullNameAsc()
+            .filter { teacher -> teacher.id !in assignedIds && teacher.subjects.any { it.id == subjectId } }
+            .map(::teacherDto)
+    }
+
+    @Transactional
+    fun assignTeacher(
+        id: Long,
+        request: AssignAcademicSubjectGroupTeacherRequest,
+        actorId: Long,
+    ): AcademicSubjectGroupDto {
+        val group = requireGroup(id)
+        require(group.active) { "Nofaol fan guruhiga o'qituvchi biriktirilmaydi" }
+        requireOperational(group)
+        val subjectId = requireNotNull(group.curriculumSubject.subject?.id) {
+            "Curriculumdagi fan katalogdan o'chirilgan"
+        }
+        val teacher = teachers.findById(request.teacherId)
+            .orElseThrow { NoSuchElementException("O'qituvchi topilmadi: ${request.teacherId}") }
+        require(teacher.active) { "Nofaol o'qituvchi fan guruhiga biriktirilmaydi" }
+        require(teacher.user?.id != null) { "O'qituvchiga LMS login akkaunti biriktirilmagan" }
+        require(teacher.subjects.any { it.id == subjectId }) { "O'qituvchi ushbu fan bo'yicha vakolatga ega emas" }
+        val existing = teacherAssignments.findBySubjectGroupIdAndTeacherId(id, request.teacherId)
+        require(existing?.active != true) { "O'qituvchi fan guruhiga allaqachon biriktirilgan" }
+        val assignment = existing ?: AcademicSubjectGroupTeacherAssignment(group, teacher)
+        assignment.active = true
+        teacherAssignments.save(assignment)
+        auditService.logAction(
+            "ACADEMIC_SUBJECT_GROUP_TEACHER_ASSIGNED",
+            actorId,
+            "group=$id; teacher=${request.teacherId}",
+        )
+        return toDto(group)
+    }
+
+    @Transactional
+    fun removeTeacher(id: Long, teacherId: Long, actorId: Long): AcademicSubjectGroupDto {
+        val group = requireGroup(id)
+        val assignment = teacherAssignments.findBySubjectGroupIdAndTeacherId(id, teacherId)
+            ?.takeIf { it.active }
+            ?: throw NoSuchElementException("O'qituvchi ushbu fan guruhiga biriktirilmagan")
+        assignment.active = false
+        teacherAssignments.save(assignment)
+        auditService.logAction("ACADEMIC_SUBJECT_GROUP_TEACHER_REMOVED", actorId, "group=$id; teacher=$teacherId")
+        return toDto(group)
+    }
+
     private fun validateStudent(group: AcademicSubjectGroup, student: StudentProfile) {
         val item = group.curriculumSubject
         val curriculum = item.curriculumVersion
@@ -205,14 +297,20 @@ class AcademicSubjectGroupService(
             active = group.active, memberCount = memberships.countBySubjectGroupId(requireNotNull(group.id)),
             curriculumId = requireNotNull(curriculum.id), curriculumVersionCode = curriculum.versionCode,
             programId = requireNotNull(curriculum.program.id), programName = curriculum.program.name,
+            programLanguage = curriculum.program.educationLanguage,
             academicYear = curriculum.academicYear, curriculumSubjectId = requireNotNull(item.id),
             subjectId = item.subject?.id, subjectCode = item.subjectCodeSnapshot, subjectName = item.subjectNameSnapshot,
-            semester = item.semester,
+            semester = item.semester, credits = item.creditsSnapshot, planItemType = item.planItemType.name,
         )
     }
 
     private fun studentDto(student: StudentProfile) = AcademicSubjectGroupStudentDto(
         studentId = requireNotNull(student.id), studentNumber = student.studentNumber, fullName = student.fullName,
         status = student.studentStatus, semesterNumber = student.semesterNumber, primaryGroupId = student.groupId,
+    )
+
+    private fun teacherDto(teacher: Teacher) = AcademicSubjectGroupTeacherDto(
+        teacherId = requireNotNull(teacher.id), fullName = teacher.fullName,
+        departmentName = teacher.department?.name, position = teacher.position, active = teacher.active,
     )
 }

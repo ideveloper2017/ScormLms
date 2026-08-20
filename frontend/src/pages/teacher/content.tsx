@@ -1,138 +1,159 @@
-import { useState } from "react";
+import { useState, type ElementType } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Upload, BookOpen, Video, FileText, File,
-  Search, Plus, Trash2, Download, Link as LinkIcon,
-  MoreHorizontal, Eye, AlertTriangle,
+  BookOpen,
+  Download,
+  ExternalLink,
+  File,
+  FileText,
+  Link as LinkIcon,
+  Loader2,
+  Plus,
+  Search,
+  Video,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tabs, TabsContent, TabsList, TabsTrigger,
-} from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScormPackageManager } from "@/components/scorm/package-manager";
+import { useToast } from "@/hooks/use-toast";
+import {
+  teacherPortalApi,
+  type CourseContent,
+  type TeacherCourse,
+} from "@/services/api/teacher-portal-api";
 
-interface ContentItem {
-  id: number;
-  name: string;
-  type: "scorm" | "video" | "pdf" | "file" | "link";
-  course: string;
-  module: string;
-  size: string;
-  uploadedAt: string;
-  linked: boolean;
-}
+type LibraryItem = CourseContent & { course: TeacherCourse };
 
-const CONTENT: ContentItem[] = [
-  { id: 1,  name: "Kirish darsi.mp4",           type: "video", course: "JS Asoslari",  module: "Kirish",              size: "245 MB", uploadedAt: "2025-06-01", linked: true  },
-  { id: 2,  name: "JS Asoslari reja.pdf",        type: "pdf",   course: "JS Asoslari",  module: "Kirish",              size: "1.2 MB", uploadedAt: "2025-06-01", linked: true  },
-  { id: 3,  name: "O'zgaruvchilar.scorm",        type: "scorm", course: "JS Asoslari",  module: "O'zgaruvchilar",      size: "18 MB",  uploadedAt: "2025-06-03", linked: true  },
-  { id: 4,  name: "Funksiyalar_amaliyot.zip",    type: "file",  course: "JS Asoslari",  module: "Funksiyalar",         size: "5 MB",   uploadedAt: "2025-06-05", linked: false },
-  { id: 5,  name: "React Kirish.mp4",            type: "video", course: "React Dev",    module: "React Asoslari",      size: "312 MB", uploadedAt: "2025-06-05", linked: true  },
-  { id: 6,  name: "Hooks_interaktiv.scorm",      type: "scorm", course: "React Dev",    module: "React Hooks",         size: "22 MB",  uploadedAt: "2025-06-07", linked: true  },
-  { id: 7,  name: "React State qo'llanma.pdf",   type: "pdf",   course: "React Dev",    module: "React Hooks",         size: "2.5 MB", uploadedAt: "2025-06-07", linked: false },
-  { id: 8,  name: "Express REST API.scorm",      type: "scorm", course: "Node.js",      module: "REST API",            size: "30 MB",  uploadedAt: "2025-06-08", linked: true  },
-];
-
-const TYPE_META: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
-  scorm: { label: "SCORM", icon: BookOpen,  cls: "text-blue-600"   },
-  video: { label: "Video", icon: Video,     cls: "text-red-500"    },
-  pdf:   { label: "PDF",   icon: FileText,  cls: "text-red-700"    },
-  file:  { label: "Fayl",  icon: File,      cls: "text-slate-500"  },
-  link:  { label: "URL",   icon: LinkIcon,  cls: "text-purple-500" },
+const TYPE_META: Record<
+  CourseContent["contentType"],
+  { label: string; icon: ElementType; className: string }
+> = {
+  video: { label: "Video", icon: Video, className: "text-red-500" },
+  document: { label: "Hujjat", icon: FileText, className: "text-red-700" },
+  file: { label: "Fayl", icon: File, className: "text-slate-500" },
+  link: { label: "Havola", icon: LinkIcon, className: "text-blue-600" },
+  text: { label: "Matn", icon: FileText, className: "text-emerald-600" },
 };
 
-const COURSES  = ["Barchasi", "JS Asoslari", "React Dev", "Node.js", "TypeScript"];
-
-function fmtDate(s: string) {
-  return new Date(s).toLocaleDateString("uz-Latn", { day: "2-digit", month: "short" });
-}
-
 export function TeacherContent() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const [course, setCourse] = useState("Barchasi");
+  const [courseId, setCourseId] = useState("all");
   const [tab, setTab] = useState("all");
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", type: "scorm", course: "JS Asoslari", module: "", url: "" });
-  const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
-  const filtered = CONTENT.filter((c) => {
-    const t = search.toLowerCase();
-    const typeMatch = tab === "all" || c.type === tab || (tab === "linked" && c.linked) || (tab === "unlinked" && !c.linked);
-    return (
-      (!t || c.name.toLowerCase().includes(t) || c.course.toLowerCase().includes(t)) &&
-      (course === "Barchasi" || c.course === course) &&
-      typeMatch
-    );
+  const libraryQuery = useQuery({
+    queryKey: ["teacher", "content-library"],
+    queryFn: async () => {
+      const courses = await teacherPortalApi.getCourses();
+      const lists = await Promise.all(
+        courses.map(async (course) => {
+          const contents = await teacherPortalApi.getContents(course.id);
+          return contents.map((content): LibraryItem => ({
+            ...content,
+            course,
+          }));
+        }),
+      );
+      return { courses, items: lists.flat() };
+    },
   });
 
-  const stats: Record<string, number> = { total: CONTENT.length };
-  CONTENT.forEach((c) => { stats[c.type] = (stats[c.type] ?? 0) + 1; });
-  stats.linked   = CONTENT.filter((c) => c.linked).length;
-  stats.unlinked = CONTENT.filter((c) => !c.linked).length;
+  const courses = libraryQuery.data?.courses ?? [];
+  const items = libraryQuery.data?.items ?? [];
+  const normalizedSearch = search.trim().toLowerCase();
+  const filtered = items.filter(
+    (item) =>
+      (courseId === "all" || item.course.id === courseId) &&
+      (tab === "all" || item.contentType === tab) &&
+      (!normalizedSearch ||
+        [
+          item.title,
+          item.course.title,
+          item.moduleTitle,
+          item.asset?.originalFileName,
+        ].some((value) => value?.toLowerCase().includes(normalizedSearch))),
+  );
 
-  const handleUpload = async () => {
-    if (!form.name.trim()) { toast({ variant: "destructive", title: "Nom majburiy" }); return; }
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 500));
-    toast({ title: "Kontent qo'shildi", description: form.name });
-    setUploadOpen(false);
-    setSaving(false);
-  };
+  async function download(item: LibraryItem) {
+    if (!item.asset) return;
+    setDownloadingId(item.id);
+    try {
+      const blob = await teacherPortalApi.downloadContentFile(
+        item.course.id,
+        item.id,
+      );
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = item.asset.originalFileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (cause) {
+      toast({
+        variant: "destructive",
+        title: "Fayl yuklab olinmadi",
+        description: cause instanceof Error ? cause.message : undefined,
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <Card className="border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
-        <CardContent className="py-3 px-4 flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
-          <p className="text-sm text-yellow-800 dark:text-yellow-300">
-            Video, PDF va boshqa materiallar hozircha namuna. SCORM bo'limi real API orqali ishlaydi.
-          </p>
-        </CardContent>
-      </Card>
+    <div className="p-3 sm:p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Kontent kutubxonasi</h1>
-          <p className="text-muted-foreground">SCORM, video, PDF va boshqa materiallar</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">
+            Kontent kutubxonasi
+          </h1>
+          <p className="text-muted-foreground">
+            Kurslarga joylangan real video, matn, hujjat, fayl va havolalar
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <LinkIcon className="h-4 w-4" />URL qo'shish
-          </Button>
-          <Button className="gap-2" onClick={() => setUploadOpen(true)}>
-            <Upload className="h-4 w-4" />Fayl yuklash
-          </Button>
-        </div>
+        <Button
+          className="gap-2"
+          disabled={!courses.length}
+          onClick={() =>
+            navigate(
+              `/teacher/courses/${courseId === "all" ? courses[0]?.id : courseId}/contents`,
+            )
+          }
+        >
+          <Plus className="h-4 w-4" />
+          Kursga material qo'shish
+        </Button>
       </div>
 
       <ScormPackageManager />
 
-      <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-        {[
-          { label: "Jami",    value: stats.total,    cls: "" },
-          { label: "SCORM",   value: stats.scorm??0, cls: "text-blue-600" },
-          { label: "Video",   value: stats.video??0, cls: "text-red-500" },
-          { label: "Ulangan", value: stats.linked,   cls: "text-green-600" },
-          { label: "Ulanmagan",value: stats.unlinked, cls: "text-orange-600" },
-        ].map(({ label, value, cls }) => (
-          <Card key={label}>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle></CardHeader>
-            <CardContent><div className={`text-2xl font-bold ${cls}`}>{value}</div></CardContent>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {(["all", "video", "document", "file", "text"] as const).map((type) => (
+          <Card key={type}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs text-muted-foreground">
+                {type === "all" ? "Jami" : TYPE_META[type].label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {type === "all"
+                  ? items.length
+                  : items.filter((item) => item.contentType === type).length}
+              </div>
+            </CardContent>
           </Card>
         ))}
       </div>
@@ -140,107 +161,141 @@ export function TeacherContent() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Kontent nomi..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          <Input
+            className="pl-10"
+            placeholder="Kontent, kurs yoki modul nomi..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </div>
-        <Select value={course} onValueChange={setCourse}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>{COURSES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+        <Select value={courseId} onValueChange={setCourseId}>
+          <SelectTrigger className="sm:w-64">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Barcha kurslar</SelectItem>
+            {courses.map((course) => (
+              <SelectItem key={course.id} value={course.id}>
+                {course.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="all">Barchasi ({stats.total})</TabsTrigger>
-          <TabsTrigger value="scorm">SCORM ({stats.scorm ?? 0})</TabsTrigger>
-          <TabsTrigger value="video">Video ({stats.video ?? 0})</TabsTrigger>
-          <TabsTrigger value="pdf">PDF ({stats.pdf ?? 0})</TabsTrigger>
-          <TabsTrigger value="unlinked">Ulanmagan ({stats.unlinked})</TabsTrigger>
-        </TabsList>
-
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="all">Barchasi</TabsTrigger>
+            {Object.entries(TYPE_META).map(([type, meta]) => (
+              <TabsTrigger key={type} value={type}>
+                {meta.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
         <TabsContent value={tab} className="mt-4 space-y-3">
-          {filtered.map((c) => {
-            const meta = TYPE_META[c.type];
+          {libraryQuery.isLoading && (
+            <div className="py-12 flex justify-center">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          )}
+          {libraryQuery.error && (
+            <p className="py-8 text-center text-destructive">
+              {libraryQuery.error.message}
+            </p>
+          )}
+          {!libraryQuery.isLoading && !filtered.length && (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <BookOpen className="h-9 w-9 mx-auto mb-2 opacity-50" />
+                Material topilmadi
+              </CardContent>
+            </Card>
+          )}
+          {filtered.map((item) => {
+            const meta = TYPE_META[item.contentType];
             const Icon = meta.icon;
             return (
-              <Card key={c.id}>
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className={`p-2 rounded-md bg-muted shrink-0`}>
-                    <Icon className={`h-5 w-5 ${meta.cls}`} />
+              <Card key={`${item.course.id}-${item.id}`}>
+                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="rounded-md bg-muted p-2">
+                    <Icon className={`h-5 w-5 ${meta.className}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{c.name}</div>
-                    <div className="text-xs text-muted-foreground">{c.course} · {c.module} · {c.size} · {fmtDate(c.uploadedAt)}</div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">{meta.label}</Badge>
-                      {c.linked
-                        ? <Badge className="bg-green-100 text-green-800 text-xs">Ulangan</Badge>
-                        : <Badge className="bg-orange-100 text-orange-800 text-xs">Ulanmagan</Badge>
-                      }
-                    </div>
+                    <p className="font-medium truncate">{item.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {item.course.title} · {item.moduleTitle} · v
+                      {item.contentVersion}
+                      {item.asset
+                        ? ` · ${formatBytes(item.asset.sizeBytes)}`
+                        : ""}
+                    </p>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><MoreHorizontal className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem className="gap-2"><Eye className="h-4 w-4" />Ko'rish</DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2"><Download className="h-4 w-4" />Yuklab olish</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive"><Trash2 className="h-4 w-4" />O'chirish</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{meta.label}</Badge>
+                    <Badge
+                      variant={
+                        item.status === "published" ? "default" : "secondary"
+                      }
+                    >
+                      {item.status === "published" ? "Nashrda" : "Qoralama"}
+                    </Badge>
+                    {item.asset && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        disabled={downloadingId === item.id}
+                        onClick={() => void download(item)}
+                      >
+                        {downloadingId === item.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                        Yuklash
+                      </Button>
+                    )}
+                    {item.contentUrl && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a
+                          href={item.contentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        navigate(`/teacher/courses/${item.course.id}/contents`)
+                      }
+                    >
+                      Boshqarish
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
           })}
         </TabsContent>
       </Tabs>
-
-      <Dialog open={uploadOpen} onOpenChange={(o) => { if (!o) setUploadOpen(false); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Kontent qo'shish</DialogTitle>
-            <DialogDescription>Yangi material yuklang yoki URL kiriting</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label>Nomi <span className="text-destructive">*</span></Label>
-              <Input placeholder="Material nomi" value={form.name} onChange={(e) => setF("name", e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Turi</Label>
-                <Select value={form.type} onValueChange={(v) => setF("type", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(TYPE_META).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Kurs</Label>
-                <Select value={form.course} onValueChange={(v) => setF("course", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{COURSES.filter((c) => c !== "Barchasi").map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Modul nomi</Label>
-              <Input placeholder="Modul nomi" value={form.module} onChange={(e) => setF("module", e.target.value)} />
-            </div>
-            <div className="border-2 border-dashed rounded-lg p-6 text-center text-muted-foreground hover:border-primary/50 transition-colors cursor-pointer">
-              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground/60" />
-              <p className="text-sm">Fayl sudrab tashlang yoki bosing</p>
-              <p className="text-xs mt-1">SCORM, MP4, PDF, ZIP — max 500 MB</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setUploadOpen(false)}>Bekor qilish</Button>
-            <Button onClick={handleUpload} disabled={saving}>{saving ? "Yuklanmoqda..." : "Yuklash"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
 }

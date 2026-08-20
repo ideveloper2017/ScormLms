@@ -3,15 +3,19 @@ package uz.scorm.lms.app.v1.courses.service
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.courses.dto.CourseContentDto
+import uz.scorm.lms.app.v1.courses.dto.CourseContentAssetDto
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRevisionDto
 import uz.scorm.lms.app.v1.courses.dto.ContentCompatibilityDto
 import uz.scorm.lms.app.v1.courses.model.CourseContent
+import uz.scorm.lms.app.v1.courses.model.CourseContentAsset
 import uz.scorm.lms.app.v1.courses.model.CourseContentRevision
+import uz.scorm.lms.app.v1.courses.model.CourseContentType
 import uz.scorm.lms.app.v1.courses.model.ContentReviewStatus
 import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
 import uz.scorm.lms.app.v1.courses.model.isEffective
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
+import uz.scorm.lms.app.v1.courses.repository.CourseContentAssetRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRevisionRepository
 import uz.scorm.lms.app.v1.contentstandard.service.ContentStandardService
 import java.net.URI
@@ -22,6 +26,7 @@ import java.util.Locale
 @Service
 class CourseContentService(
     private val contentRepository: CourseContentRepository,
+    private val assetRepository: CourseContentAssetRepository,
     private val revisionRepository: CourseContentRevisionRepository,
     private val moduleService: CourseModuleService,
     private val accessService: CourseAccessService,
@@ -49,7 +54,7 @@ class CourseContentService(
     fun create(courseId: Long, moduleId: Long, request: CourseContentRequest, userId: Long, mayManageAll: Boolean): CourseContentDto {
         accessService.requireManage(courseId, userId, mayManageAll)
         val module = moduleService.ownedModule(courseId, moduleId)
-        validate(request)
+        val asset = validateAndResolveAsset(courseId, request)
         val nextPosition = request.position ?: ((contentRepository
             .findFirstByModuleIdAndDeletedFalseOrderByPositionDesc(moduleId)?.position ?: 0) + 1)
         require(nextPosition > 0) { "Kontent tartibi musbat bo'lishi kerak" }
@@ -60,6 +65,8 @@ class CourseContentService(
             description = request.description?.trim()?.takeIf(String::isNotBlank),
             contentType = request.contentType,
             contentUrl = request.contentUrl.clean(),
+            contentBody = request.contentBody.clean(),
+            asset = asset,
             durationMinutes = request.durationMinutes,
             position = nextPosition,
             languageCode = language(request.languageCode),
@@ -82,7 +89,7 @@ class CourseContentService(
         require(content.reviewStatus != ContentReviewStatus.IN_REVIEW.name) {
             "Ekspertizadagi kontent qaror chiqmaguncha tahrirlanmaydi"
         }
-        validate(request)
+        val asset = validateAndResolveAsset(courseId, request)
         require(request.contentVersion.trim() != content.contentVersion) { "Yangilashda yangi kontent versiyasi majburiy" }
         require(!revisionRepository.existsByContentIdAndContentVersionAndDeletedFalse(contentId, request.contentVersion.trim())) {
             "Bu kontent versiyasi tarixda mavjud"
@@ -91,6 +98,8 @@ class CourseContentService(
         content.description = request.description?.trim()?.takeIf(String::isNotBlank)
         content.contentType = request.contentType
         content.contentUrl = request.contentUrl.clean()
+        content.contentBody = request.contentBody.clean()
+        content.asset = asset
         content.durationMinutes = request.durationMinutes
         content.languageCode = language(request.languageCode)
         content.authorName = request.authorName.trim()
@@ -173,7 +182,7 @@ class CourseContentService(
         .filter { !it.deleted && it.module.course.id == courseId }
         .orElseThrow { NoSuchElementException("Kurs kontenti topilmadi: $contentId") }
 
-    private fun validate(request: CourseContentRequest) {
+    private fun validateAndResolveAsset(courseId: Long, request: CourseContentRequest): CourseContentAsset? {
         require(request.title.isNotBlank()) { "Kontent nomi majburiy" }
         require(request.title.length <= 255) { "Kontent nomi 255 belgidan oshmasligi kerak" }
         request.durationMinutes?.let { require(it >= 0) { "Davomiylik manfiy bo'lmaydi" } }
@@ -184,6 +193,29 @@ class CourseContentService(
         language(request.languageCode)
         validateUrl(request.contentUrl, "Kontent URL")
         validateUrl(request.sourceUrl, "Manba URL")
+        val url = request.contentUrl.clean()
+        val body = request.contentBody.clean()
+        val asset = request.assetId?.let { assetId ->
+            assetRepository.findByIdAndCourseIdAndDeletedFalse(assetId, courseId)
+                ?: throw NoSuchElementException("Kurs fayli topilmadi: $assetId")
+        }
+        when (request.contentType) {
+            CourseContentType.TEXT -> {
+                require(!body.isNullOrBlank()) { "Matnli dars mazmuni majburiy" }
+                require(body.length <= MAX_TEXT_LENGTH) { "Matnli dars $MAX_TEXT_LENGTH belgidan oshmasligi kerak" }
+                require(url == null && asset == null) { "Matnli darsga URL yoki fayl biriktirilmaydi" }
+            }
+            CourseContentType.LINK -> {
+                require(url != null) { "Havola kontenti uchun URL majburiy" }
+                require(body == null && asset == null) { "Havola kontentiga matn yoki fayl biriktirilmaydi" }
+            }
+            CourseContentType.VIDEO, CourseContentType.DOCUMENT, CourseContentType.FILE -> {
+                require((url != null) xor (asset != null)) { "Kontent uchun bitta URL yoki bitta yuklangan fayl tanlang" }
+                require(body == null) { "Faylli kontentga alohida matn mazmuni biriktirilmaydi" }
+                if (asset != null) requireAssetMatchesType(asset, request.contentType)
+            }
+        }
+        return asset
     }
 
     private fun toDto(
@@ -198,6 +230,8 @@ class CourseContentService(
         description = content.description,
         contentType = content.contentType.name.lowercase(),
         contentUrl = content.contentUrl,
+        contentBody = content.contentBody,
+        asset = content.asset?.let(::assetDto),
         durationMinutes = content.durationMinutes,
         position = content.position,
         status = content.status.lowercase(),
@@ -224,6 +258,8 @@ class CourseContentService(
             description = content.description,
             contentType = content.contentType,
             contentUrl = content.contentUrl,
+            contentBody = content.contentBody,
+            asset = content.asset,
             durationMinutes = content.durationMinutes,
             languageCode = content.languageCode,
             authorName = content.authorName,
@@ -245,6 +281,8 @@ class CourseContentService(
         description = revision.description,
         contentType = revision.contentType.name.lowercase(),
         contentUrl = revision.contentUrl,
+        contentBody = revision.contentBody,
+        asset = revision.asset?.let(::assetDto),
         durationMinutes = revision.durationMinutes,
         languageCode = revision.languageCode,
         authorName = revision.authorName,
@@ -278,8 +316,42 @@ class CourseContentService(
     private fun String?.clean(): String? = this?.trim()?.takeIf(String::isNotBlank)
     private fun LocalDate?.orMax(): LocalDate = this ?: LocalDate.MAX
 
+    private fun requireAssetMatchesType(asset: CourseContentAsset, type: CourseContentType) {
+        when (type) {
+            CourseContentType.VIDEO -> require(asset.mediaType in VIDEO_MEDIA_TYPES) {
+                "Video kontenti uchun MP4 yoki WebM fayl yuklang"
+            }
+            CourseContentType.DOCUMENT -> require(asset.mediaType in DOCUMENT_MEDIA_TYPES) {
+                "Hujjat kontenti uchun PDF, Office yoki matn fayli yuklang"
+            }
+            else -> Unit
+        }
+    }
+
+    private fun assetDto(asset: CourseContentAsset) = CourseContentAssetDto(
+        id = requireNotNull(asset.id),
+        courseId = requireNotNull(asset.course.id),
+        originalFileName = asset.originalFileName,
+        mediaType = asset.mediaType,
+        sizeBytes = asset.sizeBytes,
+        sha256 = asset.sha256,
+        uploadedAt = asset.createdAt,
+    )
+
     companion object {
         private val VERSION = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
         private val LANGUAGE_TAG = Regex("[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*")
+        private const val MAX_TEXT_LENGTH = 1_000_000
+        private val VIDEO_MEDIA_TYPES = setOf("video/mp4", "video/webm")
+        private val DOCUMENT_MEDIA_TYPES = setOf(
+            "application/pdf",
+            "text/plain",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
     }
 }
