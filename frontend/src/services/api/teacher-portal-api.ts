@@ -105,6 +105,7 @@ export interface CourseContent {
   contentUrl?: string | null;
   contentBody?: string | null;
   asset?: CourseContentAsset | null;
+  subjectMaterialId?: number | null;
   durationMinutes?: number | null;
   position: number;
   status: 'draft' | 'published';
@@ -125,12 +126,47 @@ export interface CourseContent {
 
 export interface CourseContentAsset {
   id: number;
-  courseId: number;
+  courseId?: number | null;
+  subjectId?: number | null;
   originalFileName: string;
   mediaType: string;
   sizeBytes: number;
   sha256: string;
   uploadedAt?: string | null;
+}
+
+export interface SubjectMaterial {
+  id: number;
+  subjectId: number;
+  subjectName: string;
+  title: string;
+  description?: string | null;
+  contentType: CourseContent['contentType'];
+  contentUrl?: string | null;
+  contentBody?: string | null;
+  asset?: CourseContentAsset | null;
+  languageCode: string;
+  authorName: string;
+  contentVersion: string;
+  sourceName: string;
+  sourceUrl?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface SubjectMaterialPayload {
+  subjectId: number;
+  title: string;
+  description?: string;
+  contentType: CourseContentPayload['contentType'];
+  contentUrl?: string;
+  contentBody?: string;
+  assetId?: number;
+  languageCode?: string;
+  authorName?: string;
+  contentVersion?: string;
+  sourceName?: string;
+  sourceUrl?: string;
 }
 
 export interface ContentCompatibilityIssue {
@@ -534,6 +570,29 @@ export const teacherPortalApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 180_000,
     }), 'Fayl yuklanmadi');
+  },
+  getSubjectMaterials: async (): Promise<SubjectMaterial[]> => {
+    return dataOf(await api.get<ApiResponse<SubjectMaterial[]>>('/subject-materials'), 'Fan materiallari yuklanmadi');
+  },
+  uploadSubjectMaterialAsset: async (subjectId: number, file: File): Promise<CourseContentAsset> => {
+    const form = new FormData();
+    form.append('file', file);
+    return dataOf(await api.post<ApiResponse<CourseContentAsset>>(`/subject-materials/${subjectId}/assets`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180_000,
+    }), 'Fayl yuklanmadi');
+  },
+  createSubjectMaterial: async (payload: SubjectMaterialPayload): Promise<SubjectMaterial> => {
+    return dataOf(await api.post<ApiResponse<SubjectMaterial>>('/subject-materials', payload), 'Fan materiali yaratilmadi');
+  },
+  deleteSubjectMaterial: async (materialId: number): Promise<void> => {
+    await api.delete(`/subject-materials/${materialId}`);
+  },
+  attachSubjectMaterial: async (courseId: string, moduleId: number, materialId: number): Promise<CourseContent> => {
+    return dataOf(
+      await api.post<ApiResponse<CourseContent>>(`/courses/${courseId}/modules/${moduleId}/materials/${materialId}`),
+      'Material kursga biriktirilmadi',
+    );
   },
   downloadContentFile: async (courseId: string, contentId: number): Promise<Blob> => {
     const response = await api.get(`/courses/${courseId}/contents/${contentId}/file`, {

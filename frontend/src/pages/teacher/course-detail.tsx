@@ -121,6 +121,8 @@ export function TeacherCourseDetail({
   const [historyContent, setHistoryContent] = useState<CourseContent | null>(
     null,
   );
+  const [bankModuleId, setBankModuleId] = useState("");
+  const [bankMaterialId, setBankMaterialId] = useState("");
 
   const courseQuery = useQuery({
     queryKey: ["teacher", "course", courseId],
@@ -141,6 +143,10 @@ export function TeacherCourseDetail({
     queryKey: ["teacher", "course", courseId, "contents"],
     queryFn: () => teacherPortalApi.getContents(courseId),
     enabled: Boolean(courseId),
+  });
+  const subjectMaterialsQuery = useQuery({
+    queryKey: ["teacher", "subject-materials"],
+    queryFn: teacherPortalApi.getSubjectMaterials,
   });
   const revisionsQuery = useQuery({
     queryKey: [
@@ -327,6 +333,20 @@ export function TeacherCourseDetail({
       });
     },
     onError: showError("Kontent saqlanmadi"),
+  });
+  const attachMaterialMutation = useMutation({
+    mutationFn: () =>
+      teacherPortalApi.attachSubjectMaterial(
+        courseId,
+        Number(bankModuleId),
+        Number(bankMaterialId),
+      ),
+    onSuccess: async () => {
+      setBankMaterialId("");
+      await refreshLearningItems();
+      toast({ title: "Fan materiali modulga biriktirildi" });
+    },
+    onError: showError("Fan materiali biriktirilmadi"),
   });
   const contentStatusMutation = useMutation({
     mutationFn: ({
@@ -531,6 +551,9 @@ export function TeacherCourseDetail({
   const enrollments = enrollmentsQuery.data ?? [];
   const modules = modulesQuery.data ?? [];
   const contents = contentsQuery.data ?? [];
+  const subjectMaterials = (subjectMaterialsQuery.data ?? []).filter(
+    (material) => material.subjectId === course.subjectId,
+  );
   const activeStudents = enrollments.filter(
     (item) => item.status === "active",
   ).length;
@@ -821,7 +844,77 @@ export function TeacherCourseDetail({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Oddiy kontent va kelib chiqish ma'lumotlari
+                Fan kutubxonasidan biriktirish
+              </CardTitle>
+              <CardDescription>
+                Avval saqlangan materialni tanlang va kurs moduliga biriktiring.
+                Fayl qayta yuklanmaydi.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
+              <Field label="Modul *">
+                <Select value={bankModuleId} onValueChange={setBankModuleId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Modulni tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modules.map((module) => (
+                      <SelectItem key={module.id} value={String(module.id)}>
+                        {module.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Fan materiali *">
+                <Select
+                  value={bankMaterialId}
+                  onValueChange={setBankMaterialId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Materialni tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjectMaterials.map((material) => (
+                      <SelectItem
+                        key={material.id}
+                        value={String(material.id)}
+                      >
+                        {material.title} · {material.contentType}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Button
+                className="gap-2"
+                disabled={
+                  !bankModuleId ||
+                  !bankMaterialId ||
+                  attachMaterialMutation.isPending
+                }
+                onClick={() => attachMaterialMutation.mutate()}
+              >
+                {attachMaterialMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Biriktirish
+              </Button>
+              {!subjectMaterialsQuery.isLoading &&
+                subjectMaterials.length === 0 && (
+                  <p className="md:col-span-3 text-sm text-muted-foreground">
+                    Bu fan uchun material yo'q. Avval “Fan materiallari”
+                    bo'limida material yarating.
+                  </p>
+                )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Kursga maxsus material
               </CardTitle>
               <CardDescription>
                 Muallif, til, versiya, manba va amal qilish davri majburiy.

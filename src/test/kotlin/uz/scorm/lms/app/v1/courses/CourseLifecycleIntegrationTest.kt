@@ -15,6 +15,7 @@ import uz.scorm.lms.app.v1.courses.dto.CourseEnrollmentRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseUpdateRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseModuleRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRequest
+import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialRequest
 import uz.scorm.lms.app.v1.courses.dto.ContentReviewDecisionRequest
 import uz.scorm.lms.app.v1.courses.model.ContentReviewDecision
 import uz.scorm.lms.app.v1.courses.model.CourseContentType
@@ -27,6 +28,7 @@ import uz.scorm.lms.app.v1.courses.service.CourseModuleService
 import uz.scorm.lms.app.v1.courses.service.CourseContentService
 import uz.scorm.lms.app.v1.courses.service.CourseContentAssetService
 import uz.scorm.lms.app.v1.courses.service.CourseContentReviewService
+import uz.scorm.lms.app.v1.courses.service.SubjectMaterialService
 import uz.scorm.lms.app.v1.courses.service.StudyPlanService
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.scorm.model.ScormAttempt
@@ -63,6 +65,7 @@ class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var contentService: CourseContentService
     @Autowired private lateinit var contentAssetService: CourseContentAssetService
     @Autowired private lateinit var contentReviewService: CourseContentReviewService
+    @Autowired private lateinit var subjectMaterialService: SubjectMaterialService
     @Autowired private lateinit var studyPlanService: StudyPlanService
     @Autowired private lateinit var courseRepository: CourseRepository
     @Autowired private lateinit var scormPackageRepository: ScormPackageRepository
@@ -70,6 +73,41 @@ class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var learningActivityEventRepository: LearningActivityEventRepository
     @Autowired private lateinit var programRepository: ProgramRepository
     @Autowired private lateinit var subjectRepository: SubjectRepository
+
+    @Test
+    fun `fan materiali bir marta yaratiladi va kurs moduliga biriktiriladi`() {
+        val teacher = user("subject-material-teacher")
+        val course = compliantCourse(teacher, "Material bank kursi", "Material bank fani")
+        val module = moduleService.create(
+            course.id,
+            CourseModuleRequest(title = "1-modul"),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val material = subjectMaterialService.create(
+            SubjectMaterialRequest(
+                subjectId = requireNotNull(course.subjectId),
+                title = "Kirish mavzusi",
+                contentType = CourseContentType.TEXT,
+                contentBody = "Bir marta saqlanadigan fan materiali",
+            ),
+            requireNotNull(teacher.id),
+            true,
+        )
+
+        val attached = contentService.attachMaterial(
+            course.id,
+            module.id,
+            material.id,
+            requireNotNull(teacher.id),
+            false,
+        )
+
+        assertEquals(material.id, attached.subjectMaterialId)
+        assertEquals(material.title, attached.title)
+        assertEquals("Bir marta saqlanadigan fan materiali", attached.contentBody)
+        assertEquals(1, contentService.revisions(course.id, attached.id, requireNotNull(teacher.id), false).size)
+    }
 
     @Test
     fun `private fayl asseti va matnli dars revision bilan saqlanadi`() {

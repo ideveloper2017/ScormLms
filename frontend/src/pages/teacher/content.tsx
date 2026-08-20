@@ -1,301 +1,195 @@
-import { useState, type ElementType } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import {
-  BookOpen,
-  Download,
-  ExternalLink,
-  File,
-  FileText,
-  Link as LinkIcon,
-  Loader2,
-  Plus,
-  Search,
-  Video,
-} from "lucide-react";
+import { useMemo, useState, type ElementType, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink, File, FileText, Link as LinkIcon, Loader2, Plus, Trash2, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { ScormPackageManager } from "@/components/scorm/package-manager";
 import { useToast } from "@/hooks/use-toast";
-import {
-  teacherPortalApi,
-  type CourseContent,
-  type TeacherCourse,
-} from "@/services/api/teacher-portal-api";
+import { subjectGroupApi } from "@/services/api/subject-group-api";
+import { teacherPortalApi, type CourseContent, type SubjectMaterial } from "@/services/api/teacher-portal-api";
 
-type LibraryItem = CourseContent & { course: TeacherCourse };
+type MaterialType = "VIDEO" | "DOCUMENT" | "LINK" | "FILE" | "TEXT";
 
-const TYPE_META: Record<
-  CourseContent["contentType"],
-  { label: string; icon: ElementType; className: string }
-> = {
-  video: { label: "Video", icon: Video, className: "text-red-500" },
-  document: { label: "Hujjat", icon: FileText, className: "text-red-700" },
-  file: { label: "Fayl", icon: File, className: "text-slate-500" },
-  link: { label: "Havola", icon: LinkIcon, className: "text-blue-600" },
-  text: { label: "Matn", icon: FileText, className: "text-emerald-600" },
+const TYPE_META: Record<CourseContent["contentType"], { label: string; icon: ElementType }> = {
+  video: { label: "Video", icon: Video },
+  document: { label: "Hujjat", icon: FileText },
+  file: { label: "Fayl", icon: File },
+  link: { label: "Havola", icon: LinkIcon },
+  text: { label: "Matn", icon: FileText },
 };
 
 export function TeacherContent() {
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [courseId, setCourseId] = useState("all");
-  const [tab, setTab] = useState("all");
-  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [subjectId, setSubjectId] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState<MaterialType>("TEXT");
+  const [body, setBody] = useState("");
+  const [url, setUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
 
-  const libraryQuery = useQuery({
-    queryKey: ["teacher", "content-library"],
-    queryFn: async () => {
-      const courses = await teacherPortalApi.getCourses();
-      const lists = await Promise.all(
-        courses.map(async (course) => {
-          const contents = await teacherPortalApi.getContents(course.id);
-          return contents.map((content): LibraryItem => ({
-            ...content,
-            course,
-          }));
-        }),
-      );
-      return { courses, items: lists.flat() };
+  const teachingOptions = useQuery({
+    queryKey: ["teacher", "teaching-options"],
+    queryFn: subjectGroupApi.teachingOptions,
+  });
+  const materialsQuery = useQuery({
+    queryKey: ["teacher", "subject-materials"],
+    queryFn: teacherPortalApi.getSubjectMaterials,
+  });
+  const subjects = useMemo(() => {
+    const unique = new Map<number, string>();
+    for (const group of teachingOptions.data ?? []) {
+      if (group.subjectId) unique.set(group.subjectId, group.subjectName);
+    }
+    return [...unique].map(([id, name]) => ({ id, name }));
+  }, [teachingOptions.data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const selectedSubjectId = Number(subjectId);
+      const asset = file ? await teacherPortalApi.uploadSubjectMaterialAsset(selectedSubjectId, file) : undefined;
+      return teacherPortalApi.createSubjectMaterial({
+        subjectId: selectedSubjectId,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        contentType: type,
+        contentBody: type === "TEXT" ? body.trim() : undefined,
+        contentUrl: type === "TEXT" || asset ? undefined : url.trim() || undefined,
+        assetId: asset?.id,
+        languageCode: "uz",
+        contentVersion: "1.0",
+      });
     },
+    onSuccess: async () => {
+      setTitle("");
+      setDescription("");
+      setBody("");
+      setUrl("");
+      setFile(null);
+      await queryClient.invalidateQueries({ queryKey: ["teacher", "subject-materials"] });
+      toast({ title: "Material fan kutubxonasiga qo'shildi" });
+    },
+    onError: (cause: Error) => toast({ variant: "destructive", title: "Material saqlanmadi", description: cause.message }),
   });
 
-  const courses = libraryQuery.data?.courses ?? [];
-  const items = libraryQuery.data?.items ?? [];
-  const normalizedSearch = search.trim().toLowerCase();
-  const filtered = items.filter(
-    (item) =>
-      (courseId === "all" || item.course.id === courseId) &&
-      (tab === "all" || item.contentType === tab) &&
-      (!normalizedSearch ||
-        [
-          item.title,
-          item.course.title,
-          item.moduleTitle,
-          item.asset?.originalFileName,
-        ].some((value) => value?.toLowerCase().includes(normalizedSearch))),
-  );
+  const deleteMutation = useMutation({
+    mutationFn: teacherPortalApi.deleteSubjectMaterial,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["teacher", "subject-materials"] });
+      toast({ title: "Material o'chirildi" });
+    },
+    onError: (cause: Error) => toast({ variant: "destructive", title: "Material o'chirilmadi", description: cause.message }),
+  });
 
-  async function download(item: LibraryItem) {
-    if (!item.asset) return;
-    setDownloadingId(item.id);
-    try {
-      const blob = await teacherPortalApi.downloadContentFile(
-        item.course.id,
-        item.id,
-      );
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = item.asset.originalFileName;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    } catch (cause) {
-      toast({
-        variant: "destructive",
-        title: "Fayl yuklab olinmadi",
-        description: cause instanceof Error ? cause.message : undefined,
-      });
-    } finally {
-      setDownloadingId(null);
+  function save() {
+    if (!subjectId || title.trim().length < 2) return toast({ variant: "destructive", title: "Fan va material nomini kiriting" });
+    if (type === "TEXT" && !body.trim()) return toast({ variant: "destructive", title: "Dars matnini kiriting" });
+    if (type === "LINK" && !url.trim()) return toast({ variant: "destructive", title: "Havolani kiriting" });
+    if (["VIDEO", "DOCUMENT", "FILE"].includes(type) && !file && !url.trim()) {
+      return toast({ variant: "destructive", title: "Fayl tanlang yoki URL kiriting" });
     }
+    saveMutation.mutate();
   }
 
+  const materials = materialsQuery.data ?? [];
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold">Fan materiallari</h1>
+        <p className="text-muted-foreground">Materialni bir marta fanga kiriting, keyin kerakli kurs moduliga biriktiring.</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Yangi material</CardTitle>
+          <CardDescription>Muallif, manba va boshlang'ich versiya avtomatik belgilanadi.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Field label="Fan *">
+            <Select value={subjectId} onValueChange={setSubjectId}>
+              <SelectTrigger><SelectValue placeholder="Biriktirilgan fanni tanlang" /></SelectTrigger>
+              <SelectContent>{subjects.map(subject => <SelectItem key={subject.id} value={String(subject.id)}>{subject.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+          <Field label="Material nomi *"><Input value={title} onChange={event => setTitle(event.target.value)} /></Field>
+          <Field label="Turi *">
+            <Select value={type} onValueChange={value => { setType(value as MaterialType); setFile(null); setUrl(""); setBody(""); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TEXT">Matnli dars</SelectItem>
+                <SelectItem value="VIDEO">Video</SelectItem>
+                <SelectItem value="DOCUMENT">Hujjat</SelectItem>
+                <SelectItem value="LINK">Havola</SelectItem>
+                <SelectItem value="FILE">Boshqa fayl</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          {type === "TEXT" ? (
+            <Field label="Dars matni *" className="md:col-span-2"><Textarea className="min-h-40" value={body} onChange={event => setBody(event.target.value)} /></Field>
+          ) : type === "LINK" ? (
+            <Field label="Havola *"><Input placeholder="https://..." value={url} onChange={event => setUrl(event.target.value)} /></Field>
+          ) : (
+            <>
+              <Field label="Fayl"><Input type="file" onChange={event => setFile(event.target.files?.[0] ?? null)} /></Field>
+              <Field label="Yoki tashqi URL"><Input disabled={Boolean(file)} placeholder="https://..." value={url} onChange={event => setUrl(event.target.value)} /></Field>
+            </>
+          )}
+          <Field label="Qisqa tavsif" className="md:col-span-2"><Textarea value={description} onChange={event => setDescription(event.target.value)} /></Field>
+          <div className="md:col-span-2 flex justify-end">
+            <Button className="gap-2" onClick={save} disabled={saveMutation.isPending || subjects.length === 0}>
+              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Saqlash
+            </Button>
+          </div>
+          {!teachingOptions.isLoading && subjects.length === 0 && <p className="md:col-span-2 text-sm text-destructive">Sizga fan biriktirilmagan. Administratorga murojaat qiling.</p>}
+        </CardContent>
+      </Card>
+
+      <div className="space-y-3">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">
-            Kontent kutubxonasi
-          </h1>
-          <p className="text-muted-foreground">
-            Kurslarga joylangan real video, matn, hujjat, fayl va havolalar
-          </p>
+          <h2 className="text-lg font-semibold">Mening materiallarim</h2>
+          <p className="text-sm text-muted-foreground">Kurs ichidagi “Kontent” bo'limidan modulga biriktiriladi.</p>
         </div>
-        <Button
-          className="gap-2"
-          disabled={!courses.length}
-          onClick={() =>
-            navigate(
-              `/teacher/courses/${courseId === "all" ? courses[0]?.id : courseId}/contents`,
-            )
-          }
-        >
-          <Plus className="h-4 w-4" />
-          Kursga material qo'shish
-        </Button>
+        {materialsQuery.isLoading && <div className="py-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+        {!materialsQuery.isLoading && materials.length === 0 && <Card><CardContent className="py-10 text-center text-muted-foreground">Hozircha fan materiali yo'q</CardContent></Card>}
+        {materials.map(material => <MaterialCard key={material.id} material={material} deleting={deleteMutation.isPending} onDelete={() => deleteMutation.mutate(material.id)} />)}
       </div>
 
       <ScormPackageManager />
-
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {(["all", "video", "document", "file", "text"] as const).map((type) => (
-          <Card key={type}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground">
-                {type === "all" ? "Jami" : TYPE_META[type].label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {type === "all"
-                  ? items.length
-                  : items.filter((item) => item.contentType === type).length}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            className="pl-10"
-            placeholder="Kontent, kurs yoki modul nomi..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
-        <Select value={courseId} onValueChange={setCourseId}>
-          <SelectTrigger className="sm:w-64">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Barcha kurslar</SelectItem>
-            {courses.map((course) => (
-              <SelectItem key={course.id} value={course.id}>
-                {course.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Tabs value={tab} onValueChange={setTab}>
-        <div className="overflow-x-auto">
-          <TabsList>
-            <TabsTrigger value="all">Barchasi</TabsTrigger>
-            {Object.entries(TYPE_META).map(([type, meta]) => (
-              <TabsTrigger key={type} value={type}>
-                {meta.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-        <TabsContent value={tab} className="mt-4 space-y-3">
-          {libraryQuery.isLoading && (
-            <div className="py-12 flex justify-center">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          )}
-          {libraryQuery.error && (
-            <p className="py-8 text-center text-destructive">
-              {libraryQuery.error.message}
-            </p>
-          )}
-          {!libraryQuery.isLoading && !filtered.length && (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <BookOpen className="h-9 w-9 mx-auto mb-2 opacity-50" />
-                Material topilmadi
-              </CardContent>
-            </Card>
-          )}
-          {filtered.map((item) => {
-            const meta = TYPE_META[item.contentType];
-            const Icon = meta.icon;
-            return (
-              <Card key={`${item.course.id}-${item.id}`}>
-                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="rounded-md bg-muted p-2">
-                    <Icon className={`h-5 w-5 ${meta.className}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{item.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {item.course.title} · {item.moduleTitle} · v
-                      {item.contentVersion}
-                      {item.asset
-                        ? ` · ${formatBytes(item.asset.sizeBytes)}`
-                        : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{meta.label}</Badge>
-                    <Badge
-                      variant={
-                        item.status === "published" ? "default" : "secondary"
-                      }
-                    >
-                      {item.status === "published" ? "Nashrda" : "Qoralama"}
-                    </Badge>
-                    {item.asset && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        disabled={downloadingId === item.id}
-                        onClick={() => void download(item)}
-                      >
-                        {downloadingId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4" />
-                        )}
-                        Yuklash
-                      </Button>
-                    )}
-                    {item.contentUrl && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a
-                          href={item.contentUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        navigate(`/teacher/courses/${item.course.id}/contents`)
-                      }
-                    >
-                      Boshqarish
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
 
+function MaterialCard({ material, deleting, onDelete }: { material: SubjectMaterial; deleting: boolean; onDelete: () => void }) {
+  const meta = TYPE_META[material.contentType];
+  const Icon = meta.icon;
+  return (
+    <Card><CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <Icon className="h-5 w-5 text-primary" />
+      <div className="flex-1 min-w-0">
+        <p className="font-medium truncate">{material.title}</p>
+        <p className="text-xs text-muted-foreground truncate">{material.subjectName} · {material.authorName} · v{material.contentVersion}</p>
+        {material.asset && <p className="text-xs text-muted-foreground truncate">{material.asset.originalFileName} · {formatBytes(material.asset.sizeBytes)}</p>}
+        {material.contentBody && <p className="mt-1 text-sm line-clamp-2 whitespace-pre-wrap">{material.contentBody}</p>}
+      </div>
+      <Badge variant="outline">{meta.label}</Badge>
+      {material.contentUrl && <Button variant="outline" size="icon" asChild><a href={material.contentUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>}
+      <Button variant="ghost" size="icon" className="text-destructive" disabled={deleting} onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
+    </CardContent></Card>
+  );
+}
+
+function Field({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
+  return <div className={`space-y-1.5 ${className}`}><Label>{label}</Label>{children}</div>;
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

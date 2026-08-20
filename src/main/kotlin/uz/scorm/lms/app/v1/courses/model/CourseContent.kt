@@ -43,6 +43,10 @@ class CourseContent(
     @JoinColumn(name = "asset_id")
     var asset: CourseContentAsset? = null,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_material_id")
+    var subjectMaterial: SubjectMaterial? = null,
+
     @Column(name = "duration_minutes")
     var durationMinutes: Int? = null,
 

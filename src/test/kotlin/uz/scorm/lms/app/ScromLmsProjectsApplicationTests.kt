@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("58", flyway.info().current()?.version?.toString())
+        assertEquals("59", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -51,6 +51,9 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "course_modules", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_contents", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_content_assets", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "course_content_assets", "subject_id").use { it.next() })
+            assertTrue(metadata.getTables(null, null, "subject_materials", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "course_contents", "subject_material_id").use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_content_progress", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_attendance_sessions", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "learning_activity_events", arrayOf("TABLE")).use { it.next() })

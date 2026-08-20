@@ -68,6 +68,39 @@ describe('teacherPortalApi content provenance', () => {
     expect(api.get).toHaveBeenCalledWith('/courses/3/contents/9/file', { responseType: 'blob', timeout: 180_000 });
   });
 
+  it('fan materialini fayl bilan saqlaydi', async () => {
+    const file = new File(['lesson'], 'mavzu.pdf', { type: 'application/pdf' });
+    const asset = { id: 45, subjectId: 12, originalFileName: file.name, mediaType: file.type, sizeBytes: file.size, sha256: 'def' };
+    const material = { id: 7, subjectId: 12, title: '1-mavzu', contentType: 'document', asset };
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({ data: { success: true, data: asset } })
+      .mockResolvedValueOnce({ data: { success: true, data: material } });
+
+    await teacherPortalApi.uploadSubjectMaterialAsset(12, file);
+    await expect(teacherPortalApi.createSubjectMaterial({
+      subjectId: 12,
+      title: '1-mavzu',
+      contentType: 'DOCUMENT',
+      assetId: 45,
+    })).resolves.toEqual(material);
+
+    expect(api.post).toHaveBeenNthCalledWith(1, '/subject-materials/12/assets', expect.any(FormData), expect.objectContaining({ timeout: 180_000 }));
+    expect(api.post).toHaveBeenNthCalledWith(2, '/subject-materials', {
+      subjectId: 12,
+      title: '1-mavzu',
+      contentType: 'DOCUMENT',
+      assetId: 45,
+    });
+  });
+
+  it('mavjud fan materialini kurs moduliga biriktiradi', async () => {
+    const content = { id: 19, moduleId: 5, subjectMaterialId: 7 };
+    vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: content } });
+
+    await expect(teacherPortalApi.attachSubjectMaterial('3', 5, 7)).resolves.toEqual(content);
+    expect(api.post).toHaveBeenCalledWith('/courses/3/modules/5/materials/7');
+  });
+
   it('yangi versiyani update endpointiga yuboradi', async () => {
     vi.mocked(api.put).mockResolvedValue({ data: { success: true, data: { id: 9, ...payload } } });
 

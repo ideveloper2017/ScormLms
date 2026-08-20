@@ -53,4 +53,14 @@ interface AcademicSubjectGroupTeacherAssignmentRepository : JpaRepository<Academ
     fun findAllByTeacherUserIdAndActiveTrueOrderBySubjectGroupCodeAsc(userId: Long): List<AcademicSubjectGroupTeacherAssignment>
     fun findBySubjectGroupIdAndTeacherId(subjectGroupId: Long, teacherId: Long): AcademicSubjectGroupTeacherAssignment?
     fun existsBySubjectGroupIdAndTeacherUserIdAndActiveTrue(subjectGroupId: Long, userId: Long): Boolean
+
+    @Query("""
+        select distinct assignment.subjectGroup.curriculumSubject.subject.id
+        from AcademicSubjectGroupTeacherAssignment assignment
+        where assignment.active = true
+          and assignment.teacher.user.id = :userId
+          and assignment.subjectGroup.active = true
+          and assignment.subjectGroup.deleted = false
+    """)
+    fun findAssignedSubjectIds(@Param("userId") userId: Long): List<Long>
 }

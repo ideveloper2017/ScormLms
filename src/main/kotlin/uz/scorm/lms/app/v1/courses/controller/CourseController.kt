@@ -249,6 +249,19 @@ class CourseController(
         contentService.create(courseId, moduleId, request, requireNotNull(user.id), mayManageAll(authentication))
     ))
 
+    @PostMapping("/{courseId}/modules/{moduleId}/materials/{materialId}")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun attachSubjectMaterial(
+        @PathVariable courseId: Long,
+        @PathVariable moduleId: Long,
+        @PathVariable materialId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<CourseContentDto>> = ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+        "Fan materiali modulga biriktirildi",
+        contentService.attachMaterial(courseId, moduleId, materialId, requireNotNull(user.id), mayManageAll(authentication)),
+    ))
+
     @PutMapping("/{courseId}/contents/{contentId}")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun updateContent(

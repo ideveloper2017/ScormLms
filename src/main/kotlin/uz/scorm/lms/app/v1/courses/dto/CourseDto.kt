@@ -118,6 +118,7 @@ data class CourseContentDto(
     val contentUrl: String?,
     val contentBody: String?,
     val asset: CourseContentAssetDto?,
+    val subjectMaterialId: Long?,
     val durationMinutes: Int?,
     val position: Int,
     val status: String,
@@ -196,12 +197,46 @@ data class CourseContentRevisionDto(
 
 data class CourseContentAssetDto(
     val id: Long,
-    val courseId: Long,
+    val courseId: Long?,
+    val subjectId: Long?,
     val originalFileName: String,
     val mediaType: String,
     val sizeBytes: Long,
     val sha256: String,
     val uploadedAt: Instant?,
+)
+
+data class SubjectMaterialRequest(
+    val subjectId: Long,
+    val title: String,
+    val description: String? = null,
+    val contentType: CourseContentType,
+    val contentUrl: String? = null,
+    val contentBody: String? = null,
+    val assetId: Long? = null,
+    val languageCode: String = "uz",
+    val contentVersion: String = "1.0",
+    val sourceName: String? = null,
+    val sourceUrl: String? = null,
+)
+
+data class SubjectMaterialDto(
+    val id: Long,
+    val subjectId: Long,
+    val subjectName: String,
+    val title: String,
+    val description: String?,
+    val contentType: String,
+    val contentUrl: String?,
+    val contentBody: String?,
+    val asset: CourseContentAssetDto?,
+    val languageCode: String,
+    val authorName: String,
+    val contentVersion: String,
+    val sourceName: String,
+    val sourceUrl: String?,
+    val createdAt: Instant?,
+    val updatedAt: Instant?,
 )
 
 data class CourseContentReviewDto(

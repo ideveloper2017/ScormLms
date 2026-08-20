@@ -12,6 +12,8 @@ import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
 import uz.scorm.lms.app.v1.courses.model.isEffective
 import uz.scorm.lms.app.v1.courses.repository.CourseContentAssetRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
+import uz.scorm.lms.app.v1.courses.model.Course
+import uz.scorm.lms.app.v1.subject.model.Subject
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -40,6 +42,20 @@ class CourseContentAssetService(
     @Transactional
     fun upload(courseId: Long, file: MultipartFile, userId: Long, mayManageAll: Boolean): CourseContentAssetDto {
         val course = accessService.requireManage(courseId, userId, mayManageAll)
+        return store(file, userId, courseId.toString(), course = course)
+    }
+
+    @Transactional
+    fun uploadForSubject(subject: Subject, file: MultipartFile, userId: Long): CourseContentAssetDto =
+        store(file, userId, "subject-${requireNotNull(subject.id)}", subject = subject)
+
+    private fun store(
+        file: MultipartFile,
+        userId: Long,
+        scope: String,
+        course: Course? = null,
+        subject: Subject? = null,
+    ): CourseContentAssetDto {
         require(!file.isEmpty) { "Yuklanadigan fayl bo'sh" }
         require(file.size in 1..maxFileBytes) { "Fayl hajmi ${maxFileBytes / 1024 / 1024} MB dan oshmasligi kerak" }
         val originalName = safeFileName(file.originalFilename)
@@ -53,7 +69,7 @@ class CourseContentAssetService(
         }
 
         val storageKey = UUID.randomUUID().toString()
-        val target = storagePath(courseId, storageKey)
+        val target = storagePath(scope, storageKey)
         Files.createDirectories(target.parent)
         val digest = MessageDigest.getInstance("SHA-256")
         try {
@@ -67,6 +83,7 @@ class CourseContentAssetService(
             require(Files.size(target) == file.size) { "Fayl to'liq saqlanmadi" }
             val saved = assetRepository.save(CourseContentAsset(
                 course = course,
+                subject = subject,
                 storageKey = storageKey,
                 originalFileName = originalName,
                 mediaType = mediaType,
@@ -101,8 +118,11 @@ class CourseContentAssetService(
                 compatibilityService.evaluate(content).compatible
             )) { "Kontent faylini yuklab olish uchun ochiq emas" }
         val asset = content.asset ?: throw NoSuchElementException("Kontentga fayl biriktirilmagan")
-        require(!asset.deleted && asset.course.id == courseId) { "Kontent fayli topilmadi" }
-        val target = storagePath(courseId, asset.storageKey)
+        require(!asset.deleted && (
+            asset.course?.id == courseId ||
+                (asset.subject?.id != null && asset.subject?.id == course.subject?.id)
+            )) { "Kontent fayli topilmadi" }
+        val target = storagePath(assetScope(asset), asset.storageKey)
         require(Files.isRegularFile(target)) { "Kontent fayli saqlash joyida topilmadi" }
         return CourseContentDownload(
             resource = InputStreamResource(Files.newInputStream(target)),
@@ -114,7 +134,8 @@ class CourseContentAssetService(
 
     fun toDto(asset: CourseContentAsset) = CourseContentAssetDto(
         id = requireNotNull(asset.id),
-        courseId = requireNotNull(asset.course.id),
+        courseId = asset.course?.id,
+        subjectId = asset.subject?.id,
         originalFileName = asset.originalFileName,
         mediaType = asset.mediaType,
         sizeBytes = asset.sizeBytes,
@@ -122,9 +143,16 @@ class CourseContentAssetService(
         uploadedAt = asset.createdAt,
     )
 
-    private fun storagePath(courseId: Long, storageKey: String): Path {
+    private fun assetScope(asset: CourseContentAsset): String = when {
+        asset.course?.id != null -> asset.course!!.id.toString()
+        asset.subject?.id != null -> "subject-${asset.subject!!.id}"
+        else -> error("Fayl scope'i mavjud emas")
+    }
+
+    private fun storagePath(scope: String, storageKey: String): Path {
         require(STORAGE_KEY.matches(storageKey)) { "Noto'g'ri fayl kaliti" }
-        val courseRoot = storageRoot.resolve(courseId.toString()).normalize()
+        require(SCOPE.matches(scope)) { "Noto'g'ri fayl scope'i" }
+        val courseRoot = storageRoot.resolve(scope).normalize()
         val target = courseRoot.resolve(storageKey).normalize()
         require(target.startsWith(courseRoot) && courseRoot.startsWith(storageRoot)) { "Noto'g'ri fayl manzili" }
         return target
@@ -146,6 +174,7 @@ class CourseContentAssetService(
 
     companion object {
         private val STORAGE_KEY = Regex("[0-9a-f-]{36}")
+        private val SCOPE = Regex("(?:subject-)?[0-9]+")
         private val GENERIC_MEDIA_TYPES = setOf("application/octet-stream", "binary/octet-stream")
         private val ALLOWED_EXTENSIONS = mapOf(
             "mp4" to "video/mp4",

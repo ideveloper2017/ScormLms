@@ -156,7 +156,8 @@ class CourseContentReviewService(
             asset = revision.asset?.let { asset ->
                 CourseContentAssetDto(
                     id = requireNotNull(asset.id),
-                    courseId = requireNotNull(asset.course.id),
+                    courseId = asset.course?.id,
+                    subjectId = asset.subject?.id,
                     originalFileName = asset.originalFileName,
                     mediaType = asset.mediaType,
                     sizeBytes = asset.sizeBytes,

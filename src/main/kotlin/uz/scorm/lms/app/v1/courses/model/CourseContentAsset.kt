@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
+import uz.scorm.lms.app.v1.subject.model.Subject
 
 @Entity
 @Table(
@@ -15,9 +16,13 @@ import uz.scorm.lms.app.common.BaseEntity
     indexes = [Index(name = "idx_course_content_asset_course", columnList = "course_id,deleted")],
 )
 class CourseContentAsset(
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "course_id", nullable = false)
-    var course: Course,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id")
+    var course: Course? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    var subject: Subject? = null,
 
     @Column(name = "storage_key", nullable = false, unique = true, length = 64)
     var storageKey: String,

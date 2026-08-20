@@ -17,8 +17,11 @@ import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
 import uz.scorm.lms.app.v1.courses.dto.CourseCreateRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseEnrollmentRequest
+import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialRequest
+import uz.scorm.lms.app.v1.courses.model.CourseContentType
 import uz.scorm.lms.app.v1.courses.service.CourseEnrollmentService
 import uz.scorm.lms.app.v1.courses.service.CourseService
+import uz.scorm.lms.app.v1.courses.service.SubjectMaterialService
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.student.model.Gender
@@ -50,6 +53,7 @@ class AcademicSubjectGroupServiceIntegrationTest {
     @Autowired private lateinit var teachers: TeacherRepository
     @Autowired private lateinit var courses: CourseService
     @Autowired private lateinit var enrollments: CourseEnrollmentService
+    @Autowired private lateinit var subjectMaterials: SubjectMaterialService
 
     @Test
     fun `subject group derives program year semester and subject from approved curriculum`() {
@@ -137,6 +141,15 @@ class AcademicSubjectGroupServiceIntegrationTest {
         }
         assertTrue(missingScope.message.orEmpty().contains("fan guruhi"))
         assertTrue(service.teachingOptions(requireNotNull(teacherUser.id)).isEmpty())
+        val materialRequest = SubjectMaterialRequest(
+            subjectId = requireNotNull(fixture.subject.id),
+            title = "Dasturlashga kirish",
+            contentType = CourseContentType.TEXT,
+            contentBody = "Fan materiali",
+        )
+        assertThrows<IllegalArgumentException> {
+            subjectMaterials.create(materialRequest, requireNotNull(teacherUser.id), false)
+        }
 
         service.assignTeacher(
             group.id,
@@ -144,6 +157,9 @@ class AcademicSubjectGroupServiceIntegrationTest {
             fixture.authorId,
         )
         assertEquals(listOf(group.id), service.teachingOptions(requireNotNull(teacherUser.id)).map { it.id })
+        val material = subjectMaterials.create(materialRequest, requireNotNull(teacherUser.id), false)
+        assertEquals(fixture.subject.id, material.subjectId)
+        assertEquals(listOf(material.id), subjectMaterials.list(requireNotNull(teacherUser.id), false).map { it.id })
 
         val course = courses.create(CourseCreateRequest(
             title = "Curriculumga bog'langan kurs",

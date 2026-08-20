@@ -32,6 +32,7 @@ class CourseContentService(
     private val accessService: CourseAccessService,
     private val compatibilityService: ContentCompatibilityService,
     private val contentStandardService: ContentStandardService,
+    private val subjectMaterialService: SubjectMaterialService,
 ) {
     @Transactional(readOnly = true)
     fun list(courseId: Long, userId: Long, mayManageAll: Boolean): List<CourseContentDto> {
@@ -76,6 +77,42 @@ class CourseContentService(
             sourceUrl = request.sourceUrl.clean(),
             validFrom = request.validFrom,
             validUntil = request.validUntil,
+            metadataUpdatedAt = now,
+        ))
+        saveRevision(saved, 1, userId, now)
+        return toDto(saved)
+    }
+
+    @Transactional
+    fun attachMaterial(
+        courseId: Long,
+        moduleId: Long,
+        materialId: Long,
+        userId: Long,
+        mayManageAll: Boolean,
+    ): CourseContentDto {
+        val course = accessService.requireManage(courseId, userId, mayManageAll)
+        val module = moduleService.ownedModule(courseId, moduleId)
+        val material = subjectMaterialService.requireMaterial(materialId)
+        require(course.subject?.id == material.subject.id) { "Material kurs faniga tegishli emas" }
+        val nextPosition = (contentRepository.findFirstByModuleIdAndDeletedFalseOrderByPositionDesc(moduleId)?.position ?: 0) + 1
+        val now = Instant.now()
+        val saved = contentRepository.save(CourseContent(
+            module = module,
+            title = material.title,
+            description = material.description,
+            contentType = material.contentType,
+            contentUrl = material.contentUrl,
+            contentBody = material.contentBody,
+            asset = material.asset,
+            subjectMaterial = material,
+            position = nextPosition,
+            languageCode = material.languageCode,
+            authorName = material.authorName,
+            contentVersion = material.contentVersion,
+            sourceName = material.sourceName,
+            sourceUrl = material.sourceUrl,
+            validFrom = LocalDate.now(),
             metadataUpdatedAt = now,
         ))
         saveRevision(saved, 1, userId, now)
@@ -232,6 +269,7 @@ class CourseContentService(
         contentUrl = content.contentUrl,
         contentBody = content.contentBody,
         asset = content.asset?.let(::assetDto),
+        subjectMaterialId = content.subjectMaterial?.id,
         durationMinutes = content.durationMinutes,
         position = content.position,
         status = content.status.lowercase(),
@@ -330,7 +368,8 @@ class CourseContentService(
 
     private fun assetDto(asset: CourseContentAsset) = CourseContentAssetDto(
         id = requireNotNull(asset.id),
-        courseId = requireNotNull(asset.course.id),
+        courseId = asset.course?.id,
+        subjectId = asset.subject?.id,
         originalFileName = asset.originalFileName,
         mediaType = asset.mediaType,
         sizeBytes = asset.sizeBytes,
