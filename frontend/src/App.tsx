@@ -50,8 +50,12 @@ import { AdminStudentClassifiers } from "@/pages/admin/student-classifiers";
 import { AdminReinstatementSubjectReport } from "@/pages/admin/reinstatement-subject-report";
 import { AdminSubjects } from "@/pages/admin/subjects";
 import { AdminStudyPlans } from "@/pages/admin/study-plans";
+import { AdminStudyPlanEditor } from "@/pages/admin/study-plan-editor";
 import { AdminAcademicPeriods } from "@/pages/admin/academic-periods";
 import { AdminSubjectGroups } from "@/pages/admin/subject-groups";
+import { AdminSubjectCategories } from "@/pages/admin/subject-categories";
+import { AdminSyllabi } from "@/pages/admin/syllabi";
+import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 import { AdminAdmissionPolicies } from "@/pages/admin/admission-policies";
 import { AdminNonStateLicenses } from "@/pages/admin/non-state-licenses";
 import { AdminCalendar } from "@/pages/admin/calendar";
@@ -70,6 +74,15 @@ import { AdminDistanceProgramRestrictions } from "@/pages/admin/distance-program
 import { AdminBiometricGovernance } from "@/pages/admin/biometric-governance";
 import { AdminDistanceReadiness } from "@/pages/admin/distance-readiness";
 import { AdminOfficialSitePublications } from "@/pages/admin/official-site-publications";
+import { AdminUniversities } from "@/pages/admin/universities";
+import { AdminNationalities, AdminReferenceLabels } from "@/pages/admin/reference-data";
+import { AdminSystemConfigs, AdminSystemLanguages, AdminTranslationMessages } from "@/pages/admin/system-settings";
+import { AcademicStatements, AcademicTestResults, AdminRatingSystems, StudentAcademicResultsView, StudentGpaRegistry } from "@/pages/admin/academic-results";
+import { AcademicStatisticsDashboard, AppropriationStatistics, FailedStudentsStatistics, GradeDistributionReport, StudentTaskStatisticsReport, SubjectStatisticsReport } from "@/pages/admin/statistics-reports";
+import { ElectiveChoiceMonitoring, InactiveStudentMonitoring, LearningParticipationMonitoring, LessonCommentMonitoring, StudentIpMonitoring } from "@/pages/admin/monitoring-reports";
+import { FinalExamCallLetters, StudentTranscripts } from "@/pages/admin/academic-documents";
+import { ReReadingApplications, ReReadingPlans, ReReadingRecoveryResults, StudentReReadingReport, TeacherReReadingReport } from "@/pages/admin/re-reading";
+import { TutorGroups } from "@/pages/admin/tutor-groups";
 import { AdminContentStandard } from "@/pages/admin/content-standard";
 import { PublicInstitutionDisclosure } from "@/pages/public/institution-disclosure";
 import { Surveys } from "@/pages/surveys";
@@ -229,6 +242,7 @@ function App() {
         <Route path="/courses"       element={<P roles={CONTENT_ROLES}><Courses /></P>} />
         <Route path="/resources"     element={<P roles={CONTENT_ROLES}><Resources /></P>} />
         <Route path="/communication" element={<P roles={[...CONTENT_ROLES, R_PROC]}><Communication /></P>} />
+        <Route path="/messages"      element={<P roles={[...CONTENT_ROLES, R_PROC]}><Communication /></P>} />
         <Route path="/support"       element={<P roles={ALL_ROLES}><SupportPage /></P>} />
         <Route path="/exams"         element={<P roles={[R_SUPER, R_ADMIN, R_MET, R_TEACH, R_STU, R_PROC]}><Exams /></P>} />
         <Route path="/reports"       element={<P roles={REPORTING_ROLES}><Reports /></P>} />
@@ -255,6 +269,87 @@ function App() {
         <Route path="/settings"   element={<P roles={ADMIN_ROLES}><Settings /></P>} />
 
         {/* ── /admin/* ─────────────────────────────────────────────────────── */}
+        <Route path="/universities"       element={<P roles={STAFF_ROLES}><AdminUniversities /></P>} />
+
+        {/* ── control-eLMS compatible staff routes ─────────────────────────── */}
+        <Route path="/structure/faculties"    element={<P roles={STAFF_ROLES}><AdminFaculties /></P>} />
+        <Route path="/structure/specialities" element={<P roles={STAFF_ROLES}><AdminPrograms /></P>} />
+
+        <Route path="/edu-process/curriculum"        element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
+        <Route path="/edu-process/curriculum/new"    element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
+        <Route path="/edu-process/curriculum/:id"    element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
+        <Route path="/edu-process/attached-students" element={<P roles={STAFF_ROLES}><AdminCurriculumStudents /></P>} />
+        <Route path="/edu-process/syllabus"          element={<P roles={STAFF_ROLES}><AdminSyllabi /></P>} />
+        <Route path="/edu-process/academic-years"    element={<P roles={STAFF_ROLES}><AdminAcademicPeriods view="years" /></P>} />
+        <Route path="/edu-process/semesters"         element={<P roles={STAFF_ROLES}><AdminAcademicPeriods view="semesters" /></P>} />
+        <Route path="/edu-process/subject-groups"    element={<P roles={STAFF_ROLES}><AdminSubjectCategories /></P>} />
+        <Route path="/edu-process/subjects"          element={<P roles={STAFF_ROLES}><AdminSubjects /></P>} />
+        <Route path="/edu-process/rating-systems"    element={<P roles={STAFF_ROLES}><AdminRatingSystems /></P>} />
+        <Route path="/edu-process/statements"        element={<P roles={REPORTING_ROLES}><AcademicStatements finalStatement={false} /></P>} />
+        <Route path="/edu-process/total-statements"  element={<P roles={REPORTING_ROLES}><AcademicStatements finalStatement /></P>} />
+        <Route path="/controls"                       element={<P roles={TEACHER_ROLES}><Exams /></P>} />
+        <Route path="/edu-process/export-rating-to-hemis" element={<P roles={STAFF_ROLES}><StudentAcademicResultsView mode="hemis" /></P>} />
+
+        <Route path="/re-reading-subject-groups" element={<P roles={STAFF_ROLES}><ReReadingApplications /></P>} />
+        <Route path="/student/re-reading-application" element={<P roles={STAFF_ROLES}><ReReadingPlans /></P>} />
+        <Route path="/edu-process/academic-debtors" element={<P roles={REPORTING_ROLES}><StudentAcademicResultsView mode="debtors" /></P>} />
+        <Route path="/edu-process/gpa-rating-students" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><StudentGpaRegistry /></P>} />
+        <Route path="/users/rating-monitoring" element={<P roles={REPORTING_ROLES}><StudentAcademicResultsView mode="monitoring" /></P>} />
+        <Route path="/users/rating-average" element={<P roles={REPORTING_ROLES}><StudentAcademicResultsView mode="average" /></P>} />
+        <Route path="/students-reading-recovery-for-rating" element={<P roles={TEACHER_ROLES}><ReReadingRecoveryResults /></P>} />
+
+        <Route path="/teachers/tutor-groups" element={<P roles={STAFF_ROLES}><TutorGroups /></P>} />
+        <Route path="/teachers/tutors"       element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
+
+        <Route path="/students/student-groups" element={<P roles={STAFF_ROLES}><AdminGroups /></P>} />
+        <Route path="/students/students" element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
+        <Route path="/students/graduated" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="GRADUATED" title="Bitirgan talabalar" description="Bitiruvchi holatiga o'tkazilgan talabalar reyestri." allowCreate={false} /></P>} />
+        <Route path="/students/recovery" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="SUSPENDED" title="O'qishni tiklagan talabalar" description="O'qishni qayta tiklash amali mavjud talabalar reyestri." allowCreate={false} /></P>} />
+        <Route path="/students/academic-leave" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="SUSPENDED" title="Akademik ta'tildagi talabalar" description="O'qishi vaqtincha to'xtatilgan talabalar reyestri." allowCreate={false} /></P>} />
+        <Route path="/transfer-students" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="ACTIVE" title="Talabalarni ko'chirish" description="Faol talabalarni yangi dastur yoki guruhga yakka va ommaviy ko'chirish." allowCreate={false} /></P>} />
+        <Route path="/students/expelled" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="EXPELLED" title="Chetlashtirilgan talabalar" description="Chetlashtirish buyrug'i rasmiylashtirilgan talabalar reyestri." allowCreate={false} /></P>} />
+        <Route path="/student/recovery-study-subjects-info" element={<P roles={STAFF_ROLES}><AdminReinstatementSubjectReport /></P>} />
+
+        <Route path="/call-to-final-exam-letter" element={<P roles={STAFF_ROLES}><FinalExamCallLetters /></P>} />
+        <Route path="/transcript-students" element={<P roles={TEACHER_ROLES}><StudentTranscripts /></P>} />
+
+        <Route path="/monitoring/students" element={<P roles={STAFF_ROLES}><StudentManagement allowCreate={false} /></P>} />
+        <Route path="/monitoring/students-login-date" element={<P roles={REPORTING_ROLES}><InactiveStudentMonitoring /></P>} />
+        <Route path="/users/not-choose-subject-students" element={<P roles={REPORTING_ROLES}><ElectiveChoiceMonitoring /></P>} />
+        <Route path="/students/use-syllabus" element={<P roles={REPORTING_ROLES}><LearningParticipationMonitoring /></P>} />
+        <Route path="/monitoring/test-results" element={<P roles={REPORTING_ROLES}><AcademicTestResults /></P>} />
+        <Route path="/monitoring/teachers" element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
+        <Route path="/check-login-users" element={<P roles={ADMIN_ROLES}><StudentIpMonitoring /></P>} />
+        <Route path="/commentary-lessons" element={<P roles={REPORTING_ROLES}><LessonCommentMonitoring /></P>} />
+
+        <Route path="/content/posts" element={<P roles={TEACHER_ROLES}><TeacherAnnouncements /></P>} />
+        <Route path="/content/schedule" element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
+        <Route path="/content/online-resource" element={<P roles={CONTENT_ROLES}><Resources /></P>} />
+
+        <Route path="/accounts/admins" element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
+        <Route path="/accounts/permission-groups" element={<P roles={ADMIN_ROLES}><AdminRoles /></P>} />
+
+        <Route path="/statistics-dashbord" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AcademicStatisticsDashboard /></P>} />
+        <Route path="/appropriation" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AppropriationStatistics /></P>} />
+        <Route path="/subjects-report" element={<P roles={REPORTING_ROLES}><SubjectStatisticsReport mode="content" /></P>} />
+        <Route path="/subjects-test-report" element={<P roles={REPORTING_ROLES}><SubjectStatisticsReport mode="tests" /></P>} />
+        <Route path="/teacher-re-reading-report" element={<P roles={STAFF_ROLES}><TeacherReReadingReport /></P>} />
+        <Route path="/student-re-reading-report" element={<P roles={STAFF_ROLES}><StudentReReadingReport /></P>} />
+        <Route path="/report/semester-subject" element={<P roles={REPORTING_ROLES}><SubjectStatisticsReport mode="semester" /></P>} />
+        <Route path="/student-tasks-report" element={<P roles={REPORTING_ROLES}><StudentTaskStatisticsReport /></P>} />
+        <Route path="/users-rating-mark-report" element={<P roles={REPORTING_ROLES}><GradeDistributionReport /></P>} />
+        <Route path="/failed-students" element={<P roles={REPORTING_ROLES}><FailedStudentsStatistics /></P>} />
+
+        <Route path="/general-info/labels" element={<P roles={STAFF_ROLES}><AdminReferenceLabels /></P>} />
+        <Route path="/general-info/countries" element={<P roles={STAFF_ROLES}><AdminStudentClassifiers initialTab="countries" /></P>} />
+        <Route path="/general-info/regions" element={<P roles={STAFF_ROLES}><AdminStudentClassifiers initialTab="regions" /></P>} />
+        <Route path="/general-info/districts" element={<P roles={STAFF_ROLES}><AdminStudentClassifiers initialTab="districts" /></P>} />
+        <Route path="/general-info/nationalities" element={<P roles={STAFF_ROLES}><AdminNationalities /></P>} />
+
+        <Route path="/settings/configs" element={<P roles={ADMIN_ROLES}><AdminSystemConfigs /></P>} />
+        <Route path="/settings/languages" element={<P roles={ADMIN_ROLES}><AdminSystemLanguages /></P>} />
+        <Route path="/settings/internalization" element={<P roles={ADMIN_ROLES}><AdminTranslationMessages /></P>} />
+
         <Route path="/admin/dashboard"    element={<P roles={STAFF_ROLES}><AdminDashboard /></P>} />
         <Route path="/admin/users"        element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
         <Route path="/admin/students"     element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
@@ -268,8 +363,13 @@ function App() {
         <Route path="/admin/student-classifiers" element={<P roles={STAFF_ROLES}><AdminStudentClassifiers /></P>} />
         <Route path="/admin/subjects"     element={<P roles={STAFF_ROLES}><AdminSubjects /></P>} />
         <Route path="/admin/study-plans"  element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
+        <Route path="/admin/study-plans/new" element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
+        <Route path="/admin/study-plans/:id" element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
         <Route path="/admin/academic-periods" element={<P roles={STAFF_ROLES}><AdminAcademicPeriods /></P>} />
         <Route path="/admin/subject-groups" element={<P roles={STAFF_ROLES}><AdminSubjectGroups /></P>} />
+        <Route path="/admin/subject-categories" element={<P roles={STAFF_ROLES}><AdminSubjectCategories /></P>} />
+        <Route path="/admin/syllabi" element={<P roles={STAFF_ROLES}><AdminSyllabi /></P>} />
+        <Route path="/admin/curriculum-students" element={<P roles={STAFF_ROLES}><AdminCurriculumStudents /></P>} />
         <Route path="/admin/admission-policies" element={<P roles={STAFF_ROLES}><AdminAdmissionPolicies /></P>} />
         <Route path="/admin/non-state-licenses" element={<P roles={STAFF_ROLES}><AdminNonStateLicenses /></P>} />
         <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><Courses /></P>} />

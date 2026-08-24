@@ -14,14 +14,20 @@ import { hasAuthority } from "@/lib/rbac-api";
 import {
   type SubjectRecord,
   createSubject, deleteSubject, listSubjects, updateSubject,
-  listPrograms,
+  listPrograms, listSubjectCategories,
 } from "@/lib/academic-api";
 
 interface SubjectForm {
   name: string;
+  nameEn: string;
+  nameRu: string;
+  nameKaa: string;
+  nameUzCyrillic: string;
   code: string;
   credits: string;
+  subjectType: "" | "PRACTICE" | "COURSE_WORK" | "STATE_ATTESTATION" | "GRADUATION_WORK";
   programId: number | null;
+  subjectCategoryId: number | null;
   active: boolean;
 }
 
@@ -37,6 +43,11 @@ export function AdminSubjects() {
   const { data: programs = [] } = useQuery({
     queryKey: qk.programs(),
     queryFn: () => listPrograms(),
+    staleTime: 60_000,
+  });
+  const { data: subjectCategories = [] } = useQuery({
+    queryKey: qk.subjectCategories(),
+    queryFn: listSubjectCategories,
     staleTime: 60_000,
   });
 
@@ -87,7 +98,7 @@ export function AdminSubjects() {
       <CrudSection<SubjectRecord, SubjectForm>
         title="Fanlar"
         description="Fan qo'shish, tahrirlash va o'chirish"
-        searchPlaceholder="Fan nomi, kodi yoki yo'nalish..."
+        searchPlaceholder="Fan nomi, kodi, guruhi yoki yo'nalish..."
         items={subjects.items}
         loading={subjects.loading}
         error={subjects.error}
@@ -95,7 +106,7 @@ export function AdminSubjects() {
         canWrite={canWrite}
         getId={(s) => s.id}
         getName={(s) => s.name}
-        search={(s) => `${s.name} ${s.code ?? ""} ${s.programName ?? ""}`}
+        search={(s) => `${s.name} ${s.code ?? ""} ${s.subjectCategoryName ?? ""} ${s.programName ?? ""}`}
         columns={[
           { header: "Nomi",      cell: (s) => <span className="font-medium">{s.name}</span> },
           { header: "Kodi",      cell: (s) => s.code ?? "—" },
@@ -111,6 +122,7 @@ export function AdminSubjects() {
               ),
           },
           { header: "Yo'nalish", cell: (s) => s.programName ?? "—" },
+          { header: "Fan guruhi", cell: (s) => s.subjectCategoryName ?? "—" },
           {
             header: "Holat",
             cell: (s) => (
@@ -120,30 +132,41 @@ export function AdminSubjects() {
             ),
           },
         ]}
-        blankForm={() => ({ name: "", code: "", credits: "", programId: null, active: true })}
+        blankForm={() => ({ name: "", nameEn: "", nameRu: "", nameKaa: "", nameUzCyrillic: "", code: "", credits: "", subjectType: "", programId: null, subjectCategoryId: null, active: true })}
         toForm={(s) => ({
           name: s.name,
+          nameEn: s.nameEn ?? "", nameRu: s.nameRu ?? "", nameKaa: s.nameKaa ?? "", nameUzCyrillic: s.nameUzCyrillic ?? "",
           code: s.code ?? "",
           credits: s.credits != null ? String(s.credits) : "",
+          subjectType: s.subjectType ?? "",
           programId: s.programId ?? null,
+          subjectCategoryId: s.subjectCategoryId ?? null,
           active: s.active,
         })}
         validate={(f) => (f.name.trim() ? null : "Fan nomi majburiy")}
         onCreate={(f) =>
           createSubject({
             name: f.name.trim(),
+            nameEn: f.nameEn.trim() || null, nameRu: f.nameRu.trim() || null, nameKaa: f.nameKaa.trim() || null, nameUzCyrillic: f.nameUzCyrillic.trim() || null,
             code: f.code.trim() || null,
             credits: parseCredits(f.credits),
+            subjectType: f.subjectType || null,
             programId: f.programId,
+            subjectCategoryId: f.subjectCategoryId,
             active: f.active,
           }).then(() => undefined)
         }
         onUpdate={(id, f) =>
           updateSubject(id, {
             name: f.name.trim(),
+            nameEn: f.nameEn.trim() || null, nameRu: f.nameRu.trim() || null, nameKaa: f.nameKaa.trim() || null, nameUzCyrillic: f.nameUzCyrillic.trim() || null,
             code: f.code.trim() || null,
             credits: parseCredits(f.credits),
+            subjectType: f.subjectType || null,
             programId: f.programId,
+            subjectCategoryId: f.subjectCategoryId,
+            clearSubjectCategory: f.subjectCategoryId == null,
+            clearOptionalFields: true,
             active: f.active,
           }).then(() => undefined)
         }
@@ -179,6 +202,34 @@ export function AdminSubjects() {
                   placeholder="6"
                 />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Fan guruhi</Label>
+              <Select
+                value={form.subjectCategoryId != null ? String(form.subjectCategoryId) : "none"}
+                onValueChange={(v) => set({ subjectCategoryId: v === "none" ? null : Number(v) })}
+              >
+                <SelectTrigger><SelectValue placeholder="Tanlang" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Tanlanmagan —</SelectItem>
+                  {subjectCategories.filter((category) => category.active || category.id === form.subjectCategoryId).map((category) => (
+                    <SelectItem key={category.id} value={String(category.id)}>{category.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Fan turi</Label>
+              <Select value={form.subjectType || "none"} onValueChange={(value) => set({ subjectType: value === "none" ? "" : value as SubjectForm["subjectType"] })}>
+                <SelectTrigger><SelectValue placeholder="Oddiy fan" /></SelectTrigger>
+                <SelectContent><SelectItem value="none">Oddiy fan</SelectItem><SelectItem value="PRACTICE">Amaliyot</SelectItem><SelectItem value="COURSE_WORK">Kurs ishi</SelectItem><SelectItem value="STATE_ATTESTATION">Davlat attestatsiyasi</SelectItem><SelectItem value="GRADUATION_WORK">Bitiruv ishi</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>English</Label><Input value={form.nameEn} onChange={(e) => set({ nameEn: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Русский</Label><Input value={form.nameRu} onChange={(e) => set({ nameRu: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Qaraqalpaqsha</Label><Input value={form.nameKaa} onChange={(e) => set({ nameKaa: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Ўзбекча</Label><Input value={form.nameUzCyrillic} onChange={(e) => set({ nameUzCyrillic: e.target.value })} /></div>
             </div>
             <div className="space-y-1.5">
               <Label>Yo'nalish</Label>

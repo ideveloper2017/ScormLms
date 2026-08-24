@@ -26,6 +26,7 @@ import { scormApi } from "@/services/api/scorm-api";
 import { studyPlanApi } from "@/services/api/study-plan-api";
 import { teacherPortalApi, type CourseContentAsset } from "@/services/api/teacher-portal-api";
 import { CourseForum } from "@/components/course-forum";
+import { RichTextContent } from "@/components/editor/rich-text-content";
 
 export function StudentCourseLearning() {
   const { id } = useParams<{ id: string }>();
@@ -221,9 +222,10 @@ export function StudentCourseLearning() {
                 </p>
               </div>
               {content.contentBody && (
-                <div className="whitespace-pre-wrap rounded-md border bg-background p-4 text-sm leading-6">
-                  {content.contentBody}
-                </div>
+                <RichTextContent
+                  value={content.contentBody}
+                  className="rounded-md border bg-background p-4 text-sm leading-6"
+                />
               )}
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                 {content.asset && (

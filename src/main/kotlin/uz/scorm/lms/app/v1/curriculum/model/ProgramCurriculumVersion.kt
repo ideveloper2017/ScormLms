@@ -11,7 +11,9 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import uz.scorm.lms.app.common.BaseEntity
+import uz.scorm.lms.app.v1.academicresult.model.RatingSystem
 import uz.scorm.lms.app.v1.program.model.Program
+import uz.scorm.lms.app.v1.student.model.EducationForm
 import uz.scorm.lms.app.v1.user.model.User
 import java.time.Instant
 import java.time.LocalDate
@@ -35,6 +37,32 @@ class ProgramCurriculumVersion(
 
     @Column(name = "academic_year", nullable = false, length = 20)
     var academicYear: String,
+
+    @Column(nullable = false, length = 500)
+    var name: String,
+
+    @Column(nullable = false)
+    var active: Boolean = true,
+
+    @Column(name = "education_language", nullable = false, length = 20)
+    var educationLanguage: String = "uz",
+
+    @Column(name = "passing_score", nullable = false)
+    var passingScore: Int = 60,
+
+    @Column(name = "base_credit_amount", nullable = false)
+    var baseCreditAmount: Long = 0,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "education_form", nullable = false, length = 30)
+    var educationForm: EducationForm = EducationForm.DISTANCE,
+
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "rating_system_id", nullable = false)
+    var ratingSystem: RatingSystem,
+
+    @Column(name = "semester_count", nullable = false)
+    var semesterCount: Int = 8,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "credential_type", nullable = false, length = 30)
@@ -100,4 +128,3 @@ enum class CurriculumStatus {
     APPROVED,
     ARCHIVED,
 }
-

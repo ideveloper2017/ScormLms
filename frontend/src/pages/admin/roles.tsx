@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/query-keys";
 import { Shield, Users, RefreshCw, AlertTriangle } from "lucide-react";
@@ -166,7 +166,7 @@ export function AdminRoles() {
                   const prevGroup = i > 0 ? ALL_PERMISSIONS[i - 1].group : null;
                   const isNewGroup = perm.group !== prevGroup;
                   return (
-                    <>
+                    <Fragment key={perm.code}>
                       {isNewGroup && (
                         <TableRow key={`grp-${perm.group}`} className="bg-muted/40">
                           <TableCell colSpan={2 + ROLES_ORDER.length}
@@ -193,7 +193,7 @@ export function AdminRoles() {
                           );
                         })}
                       </TableRow>
-                    </>
+                    </Fragment>
                   );
                 })}
               </TableBody>

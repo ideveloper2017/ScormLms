@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,15 +19,17 @@ import {
 } from '@/lib/classifier-api';
 
 type Kind = 'country' | 'region' | 'district';
+type ClassifierTab = 'countries' | 'regions' | 'districts';
 type Editable = ClassifierItem | DistrictClassifierItem;
 const emptyForm = () => ({ code: '', name: '', active: true, sortOrder: 0, regionId: '' });
 
-export function AdminStudentClassifiers() {
+export function AdminStudentClassifiers({ initialTab = 'countries' }: { initialTab?: ClassifierTab }) {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, 'ACADEMIC_WRITE');
   const { toast } = useToast();
   const client = useQueryClient();
   const [selectedRegionId, setSelectedRegionId] = useState('');
+  const [activeTab, setActiveTab] = useState<ClassifierTab>(initialTab);
   const [dialog, setDialog] = useState<{ kind: Kind; item: Editable | null } | null>(null);
   const [form, setForm] = useState(emptyForm);
   const countries = useQuery({ queryKey: ['classifiers', 'admin', 'countries'], queryFn: listAdminCountries });
@@ -37,6 +39,7 @@ export function AdminStudentClassifiers() {
     queryKey: ['classifiers', 'admin', 'districts', selectedRegionId],
     queryFn: () => listAdminDistricts(Number(selectedRegionId)), enabled: !!selectedRegionId,
   });
+  useEffect(() => setActiveTab(initialTab), [initialTab]);
 
   const open = (kind: Kind, item: Editable | null = null) => {
     setDialog({ kind, item });
@@ -103,7 +106,7 @@ export function AdminStudentClassifiers() {
         {canWrite && <Button disabled={!importStatus.data || importDataset.isPending} onClick={() => importDataset.mutate()}><RefreshCw className={`mr-2 h-4 w-4 ${importDataset.isPending ? 'animate-spin' : ''}`} />{importStatus.data?.current ? 'Paketni qayta tekshirish' : 'Rasmiy paketni import qilish'}</Button>}
       </CardContent>
     </Card>
-    <Tabs defaultValue="countries">
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ClassifierTab)}>
       <TabsList><TabsTrigger value="countries">Mamlakatlar</TabsTrigger><TabsTrigger value="regions">Hududlar</TabsTrigger><TabsTrigger value="districts">Tumanlar</TabsTrigger></TabsList>
       <TabsContent value="countries"><Card><CardHeader className="flex-row items-center justify-between"><CardTitle>Fuqarolik mamlakatlari</CardTitle>{add('country')}</CardHeader><CardContent>{list(countries.data, 'country')}</CardContent></Card></TabsContent>
       <TabsContent value="regions"><Card><CardHeader className="flex-row items-center justify-between"><CardTitle>O'zbekiston hududlari</CardTitle>{add('region')}</CardHeader><CardContent>{list(regions.data, 'region')}</CardContent></Card></TabsContent>

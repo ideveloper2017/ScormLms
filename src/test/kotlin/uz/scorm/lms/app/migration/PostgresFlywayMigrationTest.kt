@@ -27,7 +27,7 @@ class PostgresFlywayMigrationTest {
             .load()
 
         val result = flyway.migrate()
-        assertEquals("53", result.targetSchemaVersion)
+        assertEquals("68", result.targetSchemaVersion)
         flyway.validate()
 
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
@@ -119,6 +119,22 @@ class PostgresFlywayMigrationTest {
                 "country_classifiers",
                 "region_classifiers",
                 "district_classifiers",
+                "subject_categories",
+                "subject_syllabi",
+                "curriculum_semester_periods",
+                "curriculum_student_assignments",
+                "universities",
+                "reference_labels",
+                "nationalities",
+                "system_languages",
+                "system_settings",
+                "translation_messages",
+                "rating_systems",
+                "final_exam_call_letters",
+                "student_transcripts",
+                "re_reading_plans",
+                "re_reading_applications",
+                "tutor_groups",
                 "flyway_schema_history",
             )))
             val courseColumns = buildSet {
@@ -127,6 +143,12 @@ class PostgresFlywayMigrationTest {
                 }
             }
             assertTrue(courseColumns.contains("subject_id"))
+            val subjectColumns = buildSet {
+                connection.metaData.getColumns(null, "public", "subjects", null).use { rows ->
+                    while (rows.next()) add(rows.getString("COLUMN_NAME").lowercase())
+                }
+            }
+            assertTrue(subjectColumns.containsAll(setOf("subject_category_id", "subject_type", "name_en", "name_ru", "name_kaa", "name_uz_cyrillic")))
             val programColumns = buildSet {
                 connection.metaData.getColumns(null, "public", "programs", null).use { rows ->
                     while (rows.next()) add(rows.getString("COLUMN_NAME").lowercase())

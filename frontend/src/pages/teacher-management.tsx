@@ -68,7 +68,7 @@ export function TeacherManagement() {
               ? <span className="inline-flex items-center gap-1 text-sm"><KeyRound className="h-3 w-3" />{t.username}</span>
               : <span className="text-muted-foreground">—</span>,
           },
-          { header: "Fanlar", cell: (t) => t.subjects.length },
+          { header: "Fanlar", cell: (t) => (t.subjects ?? []).length },
           {
             header: "Holat",
             cell: (t) => <Badge variant={t.active ? "default" : "secondary"}>{t.active ? "Faol" : "Nofaol"}</Badge>,
@@ -86,7 +86,7 @@ export function TeacherManagement() {
           academicRank: t.academicRank ?? "",
           position: t.position ?? "",
           departmentId: t.departmentId ?? null,
-          subjectIds: t.subjects.map((s) => s.id),
+          subjectIds: (t.subjects ?? []).map((s) => s.id),
           active: t.active,
           username: "",
           password: "",

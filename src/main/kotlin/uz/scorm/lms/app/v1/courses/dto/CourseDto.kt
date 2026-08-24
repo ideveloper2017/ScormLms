@@ -220,6 +220,11 @@ data class SubjectMaterialRequest(
     val sourceUrl: String? = null,
 )
 
+data class SubjectMaterialSubjectDto(
+    val id: Long,
+    val name: String,
+)
+
 data class SubjectMaterialDto(
     val id: Long,
     val subjectId: Long,

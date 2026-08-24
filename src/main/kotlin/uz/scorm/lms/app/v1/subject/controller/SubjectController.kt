@@ -16,8 +16,11 @@ class SubjectController(
 ) {
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")
     @GetMapping
-    fun list(@RequestParam(required = false) programId: Long?): ResponseEntity<List<SubjectDto>> =
-        ResponseEntity.ok(subjectService.list(programId))
+    fun list(
+        @RequestParam(required = false) programId: Long?,
+        @RequestParam(required = false) subjectCategoryId: Long?,
+    ): ResponseEntity<List<SubjectDto>> =
+        ResponseEntity.ok(subjectService.list(programId, subjectCategoryId))
 
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")
     @GetMapping("/{id}")

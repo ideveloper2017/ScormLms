@@ -119,23 +119,65 @@ export interface GroupCreateRequest {
 }
 export type GroupUpdateRequest = Partial<GroupCreateRequest>;
 
-export interface SubjectRecord {
+export interface SubjectCategoryRecord {
   id: number;
   name: string;
   code?: string | null;
+  nameEn?: string | null;
+  nameRu?: string | null;
+  nameKaa?: string | null;
+  nameUzCyrillic?: string | null;
+  active: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+export interface SubjectCategoryCreateRequest {
+  name: string;
+  code?: string | null;
+  nameEn?: string | null;
+  nameRu?: string | null;
+  nameKaa?: string | null;
+  nameUzCyrillic?: string | null;
+  active?: boolean;
+}
+export type SubjectCategoryUpdateRequest = Partial<SubjectCategoryCreateRequest> & {
+  clearCode?: boolean;
+  clearTranslations?: boolean;
+};
+
+export interface SubjectRecord {
+  id: number;
+  name: string;
+  nameEn?: string | null;
+  nameRu?: string | null;
+  nameKaa?: string | null;
+  nameUzCyrillic?: string | null;
+  code?: string | null;
   credits?: number | null;
+  subjectType?: "PRACTICE" | "COURSE_WORK" | "STATE_ATTESTATION" | "GRADUATION_WORK" | null;
   active: boolean;
   programId?: number | null;
   programName?: string | null;
+  subjectCategoryId?: number | null;
+  subjectCategoryName?: string | null;
 }
 export interface SubjectCreateRequest {
   name: string;
+  nameEn?: string | null;
+  nameRu?: string | null;
+  nameKaa?: string | null;
+  nameUzCyrillic?: string | null;
   code?: string | null;
   credits?: number | null;
+  subjectType?: "PRACTICE" | "COURSE_WORK" | "STATE_ATTESTATION" | "GRADUATION_WORK" | null;
   active?: boolean;
   programId?: number | null;
+  subjectCategoryId?: number | null;
 }
-export type SubjectUpdateRequest = Partial<SubjectCreateRequest>;
+export type SubjectUpdateRequest = Partial<SubjectCreateRequest> & {
+  clearSubjectCategory?: boolean;
+  clearOptionalFields?: boolean;
+};
 
 // ─── Faculties ─────────────────────────────────────────────────────────────
 export async function listFaculties(): Promise<FacultyRecord[]> {
@@ -231,11 +273,33 @@ export async function deleteGroup(id: number): Promise<void> {
   } catch (e) { throw extractApiError(e, "Guruhni o'chirib bo'lmadi"); }
 }
 
+// ─── Subject categories (user-facing: Fan guruhlari) ──────────────────────
+export async function listSubjectCategories(): Promise<SubjectCategoryRecord[]> {
+  try {
+    return (await api.get<SubjectCategoryRecord[]>("/subject-categories")).data;
+  } catch (e) { throw extractApiError(e, "Fan guruhlarini yuklab bo'lmadi"); }
+}
+export async function createSubjectCategory(req: SubjectCategoryCreateRequest): Promise<SubjectCategoryRecord> {
+  try {
+    return (await api.post<SubjectCategoryRecord>("/subject-categories", req)).data;
+  } catch (e) { throw extractApiError(e, "Fan guruhini yaratib bo'lmadi"); }
+}
+export async function updateSubjectCategory(id: number, req: SubjectCategoryUpdateRequest): Promise<SubjectCategoryRecord> {
+  try {
+    return (await api.put<SubjectCategoryRecord>(`/subject-categories/${id}`, req)).data;
+  } catch (e) { throw extractApiError(e, "Fan guruhini yangilab bo'lmadi"); }
+}
+export async function deleteSubjectCategory(id: number): Promise<void> {
+  try {
+    await api.delete(`/subject-categories/${id}`);
+  } catch (e) { throw extractApiError(e, "Fan guruhini o'chirib bo'lmadi"); }
+}
+
 // ─── Subjects ──────────────────────────────────────────────────────────────
-export async function listSubjects(programId?: number): Promise<SubjectRecord[]> {
+export async function listSubjects(programId?: number, subjectCategoryId?: number): Promise<SubjectRecord[]> {
   try {
     return (await api.get<SubjectRecord[]>("/subjects", {
-      params: programId ? { programId } : undefined,
+      params: programId || subjectCategoryId ? { programId, subjectCategoryId } : undefined,
     })).data;
   } catch (e) { throw extractApiError(e, "Fanlarni yuklab bo'lmadi"); }
 }

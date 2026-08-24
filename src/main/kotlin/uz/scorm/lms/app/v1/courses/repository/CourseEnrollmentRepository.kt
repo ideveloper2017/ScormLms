@@ -8,6 +8,9 @@ import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 
 interface CourseEnrollmentRepository : JpaRepository<CourseEnrollment, Long> {
+    @EntityGraph(attributePaths = ["student", "student.user", "course", "course.subject", "course.subject.program"])
+    fun findAllByDeletedFalseOrderByAcademicYearDescSemesterDescEnrolledAtDesc(): List<CourseEnrollment>
+
     @EntityGraph(attributePaths = ["student", "student.user", "course"])
     fun findAllByCourseIdInAndAcademicYearAndStatusInAndDeletedFalse(
         courseIds: Collection<Long>,

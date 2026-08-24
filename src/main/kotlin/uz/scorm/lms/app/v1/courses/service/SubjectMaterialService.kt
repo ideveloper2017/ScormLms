@@ -6,12 +6,14 @@ import org.springframework.web.multipart.MultipartFile
 import uz.scorm.lms.app.v1.courses.dto.CourseContentAssetDto
 import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialDto
 import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialRequest
+import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialSubjectDto
 import uz.scorm.lms.app.v1.courses.model.CourseContentType
 import uz.scorm.lms.app.v1.courses.model.SubjectMaterial
 import uz.scorm.lms.app.v1.courses.repository.CourseContentAssetRepository
 import uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupTeacherAssignmentRepository
+import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.net.URI
 
@@ -21,6 +23,7 @@ class SubjectMaterialService(
     private val assets: CourseContentAssetRepository,
     private val subjects: SubjectRepository,
     private val users: UserRepository,
+    private val teachers: TeacherRepository,
     private val assignments: AcademicSubjectGroupTeacherAssignmentRepository,
     private val assetService: CourseContentAssetService,
 ) {
@@ -29,11 +32,23 @@ class SubjectMaterialService(
         val items = if (mayManageAll) {
             materials.findAllByActiveTrueAndDeletedFalseOrderByUpdatedAtDesc()
         } else {
-            val subjectIds = assignments.findAssignedSubjectIds(userId)
+            val subjectIds = assignedSubjectIds(userId)
             if (subjectIds.isEmpty()) emptyList()
             else materials.findAllBySubjectIdInAndActiveTrueAndDeletedFalseOrderByUpdatedAtDesc(subjectIds)
         }
         return items.map(::toDto)
+    }
+
+    @Transactional(readOnly = true)
+    fun subjects(userId: Long, mayManageAll: Boolean): List<SubjectMaterialSubjectDto> {
+        val allowedIds = if (mayManageAll) null else assignedSubjectIds(userId)
+        return subjects.findAll()
+            .asSequence()
+            .filter { !it.deleted && it.active }
+            .filter { allowedIds == null || it.id in allowedIds }
+            .sortedBy { it.name.lowercase() }
+            .map { SubjectMaterialSubjectDto(requireNotNull(it.id), it.name) }
+            .toList()
     }
 
     @Transactional
@@ -103,9 +118,21 @@ class SubjectMaterialService(
     }
 
     private fun requireSubjectAccess(subjectId: Long, userId: Long, mayManageAll: Boolean) {
-        require(mayManageAll || subjectId in assignments.findAssignedSubjectIds(userId)) {
+        require(mayManageAll || subjectId in assignedSubjectIds(userId)) {
             "O'qituvchiga ushbu fan biriktirilmagan"
         }
+    }
+
+    private fun assignedSubjectIds(userId: Long): Set<Long> {
+        val directIds = teachers.findByUserId(userId)
+            ?.takeIf { it.active && !it.deleted }
+            ?.subjects
+            ?.asSequence()
+            ?.filter { it.active && !it.deleted }
+            ?.mapNotNull { it.id }
+            ?.toSet()
+            .orEmpty()
+        return directIds + assignments.findAssignedSubjectIds(userId)
     }
 
     private fun subject(id: Long) = subjects.findById(id)

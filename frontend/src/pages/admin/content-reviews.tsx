@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextContent } from "@/components/editor/rich-text-content";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { hasAuthority } from "@/lib/rbac-api";
@@ -145,9 +146,10 @@ export function AdminContentReviews() {
                 <p className="text-sm">{review.description}</p>
               )}
               {review.contentBody && (
-                <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">
-                  {review.contentBody}
-                </div>
+                <RichTextContent
+                  value={review.contentBody}
+                  className="max-h-64 overflow-y-auto rounded-lg border bg-background p-3 text-sm"
+                />
               )}
               <div className="rounded-lg border bg-muted/30 p-3 text-sm space-y-1">
                 <p>

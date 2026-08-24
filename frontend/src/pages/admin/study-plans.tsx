@@ -1,182 +1,338 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, BookMarked, CheckCircle2, Plus, Search, Trash2, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+  Archive,
+  BookMarked,
+  BookOpenCheck,
+  Eye,
+  Layers3,
+  Pencil,
+  Plus,
+  Search,
+  Users,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/contexts/auth-context";
-import { useToast } from "@/hooks/use-toast";
-import { listPrograms, listSubjects } from "@/lib/academic-api";
 import { hasAuthority } from "@/lib/rbac-api";
-import { academicPeriodApi } from "@/services/api/academic-period-api";
-import { canApproveCurriculum, curriculumApi, curriculumInputError, type CurriculumCredentialType, type CurriculumPlanItemType, type CurriculumStudentStatus, type CurriculumVersion, type SaveCurriculumVersionInput } from "@/services/api/curriculum-api";
+import {
+  curriculumApi,
+  type CurriculumStatus,
+  type CurriculumVersion,
+} from "@/services/api/curriculum-api";
 
-const currentAcademicYear = () => {
-  const now = new Date();
-  const year = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
-  return `${year}-${year + 1}`;
-};
-const datesForYear = (academicYear: string) => {
-  const [first, second] = academicYear.split("-");
-  return { validFrom: `${first}-09-01`, validUntil: `${second}-08-31` };
-};
-const initialForm = (): SaveCurriculumVersionInput => {
-  const academicYear = currentAcademicYear();
-  return {
-    programId: 0,
-    versionCode: "",
-    academicYear,
-    credentialType: "STATE_DIPLOMA",
-    normativeBasisType: "STATE_EDUCATION_STANDARD",
-    standardReference: "",
-    qualificationRequirementsReference: "",
-    ...datesForYear(academicYear),
-  };
-};
+const ALL = "__all__";
+
+function StatusBadge({ status }: { status: CurriculumStatus }) {
+  if (status === "APPROVED") {
+    return <Badge className="bg-emerald-600 hover:bg-emerald-600">Tasdiqlangan</Badge>;
+  }
+  if (status === "ARCHIVED") {
+    return <Badge variant="outline">Arxivlangan</Badge>;
+  }
+  return <Badge variant="secondary">Qoralama</Badge>;
+}
 
 export function AdminStudyPlans() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
-  const { toast } = useToast();
-  const client = useQueryClient();
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState<SaveCurriculumVersionInput>(initialForm);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [selectedPanel, setSelectedPanel] = useState<"subjects" | "students">("subjects");
-  const [studentSearchInput, setStudentSearchInput] = useState("");
-  const [studentSearch, setStudentSearch] = useState("");
-  const [studentStatus, setStudentStatus] = useState<CurriculumStudentStatus | "">("");
-  const [studentPage, setStudentPage] = useState(0);
-  const [subjectForm, setSubjectForm] = useState<{ subjectId: number; semester: number; planItemType: CurriculumPlanItemType }>({ subjectId: 0, semester: 1, planItemType: "REQUIRED" });
-  const [approving, setApproving] = useState<CurriculumVersion | null>(null);
-  const [approval, setApproval] = useState({ approvalOrderNumber: "", approvalOrderDate: new Date().toISOString().slice(0, 10) });
+  const [status, setStatus] = useState<string>(ALL);
+  const [academicYear, setAcademicYear] = useState<string>(ALL);
   const curricula = useQuery({ queryKey: ["curricula"], queryFn: curriculumApi.list });
-  const programs = useQuery({ queryKey: ["programs", "curriculum-options"], queryFn: () => listPrograms() });
-  const academicYears = useQuery({ queryKey: ["academic-periods", "years", "active"], queryFn: () => academicPeriodApi.listYears() });
-  const semesterDefinitions = useQuery({ queryKey: ["academic-periods", "semesters", "active"], queryFn: () => academicPeriodApi.listSemesters() });
-  const selected = curricula.data?.find((item) => item.id === selectedId) ?? null;
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setStudentSearch(studentSearchInput.trim());
-      setStudentPage(0);
-    }, 300);
-    return () => window.clearTimeout(timeout);
-  }, [studentSearchInput]);
-  const subjects = useQuery({
-    queryKey: ["subjects", "curriculum-options", selected?.programId],
-    queryFn: () => listSubjects(selected!.programId),
-    enabled: !!selected && selected.status === "DRAFT",
-  });
-  const assignedStudents = useQuery({
-    queryKey: ["curricula", selectedId, "students", studentSearch, studentStatus, studentPage],
-    queryFn: () => curriculumApi.listStudents(selectedId!, {
-      search: studentSearch || undefined,
-      status: studentStatus || undefined,
-      page: studentPage,
-      size: 20,
-    }),
-    enabled: !!selectedId && selectedPanel === "students",
-  });
-  const refresh = () => client.invalidateQueries({ queryKey: ["curricula"] });
-  const fail = (error: Error) => toast({ variant: "destructive", title: "Amal bajarilmadi", description: error.message });
-  const create = useMutation({
-    mutationFn: () => curriculumApi.create(form),
-    onSuccess: async (created) => { setSelectedId(created.id); setForm(initialForm()); await refresh(); toast({ title: "Curriculum qoralamasi yaratildi" }); },
-    onError: fail,
-  });
-  const addSubject = useMutation({
-    mutationFn: () => curriculumApi.addSubject(selectedId!, subjectForm),
-    onSuccess: async () => { setSubjectForm({ subjectId: 0, semester: 1, planItemType: "REQUIRED" }); await refresh(); toast({ title: "Fan curriculumga qo'shildi" }); },
-    onError: fail,
-  });
-  const removeSubject = useMutation({
-    mutationFn: ({ versionId, itemId }: { versionId: number; itemId: number }) => curriculumApi.removeSubject(versionId, itemId),
-    onSuccess: async () => { await refresh(); toast({ title: "Fan curriculumdan chiqarildi" }); },
-    onError: fail,
-  });
-  const approve = useMutation({
-    mutationFn: () => curriculumApi.approve(approving!.id, approval),
-    onSuccess: async () => { setApproving(null); setApproval({ approvalOrderNumber: "", approvalOrderDate: new Date().toISOString().slice(0, 10) }); await refresh(); toast({ title: "Curriculum tasdiqlandi" }); },
-    onError: fail,
-  });
-  const archive = useMutation({
-    mutationFn: curriculumApi.archive,
-    onSuccess: async () => { await refresh(); toast({ title: "Curriculum arxivlandi" }); },
-    onError: fail,
-  });
-  const filtered = useMemo(() => (curricula.data ?? []).filter((item) =>
-    !search.trim() || `${item.programName} ${item.versionCode} ${item.academicYear} ${item.standardReference}`.toLowerCase().includes(search.toLowerCase()),
-  ), [curricula.data, search]);
-  const setCredential = (credentialType: CurriculumCredentialType) => setForm({
-    ...form,
-    credentialType,
-    normativeBasisType: credentialType === "STATE_DIPLOMA" ? "STATE_EDUCATION_STANDARD" : "PROFESSIONAL_STANDARD",
-  });
-  const setAcademicYear = (academicYear: string) => setForm({ ...form, academicYear, ...datesForYear(academicYear) });
-  const openPanel = (id: number, panel: "subjects" | "students") => {
-    setSelectedId(id);
-    setSelectedPanel(panel);
-    setStudentPage(0);
+
+  const items = curricula.data ?? [];
+  const years = useMemo(
+    () => Array.from(new Set(items.map((item) => item.academicYear))).sort().reverse(),
+    [items],
+  );
+  const filtered = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase("uz");
+    return items.filter((item) => {
+      const matchesTerm =
+        !term ||
+        item.programName.toLocaleLowerCase("uz").includes(term) ||
+        item.versionCode.toLocaleLowerCase("uz").includes(term) ||
+        item.academicYear.includes(term);
+      return (
+        matchesTerm &&
+        (status === ALL || item.status === status) &&
+        (academicYear === ALL || item.academicYear === academicYear)
+      );
+    });
+  }, [academicYear, items, search, status]);
+
+  const columns = useMemo<ColumnDef<CurriculumVersion>[]>(
+    () => [
+      {
+        id: "program",
+        header: "Ta'lim yo'nalishi va versiya",
+        accessorFn: (item) => item.programName + " " + item.versionCode,
+        cell: ({ row }) => (
+          <div className="min-w-[220px]">
+            <p className="font-medium">{row.original.programName}</p>
+            <p className="text-xs text-muted-foreground">Versiya: {row.original.versionCode}</p>
+          </div>
+        ),
+      },
+      { accessorKey: "academicYear", header: "O'quv yili" },
+      {
+        accessorKey: "status",
+        header: "Holati",
+        cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      },
+      {
+        id: "load",
+        header: "Fanlar / kredit",
+        accessorFn: (item) => item.subjectCount,
+        cell: ({ row }) => (
+          <div>
+            <p className="font-medium">{row.original.subjectCount} ta fan</p>
+            <p className="text-xs text-muted-foreground">{row.original.totalCredits} kredit</p>
+          </div>
+        ),
+      },
+      {
+        id: "validity",
+        header: "Amal qilish davri",
+        accessorFn: (item) => item.validFrom,
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-sm">
+            {row.original.validFrom} — {row.original.validUntil}
+          </span>
+        ),
+      },
+      {
+        id: "approval",
+        header: "Tasdiqlash",
+        accessorFn: (item) => item.approvalOrderNumber ?? "",
+        cell: ({ row }) =>
+          row.original.approvalOrderNumber ? (
+            <div>
+              <p className="text-sm font-medium">{row.original.approvalOrderNumber}</p>
+              <p className="text-xs text-muted-foreground">{row.original.approvalOrderDate}</p>
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">Kutilmoqda</span>
+          ),
+      },
+      {
+        id: "actions",
+        header: "",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/edu-process/curriculum/" + row.original.id)}
+            >
+              {row.original.status === "DRAFT" && canWrite ? (
+                <Pencil className="mr-2 h-4 w-4" />
+              ) : (
+                <Eye className="mr-2 h-4 w-4" />
+              )}
+              {row.original.status === "DRAFT" && canWrite ? "Davom ettirish" : "Ko'rish"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Biriktirilgan talabalar"
+              aria-label="Biriktirilgan talabalar"
+              onClick={() =>
+                navigate("/edu-process/attached-students?curriculumId=" + row.original.id)
+              }
+            >
+              <Users className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [canWrite, navigate],
+  );
+
+  const stats = {
+    total: items.length,
+    draft: items.filter((item) => item.status === "DRAFT").length,
+    approved: items.filter((item) => item.status === "APPROVED").length,
+    archived: items.filter((item) => item.status === "ARCHIVED").length,
   };
 
-  return <div className="space-y-6 p-3 sm:p-6">
-    <div><h1 className="text-2xl font-bold">O'quv reja va curriculum</h1><p className="text-sm text-muted-foreground">559-son qaror 19-bandi: dastur, standart, malaka talabi, fanlar snapshoti va mustaqil tasdiq.</p></div>
+  if (curricula.isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
-    {canWrite && <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookMarked className="h-5 w-5" />Yangi curriculum versiyasi</CardTitle><CardDescription>Faqat faol masofaviy dastur uchun; amal qilish muddati butun o'quv yilini qoplashi kerak.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
-      <div className="space-y-2"><Label>Ta'lim dasturi</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.programId} onChange={(event) => setForm({ ...form, programId: Number(event.target.value) })}><option value={0}>Dastur tanlang</option>{(programs.data ?? []).filter((program) => program.active && program.distanceEnabled).map((program) => <option key={program.id} value={program.id}>{program.code ? `${program.code} - ` : ""}{program.name}</option>)}</select></div>
-      <div className="space-y-2"><Label>Versiya kodi</Label><Input value={form.versionCode} onChange={(event) => setForm({ ...form, versionCode: event.target.value })} placeholder="CUR-2026-01" /></div>
-      <div className="space-y-2"><Label>O'quv yili</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.academicYear} onChange={(event) => setAcademicYear(event.target.value)}><option value="">O'quv yilini tanlang</option>{(academicYears.data ?? []).map((year) => <option key={year.id} value={year.code}>{year.code}{year.current ? " (joriy)" : ""}</option>)}</select></div>
-      <div className="space-y-2"><Label>Beriladigan hujjat</Label><div className="flex gap-2"><Button type="button" variant={form.credentialType === "STATE_DIPLOMA" ? "default" : "outline"} onClick={() => setCredential("STATE_DIPLOMA")}>Davlat diplomi</Button><Button type="button" variant={form.credentialType === "NON_STATE_CREDENTIAL" ? "default" : "outline"} onClick={() => setCredential("NON_STATE_CREDENTIAL")}>Nodavlat hujjat</Button></div></div>
-      <div className="space-y-2 md:col-span-2"><Label>{form.credentialType === "STATE_DIPLOMA" ? "Davlat ta'lim standarti rekviziti" : "Kasbiy standart rekviziti"}</Label><Input value={form.standardReference} onChange={(event) => setForm({ ...form, standardReference: event.target.value })} placeholder="Rasmiy hujjat raqami va reestr manzili" /></div>
-      <div className="space-y-2 md:col-span-2"><Label>Malaka talablari rekviziti</Label><Input value={form.qualificationRequirementsReference} onChange={(event) => setForm({ ...form, qualificationRequirementsReference: event.target.value })} /></div>
-      <div className="space-y-2"><Label>Amal qilish boshi</Label><Input type="date" value={form.validFrom} onChange={(event) => setForm({ ...form, validFrom: event.target.value })} /></div>
-      <div className="space-y-2"><Label>Amal qilish oxiri</Label><Input type="date" value={form.validUntil} onChange={(event) => setForm({ ...form, validUntil: event.target.value })} /></div>
-      {curriculumInputError(form) && <p className="text-sm text-amber-700 md:col-span-2">{curriculumInputError(form)}</p>}
-      <Button className="md:col-span-2 md:w-fit" disabled={!!curriculumInputError(form) || create.isPending} onClick={() => create.mutate()}><Plus className="mr-2 h-4 w-4" />Qoralama yaratish</Button>
-    </CardContent></Card>}
-
-    <div className="relative max-w-md"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-10" placeholder="Dastur, versiya yoki standart bo'yicha qidiring" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
-    <div className="grid gap-4 lg:grid-cols-2">{filtered.map((version) => <Card key={version.id} className={selectedId === version.id ? "ring-2 ring-primary" : ""}><CardHeader><div className="flex justify-between gap-3"><div><CardTitle className="text-lg">{version.programName}</CardTitle><CardDescription>{version.versionCode} · {version.academicYear}</CardDescription></div><Badge>{version.status}</Badge></div></CardHeader><CardContent className="space-y-3"><p className="text-sm"><b>Asos:</b> {version.normativeBasisType === "STATE_EDUCATION_STANDARD" ? "Davlat ta'lim standarti" : "Kasbiy standart"}<br/>{version.standardReference}</p><p className="text-sm"><b>Malaka talabi:</b> {version.qualificationRequirementsReference}</p><p className="rounded-md bg-muted p-3 text-sm">{version.subjectCount} fan · {version.totalCredits} kredit · {version.validFrom} - {version.validUntil}</p>{version.approvalOrderNumber && <p className="text-sm text-emerald-700"><CheckCircle2 className="mr-1 inline h-4 w-4" />{version.approvalOrderNumber}, {version.approvalOrderDate} · {version.approvedByName}</p>}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => openPanel(version.id, "subjects")}>Fanlar</Button><Button size="sm" variant="outline" onClick={() => openPanel(version.id, "students")}><Users className="mr-1 h-3 w-3" />Biriktirilgan talabalar</Button>{canWrite && canApproveCurriculum(version) && <Button size="sm" onClick={() => setApproving(version)}>Tasdiqlash</Button>}{canWrite && version.status === "APPROVED" && <Button size="sm" variant="outline" onClick={() => archive.mutate(version.id)}><Archive className="mr-1 h-3 w-3" />Arxivlash</Button>}</div></CardContent></Card>)}{filtered.length === 0 && <Card className="lg:col-span-2"><CardContent className="py-10 text-center text-muted-foreground">Curriculum versiyasi topilmadi.</CardContent></Card>}</div>
-
-    {selected && <Card>
-      <CardHeader><CardTitle>{selected.versionCode}: fanlar snapshoti</CardTitle><CardDescription>{selected.status === "DRAFT" ? "Fanlar faqat qoralamada o'zgartiriladi; tasdiqda joriy kod, nom va kredit snapshot qilinadi." : "Tasdiqlangan tarkib o'zgarmas audit dalilidir."}</CardDescription></CardHeader>
-      <CardContent className="space-y-3">
-        {canWrite && selected.status === "DRAFT" && <div className="grid gap-2 rounded-md border p-3 md:grid-cols-4">
-          <select className="h-10 rounded-md border bg-background px-3 text-sm md:col-span-2" value={subjectForm.subjectId} onChange={(event) => setSubjectForm({ ...subjectForm, subjectId: Number(event.target.value) })}><option value={0}>Faol fanni tanlang</option>{(subjects.data ?? []).filter((subject) => subject.active && subject.code && subject.credits && !selected.subjects.some((item) => item.subjectId === subject.id)).map((subject) => <option key={subject.id} value={subject.id}>{subject.code} - {subject.name} ({subject.credits} kr)</option>)}</select>
-          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={subjectForm.semester} onChange={(event) => setSubjectForm({ ...subjectForm, semester: Number(event.target.value) })}>{(semesterDefinitions.data ?? []).map((semester) => <option key={semester.id} value={semester.semesterNumber}>{semester.nameUz} ({semester.courseNumber}-kurs)</option>)}</select>
-          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={subjectForm.planItemType} onChange={(event) => setSubjectForm({ ...subjectForm, planItemType: event.target.value as CurriculumPlanItemType })}><option value="REQUIRED">Majburiy</option><option value="ELECTIVE">Tanlov</option></select>
-          <Button className="md:col-span-4 md:w-fit" disabled={!subjectForm.subjectId || !(semesterDefinitions.data ?? []).some((semester) => semester.semesterNumber === subjectForm.semester) || addSubject.isPending} onClick={() => addSubject.mutate()}>Fan qo'shish</Button>
-        </div>}
-        {selected.subjects.map((subject) => <div key={subject.id} className="flex flex-col justify-between gap-2 rounded-md border p-3 sm:flex-row sm:items-center"><div><p className="font-medium">{subject.subjectCode} · {subject.subjectName}</p><p className="text-xs text-muted-foreground">{subject.semester}-semestr · {subject.credits} kredit · {subject.planItemType === "REQUIRED" ? "Majburiy" : "Tanlov"}</p></div>{canWrite && selected.status === "DRAFT" && <Button size="sm" variant="ghost" onClick={() => removeSubject.mutate({ versionId: selected.id, itemId: subject.id })}><Trash2 className="h-4 w-4 text-destructive" /></Button>}</div>)}
-        {selected.subjects.length === 0 && <p className="py-6 text-center text-muted-foreground">Fanlar hali qo'shilmagan.</p>}
-      </CardContent>
-    </Card>}
-
-    {selected && selectedPanel === "students" && <Card>
-      <CardHeader>
-        <CardTitle>{selected.versionCode}: rejaga biriktirilgan talabalar</CardTitle>
-        <CardDescription>Ro'yxat alohida nusxa emas: {selected.programName} va {selected.academicYear} bo'yicha akademik qabul ma'lumotidan avtomatik hosil qilinadi.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px]">
-          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-10" value={studentSearchInput} onChange={(event) => setStudentSearchInput(event.target.value)} placeholder="F.I.Sh. yoki talaba raqami" /></div>
-          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={studentStatus} onChange={(event) => { setStudentStatus(event.target.value as CurriculumStudentStatus | ""); setStudentPage(0); }}>
-            <option value="">Barcha akademik statuslar</option><option value="ACTIVE">Faol</option><option value="SUSPENDED">Akademik ta'til</option><option value="EXPELLED">Chetlashtirilgan</option><option value="GRADUATED">Bitirgan</option>
-          </select>
+  return (
+    <div className="space-y-6 p-3 sm:p-6">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">O'quv rejalar</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Rejalarni qidiring, holatini kuzating yoki yangi reja yarating.
+          </p>
         </div>
-        {assignedStudents.isLoading && <p className="py-6 text-center text-muted-foreground">Talabalar yuklanmoqda...</p>}
-        {assignedStudents.isError && <p className="py-6 text-center text-destructive">Talabalar ro'yxatini yuklab bo'lmadi.</p>}
-        {assignedStudents.data?.items.map((student) => <div key={student.studentId} className="grid gap-2 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div><p className="font-medium">{student.fullName}</p><p className="text-xs text-muted-foreground">{student.studentNumber} · {student.groupName ?? "Guruh biriktirilmagan"} · {student.courseNumber}-kurs · {student.semesterNumber ?? "—"}-semestr</p></div><Badge variant="outline">{student.status}</Badge>
-        </div>)}
-        {assignedStudents.data && assignedStudents.data.items.length === 0 && <p className="py-6 text-center text-muted-foreground">Ushbu reja bo'yicha akademik biriktirilgan talaba topilmadi.</p>}
-        {assignedStudents.data && assignedStudents.data.totalPages > 0 && <div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Jami: {assignedStudents.data.totalElements}</p><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={studentPage === 0} onClick={() => setStudentPage((page) => page - 1)}>Oldingi</Button><span className="text-sm">{assignedStudents.data.page + 1} / {assignedStudents.data.totalPages}</span><Button variant="outline" size="sm" disabled={assignedStudents.data.page + 1 >= assignedStudents.data.totalPages} onClick={() => setStudentPage((page) => page + 1)}>Keyingi</Button></div></div>}
-      </CardContent>
-    </Card>}
+        {canWrite && (
+          <Button onClick={() => navigate("/edu-process/curriculum/new")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Yangi o'quv reja
+          </Button>
+        )}
+      </div>
 
-    <Dialog open={!!approving} onOpenChange={(open) => { if (!open) setApproving(null); }}><DialogContent><DialogHeader><DialogTitle>Curriculumni tasdiqlash</DialogTitle><DialogDescription>Muallifdan boshqa akademik vakolatli foydalanuvchi buyruq rekvizitini kiritadi. Tasdiqdan keyin tarkib tahrirlanmaydi.</DialogDescription></DialogHeader><div className="space-y-3"><div className="space-y-2"><Label>Tasdiqlash buyrug'i raqami</Label><Input value={approval.approvalOrderNumber} onChange={(event) => setApproval({ ...approval, approvalOrderNumber: event.target.value })} /></div><div className="space-y-2"><Label>Buyruq sanasi</Label><Input type="date" max={new Date().toISOString().slice(0, 10)} value={approval.approvalOrderDate} onChange={(event) => setApproval({ ...approval, approvalOrderDate: event.target.value })} /></div></div><DialogFooter><Button variant="outline" onClick={() => setApproving(null)}>Bekor qilish</Button><Button disabled={!approval.approvalOrderNumber.trim() || !approval.approvalOrderDate || approve.isPending} onClick={() => approve.mutate()}>Tasdiqlash</Button></DialogFooter></DialogContent></Dialog>
-  </div>;
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { label: "Jami rejalar", value: stats.total, icon: Layers3 },
+          { label: "Qoralama", value: stats.draft, icon: BookMarked },
+          { label: "Tasdiqlangan", value: stats.approved, icon: BookOpenCheck },
+          { label: "Arxivlangan", value: stats.archived, icon: Archive },
+        ].map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="flex items-center justify-between p-4 sm:p-5">
+              <div>
+                <p className="text-xs text-muted-foreground sm:text-sm">{stat.label}</p>
+                <p className="mt-1 text-2xl font-bold">{stat.value}</p>
+              </div>
+              <stat.icon className="h-8 w-8 text-muted-foreground/60" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Qidirish va saralash</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-[minmax(240px,1fr)_220px_220px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Yo'nalish yoki versiya bo'yicha qidiring"
+            />
+          </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger aria-label="Holat bo'yicha saralash">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Barcha holatlar</SelectItem>
+              <SelectItem value="DRAFT">Qoralama</SelectItem>
+              <SelectItem value="APPROVED">Tasdiqlangan</SelectItem>
+              <SelectItem value="ARCHIVED">Arxivlangan</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={academicYear} onValueChange={setAcademicYear}>
+            <SelectTrigger aria-label="O'quv yili bo'yicha saralash">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Barcha o'quv yillari</SelectItem>
+              {years.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {curricula.isError ? (
+        <Card>
+          <CardContent className="space-y-3 py-10 text-center">
+            <p className="text-destructive">O'quv rejalarni yuklab bo'lmadi.</p>
+            <Button variant="outline" onClick={() => curricula.refetch()}>
+              Qayta urinish
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="hidden md:block">
+            <DataTable
+              columns={columns}
+              data={filtered}
+              defaultPageSize={10}
+              emptyText="Tanlangan filtrlar bo'yicha o'quv reja topilmadi"
+            />
+          </div>
+          <div className="space-y-3 md:hidden">
+            {filtered.map((item) => (
+              <Card key={item.id}>
+                <CardContent className="space-y-4 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{item.programName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.versionCode} · {item.academicYear}
+                      </p>
+                    </div>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 rounded-md bg-muted/40 p-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Fanlar</p>
+                      <p className="font-medium">{item.subjectCount} ta</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Kredit</p>
+                      <p className="font-medium">{item.totalCredits}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      variant="outline"
+                      onClick={() => navigate("/edu-process/curriculum/" + item.id)}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      Ochish
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Biriktirilgan talabalar"
+                      onClick={() =>
+                        navigate("/edu-process/attached-students?curriculumId=" + item.id)
+                      }
+                    >
+                      <Users className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {filtered.length === 0 && (
+              <Card>
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  Tanlangan filtrlar bo'yicha o'quv reja topilmadi.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }

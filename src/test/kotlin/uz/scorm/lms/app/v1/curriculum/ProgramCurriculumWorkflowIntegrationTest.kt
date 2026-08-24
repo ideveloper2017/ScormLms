@@ -18,6 +18,8 @@ import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
+import uz.scorm.lms.app.v1.role.model.Role
+import uz.scorm.lms.app.v1.role.repository.RoleRepository
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import uz.scorm.lms.app.v1.student.model.Gender
@@ -36,6 +38,7 @@ class ProgramCurriculumWorkflowIntegrationTest {
     @Autowired private lateinit var programRepository: ProgramRepository
     @Autowired private lateinit var subjectRepository: SubjectRepository
     @Autowired private lateinit var userRepository: UserRepository
+    @Autowired private lateinit var roleRepository: RoleRepository
     @Autowired private lateinit var studentRepository: StudentRepository
 
     @Test
@@ -102,6 +105,42 @@ class ProgramCurriculumWorkflowIntegrationTest {
     }
 
     @Test
+    fun `super admin oddiy dasturga umumiy katalog fanini biriktirib tasdiqlaydi`() {
+        val superAdmin = user(
+            "curriculum-super-admin",
+            requireNotNull(roleRepository.findByName("super_admin")),
+        )
+        val program = programRepository.save(Program(
+            name = "Kunduzgi dastur-${System.nanoTime()}",
+            code = "FT-${System.nanoTime()}",
+            degreeLevel = "BACHELOR",
+            active = true,
+            distanceEnabled = false,
+        ))
+        val catalogSubject = subjectRepository.save(Subject(
+            name = "Umumiy matematika",
+            code = "MATH-${System.nanoTime()}",
+            credits = 6,
+            active = true,
+            program = null,
+        ))
+
+        val created = service.create(
+            request(requireNotNull(program.id), versionSuffix = "global"),
+            requireNotNull(superAdmin.id),
+        )
+        val withSubject = service.addSubject(
+            created.id,
+            AddCurriculumSubjectRequest(requireNotNull(catalogSubject.id), 1, CurriculumPlanItemType.REQUIRED),
+            requireNotNull(superAdmin.id),
+        )
+        val approved = service.approve(withSubject.id, approval(), requireNotNull(superAdmin.id))
+
+        assertEquals("APPROVED", approved.status)
+        assertEquals("Umumiy matematika", approved.subjects.single().subjectName)
+    }
+
+    @Test
     fun `rejaga biriktirilgan talabalar qabuldagi dastur va oquv yilidan hosil qilinadi`() {
         val author = user("curriculum-student-author")
         val program = program("curriculum-student-program")
@@ -132,6 +171,7 @@ class ProgramCurriculumWorkflowIntegrationTest {
         programId = programId,
         versionCode = "CUR-2026-${versionSuffix}-${System.nanoTime()}",
         academicYear = "2026-2027",
+        name = "2026-2027 o'quv reja",
         credentialType = CurriculumCredentialType.STATE_DIPLOMA,
         normativeBasisType = basis,
         standardReference = "DTS-2026/17, rasmiy reestr yozuvi",
@@ -178,9 +218,10 @@ class ProgramCurriculumWorkflowIntegrationTest {
         studentStatus = status,
     ))
 
-    private fun user(username: String) = userRepository.save(User(
+    private fun user(username: String, role: Role? = null) = userRepository.save(User(
         username = "$username-${System.nanoTime()}",
         password = "encoded-password",
         fullName = if (username.contains("approver")) "Curriculum tasdiqlovchi" else "Curriculum muallifi",
+        role = role,
     ))
 }

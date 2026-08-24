@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AcademicSelect } from '@/components/admin/academic-select';
@@ -50,13 +51,12 @@ import type {
   StudentStatus,
   StudentSummaryDto,
 } from '@/types/student.types';
-import { Loader2, ArrowUpCircle, Download, Edit, History, UserPlus, RefreshCcw, GraduationCap, KeyRound, Lock, LockOpen, ArrowRightLeft } from 'lucide-react';
+import { Loader2, Download, UserPlus, RefreshCcw, ArrowRightLeft, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { hasAuthority } from '@/lib/rbac-api';
 
 type LifecycleAction = Exclude<StudentLifecycleEventType, 'ADMISSION'>;
-type StudentWorkspace = 'personal' | 'academic' | 'accounts';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const emptyEvidence = () => ({
@@ -101,7 +101,19 @@ const availableActions: Record<StudentStatus, LifecycleAction[]> = {
   GRADUATED: [],
 };
 
-export function StudentManagement() {
+interface StudentManagementProps {
+  initialStatus?: StudentStatus | 'ALL';
+  title?: string;
+  description?: string;
+  allowCreate?: boolean;
+}
+
+export function StudentManagement({
+  initialStatus = 'ALL',
+  title = 'Talabalar',
+  description = "Talaba ma'lumoti, o'qishga biriktirish va akkauntni bir joydan boshqaring.",
+  allowCreate = true,
+}: StudentManagementProps = {}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -110,10 +122,9 @@ export function StudentManagement() {
   const canManageAcademic = hasAuthority(user, 'ACADEMIC_WRITE');
   const canManageAccounts = hasAuthority(user, 'USER_MANAGE');
   const canExport = hasAuthority(user, 'USER_READ') && hasAuthority(user, 'REPORT_READ');
-  const [activeWorkspace, setActiveWorkspace] = useState<StudentWorkspace>('personal');
   const [registrySearch, setRegistrySearch] = useState('');
   const [debouncedRegistrySearch, setDebouncedRegistrySearch] = useState('');
-  const [registryStatus, setRegistryStatus] = useState<StudentStatus | 'ALL'>('ALL');
+  const [registryStatus, setRegistryStatus] = useState<StudentStatus | 'ALL'>(initialStatus);
   const [registryPage, setRegistryPage] = useState(0);
   const [registryPageSize, setRegistryPageSize] = useState(20);
   const [exportingRegistry, setExportingRegistry] = useState(false);
@@ -121,8 +132,12 @@ export function StudentManagement() {
     const timeout = window.setTimeout(() => setDebouncedRegistrySearch(registrySearch.trim()), 300);
     return () => window.clearTimeout(timeout);
   }, [registrySearch]);
+  useEffect(() => {
+    setRegistryStatus(initialStatus);
+    setRegistryPage(0);
+  }, [initialStatus]);
   const { data: registry, isLoading } = useQuery({
-    queryKey: [...qk.students(), activeWorkspace, debouncedRegistrySearch, registryStatus, registryPage, registryPageSize],
+    queryKey: [...qk.students(), debouncedRegistrySearch, registryStatus, registryPage, registryPageSize],
     queryFn: () => listStudents({
       search: debouncedRegistrySearch || undefined,
       status: registryStatus === 'ALL' ? undefined : registryStatus,
@@ -258,7 +273,7 @@ export function StudentManagement() {
           gender: formData.gender, citizenship: formData.citizenship,
           citizenshipCountryId: optionalId(formData.citizenshipCountryId),
         });
-        toast({ title: "1-bosqich yakunlandi", description: "Kartochka yaratildi. Endi akkaunt bo'limida parol bering" });
+        toast({ title: "Talaba yaratildi", description: "Parol berish va o'qishga biriktirish amallari ro'yxatdagi menyuda mavjud" });
       }
       closeStudentDialog();
       await invalidate();
@@ -323,7 +338,7 @@ export function StudentManagement() {
         effectiveDate: admissionForm.effectiveDate, legalBasis: admissionForm.legalBasis, reason: admissionForm.reason,
       });
       toast({
-        title: "3-bosqich yakunlandi",
+        title: "Talaba o'qishga biriktirildi",
         description: admissionStudent.credentialsInitialized
           ? "Akademik ma'lumot va qabul buyrug'i saqlandi; akkaunt foydalanishga tayyor"
           : "Talaba o'qishga biriktirildi; akkauntni ishlatish uchun parol berish kerak",
@@ -412,7 +427,7 @@ export function StudentManagement() {
     setSaving(true);
     try {
       await setupStudentCredentials(credentialTarget.id, { newPassword: credentialPassword });
-      toast({ title: '2-bosqich yakunlandi', description: credentialTarget.studentStatus === 'ACTIVE' ? 'Parol o\'rnatildi, akkaunt foydalanishga tayyor' : "Parol o'rnatildi. Endi talabani o'qishga biriktiring" });
+      toast({ title: "Parol o'rnatildi", description: credentialTarget.studentStatus === 'ACTIVE' ? 'Akkaunt foydalanishga tayyor' : "Talabani o'qishga biriktirish mumkin" });
       setCredentialTarget(null); setCredentialPassword(''); setCredentialConfirmation(''); await invalidate();
     } catch (error) { showError(error); } finally { setSaving(false); }
   };
@@ -425,16 +440,6 @@ export function StudentManagement() {
     const status = row.original.studentStatus;
     return <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>{status ? statusLabel[status] : '—'}</Badge>;
   } };
-  const personalColumns: ColumnDef<StudentSummaryDto>[] = [
-    ...commonColumns,
-    { accessorKey: 'pinfl', header: 'JSHSHIR' },
-    { accessorKey: 'phoneNumber', header: 'Telefon', cell: ({ row }) => row.original.phoneNumber ?? '—' },
-    { accessorKey: 'email', header: 'Email', cell: ({ row }) => row.original.email ?? '—' },
-    statusColumn,
-    ...(canManagePersonal ? [{ id: 'personal-actions', header: () => <div className="text-right">Shaxsiy amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) =>
-      <div className="text-right"><Button size="sm" variant="outline" onClick={() => handleEditClick(student)}><Edit className="mr-1 h-4 w-4" />Tahrirlash</Button></div>
-    } satisfies ColumnDef<StudentSummaryDto>] : []),
-  ];
   const eligiblePageIds = students
     .filter(student => student.studentStatus === 'ACTIVE' || student.studentStatus === 'SUSPENDED')
     .map(student => student.id)
@@ -475,77 +480,46 @@ export function StudentManagement() {
       />;
     },
   };
-  const academicColumns: ColumnDef<StudentSummaryDto>[] = [
+  const registryColumns: ColumnDef<StudentSummaryDto>[] = [
     ...(canManageAcademic ? [selectionColumn] : []),
     ...commonColumns,
-    { accessorKey: 'groupId', header: 'Guruh ID', cell: ({ row }) => row.original.groupId ?? '—' },
-    { accessorKey: 'semesterNumber', header: 'Semestr', cell: ({ row }) => row.original.semesterNumber ?? '—' },
-    { accessorKey: 'courseNumber', header: 'Kurs', cell: ({ row }) => row.original.courseNumber ?? '—' },
+    ...(canReadAcademic ? [
+      { accessorKey: 'groupId', header: 'Guruh ID', cell: ({ row }) => row.original.groupId ?? '—' },
+      { accessorKey: 'courseNumber', header: 'Kurs', cell: ({ row }) => row.original.courseNumber ?? '—' },
+    ] satisfies ColumnDef<StudentSummaryDto>[] : []),
     statusColumn,
-    { id: 'academic-actions', header: () => <div className="text-right">Akademik amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
+    ...(canManageAccounts ? [{ accessorKey: 'accountStatus', header: 'Akkaunt', cell: ({ row }) => <Badge variant={row.original.accountEnabled ? 'default' : 'secondary'}>{row.original.credentialsInitialized ? row.original.accountStatus : 'Parol berilmagan'}</Badge> } satisfies ColumnDef<StudentSummaryDto>] : []),
+    { id: 'actions', header: () => <div className="text-right">Amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
       const status = student.studentStatus ?? 'REGISTERED';
-      return <div className="flex flex-wrap justify-end gap-1">
-        {canManageAcademic && status === 'REGISTERED' && <Button size="sm" variant="default" onClick={() => openAdmission(student)}><GraduationCap className="mr-1 h-4 w-4" />O'qishga biriktirish</Button>}
-        {canManageAcademic && status === 'ACTIVE' && <Button size="sm" variant="ghost" onClick={() => runPromotion(student.id)} title="Kursdan o'tkazish"><ArrowUpCircle className="h-4 w-4" /></Button>}
-        <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)} title="Lifecycle tarixi"><History className="h-4 w-4" /></Button>
-        {canManageAcademic && availableActions[status].map(action => <Button key={action} size="sm" variant="outline" onClick={() => openLifecycle(student, action)}>{actionLabel[action]}</Button>)}
-      </div>;
-    } },
-  ];
-  const accountColumns: ColumnDef<StudentSummaryDto>[] = [
-    ...commonColumns,
-    { accessorKey: 'username', header: 'Login' },
-    statusColumn,
-    { accessorKey: 'accountStatus', header: 'Akkaunt holati', cell: ({ row }) => <Badge variant={row.original.accountEnabled ? 'default' : 'destructive'}>{row.original.credentialsInitialized ? row.original.accountStatus : 'PAROL BERILMAGAN'}</Badge> },
-    { id: 'account-actions', header: () => <div className="text-right">Akkaunt amali</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
-      if (!student.credentialsInitialized) return <div className="text-right"><Button size="sm" variant="outline" onClick={() => { setCredentialTarget(student); setCredentialPassword(''); setCredentialConfirmation(''); }}><KeyRound className="mr-1 h-4 w-4" />Parol berish</Button></div>;
       const shouldEnable = !student.accountEnabled;
       const enableAllowed = student.studentStatus === 'ACTIVE';
-      return <div className="text-right"><Button
-        size="sm" variant={shouldEnable ? 'outline' : 'destructive'} disabled={shouldEnable && !enableAllowed}
-        title={shouldEnable && !enableAllowed ? "Akkauntni yoqish uchun akademik holat ACTIVE bo'lishi kerak" : undefined}
-        onClick={() => { setAccountTarget({ student, enabled: shouldEnable }); setAccountReason(''); }}
-      >{shouldEnable ? <LockOpen className="mr-1 h-4 w-4" /> : <Lock className="mr-1 h-4 w-4" />}{shouldEnable ? 'Qayta yoqish' : 'Bloklash'}</Button></div>;
+      return <div className="text-right"><DropdownMenu>
+        <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label={`${student.fullName} amallari`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-52">
+          {canManagePersonal && <DropdownMenuItem onSelect={() => handleEditClick(student)}>Shaxsiy ma'lumotlarni tahrirlash</DropdownMenuItem>}
+          {canManageAccounts && !student.credentialsInitialized && <DropdownMenuItem onSelect={() => { setCredentialTarget(student); setCredentialPassword(''); setCredentialConfirmation(''); }}>Parol berish</DropdownMenuItem>}
+          {canManageAcademic && status === 'REGISTERED' && <DropdownMenuItem onSelect={() => openAdmission(student)}>O'qishga biriktirish</DropdownMenuItem>}
+          {canManageAcademic && status === 'ACTIVE' && <DropdownMenuItem onSelect={() => runPromotion(student.id)}>Kursdan o'tkazish</DropdownMenuItem>}
+          {canReadAcademic && <DropdownMenuItem onSelect={() => setHistoryStudent(student)}>Harakatlar tarixi</DropdownMenuItem>}
+          {canManageAcademic && availableActions[status].map(action => <DropdownMenuItem key={action} onSelect={() => openLifecycle(student, action)}>{actionLabel[action]}</DropdownMenuItem>)}
+          {canManageAccounts && student.credentialsInitialized && <DropdownMenuItem
+            disabled={shouldEnable && !enableAllowed}
+            onSelect={() => { setAccountTarget({ student, enabled: shouldEnable }); setAccountReason(''); }}
+          >{shouldEnable ? 'Akkauntni qayta yoqish' : 'Akkauntni bloklash'}</DropdownMenuItem>}
+        </DropdownMenuContent>
+      </DropdownMenu></div>;
     } },
-  ];
-  const columns = activeWorkspace === 'academic' ? academicColumns : activeWorkspace === 'accounts' ? accountColumns : personalColumns;
-  const workspaceTitle = activeWorkspace === 'academic' ? 'Akademik biriktirish va harakat' : activeWorkspace === 'accounts' ? 'Talaba akkauntlari' : 'Shaxsiy kartochkalar';
-  const switchWorkspace = (workspace: StudentWorkspace) => {
-    setActiveWorkspace(workspace);
-    setRegistryStatus(workspace === 'academic' ? 'REGISTERED' : 'ALL');
-    setRegistryPage(0);
-    setSelectedAcademicIds([]);
-  };
-  const workflowSteps: Array<{ workspace: StudentWorkspace; title: string; description: string; visible: boolean }> = [
-    { workspace: 'personal', title: 'Kartochka', description: "Shaxsiy ma'lumotlarni kiriting", visible: true },
-    { workspace: 'accounts', title: 'Parol va kirish', description: 'Akkauntni foydalanishga tayyorlang', visible: canManageAccounts },
-    { workspace: 'academic', title: "O'qishga biriktirish", description: 'Dastur, davr va guruhni tanlang', visible: canReadAcademic },
   ];
 
   if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return <div className="space-y-6 p-3 sm:p-4 md:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h1 className="text-2xl font-bold">Talabalar</h1><p className="text-sm text-muted-foreground">Ish tartibi: kartochka yarating, parol bering, keyin o'qishga biriktiring.</p></div>
-      {activeWorkspace === 'personal' && canManagePersonal && <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Shaxsiy kartochka yaratish</Button>}
+      <div><h1 className="text-2xl font-bold">{title}</h1><p className="text-sm text-muted-foreground">{description}</p></div>
+      {allowCreate && canManagePersonal && <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Talaba qo'shish</Button>}
     </div>
-    <Card>
-      <CardContent className="grid gap-2 p-3 md:grid-cols-3">
-        {workflowSteps.filter(step => step.visible).map((step, index) => <Button
-          key={step.workspace}
-          type="button"
-          variant={activeWorkspace === step.workspace ? 'default' : 'outline'}
-          className="h-auto min-h-20 justify-start gap-3 whitespace-normal px-4 py-3 text-left"
-          aria-current={activeWorkspace === step.workspace ? 'step' : undefined}
-          onClick={() => switchWorkspace(step.workspace)}
-        >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border bg-background font-semibold text-foreground">{index + 1}</span>
-          <span><span className="block font-semibold">{step.title}</span><span className="mt-1 block text-xs opacity-80">{step.description}</span></span>
-        </Button>)}
-      </CardContent>
-    </Card>
-    <Card><CardHeader><CardTitle>{workspaceTitle}</CardTitle></CardHeader><CardContent><DataTable
-      columns={columns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi"
+    <Card><CardHeader><CardTitle>Talabalar reyestri</CardTitle></CardHeader><CardContent><DataTable
+      columns={registryColumns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi"
       serverSearch={{ value: registrySearch, onChange: value => { setRegistrySearch(value); setRegistryPage(0); } }}
       serverPagination={{
         pageIndex: registry?.page ?? registryPage, pageSize: registry?.size ?? registryPageSize,
@@ -555,16 +529,16 @@ export function StudentManagement() {
       }}
       toolbar={<div className="flex flex-wrap items-center gap-2">
         <Select value={registryStatus} onValueChange={(value: StudentStatus | 'ALL') => { setRegistryStatus(value); setRegistryPage(0); }}><SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">Barcha holatlar</SelectItem><SelectItem value="REGISTERED">Qabul qilinmagan</SelectItem><SelectItem value="ACTIVE">Faol</SelectItem><SelectItem value="SUSPENDED">To'xtatilgan</SelectItem><SelectItem value="EXPELLED">Chetlashtirilgan</SelectItem><SelectItem value="GRADUATED">Bitirgan</SelectItem></SelectContent></Select>
-        {activeWorkspace === 'academic' && canManageAcademic && <Button variant="outline" disabled={selectedAcademicIds.length < 2} onClick={() => {
+        {canManageAcademic && <Button variant="outline" disabled={selectedAcademicIds.length < 2} onClick={() => {
           setBulkTransferForm({ ...emptyLifecycle(), academicYear: availableAcademicYears[0] ?? '' }); setBulkTransferOpen(true);
         }}><ArrowRightLeft className="mr-2 h-4 w-4" />Ommaviy ko'chirish ({selectedAcademicIds.length})</Button>}
-        {activeWorkspace === 'personal' && canExport && <Button variant="outline" disabled={exportingRegistry} onClick={exportRegistry}>{exportingRegistry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Excel eksport</Button>}
+        {canExport && <Button variant="outline" disabled={exportingRegistry} onClick={exportRegistry}>{exportingRegistry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Excel eksport</Button>}
       </div>}
     /></CardContent></Card>
 
     <Dialog open={isAdding || !!editingStudent} onOpenChange={open => { if (!open) closeStudentDialog(); }}>
       <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-6xl"><DialogHeader><DialogTitle>{editingStudent ? "Shaxsiy ma'lumotlarni tahrirlash" : "Talabaning shaxsiy kartochkasi"}</DialogTitle></DialogHeader>
-        {!editingStudent && <p className="text-sm text-muted-foreground">Bu yerda faqat shaxsiy ma'lumotlar saqlanadi. O'qishga biriktirish keyingi alohida amalda bajariladi.</p>}
+        {!editingStudent && <p className="text-sm text-muted-foreground">Avval asosiy ma'lumotlarni kiriting. Qolgan amallar talaba ro'yxatidagi menyuda bo'ladi.</p>}
         <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
           <h3 className="border-b pb-2 font-semibold sm:col-span-2">Asosiy ma'lumotlar</h3>
           <Field label="Ism *"><Input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} /></Field>

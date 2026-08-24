@@ -58,6 +58,16 @@
   }
 }
 
+.ckeditor-shell .ck-editor__editable_inline {
+  min-height: 18rem;
+}
+
+.ck-content img.Wirisformula {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
 @layer base {
   * {
     @apply border-border;

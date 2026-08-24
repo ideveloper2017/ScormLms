@@ -8,6 +8,9 @@ import uz.scorm.lms.app.v1.attendance.model.LearningActivityType
 import java.time.Instant
 
 interface LearningActivityEventRepository : JpaRepository<LearningActivityEvent, Long> {
+    @EntityGraph(attributePaths = ["enrollment", "enrollment.course", "enrollment.course.subject", "enrollment.student", "enrollment.student.user"])
+    fun findAllByDeletedFalseOrderByOccurredAtDesc(): List<LearningActivityEvent>
+
     fun countByDeletedFalse(): Long
     @EntityGraph(attributePaths = ["enrollment", "enrollment.course", "enrollment.student", "enrollment.student.user"])
     fun findAllByEnrollmentIdAndOccurredAtBetweenAndDeletedFalseOrderByOccurredAtAsc(

@@ -12,6 +12,7 @@ export const qk = {
   programs:      ()              => ['programs']                 as const,
   groups:        ()              => ['groups']                   as const,
   subjects:      ()              => ['subjects']                 as const,
+  subjectCategories: ()          => ['subject-categories']       as const,
   teachers:      ()              => ['teachers']                 as const,
 
   // Student portal query keys - hierarchical structure

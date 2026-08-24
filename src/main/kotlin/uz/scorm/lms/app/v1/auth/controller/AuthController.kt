@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 import uz.scorm.lms.app.security.JwtService
 import uz.scorm.lms.app.security.ClientIpResolver
 import uz.scorm.lms.app.v1.auth.service.RefreshTokenService
+import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import uz.scorm.lms.app.v1.twofactor.service.TwoFactorService
 import uz.scorm.lms.app.v1.security.service.LoginAttemptService
@@ -39,6 +40,7 @@ import uz.scorm.lms.app.v1.user.mapper.UserMapper
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.service.UserService
 import java.time.Duration
+import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
 
@@ -62,6 +64,7 @@ class AuthController(
     private val loginAttemptService: LoginAttemptService,
     private val userService: UserService,
     private val clientIpResolver: ClientIpResolver,
+    private val auditService: AuditService,
 ) {
 
     data class RefreshRequest(val refreshToken: String)
@@ -74,6 +77,15 @@ class AuthController(
         if (loginAttemptService.isLocked(body.username)) {
             val remaining: Duration? = loginAttemptService.remainingLock(body.username)
             val seconds = (remaining?.seconds ?: 0)
+            auditService.log(
+                action = "LOGIN_BLOCKED",
+                username = body.username.trim().take(150),
+                method = request.method,
+                path = request.requestURI,
+                status = 429,
+                ip = clientIp,
+                userAgent = request.getHeader("User-Agent")?.replace(Regex("[\\r\\n]"), " ")?.take(512),
+            )
             return ResponseEntity.status(429) // Too Many Requests
                 .header("Retry-After", seconds.toString())
                 .body(
@@ -89,6 +101,15 @@ class AuthController(
         } catch (ex: Exception) {
             // record failed attempt and return 401
             loginAttemptService.onFailure(body.username, clientIp)
+            auditService.log(
+                action = "LOGIN_FAILURE",
+                username = body.username.trim().take(150),
+                method = request.method,
+                path = request.requestURI,
+                status = 401,
+                ip = clientIp,
+                userAgent = request.getHeader("User-Agent")?.replace(Regex("[\\r\\n]"), " ")?.take(512),
+            )
             return ResponseEntity.status(401).body(
                 ErrorResponse(
                     message = "Login yoki parol noto'g'ri"
@@ -114,6 +135,17 @@ class AuthController(
 //        }
         // success: reset attempts
         loginAttemptService.onSuccess(body.username)
+        userEntity.lastLoginAt = Instant.now()
+        userRepository.save(userEntity)
+        auditService.log(
+            action = "LOGIN_SUCCESS",
+            username = userEntity.username,
+            method = request.method,
+            path = request.requestURI,
+            status = 200,
+            ip = clientIp,
+            userAgent = request.getHeader("User-Agent")?.replace(Regex("[\\r\\n]"), " ")?.take(512),
+        )
         val authorities = principal.authorities.map { it.authority }
 //        val roles = authorities.filter { it.startsWith("ROLE_") }.map { it.removePrefix("ROLE_") }
 //        val permissions = authorities.filterNot { it.startsWith("ROLE_") }

@@ -22,6 +22,17 @@ export interface TeacherRecord {
   subjects: SubjectRef[];
 }
 
+type TeacherApiRecord = Omit<TeacherRecord, "subjects"> & {
+  subjects?: SubjectRef[] | null;
+};
+
+function normalizeTeacher(teacher: TeacherApiRecord): TeacherRecord {
+  return {
+    ...teacher,
+    subjects: Array.isArray(teacher.subjects) ? teacher.subjects : [],
+  };
+}
+
 export interface TeacherCreateRequest {
   fullName: string;
   phone?: string | null;
@@ -51,19 +62,20 @@ export interface TeacherUpdateRequest {
 
 export async function listTeachers(departmentId?: number): Promise<TeacherRecord[]> {
   try {
-    return (await api.get<TeacherRecord[]>("/teachers", {
+    const response = await api.get<TeacherApiRecord[]>("/teachers", {
       params: departmentId ? { departmentId } : undefined,
-    })).data;
+    });
+    return response.data.map(normalizeTeacher);
   } catch (e) { throw extractApiError(e, "O'qituvchilarni yuklab bo'lmadi"); }
 }
 export async function createTeacher(req: TeacherCreateRequest): Promise<TeacherRecord> {
   try {
-    return (await api.post<TeacherRecord>("/teachers", req)).data;
+    return normalizeTeacher((await api.post<TeacherApiRecord>("/teachers", req)).data);
   } catch (e) { throw extractApiError(e, "O'qituvchi yaratib bo'lmadi"); }
 }
 export async function updateTeacher(id: number, req: TeacherUpdateRequest): Promise<TeacherRecord> {
   try {
-    return (await api.put<TeacherRecord>(`/teachers/${id}`, req)).data;
+    return normalizeTeacher((await api.put<TeacherApiRecord>(`/teachers/${id}`, req)).data);
   } catch (e) { throw extractApiError(e, "O'qituvchini yangilab bo'lmadi"); }
 }
 export async function deleteTeacher(id: number): Promise<void> {

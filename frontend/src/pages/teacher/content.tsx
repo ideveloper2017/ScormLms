@@ -1,4 +1,4 @@
-import { useMemo, useState, type ElementType, type ReactNode } from "react";
+import { useState, type ElementType, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, File, FileText, Link as LinkIcon, Loader2, Plus, Trash2, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ScormPackageManager } from "@/components/scorm/package-manager";
+import { LazyRichTextEditor } from "@/components/editor/lazy-rich-text-editor";
+import { isRichTextEmpty, richTextToPlainText } from "@/components/editor/rich-text-utils";
 import { useToast } from "@/hooks/use-toast";
-import { subjectGroupApi } from "@/services/api/subject-group-api";
 import { teacherPortalApi, type CourseContent, type SubjectMaterial } from "@/services/api/teacher-portal-api";
 
 type MaterialType = "VIDEO" | "DOCUMENT" | "LINK" | "FILE" | "TEXT";
@@ -34,21 +35,15 @@ export function TeacherContent() {
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
-  const teachingOptions = useQuery({
-    queryKey: ["teacher", "teaching-options"],
-    queryFn: subjectGroupApi.teachingOptions,
+  const subjectsQuery = useQuery({
+    queryKey: ["teacher", "subject-material-subjects"],
+    queryFn: teacherPortalApi.getSubjectMaterialSubjects,
   });
   const materialsQuery = useQuery({
     queryKey: ["teacher", "subject-materials"],
     queryFn: teacherPortalApi.getSubjectMaterials,
   });
-  const subjects = useMemo(() => {
-    const unique = new Map<number, string>();
-    for (const group of teachingOptions.data ?? []) {
-      if (group.subjectId) unique.set(group.subjectId, group.subjectName);
-    }
-    return [...unique].map(([id, name]) => ({ id, name }));
-  }, [teachingOptions.data]);
+  const subjects = subjectsQuery.data ?? [];
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -89,7 +84,7 @@ export function TeacherContent() {
 
   function save() {
     if (!subjectId || title.trim().length < 2) return toast({ variant: "destructive", title: "Fan va material nomini kiriting" });
-    if (type === "TEXT" && !body.trim()) return toast({ variant: "destructive", title: "Dars matnini kiriting" });
+    if (type === "TEXT" && isRichTextEmpty(body)) return toast({ variant: "destructive", title: "Dars matnini kiriting" });
     if (type === "LINK" && !url.trim()) return toast({ variant: "destructive", title: "Havolani kiriting" });
     if (["VIDEO", "DOCUMENT", "FILE"].includes(type) && !file && !url.trim()) {
       return toast({ variant: "destructive", title: "Fayl tanlang yoki URL kiriting" });
@@ -131,7 +126,7 @@ export function TeacherContent() {
             </Select>
           </Field>
           {type === "TEXT" ? (
-            <Field label="Dars matni *" className="md:col-span-2"><Textarea className="min-h-40" value={body} onChange={event => setBody(event.target.value)} /></Field>
+            <Field label="Dars matni *" className="md:col-span-2"><LazyRichTextEditor value={body} onChange={setBody} placeholder="Dars mazmunini yozing yoki MathType orqali formula kiriting..." /></Field>
           ) : type === "LINK" ? (
             <Field label="Havola *"><Input placeholder="https://..." value={url} onChange={event => setUrl(event.target.value)} /></Field>
           ) : (
@@ -146,7 +141,7 @@ export function TeacherContent() {
               {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Saqlash
             </Button>
           </div>
-          {!teachingOptions.isLoading && subjects.length === 0 && <p className="md:col-span-2 text-sm text-destructive">Sizga fan biriktirilmagan. Administratorga murojaat qiling.</p>}
+          {!subjectsQuery.isLoading && subjects.length === 0 && <p className="md:col-span-2 text-sm text-destructive">Sizga fan biriktirilmagan. Administratorga murojaat qiling.</p>}
         </CardContent>
       </Card>
 
@@ -175,7 +170,7 @@ function MaterialCard({ material, deleting, onDelete }: { material: SubjectMater
         <p className="font-medium truncate">{material.title}</p>
         <p className="text-xs text-muted-foreground truncate">{material.subjectName} · {material.authorName} · v{material.contentVersion}</p>
         {material.asset && <p className="text-xs text-muted-foreground truncate">{material.asset.originalFileName} · {formatBytes(material.asset.sizeBytes)}</p>}
-        {material.contentBody && <p className="mt-1 text-sm line-clamp-2 whitespace-pre-wrap">{material.contentBody}</p>}
+        {material.contentBody && <p className="mt-1 text-sm line-clamp-2">{richTextToPlainText(material.contentBody)}</p>}
       </div>
       <Badge variant="outline">{meta.label}</Badge>
       {material.contentUrl && <Button variant="outline" size="icon" asChild><a href={material.contentUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/query-keys';
 import { ColumnDef } from '@tanstack/react-table';
@@ -732,7 +732,7 @@ export function UserManagement() {
                         const prevGroup = i > 0 ? ALL_PERMISSIONS[i - 1].group : null;
                         const isNewGroup = perm.group !== prevGroup;
                         return (
-                          <>
+                          <Fragment key={perm.code}>
                             {isNewGroup && (
                               <TableRow key={`group-${perm.group}`} className="bg-muted/40">
                                 <TableCell colSpan={2 + ROLES_ORDER.length}
@@ -761,7 +761,7 @@ export function UserManagement() {
                                 );
                               })}
                             </TableRow>
-                          </>
+                          </Fragment>
                         );
                       })}
                     </TableBody>

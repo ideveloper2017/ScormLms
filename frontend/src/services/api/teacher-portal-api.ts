@@ -169,6 +169,11 @@ export interface SubjectMaterialPayload {
   sourceUrl?: string;
 }
 
+export interface SubjectMaterialSubject {
+  id: number;
+  name: string;
+}
+
 export interface ContentCompatibilityIssue {
   code: string;
   message: string;
@@ -573,6 +578,12 @@ export const teacherPortalApi = {
   },
   getSubjectMaterials: async (): Promise<SubjectMaterial[]> => {
     return dataOf(await api.get<ApiResponse<SubjectMaterial[]>>('/subject-materials'), 'Fan materiallari yuklanmadi');
+  },
+  getSubjectMaterialSubjects: async (): Promise<SubjectMaterialSubject[]> => {
+    return dataOf(
+      await api.get<ApiResponse<SubjectMaterialSubject[]>>('/subject-materials/subjects'),
+      'Biriktirilgan fanlar yuklanmadi',
+    );
   },
   uploadSubjectMaterialAsset: async (subjectId: number, file: File): Promise<CourseContentAsset> => {
     const form = new FormData();

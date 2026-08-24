@@ -19,12 +19,18 @@ import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.courses.dto.CourseContentAssetDto
 import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialDto
 import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialRequest
+import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialSubjectDto
 import uz.scorm.lms.app.v1.courses.service.SubjectMaterialService
 import uz.scorm.lms.app.v1.user.model.User
 
 @RestController
 @RequestMapping("/api/v1/subject-materials")
 class SubjectMaterialController(private val service: SubjectMaterialService) {
+    @GetMapping("/subjects")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun subjects(@CurrentUser user: User, authentication: Authentication): ApiResponse<List<SubjectMaterialSubjectDto>> =
+        ApiResponse.success(service.subjects(requireNotNull(user.id), mayManageAll(authentication)))
+
     @GetMapping
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun list(@CurrentUser user: User, authentication: Authentication): ApiResponse<List<SubjectMaterialDto>> =

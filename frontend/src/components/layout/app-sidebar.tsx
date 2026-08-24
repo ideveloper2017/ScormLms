@@ -11,7 +11,8 @@ import {
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
   SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu,
-  SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar,
+  SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton,
+  SidebarMenuSubItem, SidebarRail, useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -32,6 +33,8 @@ interface NavGroup {
   label: string;
   items: NavItem[];
   collapsible?: boolean;
+  icon?: React.ElementType;
+  href?: string;
 }
 
 const ITEMS = {
@@ -100,8 +103,11 @@ const ITEMS = {
   aStudentClassifiers: { name: "Ma'lumotnomalar", href: "/admin/student-classifiers", icon: Globe2 },
   aSubjects:     { name: "Fanlar",              href: "/admin/subjects",     icon: NotebookText    },
   aStudyPlans:   { name: "O'quv rejalari",      href: "/admin/study-plans",  icon: BookMarked      },
+  aCurriculumStudents: { name: "Rejaga biriktirilganlar", href: "/admin/curriculum-students", icon: UserCheck },
+  aSyllabi:      { name: "O'quv dasturi",       href: "/admin/syllabi", icon: FileText },
   aAcademicPeriods: { name: "O'quv davrlari",   href: "/admin/academic-periods", icon: Calendar },
-  aSubjectGroups: { name: "Fan guruhlari", href: "/admin/subject-groups", icon: Layers3 },
+  aSubjectCategories: { name: "Fan guruhlari", href: "/admin/subject-categories", icon: FolderTree },
+  aSubjectGroups: { name: "Fan oqimlari", href: "/admin/subject-groups", icon: Layers3 },
   aAdmissionPolicies: { name: "Qabul va kontrakt", href: "/admin/admission-policies", icon: Landmark },
   aNonStateLicenses: { name: "Nodavlat litsenziyalari", href: "/admin/non-state-licenses", icon: BadgeCheck },
   aCourses:      { name: "Kurslar",             href: "/admin/courses",      icon: BookOpen        },
@@ -129,16 +135,103 @@ const ITEMS = {
 } satisfies Record<string, NavItem>;
 
 // Role → grouped navigation. Bo'sh guruhlar avtomatik yashiriladi.
-function buildNav(role: string): NavGroup[] {
+export function buildNav(role: string): NavGroup[] {
   const r = role.replace(/^ROLE_/i, "").toUpperCase();
+  const referenceItem = (name: string, href: string, icon: React.ElementType): NavItem => ({ name, href, icon });
 
   const ADMIN_NAV: NavGroup[] = [
-    { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-    { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers] },
-    { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aCalendar] },
-    { label: "Nazorat va hisobot", items: [ITEMS.aReports, ITEMS.aContentReviews, ITEMS.aQualityStudies, ITEMS.aSurveys] },
-    { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers, ITEMS.aSettings] },
-    { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aUsers, ITEMS.aRoles, ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aCompliance559, ITEMS.aAccountability, ITEMS.aBiometric, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.aIntegrations, ITEMS.aAuditLogs, ITEMS.support] },
+    { label: "Universitetlar",       href: "/universities", icon: Building2, items: [] },
+    { label: "Tuzilishi", icon: Building, collapsible: true, items: [
+      referenceItem("Fakultetlar", "/structure/faculties", Building2),
+      referenceItem("Mutaxassisliklar", "/structure/specialities", FolderTree),
+    ] },
+    { label: "Ta'lim jarayoni", icon: BookOpen, collapsible: true, items: [
+      referenceItem("O'quv reja", "/edu-process/curriculum", BookMarked),
+      referenceItem("O'quv rejaga biriktirilgan talabalar", "/edu-process/attached-students", UserCheck),
+      referenceItem("O'quv dasturi", "/edu-process/syllabus", FileText),
+      referenceItem("O'quv yillari", "/edu-process/academic-years", Calendar),
+      referenceItem("Semestrlar", "/edu-process/semesters", CalendarDays),
+      referenceItem("Fan guruhlari", "/edu-process/subject-groups", FolderTree),
+      referenceItem("Fanlar", "/edu-process/subjects", NotebookText),
+      referenceItem("Baholash tizimi", "/edu-process/rating-systems", Star),
+      referenceItem("Vedmost", "/edu-process/statements", ClipboardList),
+      referenceItem("Yakuniy vedmost", "/edu-process/total-statements", FileCheck2),
+      referenceItem("Nazoratlar", "/controls", GraduationCap),
+      referenceItem("HEMISga baholarini yuborish", "/edu-process/export-rating-to-hemis", Plug),
+    ] },
+    { label: "O'zlashtirish", icon: Award, collapsible: true, items: [
+      referenceItem("Qayta o'qish", "/re-reading-subject-groups", BookOpen),
+      referenceItem("Qayta o'qish rejasi", "/student/re-reading-application", ClipboardList),
+      referenceItem("Akademik qarzdorlar", "/edu-process/academic-debtors", ShieldAlert),
+      referenceItem("GPA", "/edu-process/gpa-rating-students", Award),
+      referenceItem("Reyting monitoringi", "/users/rating-monitoring", Monitor),
+      referenceItem("O'zlashtirish ko'rsatkichi", "/users/rating-average", BarChart3),
+      referenceItem("Baholash", "/students-reading-recovery-for-rating", Star),
+    ] },
+    { label: "O'qituvchilar", icon: UserCog, collapsible: true, items: [
+      referenceItem("O'qituvchi guruhlari", "/teachers/tutor-groups", Users),
+      referenceItem("O'qituvchilar", "/teachers/tutors", UserCog),
+    ] },
+    { label: "Talabalar", icon: Users, collapsible: true, items: [
+      referenceItem("Talabalar guruhlari", "/students/student-groups", Layers3),
+      referenceItem("Talabalar", "/students/students", Users),
+      referenceItem("Bitirgan talabalar", "/students/graduated", GraduationCap),
+      referenceItem("O'qishni tiklagan talabalar", "/students/recovery", Activity),
+      referenceItem("Akademik ta'tildagi talabalar", "/students/academic-leave", CalendarDays),
+    ] },
+    { label: "Talabalar harakati", icon: Activity, collapsible: true, items: [
+      referenceItem("Ko'chirish", "/transfer-students", Activity),
+      referenceItem("Chetlashtirilgan talabalar", "/students/expelled", UserCheck),
+      referenceItem("Tiklangan talabalar fanlari hisoboti", "/student/recovery-study-subjects-info", FileSearch),
+    ] },
+    { label: "Akademik arxiv", icon: BookMarked, collapsible: true, items: [
+      referenceItem("Chaqiruv qog'ozi", "/call-to-final-exam-letter", FileText),
+      referenceItem("Transkript", "/transcript-students", ScrollText),
+    ] },
+    { label: "Monitoring", icon: Monitor, collapsible: true, items: [
+      referenceItem("Talabalar", "/monitoring/students", Users),
+      referenceItem("Darsga qatnashmayotganlar", "/monitoring/students-login-date", Activity),
+      referenceItem("Tanlov fanlari", "/users/not-choose-subject-students", BookOpen),
+      referenceItem("Talabalarning fanlarda ishtiroki", "/students/use-syllabus", UserCheck),
+      referenceItem("Test natijalari", "/monitoring/test-results", FileQuestion),
+      referenceItem("O'qituvchilar", "/monitoring/teachers", UserCog),
+      referenceItem("Talabalarning IP manzillari", "/check-login-users", Fingerprint),
+      referenceItem("Izohlar", "/commentary-lessons", MessageCircle),
+    ] },
+    { label: "Yangiliklar", icon: Megaphone, collapsible: true, items: [
+      referenceItem("Yangiliklar", "/content/posts", Megaphone),
+      referenceItem("Dars jadvali", "/content/schedule", CalendarDays),
+      referenceItem("Online resurslar", "/content/online-resource", Globe2),
+    ] },
+    { label: "Xabarlar",             href: "/messages", icon: MessageCircle, items: [] },
+    { label: "Akkauntlar", icon: Shield, collapsible: true, items: [
+      referenceItem("Administratorlar", "/accounts/admins", Users),
+      referenceItem("Ruxsat guruhlari", "/accounts/permission-groups", Shield),
+    ] },
+    { label: "Statistika", icon: BarChart3, collapsible: true, items: [
+      referenceItem("Statistika dashbordi", "/statistics-dashbord", LayoutDashboard),
+      referenceItem("O'zlashtirish ko'rsatkichi", "/appropriation", BarChart3),
+      referenceItem("Fan ma'lumotlari", "/subjects-report", BookOpen),
+      referenceItem("Test ma'lumotlari", "/subjects-test-report", FileQuestion),
+      referenceItem("Qayta o'qish ma'lumotlari", "/teacher-re-reading-report", FileSearch),
+      referenceItem("Qayta o'qiyotgan talabalar", "/student-re-reading-report", Users),
+      referenceItem("Semestr fanlari hisoboti", "/report/semester-subject", Calendar),
+      referenceItem("Talabalar topshiriqlari statistikasi", "/student-tasks-report", ClipboardList),
+      referenceItem("Talabalar baholari statistikasi", "/users-rating-mark-report", Star),
+      referenceItem("Akademik qarzdor talabalar", "/failed-students", ShieldAlert),
+    ] },
+    { label: "Asosiy ma'lumot", icon: Database, collapsible: true, items: [
+      referenceItem("Yorliqlar", "/general-info/labels", BadgeCheck),
+      referenceItem("Davlatlar", "/general-info/countries", Globe2),
+      referenceItem("Hududlar", "/general-info/regions", Landmark),
+      referenceItem("Tumanlar", "/general-info/districts", Building),
+      referenceItem("Millatlar", "/general-info/nationalities", Users),
+    ] },
+    { label: "Sozlamalar", icon: Settings, collapsible: true, items: [
+      referenceItem("Sozlamalar", "/settings/configs", Settings),
+      referenceItem("Tillar", "/settings/languages", Globe2),
+      referenceItem("Tarjima", "/settings/internalization", FileText),
+    ] },
   ];
 
   const groups: Record<string, NavGroup[]> = {
@@ -147,7 +240,7 @@ function buildNav(role: string): NavGroup[] {
     METODIST: [
       { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
       { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.contingent] },
-      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.exams] },
+      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aCurriculumStudents, ITEMS.aSyllabi, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.exams] },
       { label: "Nazorat va hisobot", items: [ITEMS.aContentReviews, ITEMS.aReports, ITEMS.aQualityStudies, ITEMS.aSurveys, ITEMS.stats] },
       { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers] },
       { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.teaching, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },
@@ -234,6 +327,67 @@ export function AppSidebar() {
       {/* ── Navigation ────────────────────────────────────────── */}
       <SidebarContent>
         {navGroups.map((group) => {
+          const GroupIcon = group.icon;
+
+          if (group.href && GroupIcon) {
+            return <SidebarGroup key={group.label} className="py-0">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip={group.label}
+                    isActive={isActive(group.href)}
+                    onClick={() => go(group.href!)}
+                  >
+                    <GroupIcon />
+                    <span>{group.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>;
+          }
+
+          if (group.collapsible && GroupIcon) {
+            const groupActive = group.items.some((item) => isActive(item.href));
+            return <Collapsible
+              key={group.label}
+              defaultOpen={groupActive}
+              className="group/collapsible"
+            >
+              <SidebarGroup className="py-0">
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton tooltip={group.label} isActive={groupActive}>
+                        <GroupIcon />
+                        <span>{group.label}</span>
+                        <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {group.items.map((item) => (
+                          <SidebarMenuSubItem key={item.href}>
+                            <SidebarMenuSubButton
+                              href={item.href}
+                              isActive={isActive(item.href)}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                go(item.href);
+                              }}
+                            >
+                              <item.icon />
+                              <span>{item.name}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroup>
+            </Collapsible>;
+          }
+
           const groupContent = <SidebarGroupContent>
             <SidebarMenu>
               {group.items.map((item) => (

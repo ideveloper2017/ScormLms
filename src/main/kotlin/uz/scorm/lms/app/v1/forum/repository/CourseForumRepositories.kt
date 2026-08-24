@@ -28,6 +28,9 @@ interface CourseForumTopicRepository : JpaRepository<CourseForumTopic, Long> {
 }
 
 interface CourseForumPostRepository : JpaRepository<CourseForumPost, Long> {
+    @EntityGraph(attributePaths = ["topic", "topic.course", "author", "replyTo"])
+    fun findAllByDeletedFalseOrderByCreatedAtDesc(): List<CourseForumPost>
+
     @EntityGraph(attributePaths = ["author", "replyTo", "replyTo.author"])
     fun findAllByTopicIdAndDeletedFalseOrderByCreatedAtAsc(
         topicId: Long,

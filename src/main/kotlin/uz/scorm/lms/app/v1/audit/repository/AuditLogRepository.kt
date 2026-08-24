@@ -6,4 +6,5 @@ import uz.scorm.lms.app.v1.audit.model.AuditLog
 interface AuditLogRepository : JpaRepository<AuditLog, Long> {
     fun findByUsernameOrderByTimestampDesc(username: String): List<AuditLog>
     fun findTop200ByOrderByTimestampDesc(): List<AuditLog>
+    fun findTop1000ByActionOrderByTimestampDesc(action: String): List<AuditLog>
 }

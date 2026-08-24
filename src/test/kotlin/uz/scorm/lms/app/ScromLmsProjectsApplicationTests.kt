@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("59", flyway.info().current()?.version?.toString())
+        assertEquals("62", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -52,7 +52,14 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "course_contents", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_content_assets", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getColumns(null, null, "course_content_assets", "subject_id").use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "course_content_assets", "created_by").use { it.next() })
             assertTrue(metadata.getTables(null, null, "subject_materials", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "subject_categories", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "subject_syllabi", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "curriculum_semester_periods", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getTables(null, null, "curriculum_student_assignments", arrayOf("TABLE")).use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "subjects", "subject_category_id").use { it.next() })
+            assertTrue(metadata.getColumns(null, null, "subjects", "subject_type").use { it.next() })
             assertTrue(metadata.getColumns(null, null, "course_contents", "subject_material_id").use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_content_progress", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "course_attendance_sessions", arrayOf("TABLE")).use { it.next() })

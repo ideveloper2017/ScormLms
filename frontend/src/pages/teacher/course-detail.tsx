@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { LazyRichTextEditor } from "@/components/editor/lazy-rich-text-editor";
+import { isRichTextEmpty, richTextToPlainText } from "@/components/editor/rich-text-utils";
 import {
   Dialog,
   DialogContent,
@@ -454,7 +456,7 @@ export function TeacherCourseDetail({
           "Amal qilish yakuni boshlanish sanasidan oldin bo'lmasligi kerak",
       });
     }
-    if (contentType === "TEXT" && !contentBody.trim()) {
+    if (contentType === "TEXT" && isRichTextEmpty(contentBody)) {
       return toast({
         variant: "destructive",
         title: "Matnli dars mazmunini kiriting",
@@ -968,11 +970,10 @@ export function TeacherCourseDetail({
               </Field>
               {contentType === "TEXT" ? (
                 <Field label="Dars matni *" className="md:col-span-2">
-                  <Textarea
-                    className="min-h-48"
+                  <LazyRichTextEditor
                     value={contentBody}
-                    onChange={(event) => setContentBody(event.target.value)}
-                    placeholder="Dars mazmunini kiriting..."
+                    onChange={setContentBody}
+                    placeholder="Dars mazmunini yozing yoki MathType orqali formula kiriting..."
                   />
                 </Field>
               ) : contentType === "LINK" ? (
@@ -1145,9 +1146,7 @@ export function TeacherCourseDetail({
                       </p>
                     )}
                     {content.contentBody && (
-                      <p className="mt-1 text-sm line-clamp-2 whitespace-pre-wrap">
-                        {content.contentBody}
-                      </p>
+                      <p className="mt-1 text-sm line-clamp-2">{richTextToPlainText(content.contentBody)}</p>
                     )}
                     {!compatible && (
                       <p className="mt-2 text-xs text-destructive">

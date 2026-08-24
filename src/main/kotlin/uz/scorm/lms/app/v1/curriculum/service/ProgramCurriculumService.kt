@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import uz.scorm.lms.app.v1.academicresult.model.RatingSystem
+import uz.scorm.lms.app.v1.academicresult.repository.RatingSystemRepository
 import uz.scorm.lms.app.v1.academicperiod.service.AcademicPeriodService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.curriculum.dto.AddCurriculumSubjectRequest
@@ -37,6 +39,7 @@ class ProgramCurriculumService(
     private val subjectRepository: SubjectRepository,
     private val studentRepository: StudentRepository,
     private val groupRepository: GroupRepository,
+    private val ratingSystemRepository: RatingSystemRepository,
     private val academicPeriodService: AcademicPeriodService,
     private val userRepository: UserRepository,
     private val auditService: AuditService,
@@ -100,7 +103,8 @@ class ProgramCurriculumService(
     @Transactional
     fun create(request: SaveCurriculumVersionRequest, actorId: Long): CurriculumVersionDto {
         val program = requireProgram(request.programId)
-        validate(request)
+        val ratingSystem = requireRatingSystem(request.ratingSystemId)
+        validate(request, ratingSystem)
         require(!versionRepository.existsByProgramIdAndVersionCodeAndDeletedFalse(request.programId, request.versionCode.trim())) {
             "Ushbu dasturda curriculum versiya kodi allaqachon mavjud"
         }
@@ -108,6 +112,14 @@ class ProgramCurriculumService(
             program = program,
             versionCode = request.versionCode.trim(),
             academicYear = request.academicYear,
+            name = request.name.trim(),
+            active = request.active,
+            educationLanguage = request.educationLanguage,
+            passingScore = request.passingScore,
+            baseCreditAmount = request.baseCreditAmount,
+            educationForm = request.educationForm,
+            ratingSystem = ratingSystem,
+            semesterCount = request.semesterCount,
             credentialType = request.credentialType,
             normativeBasisType = request.normativeBasisType,
             standardReference = request.standardReference.trim(),
@@ -128,8 +140,16 @@ class ProgramCurriculumService(
     fun update(id: Long, request: SaveCurriculumVersionRequest, actorId: Long): CurriculumVersionDto {
         val version = requireVersion(id)
         require(version.status == CurriculumStatus.DRAFT) { "Faqat DRAFT curriculum tahrirlanadi" }
-        require(request.programId == version.program.id) { "Curriculum biriktirilgan dastur o'zgartirilmaydi" }
-        validate(request)
+        val program = requireProgram(request.programId)
+        val ratingSystem = requireRatingSystem(request.ratingSystemId)
+        validate(request, ratingSystem)
+        if (request.programId != version.program.id) {
+            val items = subjectItemRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(id)
+            require(items.all { it.subject?.program == null || it.subject?.program?.id == request.programId }) {
+                "Mutaxassislikni almashtirishdan oldin unga mos bo'lmagan fanlarni rejadan olib tashlang"
+            }
+            version.program = program
+        }
         if (request.versionCode.trim() != version.versionCode) {
             require(!versionRepository.existsByProgramIdAndVersionCodeAndDeletedFalse(request.programId, request.versionCode.trim())) {
                 "Ushbu dasturda curriculum versiya kodi allaqachon mavjud"
@@ -137,6 +157,14 @@ class ProgramCurriculumService(
         }
         version.versionCode = request.versionCode.trim()
         version.academicYear = request.academicYear
+        version.name = request.name.trim()
+        version.active = request.active
+        version.educationLanguage = request.educationLanguage
+        version.passingScore = request.passingScore
+        version.baseCreditAmount = request.baseCreditAmount
+        version.educationForm = request.educationForm
+        version.ratingSystem = ratingSystem
+        version.semesterCount = request.semesterCount
         version.credentialType = request.credentialType
         version.normativeBasisType = request.normativeBasisType
         version.standardReference = request.standardReference.trim()
@@ -155,7 +183,9 @@ class ProgramCurriculumService(
             NoSuchElementException("Fan topilmadi: ${request.subjectId}")
         }
         require(!subject.deleted && subject.active) { "Faqat faol fan curriculumga qo'shiladi" }
-        require(subject.program?.id == version.program.id) { "Fan curriculum dasturiga tegishli emas" }
+        require(subject.program == null || subject.program?.id == version.program.id) {
+            "Fan curriculum dasturiga tegishli emas; faqat umumiy katalog yoki shu dastur fani qo'shiladi"
+        }
         val code = subject.code?.trim()
         require(!code.isNullOrBlank() && code.length <= 100) { "Curriculum fanining kodi majburiy" }
         val credits = subject.credits
@@ -192,7 +222,11 @@ class ProgramCurriculumService(
     @Transactional
     fun approve(id: Long, request: ApproveCurriculumRequest, actorId: Long): CurriculumVersionDto {
         val version = requireDraft(id)
-        require(version.createdByUser.id != actorId) { "Curriculum muallifi o'z versiyasini tasdiqlay olmaydi" }
+        val actor = requireUser(actorId)
+        val superAdminOverride = actor.role?.name.equals("super_admin", ignoreCase = true)
+        require(version.createdByUser.id != actorId || superAdminOverride) {
+            "Curriculum muallifi o'z versiyasini tasdiqlay olmaydi"
+        }
         require(request.approvalOrderNumber.isNotBlank() && request.approvalOrderNumber.trim().length <= 200) {
             "Tasdiqlash buyrug'i raqami majburiy"
         }
@@ -200,12 +234,15 @@ class ProgramCurriculumService(
         require(!versionRepository.existsByProgramIdAndAcademicYearAndStatusAndDeletedFalse(
             requireNotNull(version.program.id), version.academicYear, CurriculumStatus.APPROVED,
         )) { "Dastur va o'quv yili uchun tasdiqlangan curriculum allaqachon mavjud" }
+        require(version.standardReference.isNotBlank()) { "Standart rekvizitini kiriting" }
+        require(version.qualificationRequirementsReference.isNotBlank()) { "Malaka talablari rekvizitini kiriting" }
         val items = subjectItemRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(id)
         require(items.isNotEmpty()) { "Curriculum tasdiqlanishi uchun kamida bitta fan kerak" }
         items.forEach { item ->
             val subject = item.subject
-            require(subject != null && !subject.deleted && subject.active && subject.program?.id == version.program.id) {
-                "Curriculumdagi ${item.subjectCodeSnapshot} fani faol va shu dasturga tegishli bo'lishi kerak"
+            require(subject != null && !subject.deleted && subject.active &&
+                (subject.program == null || subject.program?.id == version.program.id)) {
+                "Curriculumdagi ${item.subjectCodeSnapshot} fani faol va umumiy katalogga yoki shu dasturga tegishli bo'lishi kerak"
             }
             val code = subject.code?.trim()
             val credits = subject.credits
@@ -221,12 +258,12 @@ class ProgramCurriculumService(
         version.approvalOrderNumber = request.approvalOrderNumber.trim()
         version.approvalOrderDate = request.approvalOrderDate
         version.approvedAt = Instant.now()
-        version.approvedByUser = requireUser(actorId)
+        version.approvedByUser = actor
         versionRepository.save(version)
         auditService.logAction(
             "CURRICULUM_VERSION_APPROVED",
             actorId,
-            "curriculum=$id; program=${version.program.id}; year=${version.academicYear}; order=${version.approvalOrderNumber}",
+            "curriculum=$id; program=${version.program.id}; year=${version.academicYear}; order=${version.approvalOrderNumber}; superAdminSelfApproval=$superAdminOverride",
         )
         return toDto(version)
     }
@@ -236,6 +273,7 @@ class ProgramCurriculumService(
         val version = requireVersion(id)
         require(version.status == CurriculumStatus.APPROVED) { "Faqat APPROVED curriculum arxivlanadi" }
         version.status = CurriculumStatus.ARCHIVED
+        version.active = false
         version.archivedAt = Instant.now()
         version.archivedByUser = requireUser(actorId)
         versionRepository.save(version)
@@ -243,7 +281,16 @@ class ProgramCurriculumService(
         return toDto(version)
     }
 
-    private fun validate(request: SaveCurriculumVersionRequest) {
+    private fun validate(request: SaveCurriculumVersionRequest, ratingSystem: RatingSystem) {
+        require(request.name.trim().length in 2..500) { "O'quv reja nomi 2-500 belgi bo'lishi kerak" }
+        require(request.educationLanguage in setOf("uz", "uz-Latn", "uz-Cyrl", "kaa", "ru", "en")) {
+            "O'quv reja tili noto'g'ri"
+        }
+        require(request.passingScore in ratingSystem.minScore..ratingSystem.maxScore) {
+            "O'tish bali tanlangan baholash tizimining ${ratingSystem.minScore}-${ratingSystem.maxScore} oralig'ida bo'lishi kerak"
+        }
+        require(request.baseCreditAmount in 0..1_000_000_000_000L) { "Bazaviy kredit summasi noto'g'ri" }
+        require(request.semesterCount in 1..15) { "Semestr soni 1-15 oralig'ida bo'lishi kerak" }
         require(request.versionCode.isNotBlank() && request.versionCode.trim().length <= 100) { "Curriculum versiya kodi majburiy" }
         require(request.academicYear.matches(Regex("\\d{4}-\\d{4}"))) { "O'quv yili YYYY-YYYY formatida bo'lishi kerak" }
         val (firstYear, secondYear) = request.academicYear.split("-").map(String::toInt)
@@ -255,9 +302,9 @@ class ProgramCurriculumService(
             "Curriculum amal qilish davri butun o'quv yilini qoplashi kerak"
         }
         require(!request.validUntil.isBefore(request.validFrom)) { "Curriculum amal qilish muddati noto'g'ri" }
-        require(request.standardReference.isNotBlank() && request.standardReference.trim().length <= 1000) { "Standart rekviziti majburiy" }
-        require(request.qualificationRequirementsReference.isNotBlank() && request.qualificationRequirementsReference.trim().length <= 1000) {
-            "Malaka talablari rekviziti majburiy"
+        require(request.standardReference.trim().length <= 1000) { "Standart rekviziti 1000 belgidan oshmasligi kerak" }
+        require(request.qualificationRequirementsReference.trim().length <= 1000) {
+            "Malaka talablari rekviziti 1000 belgidan oshmasligi kerak"
         }
         when (request.credentialType) {
             CurriculumCredentialType.STATE_DIPLOMA -> require(request.normativeBasisType == CurriculumNormativeBasisType.STATE_EDUCATION_STANDARD) {
@@ -272,7 +319,15 @@ class ProgramCurriculumService(
     private fun requireProgram(id: Long) = programRepository.findById(id).orElseThrow {
         NoSuchElementException("Ta'lim dasturi topilmadi: $id")
     }.also {
-        require(!it.deleted && it.active && it.distanceEnabled) { "Curriculum faqat faol masofaviy ta'lim dasturiga yaratiladi" }
+        require(!it.deleted && it.active) { "Curriculum faqat faol ta'lim dasturiga yaratiladi" }
+    }
+
+    private fun requireRatingSystem(id: Long?): RatingSystem {
+        val value = id?.let(ratingSystemRepository::findByIdAndDeletedFalse)
+            ?: ratingSystemRepository.findAllByDeletedFalseOrderByNameAsc().firstOrNull { it.active }
+            ?: throw NoSuchElementException("Faol baholash tizimi topilmadi")
+        require(value.active) { "Faqat faol baholash tizimini tanlash mumkin" }
+        return value
     }
 
     private fun requireDraft(id: Long) = requireVersion(id).also {
@@ -294,7 +349,13 @@ class ProgramCurriculumService(
             ) }
         return CurriculumVersionDto(
             id = requireNotNull(version.id), programId = requireNotNull(version.program.id), programName = version.program.name,
-            versionCode = version.versionCode, academicYear = version.academicYear, credentialType = version.credentialType.name,
+            facultyId = version.program.department?.faculty?.id, facultyName = version.program.department?.faculty?.name,
+            versionCode = version.versionCode, academicYear = version.academicYear,
+            startYear = version.academicYear.substringBefore("-").toInt(), name = version.name, active = version.active,
+            educationLanguage = version.educationLanguage, passingScore = version.passingScore,
+            baseCreditAmount = version.baseCreditAmount, educationForm = version.educationForm,
+            ratingSystemId = requireNotNull(version.ratingSystem.id), ratingSystemName = version.ratingSystem.name,
+            semesterCount = version.semesterCount, credentialType = version.credentialType.name,
             normativeBasisType = version.normativeBasisType.name, standardReference = version.standardReference,
             qualificationRequirementsReference = version.qualificationRequirementsReference, validFrom = version.validFrom,
             validUntil = version.validUntil, status = version.status.name, subjects = items, subjectCount = items.size,

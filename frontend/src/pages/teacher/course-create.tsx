@@ -88,7 +88,7 @@ export function TeacherCourseCreate() {
           <div className="space-y-1.5">
             <Label>Biriktirilgan fan guruhi <span className="text-destructive">*</span></Label>
             <Select value={form.subjectGroupId} onValueChange={(value) => set("subjectGroupId", value)} disabled={teachingOptions.isLoading}>
-              <SelectTrigger><SelectValue placeholder="Fan guruhini tanlang" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Fan oqimini tanlang" /></SelectTrigger>
               <SelectContent>{(teachingOptions.data ?? []).map(group => (
                 <SelectItem key={group.id} value={String(group.id)}>
                   {group.subjectCode} · {group.subjectName} · {group.code}

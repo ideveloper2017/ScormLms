@@ -93,6 +93,14 @@ describe('teacherPortalApi content provenance', () => {
     });
   });
 
+  it("o'qituvchiga bevosita yoki fan guruhi orqali biriktirilgan fanlarni yuklaydi", async () => {
+    const subjects = [{ id: 12, name: 'Algoritmlar' }];
+    vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: subjects } });
+
+    await expect(teacherPortalApi.getSubjectMaterialSubjects()).resolves.toEqual(subjects);
+    expect(api.get).toHaveBeenCalledWith('/subject-materials/subjects');
+  });
+
   it('mavjud fan materialini kurs moduliga biriktiradi', async () => {
     const content = { id: 19, moduleId: 5, subjectMaterialId: 7 };
     vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: content } });

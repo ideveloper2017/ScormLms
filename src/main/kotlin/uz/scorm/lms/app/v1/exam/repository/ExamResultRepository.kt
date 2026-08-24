@@ -5,6 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository
 import uz.scorm.lms.app.v1.exam.model.ExamResult
 
 interface ExamResultRepository : JpaRepository<ExamResult, Long> {
+    @EntityGraph(attributePaths = ["examSession", "examSession.course", "enrollment", "enrollment.student", "enrollment.student.user", "enrollment.course", "gradedBy"])
+    fun findAllByDeletedFalseOrderByGradingDateDesc(): List<ExamResult>
+
     @EntityGraph(attributePaths = ["examSession", "enrollment", "enrollment.course", "gradedBy"])
     fun findAllByEnrollmentCourseIdAndDeletedFalseOrderByGradingDateDesc(courseId: Long): List<ExamResult>
     @EntityGraph(attributePaths = ["examSession", "examSession.course", "enrollment", "enrollment.student", "enrollment.student.user", "enrollment.course", "gradedBy"])

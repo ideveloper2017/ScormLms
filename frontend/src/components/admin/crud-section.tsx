@@ -44,6 +44,10 @@ export interface CrudSectionProps<T, FormT> {
   onDelete: (id: number) => Promise<void>;
   canWrite: boolean;
   searchPlaceholder?: string;
+  allowCreate?: boolean;
+  allowDelete?: boolean;
+  canEditItem?: (item: T) => boolean;
+  canDeleteItem?: (item: T) => boolean;
 }
 
 export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
@@ -51,6 +55,8 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
     title, description, items, loading, error, onReload, columns, search,
     getId, getName, blankForm, toForm, validate, renderForm,
     onCreate, onUpdate, onDelete, canWrite, searchPlaceholder,
+    allowCreate = true, allowDelete = true,
+    canEditItem = () => true, canDeleteItem = () => true,
   } = props;
 
   const { toast } = useToast();
@@ -90,7 +96,7 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
       header: () => null,
       cell: ({ row }) => (
         <div className="flex justify-end">
-          {canWrite ? (
+          {canWrite && (canEditItem(row.original) || (allowDelete && canDeleteItem(row.original))) ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -98,15 +104,17 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                {canEditItem(row.original) && <DropdownMenuItem onClick={() => openEdit(row.original)}>
                   <Pencil className="mr-2 h-4 w-4" /> Tahrirlash
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setDeleteTarget(row.original)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> O'chirish
-                </DropdownMenuItem>
+                </DropdownMenuItem>}
+                {allowDelete && canDeleteItem(row.original) && (
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setDeleteTarget(row.original)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> O'chirish
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}
@@ -117,7 +125,7 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
     });
 
     return cols;
-  }, [columns, canWrite, openEdit]);
+  }, [columns, canWrite, allowDelete, canEditItem, canDeleteItem, openEdit]);
 
   // Custom global filter using the `search` prop
   const filterFn = useCallback<FilterFn<T>>(
@@ -175,7 +183,7 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
           <h2 className="text-lg font-semibold">{title}</h2>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
-        {canWrite && (
+        {canWrite && allowCreate && (
           <Button onClick={openCreate} size="sm">
             <Plus className="mr-2 h-4 w-4" /> Qo'shish
           </Button>

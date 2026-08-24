@@ -147,9 +147,14 @@ class AcademicSubjectGroupServiceIntegrationTest {
             contentType = CourseContentType.TEXT,
             contentBody = "Fan materiali",
         )
+        val unassignedUser = user("subject-material-unassigned")
         assertThrows<IllegalArgumentException> {
-            subjectMaterials.create(materialRequest, requireNotNull(teacherUser.id), false)
+            subjectMaterials.create(materialRequest, requireNotNull(unassignedUser.id), false)
         }
+        val material = subjectMaterials.create(materialRequest, requireNotNull(teacherUser.id), false)
+        assertEquals(fixture.subject.id, material.subjectId)
+        assertEquals(listOf(fixture.subject.id), subjectMaterials.subjects(requireNotNull(teacherUser.id), false).map { it.id })
+        assertEquals(listOf(material.id), subjectMaterials.list(requireNotNull(teacherUser.id), false).map { it.id })
 
         service.assignTeacher(
             group.id,
@@ -157,8 +162,7 @@ class AcademicSubjectGroupServiceIntegrationTest {
             fixture.authorId,
         )
         assertEquals(listOf(group.id), service.teachingOptions(requireNotNull(teacherUser.id)).map { it.id })
-        val material = subjectMaterials.create(materialRequest, requireNotNull(teacherUser.id), false)
-        assertEquals(fixture.subject.id, material.subjectId)
+        assertEquals(listOf(fixture.subject.id), subjectMaterials.subjects(requireNotNull(teacherUser.id), false).map { it.id })
         assertEquals(listOf(material.id), subjectMaterials.list(requireNotNull(teacherUser.id), false).map { it.id })
 
         val course = courses.create(CourseCreateRequest(
@@ -210,6 +214,7 @@ class AcademicSubjectGroupServiceIntegrationTest {
         programId = programId,
         versionCode = "CUR-SG-${System.nanoTime()}",
         academicYear = "2026-2027",
+        name = "Fan guruhi o'quv rejasi",
         credentialType = CurriculumCredentialType.STATE_DIPLOMA,
         normativeBasisType = CurriculumNormativeBasisType.STATE_EDUCATION_STANDARD,
         standardReference = "DTS-2026/17",
