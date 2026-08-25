@@ -1,0 +1,20 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          hemis:
+            provider: hemis
+            client-id: ${HEMIS_OAUTH_CLIENT_ID}
+            client-secret: ${HEMIS_OAUTH_CLIENT_SECRET}
+            client-authentication-method: ${HEMIS_OAUTH_CLIENT_AUTH_METHOD:client_secret_post}
+            authorization-grant-type: authorization_code
+            redirect-uri: ${HEMIS_OAUTH_REDIRECT_URI}
+            scope: ${HEMIS_OAUTH_SCOPES:profile}
+            client-name: HEMIS
+        provider:
+          hemis:
+            authorization-uri: ${HEMIS_OAUTH_AUTHORIZATION_URI}
+            token-uri: ${HEMIS_OAUTH_TOKEN_URI}
+            user-info-uri: ${HEMIS_OAUTH_USER_INFO_URI}
+            user-name-attribute: ${HEMIS_OAUTH_ID_ATTRIBUTE:id}

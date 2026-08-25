@@ -76,15 +76,3 @@ data class HemisImportResult(
     val skipped: Int,
     val errors: List<String>,
 )
-
-data class HemisLoginResponse(
-    val accessToken: String,
-    val refreshToken: String,
-    val user: HemisLoginUser,
-)
-
-data class HemisLoginUser(
-    val username: String,
-    val fullName: String?,
-    val roles: List<String>,
-)

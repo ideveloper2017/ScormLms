@@ -34,6 +34,8 @@ import uz.scorm.lms.app.security.JwtAuthFilter
 import uz.scorm.lms.app.security.CustomUserDetailsService
 import uz.scorm.lms.app.security.JwtAuthEntryPoint
 import uz.scorm.lms.app.v1.audit.filter.AuditLoggingFilter
+import uz.scorm.lms.app.v1.hemis.service.HemisOAuthFailureHandler
+import uz.scorm.lms.app.v1.hemis.service.HemisOAuthSuccessHandler
 
 private val logger = KotlinLogging.logger {}
 
@@ -47,6 +49,8 @@ class SecurityConfig(
     private val auditLoggingFilter: AuditLoggingFilter,
     private val authRateLimitFilter: AuthRateLimitFilter,
     private val clientRegistrations: ObjectProvider<ClientRegistrationRepository>,
+    private val hemisOAuthSuccessHandler: HemisOAuthSuccessHandler,
+    private val hemisOAuthFailureHandler: HemisOAuthFailureHandler,
     @Value("\${app.cors.allowed-origins}") private val allowedOrigins: List<String>
 ) {
 
@@ -86,6 +90,7 @@ class SecurityConfig(
                     "/",
                     "/error",
                     "/login",
+                    "/oauth2/**",
                     "/login/oauth2/**",
                     "/actuator/health",
                     "/actuator/health/**",
@@ -104,7 +109,7 @@ class SecurityConfig(
                     "/api/v1/auth/refresh",
                     "/api/v1/auth/refresh-token",
                     "/api/v1/auth/logout",
-                    "/auth/hemis/**",
+                    "/api/v1/auth/hemis/exchange",
                     "/auth/email/**",
                     "/ws/**"       // WebSocket handshake — JWT STOMP da tekshiriladi
                 ).permitAll()
@@ -119,7 +124,8 @@ class SecurityConfig(
                     .userInfoEndpoint { userInfo ->
                         userInfo.userService(oAuth2UserService())
                     }
-                    .defaultSuccessUrl("/hemis/success", true)
+                    .successHandler(hemisOAuthSuccessHandler)
+                    .failureHandler(hemisOAuthFailureHandler)
             }
         }
 

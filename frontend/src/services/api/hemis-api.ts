@@ -30,36 +30,9 @@ export interface HemisImportResult {
   errors: string[];
 }
 
-export interface HemisLoginPayload {
-  accessToken: string;
-  refreshToken: string;
-  user: {
-    username: string;
-    fullName: string | null;
-    roles: string[];
-  };
-}
-
 // ── API ───────────────────────────────────────────────────────────────────────
 
 export const hemisApi = {
-  /**
-   * Talabaning HEMIS login/paroli bilan kirishi
-   * POST /auth/hemis/login
-   */
-  loginWithHemis: async (login: string, password: string): Promise<HemisLoginPayload> => {
-    // /auth/hemis/login — /api/v1 prefiksisiz, to'g'ridan-to'g'ri server rootiga
-    const baseURL = (import.meta.env.VITE_API_BASE_URL as string).replace("/api/v1", "");
-    const res = await api.post<ApiResponse<HemisLoginPayload>>("/auth/hemis/login", {
-      login,
-      password,
-    }, { baseURL });
-    if (!res.data.success || !res.data.data) {
-      throw new Error(res.data.message ?? "HEMIS orqali kirishda xatolik");
-    }
-    return res.data.data;
-  },
-
   /**
    * HEMIS guruhlar ro'yxati (admin uchun)
    * GET /api/v1/hemis/groups

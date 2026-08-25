@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AcademicSelect } from '@/components/admin/academic-select';
+import { HemisImportDialog } from '@/components/admin/HemisImportDialog';
 import { listGroups, listPrograms } from '@/lib/academic-api';
 import { listCountries, listDistricts, listRegions } from '@/lib/classifier-api';
 import {
@@ -51,7 +52,7 @@ import type {
   StudentStatus,
   StudentSummaryDto,
 } from '@/types/student.types';
-import { Loader2, Download, UserPlus, RefreshCcw, ArrowRightLeft, MoreHorizontal } from 'lucide-react';
+import { Loader2, Download, UserPlus, RefreshCcw, ArrowRightLeft, MoreHorizontal, DatabaseZap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { hasAuthority } from '@/lib/rbac-api';
@@ -122,12 +123,14 @@ export function StudentManagement({
   const canManageAcademic = hasAuthority(user, 'ACADEMIC_WRITE');
   const canManageAccounts = hasAuthority(user, 'USER_MANAGE');
   const canExport = hasAuthority(user, 'USER_READ') && hasAuthority(user, 'REPORT_READ');
+  const canImportHemis = hasAuthority(user, 'INTEGRATION_WRITE');
   const [registrySearch, setRegistrySearch] = useState('');
   const [debouncedRegistrySearch, setDebouncedRegistrySearch] = useState('');
   const [registryStatus, setRegistryStatus] = useState<StudentStatus | 'ALL'>(initialStatus);
   const [registryPage, setRegistryPage] = useState(0);
   const [registryPageSize, setRegistryPageSize] = useState(20);
   const [exportingRegistry, setExportingRegistry] = useState(false);
+  const [hemisImportOpen, setHemisImportOpen] = useState(false);
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedRegistrySearch(registrySearch.trim()), 300);
     return () => window.clearTimeout(timeout);
@@ -516,7 +519,10 @@ export function StudentManagement({
   return <div className="space-y-6 p-3 sm:p-4 md:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-2xl font-bold">{title}</h1><p className="text-sm text-muted-foreground">{description}</p></div>
-      {allowCreate && canManagePersonal && <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Talaba qo'shish</Button>}
+      <div className="flex flex-wrap gap-2">
+        {allowCreate && canImportHemis && <Button variant="outline" className="gap-2" onClick={() => setHemisImportOpen(true)}><DatabaseZap className="h-4 w-4" />HEMISdan import</Button>}
+        {allowCreate && canManagePersonal && <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Talaba qo'shish</Button>}
+      </div>
     </div>
     <Card><CardHeader><CardTitle>Talabalar reyestri</CardTitle></CardHeader><CardContent><DataTable
       columns={registryColumns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi"
@@ -535,6 +541,12 @@ export function StudentManagement({
         {canExport && <Button variant="outline" disabled={exportingRegistry} onClick={exportRegistry}>{exportingRegistry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Excel eksport</Button>}
       </div>}
     /></CardContent></Card>
+
+    <HemisImportDialog
+      open={hemisImportOpen}
+      onOpenChange={setHemisImportOpen}
+      onImported={() => void invalidate()}
+    />
 
     <Dialog open={isAdding || !!editingStudent} onOpenChange={open => { if (!open) closeStudentDialog(); }}>
       <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-6xl"><DialogHeader><DialogTitle>{editingStudent ? "Shaxsiy ma'lumotlarni tahrirlash" : "Talabaning shaxsiy kartochkasi"}</DialogTitle></DialogHeader>

@@ -6,7 +6,6 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
-import uz.scorm.lms.app.v1.hemis.controller.HemisAuthController
 import uz.scorm.lms.app.v1.hemis.dto.*
 import uz.scorm.lms.app.v1.hemis.model.CodeName
 import uz.scorm.lms.app.v1.hemis.model.HemisStudent
@@ -32,13 +31,15 @@ class HemisService(
     @param:Value("\${hemis.admin-login:}") private val adminLogin: String,
     @param:Value("\${hemis.admin-password:}") private val adminPassword: String,
 ) : HemisDirectoryClient {
+    private data class HemisPasswordLoginRequest(val login: String, val password: String)
+
     private val baseUrl get() = "$hemisHost$apiBasePath"
 
-    fun signInHemis(req: HemisAuthController.HemisLoginRequest): String = webClient.post()
+    private fun signInHemis(login: String, password: String): String = webClient.post()
         .uri("$baseUrl/auth/login")
         .contentType(MediaType.APPLICATION_JSON)
         .accept(MediaType.APPLICATION_JSON)
-        .bodyValue(req)
+        .bodyValue(HemisPasswordLoginRequest(login, password))
         .retrieve()
         .onStatus({ it.isError }) { response ->
             response.bodyToMono(String::class.java).defaultIfEmpty("").flatMap {
@@ -63,7 +64,7 @@ class HemisService(
         require(credentialsConfigured()) {
             "HEMIS admin kreditsiallari sozlanmagan (HEMIS_ADMIN_LOGIN / HEMIS_ADMIN_PASSWORD)"
         }
-        return signInHemis(HemisAuthController.HemisLoginRequest(adminLogin, adminPassword))
+        return signInHemis(adminLogin, adminPassword)
     }
 
     override fun fetchGroupList(): List<HemisGroupItem> {

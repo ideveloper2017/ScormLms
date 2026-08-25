@@ -11,10 +11,8 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
-import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -270,27 +268,4 @@ class AuthController(
         return ResponseEntity.noContent().build()
     }
 
-    @GetMapping("/hemis/success")
-    fun success(@AuthenticationPrincipal principal: OAuth2User): Map<String, Any> {
-        val userId = principal.getAttribute<String>("id") ?: "unknown"
-        val fullname = principal.getAttribute<String>("fullname") ?: "N/A"
-        val role = principal.getAttribute<String>("role") ?: "guest"
-
-        val token = jwtService.generateTokenForClaims(
-            subject = userId,
-            claims = mapOf(
-                "fullname" to fullname,
-                "role" to role
-            )
-        )
-
-        return mapOf(
-            "jwt" to token,
-            "user" to mapOf(
-                "id" to userId,
-                "fullname" to fullname,
-                "role" to role
-            )
-        )
-    }
 }

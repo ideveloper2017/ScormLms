@@ -51,23 +51,8 @@ spring:
     baseline-version: 0
     validate-on-migrate: true
     out-of-order: false
-#  security:
-#    oauth2:
-#      client:
-#        registration:
-#          hemis:
-#            client-id: ${HEMIS_CLIENT_ID:}
-#            client-secret: ${HEMIS_CLIENT_SECRET:}
-#            redirect-uri: "{baseUrl}/login/oauth2/hemis"
-#            authorization-grant-type: authorization_code
-#            scope: profile,email
-#            client-name: HEMIS
-#        provider:
-#          hemis:
-#            authorization-uri: https://hemis.namdtu.uz/oauth/authorize
-#            token-uri: https://hemis.namdtu.uz/oauth/access-token
-#            user-info-uri: https://hemis.namdtu.uz/oauth/api/user?fields=id,uuid,type,name,login,picture,email,university_id,phone
-#            user-name-attribute: id
+  # HEMIS OAuth2 client faqat `hemis-oauth` profili bilan yoqiladi.
+  # Endpoint va credentiallar application-hemis-oauth.yml orqali olinadi.
 
 springdoc:
   api-docs:
@@ -145,6 +130,11 @@ app:
       fixed-delay-ms: ${INTEGRATION_WORKER_FIXED_DELAY_MS:30000}
       initial-delay-ms: ${INTEGRATION_WORKER_INITIAL_DELAY_MS:30000}
   hemis:
+    oauth:
+      frontend-callback-url: ${HEMIS_OAUTH_FRONTEND_CALLBACK_URL:http://localhost:5173/auth/hemis/callback}
+      id-attribute: ${HEMIS_OAUTH_ID_ATTRIBUTE:id}
+      username-attribute: ${HEMIS_OAUTH_USERNAME_ATTRIBUTE:login}
+      login-code-ttl-seconds: ${HEMIS_OAUTH_LOGIN_CODE_TTL_SECONDS:60}
     sync:
       enabled: ${HEMIS_SYNC_ENABLED:false}
       async-enabled: ${HEMIS_SYNC_ASYNC_ENABLED:true}

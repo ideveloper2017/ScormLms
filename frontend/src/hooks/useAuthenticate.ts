@@ -8,10 +8,6 @@ interface User {
     avatar?: string;
 }
 
-interface HemisLoginResponse {
-    login: string;
-    password: string;
-}
 interface AuthTokenResponse {
     username: String,
     roles: String[],
@@ -39,13 +35,4 @@ export const auth={
         api.post('/auth/refresh'),
     logout: () =>
         api.post('/auth/logout'),
-}
-
-export const hemisAuth={
-        login: (credentials: HemisLoginResponse) =>
-        api.post('/auth/hemis/login', credentials),
-        // refresh: () =>
-        // api.post('/auth/refresh'),
-        // logout: () =>
-        // api.post('/auth/logout'),
 }

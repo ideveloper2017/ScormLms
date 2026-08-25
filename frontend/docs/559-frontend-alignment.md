@@ -92,7 +92,7 @@ Hozir backendda mavjud bo'lgan ulanishga tayyor endpointlar:
 - `/api/v1/official-site-publications/*`, `/public/api/institution-disclosures`
 - `/api/v1/auth/2fa/*`
 - `/auth/email/*`
-- `/auth/hemis/login`
+- `/oauth2/authorization/hemis` va `/api/v1/auth/hemis/exchange`
 
 Frontenddagi quyidagi modullar uchun backend kontrakt hali to'liq ko'rinmadi:
 - Courses/SCORM package and progress

@@ -53,7 +53,7 @@ class AuthRateLimitFilter(
 
     private fun rule(path: String): Rule? = when (path) {
         "/api/v1/auth/login" -> Rule("login", loginPerIp)
-        "/auth/hemis/login" -> Rule("hemis", externalAuthPerIp)
+        "/api/v1/auth/hemis/exchange" -> Rule("hemis", externalAuthPerIp)
         "/api/v1/auth/refresh", "/api/v1/auth/refresh-token", "/api/v1/auth/forgot-password",
         "/api/v1/auth/reset-password", "/api/v1/auth/logout" -> Rule("token", tokenPerIp)
         else -> null

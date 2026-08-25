@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/toaster";
 import LoginPage from "@/pages/auth/login";
 import ForgotPasswordPage from "@/pages/auth/forgot-password";
 import ResetPasswordPage from "@/pages/auth/reset-password";
+import HemisCallbackPage from "@/pages/auth/hemis-callback";
 
 // Dashboards
 import { AdminDashboard } from "@/pages/admin-dashboard";
@@ -168,6 +169,7 @@ function App() {
         <Route path="/login"          element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password"  element={<ResetPasswordPage />} />
+        <Route path="/auth/hemis/callback" element={<HemisCallbackPage />} />
         <Route path="/public/institution" element={<PublicInstitutionDisclosure />} />
         
         {/* ── Face Recognition Setup (for students) ──────────────────────── */}

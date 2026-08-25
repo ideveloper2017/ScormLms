@@ -114,6 +114,24 @@ export async function login(credentials: LoginRequest): Promise<AxiosResponse<Au
   }
 }
 
+export function getHemisOAuthStartUrl(): string {
+  const backendBase = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+  return `${backendBase}/oauth2/authorization/hemis`;
+}
+
+export async function exchangeHemisOAuthCode(code: string): Promise<AuthResponse["data"]> {
+  const response = await api.post<AuthResponse>("/auth/hemis/exchange", { code });
+  const payload = response.data.data;
+  if (!response.data.success || !payload?.accessToken) {
+    throw new Error(response.data.message || "HEMIS orqali kirish yakunlanmadi");
+  }
+
+  storeAuthData(payload);
+  localStorage.setItem("user", JSON.stringify(payload.user));
+  api.defaults.headers.common.Authorization = `Bearer ${payload.accessToken}`;
+  return payload;
+}
+
 export async function refreshToken(): Promise<RefreshTokenResponse> {
   if (refreshTokenPromise) {
     return refreshTokenPromise;

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { HemisLoginDialog } from '@/components/auth/HemisLoginDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { Field, FieldGroup, FieldLabel, FieldSeparator } from '@/components/ui/f
 import { Eye, EyeOff, CheckCircle, Loader2, Droplets, GraduationCap, Mail, Lock, BookOpen, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
+import { getHemisOAuthStartUrl } from '@/lib/api';
 import { cn } from "@/lib/utils"
 
 interface LoginFormProps {
@@ -21,7 +21,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
     const [showPassword, setShowPassword] = useState(false);
     const [loginStep, setLoginStep] = useState<'credentials' | 'success'>('credentials');
-    const [hemisDialogOpen, setHemisDialogOpen] = useState(false);
 
     const { login: authLogin, isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { toast } = useToast();
@@ -36,6 +35,10 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     const handleLoginSuccess = () => {
         setLoginStep('success');
         setTimeout(() => onSuccess(), 1500);
+    };
+
+    const handleHemisLogin = () => {
+        window.location.assign(getHemisOAuthStartUrl());
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -201,18 +204,12 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                                 type="button"
                                 variant="outline"
                                 className="w-full gap-2"
-                                onClick={() => setHemisDialogOpen(true)}
+                                onClick={handleHemisLogin}
                                 disabled={isSubmitting || isAuthLoading}
                             >
                                 <GraduationCap className="h-4 w-4 text-blue-600" />
                                 HEMIS orqali kirish
                             </Button>
-
-                            <HemisLoginDialog
-                                open={hemisDialogOpen}
-                                onOpenChange={setHemisDialogOpen}
-                                onSuccess={() => handleLoginSuccess()}
-                            />
 
                         </form>
                     </div>
