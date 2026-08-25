@@ -48,8 +48,8 @@ spring:
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/scorm_lms}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: ${DB_USERNAME:scorm_lms}
+    password: ${DB_PASSWORD:cbnAhdN3dkBiA8Z8}
     driver-class-name: org.postgresql.Driver
     hikari:
       poolName: Hikari

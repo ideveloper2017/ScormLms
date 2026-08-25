@@ -15,6 +15,13 @@ spring:
     name: SCORM-LMS
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:postgresql-dev}
+  # Lokal/IDE ishga tushirishda profil berilmay qolsa ham DataSource aniq bo'ladi.
+  # postgresql-dev va postgresql-prod profillari bu qiymatlarni kerakli muhitda override qiladi.
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/scorm_lms}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
   main:
     allow-bean-definition-overriding: false
   jmx:

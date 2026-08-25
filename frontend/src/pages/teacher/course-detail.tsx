@@ -40,10 +40,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { LazyRichTextEditor } from "@/components/editor/lazy-rich-text-editor";
 import { isRichTextEmpty, richTextToPlainText } from "@/components/editor/rich-text-utils";
+import { FileDropzone } from "@/components/file-dropzone";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -100,6 +102,7 @@ export function TeacherCourseDetail({
   const [courseDescription, setCourseDescription] = useState("");
   const [moduleTitle, setModuleTitle] = useState("");
   const [editingModuleId, setEditingModuleId] = useState<number | null>(null);
+  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
   const [contentTitle, setContentTitle] = useState("");
   const [contentDescription, setContentDescription] = useState("");
   const [contentUrl, setContentUrl] = useState("");
@@ -130,6 +133,10 @@ export function TeacherCourseDetail({
     queryKey: ["teacher", "course", courseId],
     queryFn: () => teacherPortalApi.getCourse(courseId),
     enabled: Boolean(courseId),
+  });
+  const profileQuery = useQuery({
+    queryKey: ["teacher", "profile"],
+    queryFn: teacherPortalApi.getProfile,
   });
   const enrollmentsQuery = useQuery({
     queryKey: ["teacher", "course", courseId, "enrollments"],
@@ -328,13 +335,14 @@ export function TeacherCourseDetail({
       );
     },
     onSuccess: async () => {
+      setLessonDialogOpen(false);
       resetContentForm();
       await refreshLearningItems();
       toast({
-        title: editingContentId ? "Kontent yangilandi" : "Kontent yaratildi",
+        title: editingContentId ? "Dars yangilandi" : "Dars yaratildi",
       });
     },
-    onError: showError("Kontent saqlanmadi"),
+    onError: showError("Dars saqlanmadi"),
   });
   const attachMaterialMutation = useMutation({
     mutationFn: () =>
@@ -402,7 +410,7 @@ export function TeacherCourseDetail({
     setContentType("LINK");
     setContentModuleId("");
     setContentLanguage(courseQuery.data?.language || "uz");
-    setContentAuthor("");
+    setContentAuthor(profileQuery.data?.fullName || "");
     setContentVersion("1.0");
     setContentSourceName("");
     setContentSourceUrl("");
@@ -505,6 +513,34 @@ export function TeacherCourseDetail({
     setContentSourceUrl(content.sourceUrl ?? "");
     setContentValidFrom(content.validFrom);
     setContentValidUntil(content.validUntil ?? "");
+    setLessonDialogOpen(true);
+  }
+
+  function startNewLesson(moduleId: number) {
+    resetContentForm();
+    setContentModuleId(String(moduleId));
+    setContentType("VIDEO");
+    setContentSourceName(courseQuery.data?.subjectName || "Mualliflik materiali");
+    setLessonDialogOpen(true);
+  }
+
+  function selectContentFile(file: File | null) {
+    if (file && file.size > 200 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "Fayl hajmi 200 MB dan oshmasligi kerak",
+      });
+      return;
+    }
+    setContentFile(file);
+    if (!file) {
+      setContentAssetId(null);
+      setContentAssetName("");
+    } else {
+      setContentUrl("");
+      setContentAssetId(null);
+      setContentAssetName("");
+    }
   }
 
   async function downloadContent(content: CourseContent) {
@@ -631,9 +667,9 @@ export function TeacherCourseDetail({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Modullar", value: modules.length, color: "text-blue-600" },
+          { label: "Sectionlar", value: modules.length, color: "text-blue-600" },
           {
-            label: "Kontentlar",
+            label: "Darslar",
             value: contents.length,
             color: "text-green-600",
           },
@@ -666,10 +702,9 @@ export function TeacherCourseDetail({
 
       <Tabs defaultValue={initialTab}>
         <div className="overflow-x-auto">
-          <TabsList className="grid min-w-[540px] w-full grid-cols-5">
+          <TabsList className="grid min-w-[440px] w-full grid-cols-4">
             <TabsTrigger value="overview">Umumiy</TabsTrigger>
-            <TabsTrigger value="modules">Modullar</TabsTrigger>
-            <TabsTrigger value="contents">Kontent</TabsTrigger>
+            <TabsTrigger value="contents">Darslar</TabsTrigger>
             <TabsTrigger value="students">Talabalar</TabsTrigger>
             <TabsTrigger value="forum">Forum</TabsTrigger>
           </TabsList>
@@ -753,25 +788,32 @@ export function TeacherCourseDetail({
           </Card>
         </TabsContent>
 
-        <TabsContent value="modules" className="mt-4 space-y-3">
+        <TabsContent value="contents" className="mt-4 space-y-3">
           <Card>
-            <CardContent className="pt-6 flex flex-col sm:flex-row gap-2">
+            <CardHeader>
+              <CardTitle className="text-base">Fan darslari</CardTitle>
+              <CardDescription>
+                Avval section yarating, keyin uning ichiga video, matn yoki
+                hujjat ko'rinishidagi darslarni qo'shing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={moduleTitle}
                 onChange={(event) => setModuleTitle(event.target.value)}
-                placeholder="Modul nomi"
+                placeholder="Section nomi, masalan: 1-mavzu. Kirish"
               />
               <Button
                 onClick={saveModule}
                 disabled={saveModuleMutation.isPending}
-                className="gap-2"
+                className="gap-2 sm:shrink-0"
               >
                 {saveModuleMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                {editingModuleId ? "Yangilash" : "Modul qo'shish"}
+                {editingModuleId ? "Sectionni yangilash" : "Section qo'shish"}
               </Button>
               {editingModuleId && (
                 <Button
@@ -786,78 +828,21 @@ export function TeacherCourseDetail({
               )}
             </CardContent>
           </Card>
-          {modulesQuery.isLoading && <Loading />}
-          {!modulesQuery.isLoading && modules.length === 0 && (
-            <Empty text="Hozircha modul yaratilmagan" />
-          )}
-          {modules.map((module, index) => (
-            <Card key={module.id}>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">{module.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {module.contentCount} kontent · tartib {module.position}
-                  </p>
-                </div>
-                <Badge
-                  variant={
-                    module.status === "published" ? "default" : "secondary"
-                  }
-                >
-                  {module.status === "published" ? "Nashrda" : "Qoralama"}
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => editModule(module)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    moduleStatusMutation.mutate({
-                      moduleId: module.id,
-                      status:
-                        module.status === "published" ? "DRAFT" : "PUBLISHED",
-                    })
-                  }
-                >
-                  {module.status === "published" ? "Yashirish" : "Nashr"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive"
-                  onClick={() => deleteModuleMutation.mutate(module.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="contents" className="mt-4 space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Fan kutubxonasidan biriktirish
+                Tayyor materialni biriktirish
               </CardTitle>
               <CardDescription>
-                Avval saqlangan materialni tanlang va kurs moduliga biriktiring.
+                Fan kutubxonasidagi materialni section ichiga biriktiring.
                 Fayl qayta yuklanmaydi.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
-              <Field label="Modul *">
+              <Field label="Section *">
                 <Select value={bankModuleId} onValueChange={setBankModuleId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Modulni tanlang" />
+                    <SelectValue placeholder="Sectionni tanlang" />
                   </SelectTrigger>
                   <SelectContent>
                     {modules.map((module) => (
@@ -913,202 +898,90 @@ export function TeacherCourseDetail({
                 )}
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Kursga maxsus material
-              </CardTitle>
-              <CardDescription>
-                Muallif, til, versiya, manba va amal qilish davri majburiy.
-                Kontent tili kurs, fan dasturi va faol talabalar ta'lim tiliga
-                mos bo'lishi shart.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="Kontent nomi *">
-                <Input
-                  value={contentTitle}
-                  onChange={(event) => setContentTitle(event.target.value)}
-                />
-              </Field>
-              <Field label="Modul *">
-                <Select
-                  value={contentModuleId}
-                  onValueChange={setContentModuleId}
-                  disabled={Boolean(editingContentId)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Modulni tanlang" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modules.map((module) => (
-                      <SelectItem key={module.id} value={String(module.id)}>
-                        {module.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Kontent turi *">
-                <Select
-                  value={contentType}
-                  onValueChange={(value) =>
-                    setContentType(value as ContentType)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="VIDEO">Video</SelectItem>
-                    <SelectItem value="DOCUMENT">Hujjat</SelectItem>
-                    <SelectItem value="LINK">Havola</SelectItem>
-                    <SelectItem value="FILE">Boshqa fayl</SelectItem>
-                    <SelectItem value="TEXT">Matnli dars</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              {contentType === "TEXT" ? (
-                <Field label="Dars matni *" className="md:col-span-2">
-                  <LazyRichTextEditor
-                    value={contentBody}
-                    onChange={setContentBody}
-                    placeholder="Dars mazmunini yozing yoki MathType orqali formula kiriting..."
-                  />
-                </Field>
-              ) : contentType === "LINK" ? (
-                <Field label="Kontent URL *">
-                  <Input
-                    value={contentUrl}
-                    onChange={(event) => setContentUrl(event.target.value)}
-                    placeholder="https://..."
-                  />
-                </Field>
-              ) : (
-                <>
-                  <Field label="Fayl">
-                    <Input
-                      type="file"
-                      accept={
-                        contentType === "VIDEO"
-                          ? ".mp4,.webm"
-                          : contentType === "DOCUMENT"
-                            ? ".pdf,.txt,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
-                            : ".pdf,.txt,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.jpg,.jpeg,.png,.mp4,.webm"
-                      }
-                      onChange={(event) =>
-                        setContentFile(event.target.files?.[0] ?? null)
-                      }
-                    />
-                  </Field>
-                  <Field label="Yoki tashqi URL">
-                    <Input
-                      value={contentUrl}
-                      disabled={Boolean(contentFile || contentAssetId)}
-                      onChange={(event) => setContentUrl(event.target.value)}
-                      placeholder="https://..."
-                    />
-                  </Field>
-                  {(contentFile || contentAssetName) && (
-                    <p className="md:col-span-2 text-xs text-muted-foreground">
-                      Tanlangan fayl: {contentFile?.name ?? contentAssetName}.
-                      Yangi fayl tanlansa, u yangi o'zgarmas versiya sifatida
-                      saqlanadi. Maksimum 200 MB.
-                    </p>
-                  )}
-                </>
-              )}
-              <Field label="Til kodi *">
-                <Input
-                  value={contentLanguage}
-                  onChange={(event) => setContentLanguage(event.target.value)}
-                  placeholder="uz, ru yoki en"
-                />
-              </Field>
-              <Field label={editingContentId ? "Yangi versiya *" : "Versiya *"}>
-                <Input
-                  value={contentVersion}
-                  onChange={(event) => setContentVersion(event.target.value)}
-                  placeholder="1.0"
-                />
-              </Field>
-              <Field label="Muallif *">
-                <Input
-                  value={contentAuthor}
-                  onChange={(event) => setContentAuthor(event.target.value)}
-                />
-              </Field>
-              <Field label="Manba nomi *">
-                <Input
-                  value={contentSourceName}
-                  onChange={(event) => setContentSourceName(event.target.value)}
-                />
-              </Field>
-              <Field label="Manba URL">
-                <Input
-                  value={contentSourceUrl}
-                  onChange={(event) => setContentSourceUrl(event.target.value)}
-                  placeholder="https://..."
-                />
-              </Field>
-              <Field label="Amal qilish boshlanishi *">
-                <Input
-                  type="date"
-                  value={contentValidFrom}
-                  onChange={(event) => setContentValidFrom(event.target.value)}
-                />
-              </Field>
-              <Field label="Amal qilish yakuni">
-                <Input
-                  type="date"
-                  min={contentValidFrom}
-                  value={contentValidUntil}
-                  onChange={(event) => setContentValidUntil(event.target.value)}
-                />
-              </Field>
-              <Field label="Tavsif" className="md:col-span-2">
-                <Textarea
-                  value={contentDescription}
-                  onChange={(event) =>
-                    setContentDescription(event.target.value)
-                  }
-                />
-              </Field>
-              <div className="md:col-span-2 flex justify-end gap-2">
-                {editingContentId && (
-                  <Button variant="ghost" onClick={resetContentForm}>
-                    Bekor qilish
-                  </Button>
-                )}
-                <Button
-                  onClick={saveContent}
-                  disabled={
-                    saveContentMutation.isPending || modules.length === 0
-                  }
-                  className="gap-2"
-                >
-                  {saveContentMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  {editingContentId
-                    ? "Yangi versiyani saqlash"
-                    : "Kontent qo'shish"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          {contentsQuery.isLoading && <Loading />}
-          {!contentsQuery.isLoading && contents.length === 0 && (
-            <Empty text="Hozircha oddiy kontent qo'shilmagan" />
+          {(modulesQuery.isLoading || contentsQuery.isLoading) && <Loading />}
+          {!modulesQuery.isLoading && modules.length === 0 && (
+            <Empty text="Dars qo'shish uchun avval section yarating" />
           )}
-          {contents.map((content) => {
+          {modules.map((module, sectionIndex) => {
+            const sectionLessons = contents.filter(
+              (content) => content.moduleId === module.id,
+            );
+            return (
+              <Card key={module.id} className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/30 py-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground">
+                        {sectionIndex + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <CardTitle className="truncate text-base">
+                          {module.title}
+                        </CardTitle>
+                        <CardDescription>
+                          {sectionLessons.length} ta dars
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant={
+                          module.status === "published" ? "default" : "secondary"
+                        }
+                      >
+                        {module.status === "published" ? "Nashrda" : "Qoralama"}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => startNewLesson(module.id)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Dars qo'shish
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Sectionni tahrirlash"
+                        onClick={() => editModule(module)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          moduleStatusMutation.mutate({
+                            moduleId: module.id,
+                            status:
+                              module.status === "published" ? "DRAFT" : "PUBLISHED",
+                          })
+                        }
+                      >
+                        {module.status === "published" ? "Yashirish" : "Nashr"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Sectionni o'chirish"
+                        className="text-destructive"
+                        onClick={() => deleteModuleMutation.mutate(module.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 p-3 sm:p-4">
+                  {sectionLessons.length === 0 && (
+                    <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                      Bu sectionda dars yo'q. “Dars qo'shish” tugmasini bosing.
+                    </div>
+                  )}
+                  {sectionLessons.map((content) => {
             const meta = CONTENT_META[content.contentType] ?? CONTENT_META.file;
             const Icon = meta.icon;
-            const modulePublished =
-              modules.find((item) => item.id === content.moduleId)?.status ===
-              "published";
+            const modulePublished = module.status === "published";
             const validity = content.effective
               ? "Amalda"
               : content.validFrom > today()
@@ -1133,7 +1006,7 @@ export function TeacherCourseDetail({
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{content.title}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {content.moduleTitle} · v{content.contentVersion} ·{" "}
+                      {meta.label} · v{content.contentVersion} ·{" "}
                       {content.languageCode} · {content.authorName}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
@@ -1280,6 +1153,10 @@ export function TeacherCourseDetail({
                   </div>
                 </CardContent>
               </Card>
+                    );
+                  })}
+                </CardContent>
+              </Card>
             );
           })}
         </TabsContent>
@@ -1374,6 +1251,204 @@ export function TeacherCourseDetail({
           <CourseForum courseId={courseId} />
         </TabsContent>
       </Tabs>
+      <Dialog
+        open={lessonDialogOpen}
+        onOpenChange={(open) => {
+          setLessonDialogOpen(open);
+          if (!open) resetContentForm();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingContentId ? "Darsni tahrirlash" : "Yangi dars qo'shish"}
+            </DialogTitle>
+            <DialogDescription>
+              Sectionni tanlang, dars turini belgilang va materialni kiriting.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label="Dars nomi *">
+              <Input
+                value={contentTitle}
+                onChange={(event) => setContentTitle(event.target.value)}
+                placeholder="Dars mavzusi"
+              />
+            </Field>
+            <Field label="Section *">
+              <Select
+                value={contentModuleId}
+                onValueChange={setContentModuleId}
+                disabled={Boolean(editingContentId)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sectionni tanlang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {modules.map((module) => (
+                    <SelectItem key={module.id} value={String(module.id)}>
+                      {module.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Dars turi *" className="md:col-span-2">
+              <Select
+                value={contentType}
+                onValueChange={(value) => {
+                  setContentType(value as ContentType);
+                  setContentFile(null);
+                  setContentUrl("");
+                  setContentAssetId(null);
+                  setContentAssetName("");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="VIDEO">Video dars</SelectItem>
+                  <SelectItem value="TEXT">Matnli dars va formula</SelectItem>
+                  <SelectItem value="DOCUMENT">PDF yoki hujjat</SelectItem>
+                  <SelectItem value="LINK">Tashqi havola</SelectItem>
+                  <SelectItem value="FILE">Boshqa fayl</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            {contentType === "TEXT" ? (
+              <Field label="Dars matni *" className="md:col-span-2">
+                <LazyRichTextEditor
+                  value={contentBody}
+                  onChange={setContentBody}
+                  placeholder="Dars mazmunini yozing yoki MathType orqali formula kiriting..."
+                />
+              </Field>
+            ) : contentType === "LINK" ? (
+              <Field label="Dars havolasi *" className="md:col-span-2">
+                <Input
+                  value={contentUrl}
+                  onChange={(event) => setContentUrl(event.target.value)}
+                  placeholder="https://..."
+                />
+              </Field>
+            ) : (
+              <div className="space-y-4 md:col-span-2">
+                <Field label={contentType === "VIDEO" ? "Video fayl" : "Fayl"}>
+                  <FileDropzone
+                    accept={
+                      contentType === "VIDEO"
+                        ? ".mp4,.webm"
+                        : contentType === "DOCUMENT"
+                          ? ".pdf,.txt,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                          : ".pdf,.txt,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.jpg,.jpeg,.png,.mp4,.webm"
+                    }
+                    file={contentFile}
+                    existingFileName={contentAssetName || undefined}
+                    hint={
+                      contentType === "VIDEO"
+                        ? "Videoni shu yerga tashlang yoki tanlang"
+                        : "Faylni shu yerga tashlang yoki tanlang"
+                    }
+                    onFileChange={selectContentFile}
+                  />
+                </Field>
+                <Field label="Yoki tashqi URL">
+                  <Input
+                    value={contentUrl}
+                    disabled={Boolean(contentFile || contentAssetId)}
+                    onChange={(event) => setContentUrl(event.target.value)}
+                    placeholder="https://..."
+                  />
+                </Field>
+              </div>
+            )}
+            <Field label="Til *">
+              <Select value={contentLanguage} onValueChange={setContentLanguage}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="uz">O'zbekcha</SelectItem>
+                  <SelectItem value="ru">Ruscha</SelectItem>
+                  <SelectItem value="en">Inglizcha</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label={editingContentId ? "Yangi versiya *" : "Versiya *"}>
+              <Input
+                value={contentVersion}
+                onChange={(event) => setContentVersion(event.target.value)}
+                placeholder="1.0"
+              />
+            </Field>
+            <Field label="Muallif *">
+              <Input
+                value={contentAuthor}
+                onChange={(event) => setContentAuthor(event.target.value)}
+              />
+            </Field>
+            <Field label="Manba nomi *">
+              <Input
+                value={contentSourceName}
+                onChange={(event) => setContentSourceName(event.target.value)}
+                placeholder={course.subjectName || "Mualliflik materiali"}
+              />
+            </Field>
+            <Field label="Manba URL">
+              <Input
+                value={contentSourceUrl}
+                onChange={(event) => setContentSourceUrl(event.target.value)}
+                placeholder="https://..."
+              />
+            </Field>
+            <Field label="Amal qilish boshlanishi *">
+              <Input
+                type="date"
+                value={contentValidFrom}
+                onChange={(event) => setContentValidFrom(event.target.value)}
+              />
+            </Field>
+            <Field label="Amal qilish yakuni">
+              <Input
+                type="date"
+                min={contentValidFrom}
+                value={contentValidUntil}
+                onChange={(event) => setContentValidUntil(event.target.value)}
+              />
+            </Field>
+            <Field label="Qisqa tavsif" className="md:col-span-2">
+              <Textarea
+                value={contentDescription}
+                onChange={(event) => setContentDescription(event.target.value)}
+              />
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setLessonDialogOpen(false);
+                resetContentForm();
+              }}
+            >
+              Bekor qilish
+            </Button>
+            <Button
+              onClick={saveContent}
+              disabled={saveContentMutation.isPending || modules.length === 0}
+              className="gap-2"
+            >
+              {saveContentMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {editingContentId ? "Yangi versiyani saqlash" : "Darsni saqlash"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(historyContent)}
         onOpenChange={(open) => {
