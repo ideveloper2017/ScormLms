@@ -1,6 +1,9 @@
 # Install as /etc/scorm-lms/deploy.conf and keep it root-owned (0644 or stricter).
 DEPLOY_INCOMING_DIR=/var/tmp/scorm-lms/incoming
 FRONTEND_BASE_DIR=/var/www/scorm-lms
+# Distro Tomcat uchun odatda /var/lib/tomcat11/webapps.
+# aaPanel Java Manager uchun real manzilni tekshiring; ko'pincha
+# /www/server/tomcat11/webapps ko'rinishida bo'ladi.
 TOMCAT_WEBAPPS_DIR=/var/lib/tomcat11/webapps
 TOMCAT_SERVICE=tomcat11
 HEALTHCHECK_URL=http://127.0.0.1:8080/actuator/health/readiness

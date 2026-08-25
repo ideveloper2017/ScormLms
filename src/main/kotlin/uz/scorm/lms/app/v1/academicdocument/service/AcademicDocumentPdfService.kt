@@ -127,6 +127,8 @@ class AcademicDocumentPdfService(
             configuredFontPath.trim().takeIf(String::isNotBlank)?.let { add(Path.of(it)) }
             add(Path.of("C:/Windows/Fonts/arial.ttf"))
             add(Path.of("C:/Windows/Fonts/calibri.ttf"))
+            add(Path.of("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"))
+            add(Path.of("/System/Library/Fonts/Supplemental/Arial.ttf"))
             add(Path.of("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
             add(Path.of("/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"))
         }

@@ -50,7 +50,14 @@ ensure_application_database() {
   [[ "$EXPECTED_DATABASE_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || \
     fail "Unsafe EXPECTED_DATABASE_NAME"
 
-  local db_url db_user host port database
+  local active_profiles db_url db_user host port database
+  active_profiles="$(read_app_env SPRING_PROFILES_ACTIVE)" || \
+    fail "SPRING_PROFILES_ACTIVE is missing in $APP_ENV_FILE"
+  case ",$active_profiles," in
+    *,postgresql-prod,*) ;;
+    *) fail "SPRING_PROFILES_ACTIVE must include postgresql-prod" ;;
+  esac
+
   db_url="$(read_app_env DB_URL)" || fail "DB_URL is missing in $APP_ENV_FILE"
   db_user="$(read_app_env DB_USERNAME)" || fail "DB_USERNAME is missing in $APP_ENV_FILE"
   [[ "$db_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || fail "Unsafe DB_USERNAME"
@@ -98,6 +105,16 @@ ensure_application_database() {
   runuser -u postgres -- createdb --port "$port" --owner "$db_user" "$database"
 }
 
+ensure_tomcat_environment() {
+  command -v systemctl >/dev/null || fail "systemctl is required to control $TOMCAT_SERVICE"
+
+  local environment_files
+  environment_files="$(systemctl show "$TOMCAT_SERVICE" --property=EnvironmentFiles --value)" || \
+    fail "Cannot inspect $TOMCAT_SERVICE environment"
+  [[ "$environment_files" == *"$APP_ENV_FILE"* ]] || \
+    fail "$TOMCAT_SERVICE does not load $APP_ENV_FILE. Add EnvironmentFile=$APP_ENV_FILE to its systemd service override"
+}
+
 readonly RELEASE_ID="$1"
 [[ "$RELEASE_ID" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]] || fail "Invalid release id"
 
@@ -126,6 +143,7 @@ cd "$INCOMING_DIR"
 sha256sum -c checksums.sha256
 
 ensure_application_database
+ensure_tomcat_environment
 
 install -d -m 755 "$RELEASES_DIR"
 install -d -m 700 "$BACKUP_DIR"

@@ -86,7 +86,9 @@ dependencies {
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test-classic'
-    testRuntimeOnly 'com.h2database:h2'
+    // Historical upgrade tests exercise H2 compatibility used when these
+    // migrations were introduced. H2 2.4 rejects their legacy CHECK metadata.
+    testRuntimeOnly 'com.h2database:h2:2.3.232'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.testcontainers:postgresql:1.19.3'
     testImplementation 'org.testcontainers:junit-jupiter:1.19.3'
@@ -106,6 +108,7 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    maxHeapSize = '2g'
     testLogging {
         events 'passed', 'skipped', 'failed'
     }

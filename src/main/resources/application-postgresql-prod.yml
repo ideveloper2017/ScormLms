@@ -114,9 +114,13 @@ springdoc:
     enabled: ${SWAGGER_ENABLED:true}
 
 app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
   database:
     expected-name: ${APP_EXPECTED_DATABASE_NAME:scorm_lms}
   jwt:
     secret: ${JWT_SECRET}
   scorm:
     secure-cookie: ${SCORM_SECURE_COOKIE:true}
+  survey:
+    anonymization-secret: ${SURVEY_ANONYMIZATION_SECRET:${JWT_SECRET}}

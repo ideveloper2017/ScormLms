@@ -41,3 +41,14 @@ spring:
       hibernate:
         format_sql: true
     open-in-view: false
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://172.16.10.159:8080,http://localhost:5173,http://localhost:4173,http://localhost:8080}
+  jwt:
+    # Faqat lokal development uchun. Production profilda JWT_SECRET majburiy.
+    secret: ${JWT_SECRET:dev-only-secret-do-not-use-in-production-0123456789abcdefghijklmnop}
+  scorm:
+    secure-cookie: ${SCORM_SECURE_COOKIE:false}
+  survey:
+    anonymization-secret: ${SURVEY_ANONYMIZATION_SECRET:${JWT_SECRET:dev-only-survey-secret-do-not-use-in-production}}

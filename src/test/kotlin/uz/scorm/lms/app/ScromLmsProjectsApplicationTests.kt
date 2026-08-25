@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("62", flyway.info().current()?.version?.toString())
+        assertEquals("70", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->

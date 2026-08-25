@@ -1,9 +1,14 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:scorm_lms_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    # Production migratsiyalari PostgreSQL-specific indexlardan foydalanadi.
+    # Testcontainers JDBC URL bitta disposable PostgreSQL konteynerini test JVM
+    # davomida qayta ishlatadi va CI'ni production database bilan bir xil qiladi.
+    url: jdbc:tc:postgresql:16-alpine:///scorm_lms_test
+    username: test
+    password: test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    hikari:
+      auto-commit: false
   flyway:
     enabled: true
     baseline-on-migrate: false
@@ -13,13 +18,21 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
   devtools:
     restart:
       enabled: false
 
 app:
+  cors:
+    allowed-origins: http://localhost:5173
+  jwt:
+    secret: test-only-secret-do-not-use-outside-tests-0123456789abcdefghijklmnop
+  scorm:
+    secure-cookie: false
+  survey:
+    anonymization-secret: test-only-survey-secret-do-not-use-outside-tests-0123456789abcdefghijklmnop
   seed:
     admin-password: ""
   integration:

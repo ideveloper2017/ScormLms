@@ -2,6 +2,13 @@
 
 Pipeline `.github/workflows/ci.yml` orqali backend va frontendni tekshiradi. `main` push muvaffaqiyatli tugasa, `.github/workflows/cd.yml` aynan shu CI run yaratgan `ROOT.war` va frontend artifactlarini production VPS'ga yuboradi.
 
+Pipeline qat'iy ketma-ket ishlaydi:
+
+1. Backend test qilinadi va `ROOT.war` build qilinadi.
+2. Faqat backend muvaffaqiyatli tugagach frontend lint, test va build ishlaydi.
+3. Faqat butun CI muvaffaqiyatli tugagach CD production deployni boshlaydi.
+4. Bir vaqtda faqat bitta production deploy ishlaydi; keyingi deploy navbatda kutadi.
+
 ## 1. VPS'ni bir marta tayyorlash
 
 Serverda Java 21, Tomcat 11.0+, Nginx, `curl`, `tar` va PostgreSQL client
@@ -51,6 +58,48 @@ sudo chown root:root /etc/scorm-lms/scorm-lms.env
 sudo chmod 600 /etc/scorm-lms/scorm-lms.env
 sudo systemctl daemon-reload
 ```
+
+### aaPanel Tomcat
+
+aaPanel serverning o'zida Gradle yoki npm build bajarmaydi. GitHub-hosted runner
+tayyor `ROOT.war` va frontend artifactini yaratadi, CD esa ularni serverga
+o'rnatadi. aaPanel Java Manager o'rnatgan Tomcat katalogini aniqlang:
+
+```bash
+sudo find /www/server -maxdepth 3 -type d -path '*/webapps'
+sudo systemctl list-unit-files | grep -i tomcat
+```
+
+Topilgan qiymatlarni `/etc/scorm-lms/deploy.conf` ga yozing. Masalan:
+
+```ini
+TOMCAT_WEBAPPS_DIR=/www/server/tomcat11/webapps
+TOMCAT_SERVICE=tomcat11
+```
+
+Spring Boot 4 uchun Tomcat 11 va Java 21 ishlating. Tomcat service aaPanel orqali
+o'rnatilgan bo'lsa ham production environment systemd override orqali beriladi:
+
+```bash
+sudo systemctl edit tomcat11
+```
+
+```ini
+[Service]
+EnvironmentFile=/etc/scorm-lms/scorm-lms.env
+```
+
+So'ng konfiguratsiyani qo'llang va environment fayli ulanganini tekshiring:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart tomcat11
+sudo systemctl show tomcat11 --property=EnvironmentFiles
+```
+
+Deploy preflight `SPRING_PROFILES_ACTIVE` ichida `postgresql-prod` borligini va
+Tomcat service aynan `APP_ENV_FILE` faylini yuklayotganini tekshiradi. Shu orqali
+Flyway tasodifan dev profil yoki boshqa database bilan ishga tushishi bloklanadi.
 
 Nginx misolini o'rnating, `server_name`ni almashtiring va TLS'ni Certbot yoki mavjud sertifikat bilan yoqing:
 
