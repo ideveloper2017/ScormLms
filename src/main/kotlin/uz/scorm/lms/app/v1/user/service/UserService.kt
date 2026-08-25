@@ -46,7 +46,7 @@ class UserService(
         return userRepository.save(
             User(
                 username = username,
-                password = passwordEncoder.encode(rawPassword),
+                password = encodePassword(rawPassword),
                 role = role,
                 status = UserStatus.ACTIVE
             )
@@ -61,7 +61,7 @@ class UserService(
         val unknownCredential = UUID.randomUUID().toString() + UUID.randomUUID().toString()
         return userRepository.save(User(
             username = username,
-            password = passwordEncoder.encode(unknownCredential),
+            password = encodePassword(unknownCredential),
             credentialsInitialized = false,
             role = role,
             status = UserStatus.INACTIVE,
@@ -71,7 +71,7 @@ class UserService(
     fun initializePassword(user: User, rawPassword: String): User {
         require(!user.credentialsInitialized) { "Talaba akkaunti uchun parol allaqachon o'rnatilgan" }
         passwordPolicy.validate(rawPassword, user.username)
-        user.password = passwordEncoder.encode(rawPassword)
+        user.password = encodePassword(rawPassword)
         user.credentialsInitialized = true
         val saved = userRepository.save(user)
         refreshTokenRepository.deleteByUser(saved)
@@ -96,7 +96,7 @@ class UserService(
                     faculty = request.faculty,
                     direction = request.direction,
                     groupName = request.groupName,
-                    password = passwordEncoder.encode(request.password),
+                    password = encodePassword(request.password),
                     role = role,
                     status = UserStatus.ACTIVE
                 )
@@ -122,7 +122,7 @@ class UserService(
                         faculty = item.faculty,
                         direction = item.direction,
                         groupName = item.groupName,
-                        password = passwordEncoder.encode(item.password),
+                        password = encodePassword(item.password),
                         role = role,
                         status = UserStatus.ACTIVE
                     )
@@ -194,7 +194,7 @@ class UserService(
             throw IllegalArgumentException("Joriy parol noto'g'ri")
         }
         passwordPolicy.validate(request.newPassword, username)
-        user.password = passwordEncoder.encode(request.newPassword)
+        user.password = encodePassword(request.newPassword)
         userRepository.save(user)
         refreshTokenRepository.deleteByUser(user)
     }
@@ -225,7 +225,7 @@ class UserService(
         if (resetToken.expiresAt.isBefore(Instant.now())) throw IllegalArgumentException("Token muddati o'tgan")
 
         passwordPolicy.validate(request.newPassword, resetToken.user.username)
-        resetToken.user.password = passwordEncoder.encode(request.newPassword)
+        resetToken.user.password = encodePassword(request.newPassword)
         resetToken.user.credentialsInitialized = true
         resetToken.used = true
         userRepository.save(resetToken.user)
@@ -238,12 +238,15 @@ class UserService(
         val user = userRepository.findById(id)
             .orElseThrow { NoSuchElementException("User not found: $id") }
         passwordPolicy.validate(request.newPassword, user.username)
-        user.password = passwordEncoder.encode(request.newPassword)
+        user.password = encodePassword(request.newPassword)
         user.credentialsInitialized = true
         val saved = userRepository.save(user)
         refreshTokenRepository.deleteByUser(saved)
         return userMapper.toDto(saved)
     }
+
+    private fun encodePassword(rawPassword: String): String =
+        requireNotNull(passwordEncoder.encode(rawPassword)) { "PasswordEncoder null qiymat qaytardi" }
 
     private fun tokenHash(token: String): String = MessageDigest.getInstance("SHA-256")
         .digest(token.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }

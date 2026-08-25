@@ -54,7 +54,9 @@ class CurrentUserArgumentResolver(
                 webRequest.setAttribute(requestKey, user, NativeWebRequest.SCOPE_REQUEST)
                 user
             }
-            else -> throw IllegalStateException("Unsupported principal type: ${principal.javaClass.name}")
+            else -> throw IllegalStateException(
+                "Unsupported principal type: ${principal?.javaClass?.name ?: "null"}"
+            )
         }
     }
 }

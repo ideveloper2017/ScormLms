@@ -1,6 +1,7 @@
 package uz.scorm.lms.app.v1.videoconference
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -37,7 +38,7 @@ class VideoConferenceGatewayTest {
         server.start()
         try {
             val gateway = DefaultVideoConferenceGateway(
-                ObjectMapper().findAndRegisterModules(), "INSTITUTION_ADAPTER",
+                jacksonObjectMapper(), "INSTITUTION_ADAPTER",
                 "http://127.0.0.1:${server.address.port}/meetings", "provider-token",
             )
             val result = gateway.provision(VideoConferenceProvisionCommand(

@@ -1,8 +1,13 @@
 # Install as /etc/scorm-lms/deploy.conf and keep it root-owned (0644 or stricter).
 DEPLOY_INCOMING_DIR=/var/tmp/scorm-lms/incoming
 FRONTEND_BASE_DIR=/var/www/scorm-lms
-TOMCAT_WEBAPPS_DIR=/var/lib/tomcat10/webapps
-TOMCAT_SERVICE=tomcat10
+TOMCAT_WEBAPPS_DIR=/var/lib/tomcat11/webapps
+TOMCAT_SERVICE=tomcat11
 HEALTHCHECK_URL=http://127.0.0.1:8080/actuator/health/readiness
 DEPLOY_BACKUP_DIR=/var/backups/scorm-lms/deployments
 
+# PostgreSQL preflight. DB_URL va DB_USERNAME APP_ENV_FILE ichidan o'qiladi.
+# Xavfsizlik uchun deploy faqat kutilgan database nomiga ruxsat beradi.
+APP_ENV_FILE=/etc/scorm-lms/scorm-lms.env
+EXPECTED_DATABASE_NAME=scorm_lms
+AUTO_CREATE_DATABASE=true

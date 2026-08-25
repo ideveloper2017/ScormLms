@@ -1,6 +1,6 @@
 package uz.scorm.lms.app.v1.classifier.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import org.springframework.core.io.ClassPathResource
 import org.springframework.stereotype.Component
 import java.security.MessageDigest

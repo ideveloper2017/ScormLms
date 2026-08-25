@@ -68,6 +68,11 @@ spring:
         useServerPrepStmts: true
         reWriteBatchedInserts: true
 
+  # Production schema versiyalari db/migration ichidagi o'zgarmas Flyway
+  # migratsiyalari orqali boshqariladi.
+  flyway:
+    enabled: true
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -109,6 +114,8 @@ springdoc:
     enabled: ${SWAGGER_ENABLED:true}
 
 app:
+  database:
+    expected-name: ${APP_EXPECTED_DATABASE_NAME:scorm_lms}
   jwt:
     secret: ${JWT_SECRET}
   scorm:

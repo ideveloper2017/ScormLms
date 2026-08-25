@@ -1,6 +1,6 @@
 package uz.scorm.lms.app.v1.compliance.uat
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders

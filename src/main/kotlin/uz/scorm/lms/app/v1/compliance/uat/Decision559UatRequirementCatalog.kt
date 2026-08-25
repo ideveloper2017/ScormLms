@@ -1,7 +1,7 @@
 package uz.scorm.lms.app.v1.compliance.uat
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
 import org.springframework.core.io.ClassPathResource
 import org.springframework.stereotype.Service
 import org.springframework.web.util.HtmlUtils
@@ -44,7 +44,7 @@ class Decision559UatRequirementCatalog(
 
         val requirementsNode = root.path("requirements")
         require(requirementsNode.isArray) { "559 UAT katalog requirements massivi mavjud emas" }
-        val requirements = requirementsNode.map(::toGuidance)
+        val requirements = requirementsNode.values().map(::toGuidance)
         require(requirements.map { it.band }.toSet() == Decision559UatService.REQUIRED_BANDS) {
             "559 UAT katalog aynan 3 va 8..33-bandlarni qamrashi kerak"
         }
@@ -116,7 +116,7 @@ class Decision559UatRequirementCatalog(
     private fun JsonNode.requiredTextList(field: String): List<String> {
         val value = path(field)
         require(value.isArray) { "559 UAT katalog $field massivi mavjud emas" }
-        return value.map { it.asText().trim() }.also { items ->
+        return value.values().map { it.asText().trim() }.also { items ->
             require(items.all(String::isNotEmpty)) { "559 UAT katalog $field qiymati bo'sh bo'lmasligi kerak" }
         }
     }

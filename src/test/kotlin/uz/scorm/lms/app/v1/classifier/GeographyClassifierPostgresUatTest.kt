@@ -1,6 +1,6 @@
 package uz.scorm.lms.app.v1.classifier
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.MigrationVersion
 import org.junit.jupiter.api.Assertions.assertEquals

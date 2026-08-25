@@ -30,11 +30,8 @@ spring:
     multipart:
       max-file-size: 200MB
       max-request-size: 210MB
-  data:
-    jpa:
-      repositories:
-        bootstrap-mode: deferred
   jpa:
+    bootstrap: default
     open-in-view: false
     hibernate:
       ddl-auto: none

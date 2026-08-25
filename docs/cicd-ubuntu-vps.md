@@ -4,7 +4,9 @@ Pipeline `.github/workflows/ci.yml` orqali backend va frontendni tekshiradi. `ma
 
 ## 1. VPS'ni bir marta tayyorlash
 
-Serverda Java 21, Tomcat 10.1+, Nginx, `curl` va `tar` o'rnatilgan bo'lishi kerak. Quyidagi misollarda SSH foydalanuvchisi `deploy`, Tomcat systemd service'i `tomcat10` deb olingan.
+Serverda Java 21, Tomcat 11.0+, Nginx, `curl`, `tar` va PostgreSQL client
+utilitalari (`psql`, `createdb`) o'rnatilgan bo'lishi kerak. Quyidagi misollarda
+SSH foydalanuvchisi `deploy`, Tomcat systemd service'i `tomcat11` deb olingan.
 
 ```bash
 sudo useradd --create-home --shell /bin/bash deploy
@@ -20,8 +22,24 @@ sudo visudo -cf /etc/sudoers.d/scorm-lms-deploy
 
 `/etc/scorm-lms/deploy.conf` ichida Tomcat service nomi va `webapps` manzilini real serverga moslang. Tomcat production environment qiymatlarini repodan tashqaridagi `/etc/scorm-lms/scorm-lms.env` faylidan olishi tavsiya etiladi:
 
+Deploy preflight `APP_ENV_FILE` ichidagi `DB_URL` database nomini
+`EXPECTED_DATABASE_NAME` bilan solishtiradi. Bu LMS'ni tasodifan `qms_queue`
+yoki boshqa tizim bazasiga ulashni bloklaydi. Lokal PostgreSQL ishlatilganda
+`AUTO_CREATE_DATABASE=true` bo'lsa, database yo'q paytda deploy uni mavjud
+`DB_USERNAME` roli egasida avtomatik yaratadi; jadvallarni keyin Flyway
+yaratadi. Login roli xavfsizlik sabab avtomatik yaratilmaydi va bir marta
+qo'lda tayyorlanadi:
+
+```bash
+sudo -u postgres createuser --pwprompt scorm_lms
+```
+
+Rol avvaldan mavjud bo'lsa bu buyruq kerak emas. Remote PostgreSQL uchun
+database provider/server tomonida yaratiladi va `AUTO_CREATE_DATABASE=false`
+qoldiriladi.
+
 ```ini
-# /etc/systemd/system/tomcat10.service.d/scorm-lms.conf
+# /etc/systemd/system/tomcat11.service.d/scorm-lms.conf
 [Service]
 EnvironmentFile=/etc/scorm-lms/scorm-lms.env
 ```
@@ -88,4 +106,3 @@ Deploy davomida:
 3. Oldingi `ROOT.war` backup qilinadi.
 4. Tomcat to'xtatilib, yangi WAR o'rnatiladi va qayta ishga tushiriladi.
 5. Readiness 5 daqiqagacha tekshiriladi; muvaffaqiyatsiz bo'lsa frontend symlinki va WAR avtomatik qaytariladi.
-

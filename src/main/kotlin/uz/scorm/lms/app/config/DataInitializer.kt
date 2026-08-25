@@ -26,7 +26,7 @@ class DataInitializer(
     @param:Value("\${app.seed.student-password:}") private val studentPassword: String
 ) : ApplicationRunner {
 
-    override fun run(args: ApplicationArguments?) {
+    override fun run(args: ApplicationArguments) {
         seedRole("super_admin")
         seedRole("admin")
         seedRole("metodist")

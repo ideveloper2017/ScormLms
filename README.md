@@ -6,7 +6,8 @@ Amaldagi implementatsiya holati va keyingi ishlar [qaror bo'yicha rejada](docs/d
 
 ## Lokal ishga tushirish
 
-Talablar: Java 21+, PostgreSQL va Node.js 22.12+ (yoki 20.19+).
+Talablar: Java 21+, PostgreSQL, tashqi WAR deploy uchun Tomcat 11.0+ va
+Node.js 22.12+ (yoki 20.19+).
 
 1. PostgreSQL'da `scorm_lms` bazasini yarating.
 2. `.env.example` dan kerakli qiymatlarni IDE/terminal environment'iga kiriting. Spring Boot `.env` faylini o'zi avtomatik o'qimaydi.
@@ -32,10 +33,19 @@ Backend uchun majburiy qiymatlar:
 
 - `SPRING_PROFILES_ACTIVE=postgresql-prod`
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
+- `APP_EXPECTED_DATABASE_NAME=scorm_lms` — noto'g'ri yoki boshqa tizim
+  bazasida Flyway migratsiyasi va Hibernate ishga tushishini bloklaydi
 - `JWT_SECRET` — kamida 64 baytlik tasodifiy secret
 - `CORS_ALLOWED_ORIGINS` — aniq HTTPS originlar, wildcard emas
 - `FILE_UPLOAD_DIR`, `SCORM_STORAGE_DIR`, `ASSIGNMENT_STORAGE_DIR`, `COURSE_CONTENT_STORAGE_DIR` va `UAT_PRIVATE_STORAGE_DIR` — backup qilinadigan persistent kataloglar; kurs kontenti va UAT kataloglari public static route orqali berilmaydi
 - `SCORM_SECURE_COOKIE=true`
+
+`postgresql-prod` profilida schema `db/migration` ichidagi Flyway
+migratsiyalari orqali yaratiladi va versiyalanadi; Hibernate esa entity-schema
+mosligini `ddl-auto=validate` bilan tekshiradi. `DataInitializer` standart
+rollarni idempotent seed qiladi; boshlang'ich administrator kerak bo'lsa
+birinchi ishga tushirishda `APP_SEED_ADMIN_PASSWORD` beriladi. Database
+serveridagi database obyektining o'zi deploy preflight orqali yaratiladi.
 
 HEMIS ishlatilsa `HEMIS_HOST`, `HEMIS_ADMIN_LOGIN`, `HEMIS_ADMIN_PASSWORD` ham beriladi. Dastlab `/admin/integrations` ekranida HEMIS guruhlarini lokal guruhlarga mapping qiling; tekshiruvdan keyingina `HEMIS_SYNC_ENABLED=true` bilan davriy worker ochiladi. Interval `HEMIS_SYNC_CRON`, sahifa hajmi `HEMIS_SYNC_PAGE_SIZE` orqali sozlanadi. `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_TEACHER_PASSWORD` va `APP_SEED_STUDENT_PASSWORD` faqat tegishli boshlang'ich foydalanuvchi kerak bo'lganda vaqtincha beriladi; kod ichida standart parol yo'q. Productionda `SWAGGER_ENABLED=false` tavsiya etiladi.
 

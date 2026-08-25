@@ -1,6 +1,6 @@
 package uz.scorm.lms.app.v1.classifier
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -58,7 +58,7 @@ class GeographyClassifierImportServiceTest {
         every { runRepo.findFirstByDeletedFalseOrderByCreatedAtDesc() } answers { runValues.lastOrNull() }
 
         val service = GeographyClassifierImportService(
-            GeographyClassifierDatasetCatalog(ObjectMapper().findAndRegisterModules()),
+            GeographyClassifierDatasetCatalog(jacksonObjectMapper()),
             countryRepo, regionRepo, districtRepo, runRepo, controlRepo, mockk<AuditService>(relaxed = true),
         )
 

@@ -26,6 +26,78 @@ source "$CONFIG_FILE"
 : "${HEALTHCHECK_URL:?HEALTHCHECK_URL is required}"
 : "${DEPLOY_BACKUP_DIR:?DEPLOY_BACKUP_DIR is required}"
 
+APP_ENV_FILE="${APP_ENV_FILE:-/etc/scorm-lms/scorm-lms.env}"
+EXPECTED_DATABASE_NAME="${EXPECTED_DATABASE_NAME:-scorm_lms}"
+AUTO_CREATE_DATABASE="${AUTO_CREATE_DATABASE:-false}"
+
+read_app_env() {
+  local key="$1"
+  local line value
+  line="$(grep -E "^${key}=" "$APP_ENV_FILE" | tail -n 1 || true)"
+  [[ -n "$line" ]] || return 1
+  value="${line#*=}"
+  value="${value%$'\r'}"
+  if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s' "$value"
+}
+
+ensure_application_database() {
+  [[ "$AUTO_CREATE_DATABASE" == "true" || "$AUTO_CREATE_DATABASE" == "false" ]] || \
+    fail "AUTO_CREATE_DATABASE must be true or false"
+  [[ -r "$APP_ENV_FILE" ]] || fail "$APP_ENV_FILE is missing or unreadable"
+  [[ "$EXPECTED_DATABASE_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || \
+    fail "Unsafe EXPECTED_DATABASE_NAME"
+
+  local db_url db_user host port database
+  db_url="$(read_app_env DB_URL)" || fail "DB_URL is missing in $APP_ENV_FILE"
+  db_user="$(read_app_env DB_USERNAME)" || fail "DB_USERNAME is missing in $APP_ENV_FILE"
+  [[ "$db_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || fail "Unsafe DB_USERNAME"
+
+  if [[ "$db_url" =~ ^jdbc:postgresql://([^/:?]+)(:([0-9]+))?/([A-Za-z_][A-Za-z0-9_]*)(\?.*)?$ ]]; then
+    host="${BASH_REMATCH[1]}"
+    port="${BASH_REMATCH[3]:-5432}"
+    database="${BASH_REMATCH[4]}"
+  else
+    fail "DB_URL must use jdbc:postgresql://host:port/database format"
+  fi
+
+  [[ "$database" == "$EXPECTED_DATABASE_NAME" ]] || \
+    fail "Refusing database '$database'; expected '$EXPECTED_DATABASE_NAME'. Fix DB_URL in $APP_ENV_FILE"
+
+  if [[ "$host" != "localhost" && "$host" != "127.0.0.1" ]]; then
+    [[ "$AUTO_CREATE_DATABASE" == "false" ]] || \
+      fail "Automatic database creation is allowed only for local PostgreSQL; provision '$database' on '$host' manually"
+    log "Remote PostgreSQL detected; database creation preflight skipped"
+    return
+  fi
+
+  command -v runuser >/dev/null || fail "runuser is required for PostgreSQL provisioning"
+  command -v psql >/dev/null || fail "psql is required for PostgreSQL provisioning"
+  command -v createdb >/dev/null || fail "createdb is required for PostgreSQL provisioning"
+
+  local role_exists database_exists
+  role_exists="$(runuser -u postgres -- psql --no-psqlrc --port "$port" \
+    --dbname postgres --tuples-only --no-align --set=role="$db_user" \
+    --command="SELECT 1 FROM pg_roles WHERE rolname = :'role'" | tr -d '[:space:]')"
+  [[ "$role_exists" == "1" ]] || \
+    fail "PostgreSQL role '$db_user' does not exist; create it once with: sudo -u postgres createuser --pwprompt $db_user"
+
+  database_exists="$(runuser -u postgres -- psql --no-psqlrc --port "$port" \
+    --dbname postgres --tuples-only --no-align --set=db="$database" \
+    --command="SELECT 1 FROM pg_database WHERE datname = :'db'" | tr -d '[:space:]')"
+  if [[ "$database_exists" == "1" ]]; then
+    log "PostgreSQL database '$database' is ready"
+    return
+  fi
+
+  [[ "$AUTO_CREATE_DATABASE" == "true" ]] || \
+    fail "PostgreSQL database '$database' does not exist and AUTO_CREATE_DATABASE=false"
+  log "Creating PostgreSQL database '$database' owned by '$db_user'"
+  runuser -u postgres -- createdb --port "$port" --owner "$db_user" "$database"
+}
+
 readonly RELEASE_ID="$1"
 [[ "$RELEASE_ID" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]] || fail "Invalid release id"
 
@@ -52,6 +124,8 @@ readonly BACKUP_DIR="$DEPLOY_BACKUP_DIR/$RELEASE_ID"
 
 cd "$INCOMING_DIR"
 sha256sum -c checksums.sha256
+
+ensure_application_database
 
 install -d -m 755 "$RELEASES_DIR"
 install -d -m 700 "$BACKUP_DIR"

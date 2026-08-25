@@ -1,6 +1,6 @@
 package uz.scorm.lms.app.v1.hemis.sync.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Async
 import org.springframework.scheduling.annotation.Scheduled

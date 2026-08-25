@@ -97,7 +97,7 @@ class GraduationCertificateController(
     fun getStudentCertificate(
         @PathVariable enrollmentId: Long,
         authentication: Authentication,
-    ): ResponseEntity<StudentCertificateDto?> {
+    ): ResponseEntity<StudentCertificateDto> {
         val user = authentication.principal as CustomUserDetails
         val result = certificateService.getStudentCertificate(enrollmentId, user.userId)
         return if (result != null) {

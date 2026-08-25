@@ -1,13 +1,13 @@
 package uz.scorm.lms.app.v1.classifier
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import uz.scorm.lms.app.v1.classifier.service.GeographyClassifierDatasetCatalog
 
 class GeographyClassifierDatasetCatalogTest {
-    private val catalog = GeographyClassifierDatasetCatalog(ObjectMapper().findAndRegisterModules())
+    private val catalog = GeographyClassifierDatasetCatalog(jacksonObjectMapper())
 
     @Test
     fun `bundled official dataset has fixed version hash and complete classifier levels`() {

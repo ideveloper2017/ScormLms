@@ -2,7 +2,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.2.21'
     id 'org.jetbrains.kotlin.plugin.spring' version '2.2.21'
     id 'war'
-    id 'org.springframework.boot' version '3.5.15'
+    id 'org.springframework.boot' version '4.1.1'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'org.jetbrains.kotlin.plugin.jpa' version '2.2.21'
     id "org.jetbrains.kotlin.kapt" version '2.2.21'
@@ -11,10 +11,6 @@ plugins {
 group = 'uz.scorm.lms.app'
 version = '0.0.1-SNAPSHOT'
 description = 'ScromLmsProjects'
-
-// Spring Boot 3.5.15 BOM'dagi versiyalardan keyin chiqqan xavfsizlik patchlari.
-ext['jackson-bom.version'] = '2.21.5'
-ext['netty.version'] = '4.1.136.Final'
 
 java {
     toolchain {
@@ -35,17 +31,17 @@ configurations {
 dependencies {
     // Spring Boot Starters
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     // MUHIM: tashqi Tomcat'ga WAR deploy qilinadi, shuning uchun embedded Tomcat
     // WAR ichiga (WEB-INF/lib) qo'shilmasligi kerak — aks holda tashqi Tomcat bilan
     // to'qnashadi va Spring Boot jimgina ishga tushmaydi. providedRuntime shu uchun.
-    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat-runtime'
     // JWT
 
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
@@ -57,12 +53,12 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
     
     // Database
-    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql:42.7.13'
 
     // Kotlin
-    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+    implementation 'tools.jackson.module:jackson-module-kotlin'
     implementation 'org.jetbrains.kotlin:kotlin-reflect:2.2.21'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.21'
     
@@ -79,7 +75,7 @@ dependencies {
     implementation 'org.bytedeco:opencv-platform:4.9.0-1.5.10'
     
     // Documentation
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
     
     // Logging
     implementation 'io.github.microutils:kotlin-logging-jvm:3.0.5'
@@ -89,7 +85,7 @@ dependencies {
     
 
     // Testing
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test-classic'
     testRuntimeOnly 'com.h2database:h2'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.testcontainers:postgresql:1.19.3'
@@ -154,7 +150,6 @@ tasks.withType(JavaCompile) {
 
 bootJar {
     archiveFileName = 'scorm-lms.jar'
-    launchScript()
 }
 
 // Tashqi Tomcat'ga deploy uchun WAR'ni ROOT.war qilib yasaymiz, shunda

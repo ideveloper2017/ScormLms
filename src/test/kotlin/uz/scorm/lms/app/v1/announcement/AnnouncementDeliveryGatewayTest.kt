@@ -1,6 +1,6 @@
 package uz.scorm.lms.app.v1.announcement
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -41,7 +41,7 @@ class AnnouncementDeliveryGatewayTest {
             ).also { it.id = 3 }
             val gateway = DefaultAnnouncementDeliveryGateway(
                 mock(SimpMessagingTemplate::class.java),
-                ObjectMapper().findAndRegisterModules(),
+                jacksonObjectMapper(),
                 "http://127.0.0.1:${server.address.port}/email",
                 "secret-token",
                 "",
