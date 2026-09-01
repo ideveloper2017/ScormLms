@@ -1,6 +1,7 @@
 package uz.scorm.lms.app.v1.courses.dto
 
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
+import uz.scorm.lms.app.v1.courses.model.CourseExpiryPeriodType
 import uz.scorm.lms.app.v1.courses.model.CourseContentType
 import uz.scorm.lms.app.v1.courses.model.ContentReviewDecision
 import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
@@ -10,7 +11,10 @@ import java.time.LocalDate
 data class CourseDto(
     val id: Long,
     val title: String,
+    val shortDescription: String?,
     val description: String,
+    val categoryId: Long?,
+    val categoryName: String?,
     val subjectName: String?,
     val subjectId: Long?,
     val programId: Long?,
@@ -27,6 +31,18 @@ data class CourseDto(
     val endDate: LocalDate?,
     val language: String?,
     val level: String?,
+    val paid: Boolean,
+    val price: Double?,
+    val discountEnabled: Boolean,
+    val discountedPrice: Double?,
+    val expiryPeriodType: String,
+    val dripContent: Boolean,
+    val thumbnailAvailable: Boolean,
+    val requirements: String?,
+    val outcomes: String?,
+    val faqs: String?,
+    val metaKeywords: String?,
+    val metaDescription: String?,
     val ownerUserId: Long,
     val students: Long,
     val progress: Int = 0,
@@ -39,6 +55,7 @@ data class CourseDto(
 
 data class CourseCreateRequest(
     val title: String,
+    val shortDescription: String? = null,
     val description: String? = null,
     val subjectName: String? = null,
     val subjectId: Long? = null,
@@ -48,10 +65,22 @@ data class CourseCreateRequest(
     val endDate: LocalDate? = null,
     val language: String? = "uz",
     val level: String? = null,
+    val paid: Boolean = false,
+    val price: Double? = null,
+    val discountEnabled: Boolean = false,
+    val discountedPrice: Double? = null,
+    val expiryPeriodType: CourseExpiryPeriodType = CourseExpiryPeriodType.LIFETIME,
+    val dripContent: Boolean = false,
+    val requirements: String? = null,
+    val outcomes: String? = null,
+    val faqs: String? = null,
+    val metaKeywords: String? = null,
+    val metaDescription: String? = null,
 )
 
 data class CourseUpdateRequest(
     val title: String? = null,
+    val shortDescription: String? = null,
     val description: String? = null,
     val subjectName: String? = null,
     val subjectId: Long? = null,
@@ -60,7 +89,20 @@ data class CourseUpdateRequest(
     val endDate: LocalDate? = null,
     val language: String? = null,
     val level: String? = null,
+    val paid: Boolean? = null,
+    val price: Double? = null,
+    val discountEnabled: Boolean? = null,
+    val discountedPrice: Double? = null,
+    val expiryPeriodType: CourseExpiryPeriodType? = null,
+    val dripContent: Boolean? = null,
+    val requirements: String? = null,
+    val outcomes: String? = null,
+    val faqs: String? = null,
+    val metaKeywords: String? = null,
+    val metaDescription: String? = null,
 )
+
+data class CourseThumbnailDto(val url: String)
 
 data class CourseStatusRequest(
     val status: CourseStatus,
@@ -173,6 +215,10 @@ data class CourseContentRequest(
     val validUntil: LocalDate? = null,
 )
 
+data class CourseContentOrderRequest(
+    val contentIds: List<Long>,
+)
+
 data class CourseContentRevisionDto(
     val id: Long,
     val contentId: Long,
@@ -223,6 +269,11 @@ data class SubjectMaterialRequest(
 data class SubjectMaterialSubjectDto(
     val id: Long,
     val name: String,
+    val code: String?,
+    val categoryId: Long?,
+    val categoryName: String?,
+    val programName: String?,
+    val programLanguage: String?,
 )
 
 data class SubjectMaterialDto(

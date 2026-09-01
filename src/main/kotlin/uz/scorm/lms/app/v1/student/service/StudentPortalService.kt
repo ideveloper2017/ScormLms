@@ -224,7 +224,36 @@ class StudentPortalService(
     // ─── Activity ────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getActivity(user: User): List<StudentActivityItemDto> = emptyList()
+    fun getActivity(user: User): List<StudentActivityItemDto> {
+        val userId = requireNotNull(user.id)
+        val assignmentActivity = assignmentService.studentAssignments(userId)
+            .filter { it.status == "submitted" || it.status == "graded" }
+            .mapNotNull { assignment ->
+                assignment.submittedAt?.let { submittedAt ->
+                    StudentActivityItemDto(
+                        id = "assignment-${assignment.id}",
+                        type = if (assignment.status == "graded") "grade" else "assignment",
+                        title = if (assignment.status == "graded") "Topshiriq baholandi" else "Topshiriq yuborildi",
+                        description = "${assignment.courseName}: ${assignment.title}",
+                        timestamp = submittedAt,
+                    )
+                }
+            }
+        val testActivity = quizService.studentQuizzes(userId)
+            .filter { it.status == "completed" }
+            .map { test ->
+                StudentActivityItemDto(
+                    id = "test-${test.id}",
+                    type = "test",
+                    title = "Test yakunlandi",
+                    description = "${test.courseName}: ${test.title}${test.score?.let { " — $it ball" }.orEmpty()}",
+                    timestamp = "${test.date}T${test.startTime}:00Z",
+                )
+            }
+        return (assignmentActivity + testActivity)
+            .sortedByDescending(StudentActivityItemDto::timestamp)
+            .take(10)
+    }
 
     // ─── Notification summary ─────────────────────────────────────────────────
 
@@ -315,6 +344,12 @@ class StudentPortalService(
         gender           = s.gender,
         citizenship      = s.citizenship,
         citizenshipCountryId = s.citizenshipCountryId,
+        passportType     = s.passportType,
+        passportSeries   = s.passportSeries,
+        passportNumber   = s.passportNumber,
+        passportIssuedDate = s.passportIssuedDate,
+        passportExpiryDate = s.passportExpiryDate,
+        passportIssuedBy = s.passportIssuedBy,
         photoUrl         = s.photoUrl,
         phoneNumber      = s.phoneNumber,
         email            = s.email,
@@ -329,14 +364,22 @@ class StudentPortalService(
         currentDistrictId = s.currentDistrictId,
         currentAddress   = s.currentAddress,
         studentNumber    = s.studentNumber,
+        facultyId        = s.facultyId,
+        departmentId     = s.departmentId,
+        programId        = s.programId,
         degreeLevel      = s.degreeLevel,
         educationForm    = s.educationForm,
         educationLanguage= s.educationLanguage,
         courseNumber     = s.courseNumber,
+        semesterNumber   = s.semesterNumber,
         groupId          = s.groupId,
         academicYear     = s.academicYear,
+        admissionDate    = s.admissionDate,
+        admissionOrderNumber = s.admissionOrderNumber,
         studentStatus    = s.studentStatus,
         paymentType      = s.paymentType,
+        contractNumber   = s.contractNumber,
+        contractAmount   = s.contractAmount,
         username         = s.user.username,
         lastLoginAt      = s.user.lastLoginAt,
     )

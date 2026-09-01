@@ -30,8 +30,10 @@ import uz.scorm.lms.app.v1.courses.dto.CourseModuleRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentDto
 import uz.scorm.lms.app.v1.courses.dto.CourseContentAssetDto
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRequest
+import uz.scorm.lms.app.v1.courses.dto.CourseContentOrderRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseContentRevisionDto
 import uz.scorm.lms.app.v1.courses.dto.CourseContentReviewDto
+import uz.scorm.lms.app.v1.courses.dto.CourseThumbnailDto
 import uz.scorm.lms.app.v1.courses.dto.LearningItemStatusRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseStatusRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseUpdateRequest
@@ -41,6 +43,7 @@ import uz.scorm.lms.app.v1.courses.service.CourseModuleService
 import uz.scorm.lms.app.v1.courses.service.CourseContentService
 import uz.scorm.lms.app.v1.courses.service.CourseContentAssetService
 import uz.scorm.lms.app.v1.courses.service.CourseContentReviewService
+import uz.scorm.lms.app.v1.courses.service.CourseThumbnailService
 import uz.scorm.lms.app.v1.user.model.User
 import java.nio.charset.StandardCharsets
 
@@ -53,6 +56,7 @@ class CourseController(
     private val contentService: CourseContentService,
     private val contentAssetService: CourseContentAssetService,
     private val contentReviewService: CourseContentReviewService,
+    private val thumbnailService: CourseThumbnailService,
 ) {
     @GetMapping("/owned")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
@@ -237,6 +241,36 @@ class CourseController(
         )
     )
 
+    @PostMapping("/{courseId}/thumbnail", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun uploadThumbnail(
+        @PathVariable courseId: Long,
+        @RequestParam("file") file: MultipartFile,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<CourseThumbnailDto>> = ResponseEntity.status(HttpStatus.CREATED).body(
+        ApiResponse.success(
+            "Kurs rasmi saqlandi",
+            thumbnailService.upload(courseId, file, requireNotNull(user.id), mayManageAll(authentication)),
+        )
+    )
+
+    @GetMapping("/{courseId}/thumbnail")
+    @PreAuthorize("hasAuthority('COURSE_READ')")
+    fun downloadThumbnail(
+        @PathVariable courseId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<InputStreamResource> {
+        val download = thumbnailService.download(courseId, requireNotNull(user.id), mayManageAll(authentication))
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore())
+            .header("X-Content-Type-Options", "nosniff")
+            .contentType(MediaType.parseMediaType(download.mediaType))
+            .contentLength(download.sizeBytes)
+            .body(download.resource)
+    }
+
     @PostMapping("/{courseId}/modules/{moduleId}/contents")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun createContent(
@@ -247,6 +281,25 @@ class CourseController(
         authentication: Authentication,
     ): ResponseEntity<ApiResponse<CourseContentDto>> = ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
         contentService.create(courseId, moduleId, request, requireNotNull(user.id), mayManageAll(authentication))
+    ))
+
+    @PatchMapping("/{courseId}/modules/{moduleId}/contents/order")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun reorderContents(
+        @PathVariable courseId: Long,
+        @PathVariable moduleId: Long,
+        @RequestBody request: CourseContentOrderRequest,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<List<CourseContentDto>>> = ResponseEntity.ok(ApiResponse.success(
+        "Darslar tartibi saqlandi",
+        contentService.reorder(
+            courseId,
+            moduleId,
+            request.contentIds,
+            requireNotNull(user.id),
+            mayManageAll(authentication),
+        ),
     ))
 
     @PostMapping("/{courseId}/modules/{moduleId}/materials/{materialId}")

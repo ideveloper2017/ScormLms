@@ -16,6 +16,7 @@ import HemisCallbackPage from "@/pages/auth/hemis-callback";
 import { AdminDashboard } from "@/pages/admin-dashboard";
 import { InstructorDashboard } from "@/pages/instructor-dashboard";
 import { StudentDashboard } from "@/pages/student-dashboard";
+import { StudentCourses } from "@/pages/student/courses";
 import { ProctorDashboard } from "@/pages/proctor-dashboard";
 import { MonitorDashboard } from "@/pages/monitor-dashboard";
 
@@ -218,7 +219,7 @@ function App() {
 
         {/* ── /student/* ───────────────────────────────────────────────────── */}
         <Route path="/student/dashboard"     element={<P roles={[R_STU]}><StudentDashboard /></P>} />
-        <Route path="/student/courses"       element={<P roles={[R_STU]}><Courses /></P>} />
+        <Route path="/student/courses"       element={<P roles={[R_STU]}><StudentCourses /></P>} />
         <Route path="/student/study-plan"    element={<P roles={[R_STU]}><StudentStudyPlan /></P>} />
         <Route path="/student/orientation"   element={<P roles={[R_STU]}><StudentOrientation /></P>} />
         <Route path="/student/practice"      element={<P roles={[R_STU]}><StudentPractice /></P>} />
@@ -236,7 +237,7 @@ function App() {
         <Route path="/student/attendance"    element={<P roles={[R_STU]}><StudentAttendance /></P>} />
         <Route path="/student/messages"      element={<P roles={[R_STU]}><Communication /></P>} />
         <Route path="/student/notifications" element={<P roles={[R_STU]}><StudentNotifications /></P>} />
-        <Route path="/student/calendar"      element={<P roles={[R_STU]}><AdminCalendar /></P>} />
+        <Route path="/student/calendar"      element={<P roles={[R_STU]}><StudentSchedule /></P>} />
         <Route path="/student/profile"       element={<P roles={[R_STU]}><StudentCabinet /></P>} />
         <Route path="/student/surveys"       element={<P roles={[R_STU]}><Surveys /></P>} />
 

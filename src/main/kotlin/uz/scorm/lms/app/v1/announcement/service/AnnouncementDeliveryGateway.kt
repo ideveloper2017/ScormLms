@@ -36,7 +36,12 @@ class DefaultAnnouncementDeliveryGateway(
     @param:Value("\${app.announcement.push-webhook-token:}") private val pushWebhookToken: String,
 ) : AnnouncementDeliveryGateway {
     private val log = KotlinLogging.logger {}
-    private val httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
+    // Some Windows/JDK combinations cannot initialize the NIO selector during
+    // application startup.  Webhook delivery is optional, so create the client
+    // only when an EMAIL/PUSH provider is actually configured and invoked.
+    private val httpClient: HttpClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
+    }
 
     override fun dispatch(
         channel: AnnouncementChannel,

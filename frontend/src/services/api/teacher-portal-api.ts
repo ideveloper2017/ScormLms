@@ -26,7 +26,10 @@ export interface TeacherDashboardStats {
 export interface TeacherCourse {
   id: string;
   title: string;
+  shortDescription?: string | null;
   description?: string;
+  categoryId?: number | null;
+  categoryName?: string | null;
   subjectName?: string | null;
   subjectId?: number | null;
   programId?: number | null;
@@ -45,10 +48,24 @@ export interface TeacherCourse {
   endDate?: string;
   avgScore?: number;
   language?: string | null;
+  level?: string | null;
+  paid: boolean;
+  price?: number | null;
+  discountEnabled: boolean;
+  discountedPrice?: number | null;
+  expiryPeriodType: 'lifetime' | 'limited_time';
+  dripContent: boolean;
+  thumbnailAvailable: boolean;
+  requirements?: string | null;
+  outcomes?: string | null;
+  faqs?: string | null;
+  metaKeywords?: string | null;
+  metaDescription?: string | null;
 }
 
 export interface CourseCreatePayload {
   title: string;
+  shortDescription?: string;
   description?: string;
   subjectName?: string;
   subjectId?: number;
@@ -58,6 +75,17 @@ export interface CourseCreatePayload {
   endDate?: string;
   language?: string;
   level?: string;
+  paid?: boolean;
+  price?: number;
+  discountEnabled?: boolean;
+  discountedPrice?: number;
+  expiryPeriodType?: 'LIFETIME' | 'LIMITED_TIME';
+  dripContent?: boolean;
+  requirements?: string;
+  outcomes?: string;
+  faqs?: string;
+  metaKeywords?: string;
+  metaDescription?: string;
 }
 
 export interface CourseEnrollment {
@@ -172,6 +200,11 @@ export interface SubjectMaterialPayload {
 export interface SubjectMaterialSubject {
   id: number;
   name: string;
+  code?: string | null;
+  categoryId?: number | null;
+  categoryName?: string | null;
+  programName?: string | null;
+  programLanguage?: string | null;
 }
 
 export interface ContentCompatibilityIssue {
@@ -538,6 +571,21 @@ export const teacherPortalApi = {
     const item = dataOf(await api.patch<ApiResponse<Omit<TeacherCourse, 'id'> & { id: number }>>(`/courses/${courseId}/status`, { status }), 'Kurs holati o\'zgarmadi');
     return { ...item, id: String(item.id) };
   },
+  uploadCourseThumbnail: async (courseId: string, file: File): Promise<{ url: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+    return dataOf(await api.post<ApiResponse<{ url: string }>>(`/courses/${courseId}/thumbnail`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60_000,
+    }), 'Kurs rasmi yuklanmadi');
+  },
+  downloadCourseThumbnail: async (courseId: string): Promise<Blob> => {
+    const response = await api.get(`/courses/${courseId}/thumbnail`, {
+      responseType: 'blob',
+      timeout: 60_000,
+    });
+    return response.data as Blob;
+  },
   deleteCourse: async (courseId: string): Promise<void> => {
     await api.delete(`/courses/${courseId}`);
   },
@@ -614,6 +662,12 @@ export const teacherPortalApi = {
   },
   createContent: async (courseId: string, moduleId: number, payload: CourseContentPayload): Promise<CourseContent> => {
     return dataOf(await api.post<ApiResponse<CourseContent>>(`/courses/${courseId}/modules/${moduleId}/contents`, payload), 'Kontent yaratilmadi');
+  },
+  reorderContents: async (courseId: string, moduleId: number, contentIds: number[]): Promise<CourseContent[]> => {
+    return dataOf(
+      await api.patch<ApiResponse<CourseContent[]>>(`/courses/${courseId}/modules/${moduleId}/contents/order`, { contentIds }),
+      'Darslar tartibi saqlanmadi',
+    );
   },
   updateContent: async (courseId: string, contentId: number, payload: CourseContentPayload): Promise<CourseContent> => {
     return dataOf(await api.put<ApiResponse<CourseContent>>(`/courses/${courseId}/contents/${contentId}`, payload), 'Kontent yangilanmadi');

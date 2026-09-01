@@ -6,6 +6,7 @@ import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.core.env.Environment
 import org.springframework.core.env.Profiles
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import uz.scorm.lms.app.v1.role.repository.RoleRepository
 import uz.scorm.lms.app.v1.role.service.RoleService
@@ -15,6 +16,7 @@ import uz.scorm.lms.app.v1.user.service.UserService
 private val logger = KotlinLogging.logger {}
 
 @Component
+@Order(0)
 class DataInitializer(
     private val userService: UserService,
     private val roleService: RoleService,

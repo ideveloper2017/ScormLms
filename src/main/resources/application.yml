@@ -43,10 +43,20 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 0
+    # Faqat Flyway history'si yo'q eski Hibernate schema uchun. Productionda
+    # deploy preflight non-empty schema va baseline sozlamasini alohida tekshiradi.
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${FLYWAY_BASELINE_VERSION:0}
     validate-on-migrate: true
+    validate-migration-naming: true
+    fail-on-missing-locations: true
     out-of-order: false
+    clean-disabled: true
+    # VPS boot paytida PostgreSQL/Tomcat bir vaqtda ko'tarilsa yoki oldingi
+    # instance Flyway lock'ini hali bo'shatmagan bo'lsa, darhol yiqilmasin.
+    connect-retries: ${FLYWAY_CONNECT_RETRIES:10}
+    connect-retries-interval: ${FLYWAY_CONNECT_RETRIES_INTERVAL:5s}
+    lock-retry-count: ${FLYWAY_LOCK_RETRY_COUNT:120}
   # HEMIS OAuth2 client faqat `hemis-oauth` profili bilan yoqiladi.
   # Endpoint va credentiallar application-hemis-oauth.yml orqali olinadi.
 
@@ -75,6 +85,9 @@ springdoc:
 
 
 app:
+  demo:
+    # Faqat aniq yoqilganda bog'langan demo tuzilma, kurs va darslar yaratiladi.
+    enabled: ${APP_DEMO_DATA_ENABLED:true}
   seed:
     admin-password: ${APP_SEED_ADMIN_PASSWORD:}
     teacher-password: ${APP_SEED_TEACHER_PASSWORD:}

@@ -48,6 +48,16 @@ describe('teacherPortalApi content provenance', () => {
     expect(api.post).toHaveBeenCalledWith('/courses/3/modules/5/contents', payload);
   });
 
+  it("section ichidagi darslar tartibini saqlaydi", async () => {
+    const reordered = [{ id: 11, position: 1 }, { id: 9, position: 2 }];
+    vi.mocked(api.patch).mockResolvedValue({ data: { success: true, data: reordered } });
+
+    await expect(teacherPortalApi.reorderContents('3', 5, [11, 9])).resolves.toEqual(reordered);
+    expect(api.patch).toHaveBeenCalledWith('/courses/3/modules/5/contents/order', {
+      contentIds: [11, 9],
+    });
+  });
+
   it('private kurs faylini multipart orqali yuklaydi', async () => {
     const file = new File(['%PDF-test'], 'mavzu.pdf', { type: 'application/pdf' });
     const asset = { id: 44, courseId: 3, originalFileName: file.name, mediaType: file.type, sizeBytes: file.size, sha256: 'abc' };
@@ -58,6 +68,18 @@ describe('teacherPortalApi content provenance', () => {
     expect(url).toBe('/courses/3/assets');
     expect((body as FormData).get('file')).toBe(file);
     expect(config).toMatchObject({ headers: { 'Content-Type': 'multipart/form-data' }, timeout: 180_000 });
+  });
+
+  it('kurs thumbnail rasmini multipart orqali yuklaydi va blob sifatida oladi', async () => {
+    const file = new File(['png'], 'course.png', { type: 'image/png' });
+    const blob = new Blob(['png'], { type: 'image/png' });
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true, data: { url: '/api/v1/courses/3/thumbnail' } } });
+    vi.mocked(api.get).mockResolvedValueOnce({ data: blob });
+
+    await expect(teacherPortalApi.uploadCourseThumbnail('3', file)).resolves.toEqual({ url: '/api/v1/courses/3/thumbnail' });
+    await expect(teacherPortalApi.downloadCourseThumbnail('3')).resolves.toBe(blob);
+    expect(api.post).toHaveBeenCalledWith('/courses/3/thumbnail', expect.any(FormData), expect.objectContaining({ timeout: 60_000 }));
+    expect(api.get).toHaveBeenCalledWith('/courses/3/thumbnail', { responseType: 'blob', timeout: 60_000 });
   });
 
   it('himoyalangan kontent faylini blob sifatida yuklaydi', async () => {

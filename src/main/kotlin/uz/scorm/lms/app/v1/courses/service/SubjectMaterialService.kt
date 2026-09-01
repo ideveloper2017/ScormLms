@@ -47,7 +47,17 @@ class SubjectMaterialService(
             .filter { !it.deleted && it.active }
             .filter { allowedIds == null || it.id in allowedIds }
             .sortedBy { it.name.lowercase() }
-            .map { SubjectMaterialSubjectDto(requireNotNull(it.id), it.name) }
+            .map { subject ->
+                SubjectMaterialSubjectDto(
+                    id = requireNotNull(subject.id),
+                    name = subject.name,
+                    code = subject.code,
+                    categoryId = subject.subjectCategory?.id,
+                    categoryName = subject.subjectCategory?.name,
+                    programName = subject.program?.name,
+                    programLanguage = subject.program?.educationLanguage,
+                )
+            }
             .toList()
     }
 

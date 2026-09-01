@@ -1,7 +1,9 @@
 package uz.scorm.lms.app.migration
 
 import org.flywaydb.core.Flyway
+import org.flywaydb.core.api.MigrationVersion
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.testcontainers.containers.PostgreSQLContainer
@@ -27,7 +29,7 @@ class PostgresFlywayMigrationTest {
             .load()
 
         val result = flyway.migrate()
-        assertEquals("70", result.targetSchemaVersion)
+        assertEquals("71", result.targetSchemaVersion)
         flyway.validate()
 
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
@@ -143,6 +145,7 @@ class PostgresFlywayMigrationTest {
                 }
             }
             assertTrue(courseColumns.contains("subject_id"))
+            assertTrue(courseColumns.containsAll(setOf("expiry_period_type", "drip_content")))
             val subjectColumns = buildSet {
                 connection.metaData.getColumns(null, "public", "subjects", null).use { rows ->
                     while (rows.next()) add(rows.getString("COLUMN_NAME").lowercase())
@@ -157,4 +160,48 @@ class PostgresFlywayMigrationTest {
             assertTrue(programColumns.containsAll(setOf("full_time_available", "full_time_basis_reference")))
         }
     }
+
+    @Test
+    fun `V70 production sxemasi V71 ga xavfsiz yangilanadi`() {
+        val schema = "flyway_upgrade_v70_v71"
+        DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE SCHEMA IF NOT EXISTS $schema")
+            }
+        }
+
+        val beforeUpgrade = Flyway.configure()
+            .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+            .locations("classpath:db/migration")
+            .schemas(schema)
+            .defaultSchema(schema)
+            .baselineOnMigrate(false)
+            .target(MigrationVersion.fromVersion("70"))
+            .load()
+
+        assertEquals("70", beforeUpgrade.migrate().targetSchemaVersion)
+        assertFalse(courseColumns(schema).contains("expiry_period_type"))
+        assertFalse(courseColumns(schema).contains("drip_content"))
+
+        val afterUpgrade = Flyway.configure()
+            .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+            .locations("classpath:db/migration")
+            .schemas(schema)
+            .defaultSchema(schema)
+            .baselineOnMigrate(false)
+            .load()
+
+        assertEquals("71", afterUpgrade.migrate().targetSchemaVersion)
+        afterUpgrade.validate()
+        assertTrue(courseColumns(schema).containsAll(setOf("expiry_period_type", "drip_content")))
+    }
+
+    private fun courseColumns(schema: String): Set<String> =
+        DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
+            buildSet {
+                connection.metaData.getColumns(null, schema, "courses", null).use { rows ->
+                    while (rows.next()) add(rows.getString("COLUMN_NAME").lowercase())
+                }
+            }
+        }
 }

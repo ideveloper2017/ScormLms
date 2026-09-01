@@ -1,84 +1,65 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  User, Mail, Phone, Calendar, MapPin, Edit, Shield,
-  Award, BookOpen, Clock, Target, Activity, Bell, Lock,
-  Eye, Download, Star, TrendingUp, CheckCircle, GraduationCap,
-  FileText, Video, BarChart3, Plus, CreditCard, Home, Building2,
+  Activity, AlertTriangle, Bell, BookOpen, CheckCircle2, CreditCard, Edit, GraduationCap,
+  Loader2, Lock, MapPin, Phone, RefreshCw, Save, Shield, User,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
-import { Button } from '@/components/ui/button.tsx';
-import { Input } from '@/components/ui/input.tsx';
-import { Label } from '@/components/ui/label.tsx';
-import { Badge } from '@/components/ui/badge.tsx';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar.tsx';
-import { Progress } from '@/components/ui/progress.tsx';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
-import { Switch } from '@/components/ui/switch.tsx';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select.tsx';
-import { Separator } from '@/components/ui/separator.tsx';
-import { useToast } from '@/hooks/use-toast.ts';
-import { getMyProfile, updateMyProfile } from '@/lib/student-portal-api';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useDashboardStats, useRecentActivity } from '@/hooks/dashboard/useDashboard';
+import { useToast } from '@/hooks/use-toast';
 import { listDistricts, listRegions } from '@/lib/classifier-api';
 import { qk } from '@/lib/query-keys';
+import { changeMyPassword, getMyProfile, updateMyProfile } from '@/lib/student-portal-api';
 import type { UpdateStudentProfileRequest } from '@/types/student.types';
 
-// ── Static (kelajakda backenddan keladi) ──────────────────────────────────────
-const STATIC = {
-  profileCompletion: 85,
-  learningStats: { totalHours: 120, thisWeekHours: 15, avgSessionTime: 45, streakDays: 12 },
-  notifications:    { email: true,  push: true, sms: false },
-  privacy:          { profileVisible: true, showProgress: true, showAchievements: true },
-  learning:         { autoplay: true, subtitles: true, playbackSpeed: '1.0' },
-};
-
-const recentActivities = [
-  { id: 1, title: 'Darsni yakunladingiz',  description: 'JavaScript Asoslari - Dars 7',   timestamp: '2 soat oldin',  icon: CheckCircle,    color: 'text-green-600'  },
-  { id: 2, title: 'Topshiriq yuborildi',   description: 'React Components loyihasi',        timestamp: '1 kun oldin',   icon: FileText,       color: 'text-blue-600'   },
-  { id: 3, title: 'Imtihon topshirildi',   description: 'HTML/CSS yakuniy test - 95 ball',  timestamp: '3 kun oldin',   icon: GraduationCap,  color: 'text-purple-600' },
-  { id: 4, title: 'Yangi yutuq',           description: 'JavaScript Master unvoni olindi',  timestamp: '1 hafta oldin', icon: Award,          color: 'text-yellow-600' },
-];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const GENDER_LABEL:  Record<string, string> = { MALE: 'Erkak', FEMALE: 'Ayol' };
-const DEGREE_LABEL:  Record<string, string> = { BACHELOR: 'Bakalavr', MASTER: 'Magistr', PHD: 'Doktorantura', ASSOCIATE: 'Texnikum' };
-const EFORM_LABEL:   Record<string, string> = { FULL_TIME: 'Kunduzgi', PART_TIME: 'Sirtqi', DISTANCE: 'Masofaviy', EVENING: 'Kechki' };
+const GENDER_LABEL: Record<string, string> = { MALE: 'Erkak', FEMALE: 'Ayol' };
+const DEGREE_LABEL: Record<string, string> = { BACHELOR: 'Bakalavr', MASTER: 'Magistr', PHD: 'Doktorantura', ASSOCIATE: 'Texnikum' };
+const EFORM_LABEL: Record<string, string> = { FULL_TIME: 'Kunduzgi', PART_TIME: 'Sirtqi', DISTANCE: 'Masofaviy', EVENING: 'Kechki' };
 const PAYMENT_LABEL: Record<string, string> = { CONTRACT: 'Kontrakt', GRANT: 'Grant' };
-const STATUS_STYLE:  Record<string, string> = {
-  ACTIVE:    'bg-green-100 text-green-800',
-  SUSPENDED: 'bg-yellow-100 text-yellow-800',
-  EXPELLED:  'bg-red-100 text-red-800',
-  GRADUATED: 'bg-blue-100 text-blue-800',
-};
-const STATUS_LABEL: Record<string, string> = {
-  ACTIVE: 'Faol', SUSPENDED: 'To\'xtatilgan', EXPELLED: 'Chetlatilgan', GRADUATED: 'Bitiruvchi',
-};
+const STATUS_LABEL: Record<string, string> = { REGISTERED: 'Ro‘yxatga olingan', ACTIVE: 'Faol', SUSPENDED: 'To‘xtatilgan', EXPELLED: 'Chetlatilgan', GRADUATED: 'Bitirgan' };
 
-function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
-  return (
-    <div className="flex justify-between items-center py-1.5">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value ?? '—'}</span>
-    </div>
-  );
+type Preferences = { emailNotifications: boolean; pushNotifications: boolean; autoplay: boolean; subtitles: boolean };
+const PREFS_KEY = 'student-cabinet-preferences';
+const defaultPreferences: Preferences = { emailNotifications: true, pushNotifications: true, autoplay: false, subtitles: true };
+
+function loadPreferences(): Preferences {
+  try {
+    return { ...defaultPreferences, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
+  } catch {
+    return defaultPreferences;
+  }
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+function errorMessage(error: unknown, fallback: string) {
+  const responseMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+  return responseMessage || (error instanceof Error ? error.message : fallback);
+}
+
+function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
+  return <div className="flex items-start justify-between gap-4 py-1.5"><span className="text-sm text-muted-foreground">{label}</span><span className="text-right text-sm font-medium">{value ?? '—'}</span></div>;
+}
+
 export function StudentCabinet() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
-
   const [editForm, setEditForm] = useState<UpdateStudentProfileRequest>({});
+  const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
+  const [preferences, setPreferences] = useState<Preferences>(loadPreferences);
 
-  const { data: profile, isLoading } = useQuery({
-    queryKey: qk.studentProfile(),
-    queryFn: getMyProfile,
-    staleTime: 30_000,
-  });
+  const profileQuery = useQuery({ queryKey: qk.studentProfile(), queryFn: getMyProfile, staleTime: 30_000 });
+  const statsQuery = useDashboardStats();
+  const activityQuery = useRecentActivity();
   const regionsQuery = useQuery({ queryKey: ['classifiers', 'regions'], queryFn: listRegions, staleTime: 300_000 });
   const districtsQuery = useQuery({
     queryKey: ['classifiers', 'districts', editForm.currentRegionId],
@@ -89,516 +70,88 @@ export function StudentCabinet() {
 
   const updateMutation = useMutation({
     mutationFn: updateMyProfile,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: qk.studentProfile() });
+    onSuccess: data => {
+      queryClient.setQueryData(qk.studentProfile(), data);
       setIsEditing(false);
       toast({ title: 'Profil yangilandi' });
     },
-    onError: () => toast({ title: 'Xatolik yuz berdi', variant: 'destructive' }),
+    onError: error => toast({ title: 'Profilni saqlab bo‘lmadi', description: errorMessage(error, 'Noma’lum xatolik'), variant: 'destructive' }),
+  });
+  const passwordMutation = useMutation({
+    mutationFn: () => changeMyPassword(passwords.current, passwords.next),
+    onSuccess: () => {
+      setPasswords({ current: '', next: '', confirm: '' });
+      toast({ title: 'Parol yangilandi', description: 'Keyingi kirishda yangi paroldan foydalaning.' });
+    },
+    onError: error => toast({ title: 'Parolni yangilab bo‘lmadi', description: errorMessage(error, 'Noma’lum xatolik'), variant: 'destructive' }),
   });
 
+  const profile = profileQuery.data;
+  const stats = statsQuery.data;
+  const fullName = profile?.fullName || profile?.username || 'Talaba';
+  const initials = fullName.split(' ').filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+  const filledFields = [profile?.pinfl, profile?.lastName, profile?.firstName, profile?.birthDate, profile?.gender, profile?.passportNumber, profile?.phoneNumber, profile?.email, profile?.permanentAddress, profile?.currentAddress, profile?.studentNumber, profile?.facultyId, profile?.groupId].filter(Boolean).length;
+  const completion = Math.round(filledFields / 13 * 100);
+
   const startEdit = () => {
-    setEditForm({
-      phoneNumber:     profile?.phoneNumber     ?? '',
-      email:           profile?.email           ?? '',
-      currentRegion:   profile?.currentRegion   ?? '',
-      currentRegionId: profile?.currentRegionId ?? null,
-      currentDistrict: profile?.currentDistrict ?? '',
-      currentDistrictId: profile?.currentDistrictId ?? null,
-      currentAddress:  profile?.currentAddress  ?? '',
-      photoUrl:        profile?.photoUrl        ?? '',
-    });
+    setEditForm({ phoneNumber: profile?.phoneNumber ?? '', email: profile?.email ?? '', currentRegion: profile?.currentRegion ?? '', currentRegionId: profile?.currentRegionId, currentDistrict: profile?.currentDistrict ?? '', currentDistrictId: profile?.currentDistrictId, currentAddress: profile?.currentAddress ?? '', photoUrl: profile?.photoUrl ?? '' });
     setIsEditing(true);
   };
 
-  const saveEdit = () => updateMutation.mutate(editForm);
+  const updatePreference = (key: keyof Preferences, value: boolean) => {
+    const next = { ...preferences, [key]: value };
+    setPreferences(next);
+    localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+    toast({ title: 'Sozlama saqlandi' });
+  };
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
-      </div>
-    );
-  }
+  const submitPassword = () => {
+    if (!passwords.current) return toast({ title: 'Joriy parolni kiriting', variant: 'destructive' });
+    if (passwords.next.length < 12) return toast({ title: 'Yangi parol kamida 12 belgidan iborat bo‘lsin', variant: 'destructive' });
+    if (passwords.next !== passwords.confirm) return toast({ title: 'Yangi parollar mos kelmadi', variant: 'destructive' });
+    passwordMutation.mutate();
+  };
 
-  const fullName  = profile?.fullName  ?? profile?.username ?? 'Talaba';
-  const initials  = fullName.split(' ').filter(Boolean).map((p: string) => p[0]).join('').slice(0, 2).toUpperCase();
-  const statusKey = profile?.studentStatus ?? 'ACTIVE';
-
-  // Profil to'ldirilishi % (pasport ma'lumotlari, manzil va h.k. bo'yicha)
-  const filledFields = [
-    profile?.pinfl, profile?.lastName, profile?.firstName,
-    profile?.birthDate, profile?.gender, profile?.passportNumber,
-    profile?.phoneNumber, profile?.email,
-    profile?.permanentAddress, profile?.currentAddress,
-    profile?.studentNumber, profile?.facultyId, profile?.groupId,
-  ].filter(Boolean).length;
-  const completion = Math.round((filledFields / 13) * 100);
+  if (profileQuery.isLoading) return <div className="flex min-h-[420px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (profileQuery.isError) return <div className="p-4 md:p-6"><Card className="border-destructive/40"><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><AlertTriangle className="h-10 w-10 text-destructive" /><div><p className="font-medium">Profilni yuklab bo‘lmadi</p><p className="text-sm text-muted-foreground">Talaba profilingiz yaratilganini va server ishlayotganini tekshiring.</p></div><Button onClick={() => profileQuery.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Qayta urinish</Button></CardContent></Card></div>;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-20 w-20">
-            {profile?.photoUrl
-              ? <img src={profile.photoUrl} alt={fullName} className="h-full w-full object-cover rounded-full" />
-              : <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-400 to-purple-500 text-white">{initials}</AvatarFallback>
-            }
-          </Avatar>
-          <div>
-            <h1 className="text-2xl font-bold">{fullName}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {profile?.studentNumber} • {profile?.username}
-            </p>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              <Badge className={STATUS_STYLE[statusKey]}>
-                {STATUS_LABEL[statusKey] ?? statusKey}
-              </Badge>
-              {profile?.degreeLevel && (
-                <Badge variant="outline">{DEGREE_LABEL[profile.degreeLevel] ?? profile.degreeLevel}</Badge>
-              )}
-              {profile?.courseNumber && (
-                <Badge variant="secondary">{profile.courseNumber}-kurs</Badge>
-              )}
-              {profile?.academicYear && (
-                <Badge variant="secondary">{profile.academicYear}</Badge>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2 shrink-0">
-          {isEditing && (
-            <Button variant="outline" onClick={() => setIsEditing(false)}>
-              Bekor
-            </Button>
-          )}
-          <Button
-            variant={isEditing ? 'default' : 'outline'}
-            className="gap-2"
-            onClick={isEditing ? saveEdit : startEdit}
-            disabled={updateMutation.isPending}
-          >
-            <Edit className="h-4 w-4" />
-            {isEditing ? 'Saqlash' : 'Tahrirlash'}
-          </Button>
-        </div>
+    <div className="space-y-6 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div className="flex items-center gap-4"><Avatar className="h-20 w-20">{profile?.photoUrl ? <img src={profile.photoUrl} alt={fullName} className="h-full w-full rounded-full object-cover" /> : <AvatarFallback className="text-xl">{initials}</AvatarFallback>}</Avatar><div><h1 className="text-2xl font-bold">{fullName}</h1><p className="text-sm text-muted-foreground">{profile?.studentNumber} · {profile?.username}</p><div className="mt-2 flex flex-wrap gap-2"><Badge>{STATUS_LABEL[profile?.studentStatus ?? ''] ?? profile?.studentStatus}</Badge>{profile?.degreeLevel && <Badge variant="outline">{DEGREE_LABEL[profile.degreeLevel] ?? profile.degreeLevel}</Badge>}{profile?.courseNumber && <Badge variant="secondary">{profile.courseNumber}-kurs</Badge>}</div></div></div>
+        <div className="flex gap-2">{isEditing && <Button variant="outline" onClick={() => setIsEditing(false)}>Bekor qilish</Button>}<Button onClick={isEditing ? () => updateMutation.mutate(editForm) : startEdit} disabled={updateMutation.isPending}>{isEditing ? <Save className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}{isEditing ? 'Saqlash' : 'Tahrirlash'}</Button></div>
       </div>
 
-      {/* ── Profil to'ldirilishi ────────────────────────────────────────────── */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="font-semibold">Profil to'ldirilishi</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Barcha ma'lumotlarni to'ldiring
-              </p>
-            </div>
-            <span className="text-2xl font-bold text-blue-600">{completion}%</span>
-          </div>
-          <Progress value={completion} className="h-2.5" />
-        </CardContent>
-      </Card>
+      <Card className="bg-primary/5"><CardContent className="p-5"><div className="mb-2 flex justify-between"><div><p className="font-medium">Profil to‘ldirilishi</p><p className="text-xs text-muted-foreground">Yetishmayotgan rasmiy ma’lumotlarni administrator kiritadi.</p></div><span className="font-semibold">{completion}%</span></div><Progress value={completion} /></CardContent></Card>
 
-      {/* ── Stats ──────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Bu hafta', value: `${STATIC.learningStats.thisWeekHours}h`, icon: Clock,      color: 'emerald' },
-          { label: 'Jami soat', value: `${STATIC.learningStats.totalHours}h`,  icon: Activity,   color: 'blue'    },
-          { label: 'Sessiya',   value: `${STATIC.learningStats.avgSessionTime}m`, icon: Target,  color: 'purple'  },
-          { label: 'Streak',    value: `${STATIC.learningStats.streakDays}🔥`,  icon: Star,      color: 'orange'  },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <Card key={label} className={`border-${color}-200 dark:border-${color}-800 border-2`}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`p-2 rounded-lg bg-${color}-100 dark:bg-${color}-900/30`}>
-                <Icon className={`h-5 w-5 text-${color}-600`} />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className={`text-xl font-bold text-${color}-600`}>{value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Tabs defaultValue="profile" className="space-y-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 md:grid-cols-4"><TabsTrigger value="profile">Profil</TabsTrigger><TabsTrigger value="academic">Akademik</TabsTrigger><TabsTrigger value="activity">Faoliyat</TabsTrigger><TabsTrigger value="settings">Sozlamalar</TabsTrigger></TabsList>
 
-      {/* ── Tabs ───────────────────────────────────────────────────────────── */}
-      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 pb-1">
-          <TabsList className="grid min-w-[440px] w-full grid-cols-5">
-          <TabsTrigger value="profile">Profil</TabsTrigger>
-          <TabsTrigger value="academic">Akademik</TabsTrigger>
-          <TabsTrigger value="address">Manzil</TabsTrigger>
-          <TabsTrigger value="activity">Faoliyat</TabsTrigger>
-          <TabsTrigger value="settings">Sozlamalar</TabsTrigger>
-        </TabsList>
-          </div>
-
-        {/* ── Profil tab ────────────────────────────────────────────────────── */}
-        <TabsContent value="profile" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            {/* Shaxsiy */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <User className="h-4 w-4" /> Shaxsiy ma'lumotlar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <InfoRow label="Familiya"    value={profile?.lastName} />
-                <InfoRow label="Ism"         value={profile?.firstName} />
-                <InfoRow label="Otasining ismi" value={profile?.middleName} />
-                <Separator className="my-2" />
-                <InfoRow label="PINFL"       value={profile?.pinfl} />
-                <InfoRow label="Tug'ilgan sana" value={profile?.birthDate ?? undefined} />
-                <InfoRow label="Jinsi"       value={profile?.gender ? (GENDER_LABEL[profile.gender] ?? profile.gender) : undefined} />
-                <InfoRow label="Fuqarolik"   value={profile?.citizenship === 'UZBEKISTAN' ? "O'zbekiston" : profile?.citizenship ?? undefined} />
-              </CardContent>
-            </Card>
-
-            {/* Pasport */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CreditCard className="h-4 w-4" /> Pasport ma'lumotlari
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <InfoRow label="Hujjat turi"  value={profile?.passportType?.replace('_', ' ')} />
-                <InfoRow label="Seriya"        value={profile?.passportSeries} />
-                <InfoRow label="Raqam"         value={profile?.passportNumber} />
-                <Separator className="my-2" />
-                <InfoRow label="Berilgan sana" value={profile?.passportIssuedDate ?? undefined} />
-                <InfoRow label="Amal qilish muddati" value={profile?.passportExpiryDate ?? undefined} />
-                <InfoRow label="Bergan organ"  value={profile?.passportIssuedBy} />
-              </CardContent>
-            </Card>
-
-            {/* Aloqa — tahrirlanadigan */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Phone className="h-4 w-4" /> Aloqa ma'lumotlari
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Telefon raqam</Label>
-                  <Input
-                    value={isEditing ? (editForm.phoneNumber ?? '') : (profile?.phoneNumber ?? '')}
-                    disabled={!isEditing}
-                    onChange={(e) => setEditForm(f => ({ ...f, phoneNumber: e.target.value }))}
-                    placeholder="+998901234567"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Email</Label>
-                  <Input
-                    type="email"
-                    value={isEditing ? (editForm.email ?? '') : (profile?.email ?? '')}
-                    disabled={!isEditing}
-                    onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
-                    placeholder="email@example.com"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Xavfsizlik */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Shield className="h-4 w-4" /> Xavfsizlik
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Joriy parol</Label>
-                  <Input type="password" placeholder="••••••••" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Yangi parol</Label>
-                  <Input type="password" placeholder="••••••••" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Tasdiqlash</Label>
-                  <Input type="password" placeholder="••••••••" />
-                </div>
-                <Button className="w-full gap-2" size="sm">
-                  <Lock className="h-4 w-4" /> Parolni yangilash
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="profile" className="grid gap-5 lg:grid-cols-2">
+          <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><User className="h-4 w-4" />Shaxsiy ma’lumotlar</CardTitle></CardHeader><CardContent><InfoRow label="Familiya" value={profile?.lastName} /><InfoRow label="Ism" value={profile?.firstName} /><InfoRow label="Otasining ismi" value={profile?.middleName} /><Separator className="my-2" /><InfoRow label="PINFL" value={profile?.pinfl} /><InfoRow label="Tug‘ilgan sana" value={profile?.birthDate} /><InfoRow label="Jinsi" value={profile?.gender ? GENDER_LABEL[profile.gender] ?? profile.gender : null} /><InfoRow label="Fuqarolik" value={profile?.citizenship === 'UZBEKISTAN' ? 'O‘zbekiston' : profile?.citizenship} /></CardContent></Card>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CreditCard className="h-4 w-4" />Pasport ma’lumotlari</CardTitle></CardHeader><CardContent><InfoRow label="Hujjat turi" value={profile?.passportType?.replace(/_/g, ' ')} /><InfoRow label="Seriya" value={profile?.passportSeries} /><InfoRow label="Raqam" value={profile?.passportNumber} /><Separator className="my-2" /><InfoRow label="Berilgan sana" value={profile?.passportIssuedDate} /><InfoRow label="Amal qilish muddati" value={profile?.passportExpiryDate} /><InfoRow label="Bergan organ" value={profile?.passportIssuedBy} /></CardContent></Card>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Phone className="h-4 w-4" />Aloqa ma’lumotlari</CardTitle><CardDescription>Bu maydonlarni talaba o‘zi yangilashi mumkin.</CardDescription></CardHeader><CardContent className="space-y-3"><div><Label>Telefon</Label><Input disabled={!isEditing} value={isEditing ? editForm.phoneNumber ?? '' : profile?.phoneNumber ?? ''} onChange={event => setEditForm(form => ({ ...form, phoneNumber: event.target.value }))} placeholder="+998901234567" /></div><div><Label>Email</Label><Input type="email" disabled={!isEditing} value={isEditing ? editForm.email ?? '' : profile?.email ?? ''} onChange={event => setEditForm(form => ({ ...form, email: event.target.value }))} placeholder="talaba@example.com" /></div><div><Label>Rasm URL manzili</Label><Input disabled={!isEditing} value={isEditing ? editForm.photoUrl ?? '' : profile?.photoUrl ?? ''} onChange={event => setEditForm(form => ({ ...form, photoUrl: event.target.value }))} placeholder="https://..." /></div></CardContent></Card>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Shield className="h-4 w-4" />Xavfsizlik</CardTitle><CardDescription>Parol almashtirilgach, barcha yangilash sessiyalari bekor qilinadi.</CardDescription></CardHeader><CardContent className="space-y-3"><div><Label>Joriy parol</Label><Input type="password" autoComplete="current-password" value={passwords.current} onChange={event => setPasswords(value => ({ ...value, current: event.target.value }))} /></div><div><Label>Yangi parol</Label><Input type="password" autoComplete="new-password" value={passwords.next} onChange={event => setPasswords(value => ({ ...value, next: event.target.value }))} /></div><div><Label>Yangi parolni tasdiqlang</Label><Input type="password" autoComplete="new-password" value={passwords.confirm} onChange={event => setPasswords(value => ({ ...value, confirm: event.target.value }))} /></div><Button className="w-full" onClick={submitPassword} disabled={passwordMutation.isPending}><Lock className="mr-2 h-4 w-4" />Parolni yangilash</Button></CardContent></Card>
         </TabsContent>
 
-        {/* ── Akademik tab ──────────────────────────────────────────────────── */}
-        <TabsContent value="academic" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            {/* Ta'lim */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <GraduationCap className="h-4 w-4" /> Ta'lim ma'lumotlari
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">{profile?.courseNumber ?? '—'}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Kurs</p>
-                  </div>
-                  <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <p className="text-lg font-bold text-purple-600">
-                      {profile?.degreeLevel ? (DEGREE_LABEL[profile.degreeLevel] ?? profile.degreeLevel) : '—'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Daraja</p>
-                  </div>
-                </div>
-                <Separator className="my-2" />
-                <InfoRow label="Talaba raqami"   value={profile?.studentNumber} />
-                <InfoRow label="Ta'lim shakli"   value={profile?.educationForm ? (EFORM_LABEL[profile.educationForm] ?? profile.educationForm) : undefined} />
-                <InfoRow label="Ta'lim tili"     value={profile?.educationLanguage?.toUpperCase()} />
-                <InfoRow label="Akademik yil"    value={profile?.academicYear} />
-                <InfoRow label="Qabul sanasi"    value={profile?.admissionDate ?? undefined} />
-                <InfoRow label="Buyruq raqami"   value={profile?.admissionOrderNumber} />
-              </CardContent>
-            </Card>
-
-            {/* To'lov */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CreditCard className="h-4 w-4" /> To'lov ma'lumotlari
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="mb-3">
-                  {profile?.paymentType ? (
-                    <Badge className={profile.paymentType === 'GRANT' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}>
-                      {PAYMENT_LABEL[profile.paymentType]}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">—</Badge>
-                  )}
-                </div>
-                <Separator className="my-2" />
-                <InfoRow label="Kontrakt raqami"  value={profile?.contractNumber} />
-                <InfoRow
-                  label="Kontrakt summasi"
-                  value={profile?.contractAmount != null
-                    ? `${profile.contractAmount.toLocaleString()} so'm`
-                    : undefined}
-                />
-                <Separator className="my-2" />
-                <InfoRow label="Tizimga kirish"   value={profile?.username} />
-                <InfoRow
-                  label="Oxirgi kirish"
-                  value={profile?.lastLoginAt
-                    ? new Date(profile.lastLoginAt).toLocaleString('uz-UZ')
-                    : undefined}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex justify-end">
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" /> Akademik ma'lumotnoma
-            </Button>
-          </div>
+        <TabsContent value="academic" className="grid gap-5 lg:grid-cols-2">
+          <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><GraduationCap className="h-4 w-4" />Ta’lim ma’lumotlari</CardTitle></CardHeader><CardContent><InfoRow label="Talaba raqami" value={profile?.studentNumber} /><InfoRow label="Daraja" value={profile?.degreeLevel ? DEGREE_LABEL[profile.degreeLevel] ?? profile.degreeLevel : null} /><InfoRow label="Ta’lim shakli" value={profile?.educationForm ? EFORM_LABEL[profile.educationForm] ?? profile.educationForm : null} /><InfoRow label="Ta’lim tili" value={profile?.educationLanguage?.toUpperCase()} /><InfoRow label="Kurs / semestr" value={profile?.courseNumber ? `${profile.courseNumber}-kurs${profile.semesterNumber ? `, ${profile.semesterNumber}-semestr` : ''}` : null} /><InfoRow label="Akademik yil" value={profile?.academicYear} /><InfoRow label="Fakultet ID" value={profile?.facultyId} /><InfoRow label="Kafedra ID" value={profile?.departmentId} /><InfoRow label="Yo‘nalish ID" value={profile?.programId} /><InfoRow label="Guruh ID" value={profile?.groupId} /><InfoRow label="Qabul sanasi" value={profile?.admissionDate} /><InfoRow label="Qabul buyrug‘i" value={profile?.admissionOrderNumber} /></CardContent></Card>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><CreditCard className="h-4 w-4" />To‘lov ma’lumotlari</CardTitle></CardHeader><CardContent><InfoRow label="To‘lov turi" value={profile?.paymentType ? PAYMENT_LABEL[profile.paymentType] ?? profile.paymentType : null} /><InfoRow label="Kontrakt raqami" value={profile?.contractNumber} /><InfoRow label="Kontrakt summasi" value={profile?.contractAmount != null ? new Intl.NumberFormat('uz-UZ').format(profile.contractAmount) + ' so‘m' : null} /></CardContent></Card>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><MapPin className="h-4 w-4" />Doimiy manzil</CardTitle></CardHeader><CardContent><InfoRow label="Viloyat" value={profile?.permanentRegion} /><InfoRow label="Tuman" value={profile?.permanentDistrict} /><InfoRow label="Manzil" value={profile?.permanentAddress} /></CardContent></Card>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><MapPin className="h-4 w-4" />Hozirgi manzil</CardTitle><CardDescription>Bu ma’lumotni talaba yangilashi mumkin.</CardDescription></CardHeader><CardContent className="space-y-3">{isEditing ? <><div><Label>Viloyat</Label><Select value={editForm.currentRegionId ? String(editForm.currentRegionId) : ''} onValueChange={value => setEditForm(form => ({ ...form, currentRegionId: Number(value), currentDistrictId: null }))}><SelectTrigger><SelectValue placeholder="Viloyatni tanlang" /></SelectTrigger><SelectContent>{(regionsQuery.data ?? []).map(region => <SelectItem key={region.id} value={String(region.id)}>{region.name}</SelectItem>)}</SelectContent></Select></div><div><Label>Tuman</Label><Select value={editForm.currentDistrictId ? String(editForm.currentDistrictId) : ''} disabled={!editForm.currentRegionId || districtsQuery.isLoading} onValueChange={value => setEditForm(form => ({ ...form, currentDistrictId: Number(value) }))}><SelectTrigger><SelectValue placeholder="Tumanni tanlang" /></SelectTrigger><SelectContent>{(districtsQuery.data ?? []).map(district => <SelectItem key={district.id} value={String(district.id)}>{district.name}</SelectItem>)}</SelectContent></Select></div><div><Label>To‘liq manzil</Label><Input value={editForm.currentAddress ?? ''} onChange={event => setEditForm(form => ({ ...form, currentAddress: event.target.value }))} /></div></> : <><InfoRow label="Viloyat" value={profile?.currentRegion} /><InfoRow label="Tuman" value={profile?.currentDistrict} /><InfoRow label="Manzil" value={profile?.currentAddress} /></>}</CardContent></Card>
         </TabsContent>
 
-        {/* ── Manzil tab ────────────────────────────────────────────────────── */}
-        <TabsContent value="address" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            {/* Doimiy */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Home className="h-4 w-4" /> Doimiy yashash manzili
-                </CardTitle>
-                <CardDescription className="text-xs">Pasportdagi manzil — faqat admin o'zgartira oladi</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <InfoRow label="Viloyat"  value={profile?.permanentRegion} />
-                <InfoRow label="Tuman"    value={profile?.permanentDistrict} />
-                <InfoRow label="Manzil"   value={profile?.permanentAddress} />
-              </CardContent>
-            </Card>
-
-            {/* Hozirgi — tahrirlanadigan */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <MapPin className="h-4 w-4" /> Hozirgi yashash manzili
-                </CardTitle>
-                <CardDescription className="text-xs">O'zingiz yangilay olasiz</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Viloyat</Label>
-                  {isEditing ? <Select value={editForm.currentRegionId ? String(editForm.currentRegionId) : ''} onValueChange={value => setEditForm(f => ({ ...f, currentRegionId: Number(value), currentDistrictId: null }))}><SelectTrigger><SelectValue placeholder={profile?.currentRegion || "Viloyatni tanlang"} /></SelectTrigger><SelectContent>{(regionsQuery.data ?? []).map(region => <SelectItem key={region.id} value={String(region.id)}>{region.name}</SelectItem>)}</SelectContent></Select> : <Input value={profile?.currentRegion ?? ''} disabled />}
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Tuman</Label>
-                  {isEditing ? <Select value={editForm.currentDistrictId ? String(editForm.currentDistrictId) : ''} disabled={!editForm.currentRegionId || districtsQuery.isLoading} onValueChange={value => setEditForm(f => ({ ...f, currentDistrictId: Number(value) }))}><SelectTrigger><SelectValue placeholder={profile?.currentDistrict || "Tumanni tanlang"} /></SelectTrigger><SelectContent>{(districtsQuery.data ?? []).map(district => <SelectItem key={district.id} value={String(district.id)}>{district.name}</SelectItem>)}</SelectContent></Select> : <Input value={profile?.currentDistrict ?? ''} disabled />}
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">To'liq manzil</Label>
-                  <Input
-                    value={isEditing ? (editForm.currentAddress ?? '') : (profile?.currentAddress ?? '')}
-                    disabled={!isEditing}
-                    onChange={(e) => setEditForm(f => ({ ...f, currentAddress: e.target.value }))}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="activity" className="space-y-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Card><CardContent className="p-4"><p className="text-2xl font-bold">{stats?.activeCourses ?? 0}</p><p className="text-sm text-muted-foreground">Faol kurs</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-2xl font-bold">{stats?.completedCourses ?? 0}</p><p className="text-sm text-muted-foreground">Yakunlangan</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-2xl font-bold">{stats?.pendingAssignments ?? 0}</p><p className="text-sm text-muted-foreground">Topshiriq</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-2xl font-bold">{Math.round(stats?.attendancePercentage ?? 0)}%</p><p className="text-sm text-muted-foreground">Davomat</p></CardContent></Card></div>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" />So‘nggi faoliyat</CardTitle></CardHeader><CardContent>{activityQuery.isLoading ? <Loader2 className="mx-auto my-8 h-6 w-6 animate-spin" /> : activityQuery.isError ? <p className="py-8 text-center text-sm text-destructive">Faoliyat ma’lumotlarini yuklab bo‘lmadi.</p> : (activityQuery.data ?? []).length === 0 ? <div className="py-10 text-center"><BookOpen className="mx-auto mb-3 h-9 w-9 text-muted-foreground" /><p className="text-sm text-muted-foreground">Hozircha tizimda faoliyat qaydi yo‘q.</p></div> : <div className="space-y-3">{activityQuery.data?.map(item => <div key={item.id} className="flex gap-3 rounded-lg border p-3"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /><div><p className="text-sm font-medium">{item.title}</p><p className="text-xs text-muted-foreground">{item.description}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(item.timestamp).toLocaleString('uz-UZ')}</p></div></div>)}</div>}</CardContent></Card>
         </TabsContent>
 
-        {/* ── Faoliyat tab ──────────────────────────────────────────────────── */}
-        <TabsContent value="activity" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" /> So'nggi faoliyatlar
-              </CardTitle>
-              <CardDescription>Oxirgi o'quv faoliyatlari va yutuqlar</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {recentActivities.map(({ id, icon: Icon, color, title, description, timestamp }) => (
-                  <div key={id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
-                    <div className="p-2 rounded-lg bg-white dark:bg-muted shadow-sm shrink-0">
-                      <Icon className={`h-5 w-5 ${color}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{title}</p>
-                      <p className="text-sm text-muted-foreground">{description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{timestamp}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Statistika */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card><CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-emerald-600">{STATIC.learningStats.thisWeekHours}h</p>
-              <p className="text-xs text-muted-foreground mt-1">Bu hafta</p>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-blue-600">{STATIC.learningStats.totalHours}h</p>
-              <p className="text-xs text-muted-foreground mt-1">Jami</p>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-purple-600">{STATIC.learningStats.avgSessionTime}m</p>
-              <p className="text-xs text-muted-foreground mt-1">O'rtacha sessiya</p>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-orange-600">{STATIC.learningStats.streakDays}</p>
-              <p className="text-xs text-muted-foreground mt-1">Kun streak 🔥</p>
-            </CardContent></Card>
-          </div>
-        </TabsContent>
-
-        {/* ── Sozlamalar tab ────────────────────────────────────────────────── */}
-        <TabsContent value="settings" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Bell className="h-4 w-4" /> Bildirishnomalar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {[
-                  { label: 'Email bildirishnomalar',  desc: 'Yangi darslar va topshiriqlar haqida', key: 'email'  as const },
-                  { label: 'Push bildirishnomalar',    desc: 'Brauzer orqali bildirishnomalar',       key: 'push'   as const },
-                  { label: 'SMS bildirishnomalar',     desc: 'Muhim xabarlar uchun SMS',              key: 'sms'    as const },
-                ].map(({ label, desc, key }) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{label}</p>
-                      <p className="text-xs text-muted-foreground">{desc}</p>
-                    </div>
-                    <Switch defaultChecked={STATIC.notifications[key]} />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Eye className="h-4 w-4" /> Maxfiylik
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {[
-                  { label: "Profil ko'rinishi",    desc: "Boshqa talabalar profilingizni ko'ra olsinmi",       key: 'profileVisible'    as const },
-                  { label: "Jarayon ko'rsatish",   desc: "O'quv jarayoningizni boshqalarga ko'rsatish",        key: 'showProgress'      as const },
-                  { label: "Yutuqlar ko'rsatish",  desc: "Yutuqlaringizni boshqalarga ko'rsatish",             key: 'showAchievements'  as const },
-                ].map(({ label, desc, key }) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{label}</p>
-                      <p className="text-xs text-muted-foreground">{desc}</p>
-                    </div>
-                    <Switch defaultChecked={STATIC.privacy[key]} />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Video className="h-4 w-4" /> O'quv sozlamalari
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Avtomatik ijro</p>
-                  <p className="text-xs text-muted-foreground">Video darslarni avtomatik boshlash</p>
-                </div>
-                <Switch defaultChecked={STATIC.learning.autoplay} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Subtitrlar</p>
-                  <p className="text-xs text-muted-foreground">Video darslarda subtitrlarni ko'rsatish</p>
-                </div>
-                <Switch defaultChecked={STATIC.learning.subtitles} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm">Ijro tezligi</Label>
-                <Select defaultValue={STATIC.learning.playbackSpeed}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {['0.5', '0.75', '1.0', '1.25', '1.5', '2.0'].map(v => (
-                      <SelectItem key={v} value={v}>{v === '1.0' ? '1.0x (Normal)' : `${v}x`}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <TabsContent value="settings"><Card><CardHeader><CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" />Kabinet sozlamalari</CardTitle><CardDescription>Ushbu tanlovlar shu brauzerda saqlanadi.</CardDescription></CardHeader><CardContent className="space-y-5">{([
+          ['emailNotifications', 'Email bildirishnomalar', 'Yangi dars va topshiriqlar haqida email olish'],
+          ['pushNotifications', 'Brauzer bildirishnomalari', 'Brauzer orqali tezkor xabar olish'],
+          ['autoplay', 'Avtomatik ijro', 'Keyingi video darsni avtomatik boshlash'],
+          ['subtitles', 'Subtitrlar', 'Video darslarda subtitrlarni ko‘rsatish'],
+        ] as const).map(([key, title, description]) => <div key={key} className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">{title}</p><p className="text-xs text-muted-foreground">{description}</p></div><Switch checked={preferences[key]} onCheckedChange={value => updatePreference(key, value)} /></div>)}</CardContent></Card></TabsContent>
       </Tabs>
     </div>
   );

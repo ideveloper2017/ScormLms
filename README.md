@@ -27,12 +27,28 @@ Node.js 22.12+ (yoki 20.19+).
 
 Development profilining standart bazasi `jdbc:postgresql://localhost:5432/scorm_lms`, foydalanuvchi/paroli `postgres/postgres`. Haqiqiy credentiallarni repozitoriyga yozmang.
 
+### Bog'langan demo ma'lumotlarni yaratish
+
+Bo'sh ekranda kurs yaratish bloklanib qolmasligi va barcha asosiy rollarda ko'rinadigan ma'lumot bo'lishi uchun idempotent demo seed mavjud. U universitet, fakultet, kafedra, Fizika yo'nalishi, guruh, joriy o'quv yili, tasdiqlangan o'quv reja, 3 ta fan va fan guruhi, o'qituvchi, talaba, 3 ta kurs hamda matnli darslarni bir-biriga bog'lab yaratadi. Ikki e'lon qilingan kurs talabaga biriktiriladi, bitta kurs esa o'qituvchida qoralama sifatida qoladi.
+
+PowerShell'da backendni birinchi marta quyidagicha ishga tushiring (parollarni o'zingizning xavfsiz qiymatlaringizga almashtiring):
+
+```powershell
+$env:APP_DEMO_DATA_ENABLED="true"
+$env:APP_SEED_TEACHER_PASSWORD="CHANGE_ME_STRONG_TEACHER_PASSWORD"
+$env:APP_SEED_STUDENT_PASSWORD="CHANGE_ME_STRONG_STUDENT_PASSWORD"
+.\gradlew.bat bootRun
+```
+
+Shundan keyin `demo_teacher` va `demo_student` loginlari bilan tegishli parolda kirish mumkin. Agar bu loginlar oldindan mavjud bo'lsa, ularning paroli o'zgartirilmaydi. Seed takror ishga tushganda nusxa yozuv yaratmaydi, lekin demo to'plam tayyor bo'lgach `APP_DEMO_DATA_ENABLED=false` qilish tavsiya etiladi. Bu sozlama default holatda o'chiq va real ma'lumotlarni avtomatik o'chirmaydi.
+
 ## Production environment
 
 Backend uchun majburiy qiymatlar:
 
 - `SPRING_PROFILES_ACTIVE=postgresql-prod`
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
+- `DB_SCHEMA=public`
 - `APP_EXPECTED_DATABASE_NAME=scorm_lms` — noto'g'ri yoki boshqa tizim
   bazasida Flyway migratsiyasi va Hibernate ishga tushishini bloklaydi
 - `JWT_SECRET` — kamida 64 baytlik tasodifiy secret
@@ -46,6 +62,10 @@ mosligini `ddl-auto=validate` bilan tekshiradi. `DataInitializer` standart
 rollarni idempotent seed qiladi; boshlang'ich administrator kerak bo'lsa
 birinchi ishga tushirishda `APP_SEED_ADMIN_PASSWORD` beriladi. Database
 serveridagi database obyektining o'zi deploy preflight orqali yaratiladi.
+VPS uchun Flyway database ulanishini 10 marta, migration lock'ini 120 soniyagacha
+qayta kutadi. Flyway history'siz eski Hibernate schema bo'lsa birinchi deployda
+`FLYWAY_BASELINE_ON_MIGRATE=true` va `FLYWAY_BASELINE_VERSION=0` saqlanadi;
+history yaratilgach keyingi deploylar faqat yangi versiyalarni qo'llaydi.
 
 HEMIS ishlatilsa `HEMIS_HOST`, `HEMIS_ADMIN_LOGIN`, `HEMIS_ADMIN_PASSWORD` ham beriladi. Dastlab `/admin/integrations` ekranida HEMIS guruhlarini lokal guruhlarga mapping qiling; tekshiruvdan keyingina `HEMIS_SYNC_ENABLED=true` bilan davriy worker ochiladi. Interval `HEMIS_SYNC_CRON`, sahifa hajmi `HEMIS_SYNC_PAGE_SIZE` orqali sozlanadi. `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_TEACHER_PASSWORD` va `APP_SEED_STUDENT_PASSWORD` faqat tegishli boshlang'ich foydalanuvchi kerak bo'lganda vaqtincha beriladi; kod ichida standart parol yo'q. Productionda `SWAGGER_ENABLED=false` tavsiya etiladi.
 

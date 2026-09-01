@@ -1,17 +1,26 @@
-import { useState, type ElementType, type ReactNode } from "react";
+import { useEffect, useState, type ElementType, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
   BarChart3,
   BookOpen,
+  ClipboardList,
+  ChevronDown,
+  DollarSign,
   Download,
   Edit,
   FileText,
+  FlaskConical,
+  Image as ImageIcon,
+  Info,
   Link as LinkIcon,
   History,
   Loader2,
   Plus,
+  Settings,
   Trash2,
   UserPlus,
   Users,
@@ -50,6 +59,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CourseForum } from "@/components/course-forum";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
   teacherPortalApi,
@@ -122,6 +132,7 @@ export function TeacherCourseDetail({
   const [contentSourceUrl, setContentSourceUrl] = useState("");
   const [contentValidFrom, setContentValidFrom] = useState(today());
   const [contentValidUntil, setContentValidUntil] = useState("");
+  const [contentDuration, setContentDuration] = useState("");
   const [editingContentId, setEditingContentId] = useState<number | null>(null);
   const [historyContent, setHistoryContent] = useState<CourseContent | null>(
     null,
@@ -314,6 +325,7 @@ export function TeacherCourseDetail({
           contentType === "TEXT" || contentType === "LINK"
             ? undefined
             : assetId,
+        durationMinutes: contentDuration ? Number(contentDuration) : undefined,
         languageCode: contentLanguage.trim(),
         authorName: contentAuthor.trim(),
         contentVersion: contentVersion.trim(),
@@ -357,6 +369,20 @@ export function TeacherCourseDetail({
       toast({ title: "Fan materiali modulga biriktirildi" });
     },
     onError: showError("Fan materiali biriktirilmadi"),
+  });
+  const reorderContentsMutation = useMutation({
+    mutationFn: ({
+      moduleId,
+      contentIds,
+    }: {
+      moduleId: number;
+      contentIds: number[];
+    }) => teacherPortalApi.reorderContents(courseId, moduleId, contentIds),
+    onSuccess: async () => {
+      await refreshLearningItems();
+      toast({ title: "Darslar tartibi saqlandi" });
+    },
+    onError: showError("Darslar tartibi saqlanmadi"),
   });
   const contentStatusMutation = useMutation({
     mutationFn: ({
@@ -416,6 +442,7 @@ export function TeacherCourseDetail({
     setContentSourceUrl("");
     setContentValidFrom(today());
     setContentValidUntil("");
+    setContentDuration("");
     setEditingContentId(null);
   }
 
@@ -462,6 +489,15 @@ export function TeacherCourseDetail({
         variant: "destructive",
         title:
           "Amal qilish yakuni boshlanish sanasidan oldin bo'lmasligi kerak",
+      });
+    }
+    if (
+      contentDuration &&
+      (!Number.isInteger(Number(contentDuration)) || Number(contentDuration) < 0)
+    ) {
+      return toast({
+        variant: "destructive",
+        title: "Dars davomiyligi 0 yoki undan katta butun son bo'lishi kerak",
       });
     }
     if (contentType === "TEXT" && isRichTextEmpty(contentBody)) {
@@ -513,6 +549,9 @@ export function TeacherCourseDetail({
     setContentSourceUrl(content.sourceUrl ?? "");
     setContentValidFrom(content.validFrom);
     setContentValidUntil(content.validUntil ?? "");
+    setContentDuration(
+      content.durationMinutes == null ? "" : String(content.durationMinutes),
+    );
     setLessonDialogOpen(true);
   }
 
@@ -602,6 +641,25 @@ export function TeacherCourseDetail({
       : course.status === "archived"
         ? "Arxivlangan"
         : "Qoralama";
+
+  const moveContent = (
+    moduleId: number,
+    contentId: number,
+    direction: -1 | 1,
+  ) => {
+    const orderedIds = contents
+      .filter((content) => content.moduleId === moduleId)
+      .map((content) => content.id);
+    const currentIndex = orderedIds.indexOf(contentId);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= orderedIds.length)
+      return;
+    [orderedIds[currentIndex], orderedIds[targetIndex]] = [
+      orderedIds[targetIndex],
+      orderedIds[currentIndex],
+    ];
+    reorderContentsMutation.mutate({ moduleId, contentIds: orderedIds });
+  };
 
   const startCourseEdit = () => {
     setCourseTitle(course.title);
@@ -701,14 +759,30 @@ export function TeacherCourseDetail({
       </div>
 
       <Tabs defaultValue={initialTab}>
-        <div className="overflow-x-auto">
-          <TabsList className="grid min-w-[440px] w-full grid-cols-4">
-            <TabsTrigger value="overview">Umumiy</TabsTrigger>
-            <TabsTrigger value="contents">Darslar</TabsTrigger>
-            <TabsTrigger value="students">Talabalar</TabsTrigger>
-            <TabsTrigger value="forum">Forum</TabsTrigger>
-          </TabsList>
+        <div className="mb-5 flex flex-wrap gap-3 border-y py-4">
+          <Button variant="default">Kurs ko'rinishi</Button>
+          <Button variant="default" onClick={() => navigate(`/teacher/courses/${courseId}/contents`)}>Kurs playeri</Button>
+          <Badge variant="secondary" className="px-4 py-2 text-sm">{statusLabel}</Badge>
+          <Button variant="default">Tasdiqlash holati</Button>
         </div>
+        <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
+          <Card className="lg:sticky lg:top-5">
+            <CardContent className="p-2">
+              <TabsList className="flex h-auto w-full flex-col items-stretch bg-transparent p-0">
+                <SideTab value="contents" icon={BookOpen} label="Curriculum" />
+                <SideTab value="live" icon={Video} label="Live Class" />
+                <SideTab value="assignment" icon={ClipboardList} label="Assignment" />
+                <SideTab value="overview" icon={Settings} label="Basic" />
+                <SideTab value="pricing" icon={DollarSign} label="Pricing" />
+                <SideTab value="info" icon={Info} label="Info" />
+                <SideTab value="media" icon={ImageIcon} label="Media" />
+                <SideTab value="seo" icon={FlaskConical} label="SEO" />
+                <SideTab value="students" icon={Users} label="Talabalar" />
+                <SideTab value="forum" icon={LinkIcon} label="Forum" />
+              </TabsList>
+            </CardContent>
+          </Card>
+          <div className="min-w-0">
 
         <TabsContent value="overview" className="mt-4 space-y-4">
           <Card>
@@ -907,7 +981,8 @@ export function TeacherCourseDetail({
               (content) => content.moduleId === module.id,
             );
             return (
-              <Card key={module.id} className="overflow-hidden">
+              <Collapsible key={module.id} defaultOpen>
+              <Card className="overflow-hidden">
                 <CardHeader className="border-b bg-muted/30 py-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                     <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -969,16 +1044,22 @@ export function TeacherCourseDetail({
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" aria-label="Sectionni ochish yoki yopish">
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
                     </div>
                   </div>
                 </CardHeader>
+                <CollapsibleContent>
                 <CardContent className="space-y-2 p-3 sm:p-4">
                   {sectionLessons.length === 0 && (
                     <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
                       Bu sectionda dars yo'q. “Dars qo'shish” tugmasini bosing.
                     </div>
                   )}
-                  {sectionLessons.map((content) => {
+                  {sectionLessons.map((content, contentIndex) => {
             const meta = CONTENT_META[content.contentType] ?? CONTENT_META.file;
             const Icon = meta.icon;
             const modulePublished = module.status === "published";
@@ -1006,9 +1087,14 @@ export function TeacherCourseDetail({
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{content.title}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {meta.label} · v{content.contentVersion} ·{" "}
+                      #{content.position} · {meta.label} · v{content.contentVersion} ·{" "}
                       {content.languageCode} · {content.authorName}
                     </p>
+                    {content.durationMinutes != null && (
+                      <p className="text-xs text-muted-foreground">
+                        Davomiyligi: {content.durationMinutes} daqiqa
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground truncate">
                       {content.sourceName} · {content.validFrom} —{" "}
                       {content.validUntil || "cheklanmagan"}
@@ -1028,6 +1114,27 @@ export function TeacherCourseDetail({
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Darsni yuqoriga ko'chirish"
+                      disabled={contentIndex === 0 || reorderContentsMutation.isPending}
+                      onClick={() => moveContent(module.id, content.id, -1)}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Darsni pastga ko'chirish"
+                      disabled={
+                        contentIndex === sectionLessons.length - 1 ||
+                        reorderContentsMutation.isPending
+                      }
+                      onClick={() => moveContent(module.id, content.id, 1)}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
                     <Badge variant="outline">{meta.label}</Badge>
                     <Badge
                       variant={content.effective ? "default" : "secondary"}
@@ -1156,7 +1263,9 @@ export function TeacherCourseDetail({
                     );
                   })}
                 </CardContent>
+                </CollapsibleContent>
               </Card>
+              </Collapsible>
             );
           })}
         </TabsContent>
@@ -1247,9 +1356,71 @@ export function TeacherCourseDetail({
           ))}
         </TabsContent>
 
+        <TabsContent value="live" className="mt-0">
+          <SettingsCard title="Live Class" description="Kurs uchun jonli darslar jadvali va videokonferensiya havolalari shu bo'limda boshqariladi.">
+            <p className="text-sm text-muted-foreground">Jonli darsni qo'shish uchun kurs jadvalidagi videokonferensiya modulidan foydalaning.</p>
+          </SettingsCard>
+        </TabsContent>
+
+        <TabsContent value="assignment" className="mt-0">
+          <SettingsCard title="Assignment" description="Kurs topshiriqlarini yaratish va tekshirish.">
+            <Button onClick={() => navigate("/teacher/assignments/create")}><Plus className="mr-2 h-4 w-4" />Topshiriq yaratish</Button>
+          </SettingsCard>
+        </TabsContent>
+
+        <TabsContent value="pricing" className="mt-0">
+          <SettingsCard title="Pricing" description="Kurs narxi va amal qilish muddati.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Summary label="Narxlash" value={course.paid ? "Pullik" : "Bepul"} />
+              <Summary
+                label="Narx"
+                value={
+                  course.paid
+                    ? `${course.discountEnabled ? (course.discountedPrice ?? course.price ?? 0) : (course.price ?? 0)} so'm`
+                    : "—"
+                }
+              />
+              <Summary label="Chegirma" value={course.discountEnabled ? "Yoqilgan" : "O'chirilgan"} />
+              <Summary label="Amal qilish" value={course.expiryPeriodType === "limited_time" ? "Cheklangan" : "Doimiy"} />
+            </div>
+          </SettingsCard>
+        </TabsContent>
+
+        <TabsContent value="info" className="mt-0">
+          <SettingsCard title="Info" description="Kursning akademik va katalog ma'lumotlari.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Summary label="Kategoriya" value={course.categoryName || "—"} />
+              <Summary label="Fan" value={course.subjectName || "—"} />
+              <Summary label="Dastur" value={course.programName || "—"} />
+              <Summary label="Fan guruhi" value={course.groupName || "—"} />
+              <Summary label="Til" value={(course.language || "—").toUpperCase()} />
+              <Summary label="Daraja" value={course.level || "—"} />
+              <Summary label="Drip content" value={course.dripContent ? "Yoqilgan" : "O'chirilgan"} />
+              <Summary label="Davr" value={`${course.startDate || "—"} — ${course.endDate || "cheklanmagan"}`} />
+            </div>
+          </SettingsCard>
+        </TabsContent>
+
+        <TabsContent value="media" className="mt-0">
+          <SettingsCard title="Media" description="Kurs thumbnail va media holati.">
+            {course.thumbnailAvailable ? <CourseThumbnail courseId={courseId} title={course.title} /> : <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Kurs rasmi yuklanmagan</div>}
+          </SettingsCard>
+        </TabsContent>
+
+        <TabsContent value="seo" className="mt-0">
+          <SettingsCard title="SEO" description="Qidiruv tizimlari uchun kurs metadata ma'lumotlari.">
+            <div className="space-y-3">
+              <Summary label="Kalit so'zlar" value={course.metaKeywords || "Kiritilmagan"} />
+              <Summary label="Meta tavsif" value={course.metaDescription || "Kiritilmagan"} />
+            </div>
+          </SettingsCard>
+        </TabsContent>
+
         <TabsContent value="forum" className="mt-4">
           <CourseForum courseId={courseId} />
         </TabsContent>
+          </div>
+        </div>
       </Tabs>
       <Dialog
         open={lessonDialogOpen}
@@ -1415,6 +1586,16 @@ export function TeacherCourseDetail({
                 min={contentValidFrom}
                 value={contentValidUntil}
                 onChange={(event) => setContentValidUntil(event.target.value)}
+              />
+            </Field>
+            <Field label="Davomiyligi (daqiqa)">
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={contentDuration}
+                onChange={(event) => setContentDuration(event.target.value)}
+                placeholder="Masalan: 45"
               />
             </Field>
             <Field label="Qisqa tavsif" className="md:col-span-2">
@@ -1599,4 +1780,71 @@ function Field({
       {children}
     </div>
   );
+}
+
+function SideTab({
+  value,
+  icon: Icon,
+  label,
+}: {
+  value: string;
+  icon: ElementType;
+  label: string;
+}) {
+  return (
+    <TabsTrigger
+      value={value}
+      className="w-full justify-start gap-3 rounded-md border-l-4 border-transparent px-4 py-3 text-left data-[state=active]:border-primary data-[state=active]:bg-muted"
+    >
+      <Icon className="h-4 w-4" /> {label}
+    </TabsTrigger>
+  );
+}
+
+function SettingsCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="p-5">{children}</CardContent>
+    </Card>
+  );
+}
+
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-muted/20 p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 font-medium">{value}</p>
+    </div>
+  );
+}
+
+function CourseThumbnail({ courseId, title }: { courseId: string; title: string }) {
+  const thumbnailQuery = useQuery({
+    queryKey: ["teacher", "course", courseId, "thumbnail"],
+    queryFn: () => teacherPortalApi.downloadCourseThumbnail(courseId),
+  });
+  const [url, setUrl] = useState("");
+
+  useEffect(() => {
+    if (!thumbnailQuery.data) return;
+    const objectUrl = URL.createObjectURL(thumbnailQuery.data);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [thumbnailQuery.data]);
+
+  if (thumbnailQuery.isLoading) return <Loading />;
+  if (thumbnailQuery.error) return <p className="text-sm text-destructive">Kurs rasmi yuklanmadi</p>;
+  return url ? <img src={url} alt={title} className="max-h-80 w-full rounded-xl border object-cover" /> : null;
 }

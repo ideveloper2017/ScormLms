@@ -300,6 +300,8 @@ class AcademicSubjectGroupService(
             programLanguage = curriculum.program.educationLanguage,
             academicYear = curriculum.academicYear, curriculumSubjectId = requireNotNull(item.id),
             subjectId = item.subject?.id, subjectCode = item.subjectCodeSnapshot, subjectName = item.subjectNameSnapshot,
+            subjectCategoryId = item.subject?.subjectCategory?.id,
+            subjectCategoryName = item.subject?.subjectCategory?.name,
             semester = item.semester, credits = item.creditsSnapshot, planItemType = item.planItemType.name,
         )
     }

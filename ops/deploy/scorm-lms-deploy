@@ -50,7 +50,7 @@ ensure_application_database() {
   [[ "$EXPECTED_DATABASE_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || \
     fail "Unsafe EXPECTED_DATABASE_NAME"
 
-  local active_profiles db_url db_user host port database
+  local active_profiles db_url db_user db_password db_schema host port database
   active_profiles="$(read_app_env SPRING_PROFILES_ACTIVE)" || \
     fail "SPRING_PROFILES_ACTIVE is missing in $APP_ENV_FILE"
   case ",$active_profiles," in
@@ -60,7 +60,12 @@ ensure_application_database() {
 
   db_url="$(read_app_env DB_URL)" || fail "DB_URL is missing in $APP_ENV_FILE"
   db_user="$(read_app_env DB_USERNAME)" || fail "DB_USERNAME is missing in $APP_ENV_FILE"
+  db_password="$(read_app_env DB_PASSWORD)" || fail "DB_PASSWORD is missing in $APP_ENV_FILE"
+  db_schema="$(read_app_env DB_SCHEMA || printf 'public')"
   [[ "$db_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || fail "Unsafe DB_USERNAME"
+  [[ -n "$db_password" ]] || fail "DB_PASSWORD must not be empty"
+  [[ "$db_schema" =~ ^[a-z_][a-z0-9_]*$ ]] || \
+    fail "DB_SCHEMA must be an unquoted lowercase PostgreSQL identifier"
 
   if [[ "$db_url" =~ ^jdbc:postgresql://([^/:?]+)(:([0-9]+))?/([A-Za-z_][A-Za-z0-9_]*)(\?.*)?$ ]]; then
     host="${BASH_REMATCH[1]}"
@@ -73,36 +78,82 @@ ensure_application_database() {
   [[ "$database" == "$EXPECTED_DATABASE_NAME" ]] || \
     fail "Refusing database '$database'; expected '$EXPECTED_DATABASE_NAME'. Fix DB_URL in $APP_ENV_FILE"
 
+  command -v psql >/dev/null || fail "psql is required for PostgreSQL preflight"
+
   if [[ "$host" != "localhost" && "$host" != "127.0.0.1" ]]; then
     [[ "$AUTO_CREATE_DATABASE" == "false" ]] || \
       fail "Automatic database creation is allowed only for local PostgreSQL; provision '$database' on '$host' manually"
     log "Remote PostgreSQL detected; database creation preflight skipped"
-    return
-  fi
+  else
+    command -v runuser >/dev/null || fail "runuser is required for PostgreSQL provisioning"
+    command -v createdb >/dev/null || fail "createdb is required for PostgreSQL provisioning"
 
-  command -v runuser >/dev/null || fail "runuser is required for PostgreSQL provisioning"
-  command -v psql >/dev/null || fail "psql is required for PostgreSQL provisioning"
-  command -v createdb >/dev/null || fail "createdb is required for PostgreSQL provisioning"
+    local role_exists database_exists
+    role_exists="$(runuser -u postgres -- psql --no-psqlrc --port "$port" \
+      --dbname postgres --tuples-only --no-align --set=role="$db_user" \
+      --command="SELECT 1 FROM pg_roles WHERE rolname = :'role'" | tr -d '[:space:]')"
+    [[ "$role_exists" == "1" ]] || \
+      fail "PostgreSQL role '$db_user' does not exist; create it once with: sudo -u postgres createuser --pwprompt $db_user"
 
-  local role_exists database_exists
-  role_exists="$(runuser -u postgres -- psql --no-psqlrc --port "$port" \
-    --dbname postgres --tuples-only --no-align --set=role="$db_user" \
-    --command="SELECT 1 FROM pg_roles WHERE rolname = :'role'" | tr -d '[:space:]')"
-  [[ "$role_exists" == "1" ]] || \
-    fail "PostgreSQL role '$db_user' does not exist; create it once with: sudo -u postgres createuser --pwprompt $db_user"
-
-  database_exists="$(runuser -u postgres -- psql --no-psqlrc --port "$port" \
-    --dbname postgres --tuples-only --no-align --set=db="$database" \
-    --command="SELECT 1 FROM pg_database WHERE datname = :'db'" | tr -d '[:space:]')"
-  if [[ "$database_exists" == "1" ]]; then
+    database_exists="$(runuser -u postgres -- psql --no-psqlrc --port "$port" \
+      --dbname postgres --tuples-only --no-align --set=db="$database" \
+      --command="SELECT 1 FROM pg_database WHERE datname = :'db'" | tr -d '[:space:]')"
+    if [[ "$database_exists" != "1" ]]; then
+      [[ "$AUTO_CREATE_DATABASE" == "true" ]] || \
+        fail "PostgreSQL database '$database' does not exist and AUTO_CREATE_DATABASE=false"
+      log "Creating PostgreSQL database '$database' owned by '$db_user'"
+      runuser -u postgres -- createdb --port "$port" --owner "$db_user" "$database"
+    fi
     log "PostgreSQL database '$database' is ready"
-    return
   fi
 
-  [[ "$AUTO_CREATE_DATABASE" == "true" ]] || \
-    fail "PostgreSQL database '$database' does not exist and AUTO_CREATE_DATABASE=false"
-  log "Creating PostgreSQL database '$database' owned by '$db_user'"
-  runuser -u postgres -- createdb --port "$port" --owner "$db_user" "$database"
+  local psql_app=(psql --no-psqlrc --no-password --host "$host" --port "$port" \
+    --username "$db_user" --dbname "$database" --tuples-only --no-align \
+    --set=ON_ERROR_STOP=1)
+  local schema_state actual_database actual_user schema_exists can_use can_create
+  schema_state="$(PGPASSWORD="$db_password" "${psql_app[@]}" --field-separator='|' --command="
+    SELECT current_database(), current_user,
+           to_regnamespace('$db_schema') IS NOT NULL,
+           COALESCE(has_schema_privilege(current_user, to_regnamespace('$db_schema'), 'USAGE'), FALSE),
+           COALESCE(has_schema_privilege(current_user, to_regnamespace('$db_schema'), 'CREATE'), FALSE);
+  ")" || fail "Cannot connect to PostgreSQL as '$db_user' or run Flyway preflight"
+  IFS='|' read -r actual_database actual_user schema_exists can_use can_create <<<"$schema_state"
+  [[ "$actual_database" == "$database" ]] || fail "Connected to unexpected PostgreSQL database '$actual_database'"
+  [[ "$actual_user" == "$db_user" ]] || fail "Connected as unexpected PostgreSQL user '$actual_user'"
+  [[ "$schema_exists" == "t" ]] || fail "PostgreSQL schema '$db_schema' does not exist"
+  [[ "$can_use" == "t" && "$can_create" == "t" ]] || \
+    fail "PostgreSQL user '$db_user' needs USAGE and CREATE privileges on schema '$db_schema' for Flyway"
+
+  local history_exists table_count failed_count current_version
+  history_exists="$(PGPASSWORD="$db_password" "${psql_app[@]}" --command="
+    SELECT to_regclass('$db_schema.flyway_schema_history') IS NOT NULL;
+  " | tr -d '[:space:]')"
+  table_count="$(PGPASSWORD="$db_password" "${psql_app[@]}" --command="
+    SELECT count(*) FROM pg_tables
+    WHERE schemaname = '$db_schema' AND tablename <> 'flyway_schema_history';
+  " | tr -d '[:space:]')"
+
+  if [[ "$history_exists" == "t" ]]; then
+    failed_count="$(PGPASSWORD="$db_password" "${psql_app[@]}" --command="
+      SELECT count(*) FROM $db_schema.flyway_schema_history WHERE NOT success;
+    " | tr -d '[:space:]')"
+    [[ "$failed_count" == "0" ]] || \
+      fail "Flyway history contains $failed_count failed migration(s); inspect and repair them before deployment"
+    current_version="$(PGPASSWORD="$db_password" "${psql_app[@]}" --command="
+      SELECT COALESCE(version, 'baseline') FROM $db_schema.flyway_schema_history
+      WHERE success ORDER BY installed_rank DESC LIMIT 1;
+    " | tr -d '[:space:]')"
+    log "Flyway preflight passed: schema=$db_schema, current-version=${current_version:-none}, tables=$table_count"
+  elif [[ "$table_count" != "0" ]]; then
+    local baseline_on_migrate baseline_version
+    baseline_on_migrate="$(read_app_env FLYWAY_BASELINE_ON_MIGRATE || printf 'true')"
+    baseline_version="$(read_app_env FLYWAY_BASELINE_VERSION || printf '0')"
+    [[ "$baseline_on_migrate" == "true" && "$baseline_version" == "0" ]] || \
+      fail "Non-empty schema has no Flyway history. Set FLYWAY_BASELINE_ON_MIGRATE=true and FLYWAY_BASELINE_VERSION=0 after verifying this is the legacy LMS schema"
+    log "Legacy schema detected: $table_count table(s), no Flyway history; baseline version 0 will be used"
+  else
+    log "Empty schema detected; Flyway will create schema history and migrate from V1"
+  fi
 }
 
 ensure_tomcat_environment() {
@@ -168,6 +219,11 @@ rollback() {
   local original_exit=$?
   trap - ERR
   log "Deployment failed; rolling back"
+
+  if command -v journalctl >/dev/null; then
+    log "Latest $TOMCAT_SERVICE logs (Flyway/startup diagnostics):"
+    journalctl --unit "$TOMCAT_SERVICE" --lines 150 --no-pager || true
+  fi
 
   if [[ "$frontend_switched" == true ]]; then
     if [[ -n "$previous_frontend" && -d "$previous_frontend" ]]; then

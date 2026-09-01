@@ -447,10 +447,13 @@ export interface StudentProfileResponse {
     currentAddress: string | null;
     studentNumber: string;
     facultyId: number | null;
+    departmentId: number | null;
+    programId: number | null;
     degreeLevel: DegreeLevel | null;
     educationForm: EducationForm | null;
     educationLanguage: string | null;
     courseNumber: number | null;
+    semesterNumber: number | null;
     groupId: number | null;
     academicYear: string | null;
     admissionDate: string | null;

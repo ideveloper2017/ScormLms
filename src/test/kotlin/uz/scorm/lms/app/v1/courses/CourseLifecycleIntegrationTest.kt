@@ -19,6 +19,7 @@ import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialRequest
 import uz.scorm.lms.app.v1.courses.dto.ContentReviewDecisionRequest
 import uz.scorm.lms.app.v1.courses.model.ContentReviewDecision
 import uz.scorm.lms.app.v1.courses.model.CourseContentType
+import uz.scorm.lms.app.v1.courses.model.CourseExpiryPeriodType
 import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
@@ -28,6 +29,7 @@ import uz.scorm.lms.app.v1.courses.service.CourseModuleService
 import uz.scorm.lms.app.v1.courses.service.CourseContentService
 import uz.scorm.lms.app.v1.courses.service.CourseContentAssetService
 import uz.scorm.lms.app.v1.courses.service.CourseContentReviewService
+import uz.scorm.lms.app.v1.courses.service.CourseThumbnailService
 import uz.scorm.lms.app.v1.courses.service.SubjectMaterialService
 import uz.scorm.lms.app.v1.courses.service.StudyPlanService
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
@@ -48,6 +50,8 @@ import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
+import uz.scorm.lms.app.v1.teacher.model.Teacher
+import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import java.time.LocalDate
 
 @SpringBootTest
@@ -65,6 +69,7 @@ class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var contentService: CourseContentService
     @Autowired private lateinit var contentAssetService: CourseContentAssetService
     @Autowired private lateinit var contentReviewService: CourseContentReviewService
+    @Autowired private lateinit var thumbnailService: CourseThumbnailService
     @Autowired private lateinit var subjectMaterialService: SubjectMaterialService
     @Autowired private lateinit var studyPlanService: StudyPlanService
     @Autowired private lateinit var courseRepository: CourseRepository
@@ -73,6 +78,7 @@ class CourseLifecycleIntegrationTest {
     @Autowired private lateinit var learningActivityEventRepository: LearningActivityEventRepository
     @Autowired private lateinit var programRepository: ProgramRepository
     @Autowired private lateinit var subjectRepository: SubjectRepository
+    @Autowired private lateinit var teacherRepository: TeacherRepository
 
     @Test
     fun `fan materiali bir marta yaratiladi va kurs moduliga biriktiriladi`() {
@@ -107,6 +113,134 @@ class CourseLifecycleIntegrationTest {
         assertEquals(material.title, attached.title)
         assertEquals("Bir marta saqlanadigan fan materiali", attached.contentBody)
         assertEquals(1, contentService.revisions(course.id, attached.id, requireNotNull(teacher.id), false).size)
+    }
+
+    @Test
+    fun `section darslari berilgan tartibda qayta joylashtiriladi`() {
+        val teacher = user("content-order-teacher")
+        val course = compliantCourse(teacher, "Tartibli kurs", "Tartibli fan")
+        val module = moduleService.create(
+            course.id,
+            CourseModuleRequest(title = "1-section"),
+            requireNotNull(teacher.id),
+            false,
+        )
+        fun lesson(title: String, suffix: String) = contentService.create(
+            course.id,
+            module.id,
+            CourseContentRequest(
+                title = title,
+                contentType = CourseContentType.LINK,
+                contentUrl = "https://content.example.uz/$suffix",
+                languageCode = "uz",
+                authorName = "Test muallifi",
+                contentVersion = "1.0",
+                sourceName = "Universitet LMS",
+                validFrom = LocalDate.now(),
+            ),
+            requireNotNull(teacher.id),
+            false,
+        )
+        val first = lesson("Birinchi dars", "first")
+        val second = lesson("Ikkinchi dars", "second")
+        val third = lesson("Uchinchi dars", "third")
+
+        val reordered = contentService.reorder(
+            course.id,
+            module.id,
+            listOf(third.id, first.id, second.id),
+            requireNotNull(teacher.id),
+            false,
+        )
+
+        assertEquals(listOf(third.id, first.id, second.id), reordered.map { it.id })
+        assertEquals(listOf(1, 2, 3), reordered.map { it.position })
+        assertThrows<IllegalArgumentException> {
+            contentService.reorder(
+                course.id,
+                module.id,
+                listOf(first.id, first.id, second.id),
+                requireNotNull(teacher.id),
+                false,
+            )
+        }
+    }
+
+    @Test
+    fun `kurs katalog pricing delivery va thumbnail metadata bilan yaratiladi`() {
+        val teacher = user("course-metadata-teacher")
+        val image = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+        val created = courseService.create(
+            CourseCreateRequest(
+                title = "Metadata kursi",
+                shortDescription = "Qisqa katalog tavsifi",
+                description = "<p>Batafsil tavsif</p>",
+                level = "BEGINNER",
+                paid = true,
+                price = 120_000.0,
+                discountEnabled = true,
+                discountedPrice = 90_000.0,
+                expiryPeriodType = CourseExpiryPeriodType.LIMITED_TIME,
+                dripContent = true,
+                endDate = LocalDate.now().plusMonths(6),
+                metaKeywords = "fizika, mexanika",
+                metaDescription = "Fizika kursi",
+            ),
+            requireNotNull(teacher.id),
+        )
+
+        assertEquals("Qisqa katalog tavsifi", created.shortDescription)
+        assertTrue(created.paid)
+        assertEquals(90_000.0, created.discountedPrice)
+        assertEquals("limited_time", created.expiryPeriodType)
+        assertTrue(created.dripContent)
+
+        thumbnailService.upload(
+            created.id,
+            MockMultipartFile("file", "course.png", "image/png", image),
+            requireNotNull(teacher.id),
+            false,
+        )
+        assertTrue(courseService.get(created.id, requireNotNull(teacher.id), false).thumbnailAvailable)
+        assertTrue(
+            thumbnailService.download(created.id, requireNotNull(teacher.id), false)
+                .resource.inputStream.readAllBytes().contentEquals(image),
+        )
+    }
+
+    @Test
+    fun `oqituvchi faol fan guruhi bolmasa biriktirilgan fan boyicha kurs yaratadi`() {
+        val account = user("direct-subject-course-teacher")
+        val assignedSubject = subjectRepository.save(Subject(name = "Bevosita biriktirilgan fizika", active = true))
+        val foreignSubject = subjectRepository.save(Subject(name = "Begona fan", active = true))
+        teacherRepository.save(Teacher(
+            fullName = "Bevosita fan o'qituvchisi",
+            active = true,
+            user = account,
+            subjects = mutableSetOf(assignedSubject),
+        ))
+
+        val created = courseService.create(
+            CourseCreateRequest(
+                title = "Fan guruhi bo'lmagan kurs",
+                subjectId = requireNotNull(assignedSubject.id),
+            ),
+            requireNotNull(account.id),
+            enforceTeachingScope = true,
+        )
+
+        assertEquals(assignedSubject.id, created.subjectId)
+        assertEquals(null, created.subjectGroupId)
+        assertThrows<IllegalArgumentException> {
+            courseService.create(
+                CourseCreateRequest(
+                    title = "Ruxsatsiz fan kursi",
+                    subjectId = requireNotNull(foreignSubject.id),
+                ),
+                requireNotNull(account.id),
+                enforceTeachingScope = true,
+            )
+        }
     }
 
     @Test

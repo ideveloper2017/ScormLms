@@ -34,8 +34,10 @@ Deploy preflight `APP_ENV_FILE` ichidagi `DB_URL` database nomini
 yoki boshqa tizim bazasiga ulashni bloklaydi. Lokal PostgreSQL ishlatilganda
 `AUTO_CREATE_DATABASE=true` bo'lsa, database yo'q paytda deploy uni mavjud
 `DB_USERNAME` roli egasida avtomatik yaratadi; jadvallarni keyin Flyway
-yaratadi. Login roli xavfsizlik sabab avtomatik yaratilmaydi va bir marta
-qo'lda tayyorlanadi:
+yaratadi. Preflight ilova credentiali bilan ulanishni, `public` schema uchun
+`USAGE/CREATE` huquqini, muvaffaqiyatsiz Flyway history yozuvlarini va joriy
+versiyani ham tekshiradi. Login roli xavfsizlik sabab avtomatik yaratilmaydi va
+bir marta qo'lda tayyorlanadi:
 
 ```bash
 sudo -u postgres createuser --pwprompt scorm_lms
@@ -141,6 +143,27 @@ ssh-keyscan -H -p 22 lms.example.uz
 ## 4. Production environment
 
 `/etc/scorm-lms/scorm-lms.env` kamida README'dagi production qiymatlarini saqlashi kerak: `SPRING_PROFILES_ACTIVE`, database credentiallari, `JWT_SECRET`, aniq `CORS_ALLOWED_ORIGINS` va persistent storage kataloglari. Haqiqiy secretlarni Git'ga commit qilmang.
+
+Flyway uchun quyidagi qiymatlarni ham aniq saqlang:
+
+```ini
+DB_SCHEMA=public
+FLYWAY_BASELINE_ON_MIGRATE=true
+FLYWAY_BASELINE_VERSION=0
+FLYWAY_CONNECT_RETRIES=10
+FLYWAY_CONNECT_RETRIES_INTERVAL=5s
+FLYWAY_LOCK_RETRY_COUNT=120
+```
+
+`baseline-on-migrate` faqat Flyway history'siz legacy LMS schema uchun ishlaydi.
+History mavjud bazada uning versiyasi/checksumini qo'lda o'zgartirmang va eski
+`V*.sql` fayllarni tahrirlamang. Deploy muvaffaqiyatsiz bo'lsa deploy chiqishiga
+Tomcat jurnalining oxirgi 150 qatori avtomatik qo'shiladi; unda Flyway xatosining
+aniq migration nomi va PostgreSQL sababi ko'rinadi. Serverda qo'lda ko'rish:
+
+```bash
+sudo journalctl -u tomcat11 -n 200 --no-pager | grep -Ei 'flyway|migration|sql state|caused by|error'
+```
 
 Tomcat foydalanuvchisiga persistent kataloglarga yozish huquqi bering. PostgreSQL va storage backup ishlayotganini tekshirmasdan birinchi production deployni boshlamang. Flyway migratsiyasi ishga tushgandan keyin faqat eski WAR'ni qaytarish database sxemasini ortga qaytarmaydi.
 

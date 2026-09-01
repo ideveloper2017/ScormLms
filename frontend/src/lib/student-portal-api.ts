@@ -17,3 +17,7 @@ export async function updateMyProfile(req: UpdateStudentProfileRequest): Promise
     }
     return res.data.data;
 }
+
+export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+    await api.post("/auth/change-password", { currentPassword, newPassword });
+}

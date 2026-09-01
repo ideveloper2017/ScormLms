@@ -38,6 +38,8 @@ data class AcademicSubjectGroupDto(
     val subjectId: Long?,
     val subjectCode: String,
     val subjectName: String,
+    val subjectCategoryId: Long?,
+    val subjectCategoryName: String?,
     val semester: Int,
     val credits: Int,
     val planItemType: String,

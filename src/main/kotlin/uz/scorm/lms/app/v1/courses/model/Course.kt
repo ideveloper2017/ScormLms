@@ -81,6 +81,12 @@ class Course(
     @Column(name = "discounted_price")
     var discountedPrice: Double? = null,
 
+    @Column(name = "expiry_period_type", nullable = false, length = 30)
+    var expiryPeriodType: String = CourseExpiryPeriodType.LIFETIME.name,
+
+    @Column(name = "drip_content", nullable = false)
+    var dripContent: Boolean = false,
+
     @Column(name = "meta_keywords", columnDefinition = "TEXT")
     var metaKeywords: String? = null,
 
@@ -128,4 +134,9 @@ enum class CourseStatus {
     DRAFT,
     PUBLISHED,
     ARCHIVED,
+}
+
+enum class CourseExpiryPeriodType {
+    LIFETIME,
+    LIMITED_TIME,
 }

@@ -120,6 +120,31 @@ class CourseContentService(
     }
 
     @Transactional
+    fun reorder(
+        courseId: Long,
+        moduleId: Long,
+        contentIds: List<Long>,
+        userId: Long,
+        mayManageAll: Boolean,
+    ): List<CourseContentDto> {
+        accessService.requireManage(courseId, userId, mayManageAll)
+        moduleService.ownedModule(courseId, moduleId)
+        val existing = contentRepository.findAllByModuleIdAndDeletedFalseOrderByPositionAsc(moduleId)
+        val existingIds = existing.map { requireNotNull(it.id) }
+        require(contentIds.size == contentIds.toSet().size) { "Dars tartibida takroriy ID mavjud" }
+        require(contentIds.toSet() == existingIds.toSet()) {
+            "Dars tartibi sectiondagi barcha va faqat mavjud darslarni o'z ichiga olishi kerak"
+        }
+        if (existing.isEmpty()) return emptyList()
+
+        val byId = existing.associateBy { requireNotNull(it.id) }
+        val reordered = contentIds.mapIndexed { index, contentId ->
+            byId.getValue(contentId).apply { position = index + 1 }
+        }
+        return contentRepository.saveAll(reordered).map { toDto(it) }
+    }
+
+    @Transactional
     fun update(courseId: Long, contentId: Long, request: CourseContentRequest, userId: Long, mayManageAll: Boolean): CourseContentDto {
         accessService.requireManage(courseId, userId, mayManageAll)
         val content = ownedContent(courseId, contentId)

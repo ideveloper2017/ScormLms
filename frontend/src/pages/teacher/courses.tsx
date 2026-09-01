@@ -1,35 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  BookOpen, Plus, Search, Users, BarChart3, Eye,
-  Edit, Trash2, MoreHorizontal, TrendingUp, Clock,
-  AlertTriangle, RefreshCw,
-} from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { AlertTriangle, BookOpen, Edit, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { qk } from "@/lib/query-keys";
 import { teacherPortalApi } from "@/services/api/teacher-portal-api";
 import { useToast } from "@/hooks/use-toast";
 
-
-const STATUS_META: Record<string, { label: string; cls: string }> = {
-  published: { label: "Faol",       cls: "bg-green-100  text-green-800  dark:bg-green-900/30  dark:text-green-300"  },
-  draft:     { label: "Qoralama",   cls: "bg-slate-100  text-slate-600  dark:bg-slate-800/40  dark:text-slate-400"  },
-  archived:  { label: "Arxivlangan",cls: "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300"   },
-  completed: { label: "Yakunlangan",cls: "bg-gray-100   text-gray-800   dark:bg-gray-800/40   dark:text-gray-300"   },
+const STATUS_META: Record<string, { label: string; className: string }> = {
+  published: { label: "Faol", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" },
+  draft: { label: "Qoralama", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+  archived: { label: "Arxivlangan", className: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" },
 };
 
 export function TeacherCourses() {
@@ -38,7 +25,8 @@ export function TeacherCourses() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-
+  const [pageSize, setPageSize] = useState("10");
+  const [page, setPage] = useState(1);
   const { data: courses = [], isLoading, error, refetch } = useQuery({
     queryKey: qk.teacher.courses(),
     queryFn: teacherPortalApi.getCourses,
@@ -46,7 +34,7 @@ export function TeacherCourses() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' }) =>
+    mutationFn: ({ id, status }: { id: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED" }) =>
       teacherPortalApi.updateCourseStatus(id, status),
     onSuccess: async (course) => {
       await queryClient.invalidateQueries({ queryKey: qk.teacher.courses() });
@@ -54,7 +42,6 @@ export function TeacherCourses() {
     },
     onError: (cause) => toast({ variant: "destructive", title: "Holat yangilanmadi", description: cause instanceof Error ? cause.message : undefined }),
   });
-
   const deleteMutation = useMutation({
     mutationFn: teacherPortalApi.deleteCourse,
     onSuccess: async () => {
@@ -64,208 +51,123 @@ export function TeacherCourses() {
     onError: (cause) => toast({ variant: "destructive", title: "Kurs o'chirilmadi", description: cause instanceof Error ? cause.message : undefined }),
   });
 
-  const filtered = courses.filter((c) => {
-    const t = search.toLowerCase();
-    return (
-      (!t || c.title.toLowerCase().includes(t)) &&
-      (statusFilter === "all" || c.status === statusFilter)
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return courses.filter((course) =>
+      (!term || `${course.title} ${course.subjectName ?? ""} ${course.categoryName ?? ""}`.toLowerCase().includes(term)) &&
+      (statusFilter === "all" || course.status === statusFilter),
     );
-  });
+  }, [courses, search, statusFilter]);
+  const size = Number(pageSize);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / size));
+  const currentPage = Math.min(page, totalPages);
+  const visible = filtered.slice((currentPage - 1) * size, currentPage * size);
 
-  const stats = {
-    active:   courses.filter((c) => c.status === "published").length,
-    students: courses.filter((c) => c.status === "published").reduce((s, c) => s + c.students, 0),
-    avgScore: (() => { const scored = courses.filter(c => (c.avgScore ?? 0) > 0); return scored.length ? Math.round(scored.reduce((s, c) => s + (c.avgScore ?? 0), 0) / scored.length) : 0; })(),
-  };
-
-  if (isLoading) return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <Skeleton className="h-9 w-56" />
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {[1,2,3,4,5,6].map(i => <Card key={i}><CardContent className="pt-6 space-y-3"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-16 w-full" /></CardContent></Card>)}
-      </div>
-    </div>
-  );
-
+  if (isLoading) return <div className="space-y-4 p-6"><Skeleton className="h-10 w-64" /><Skeleton className="h-80 w-full" /></div>;
   if (error) return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4">
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Mening Kurslarim</h1>
-      <Card className="border-destructive/50">
-        <CardContent className="pt-6 text-center space-y-3">
-          <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
-          <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
-          <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
-          <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button>
-        </CardContent>
-      </Card>
+    <div className="space-y-4 p-6">
+      <Card className="border-destructive/50"><CardContent className="space-y-3 py-10 text-center">
+        <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
+        <p className="font-medium text-destructive">Kurslarni yuklab bo'lmadi</p>
+        <Button variant="outline" onClick={() => refetch()}><RefreshCw className="mr-2 h-4 w-4" />Qayta urinish</Button>
+      </CardContent></Card>
     </div>
   );
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Mening Kurslarim</h1>
-          <p className="text-muted-foreground">Barcha dars bergan va yaratgan kurslar</p>
+          <h1 className="text-2xl font-bold">Mening kurslarim</h1>
+          <p className="text-sm text-muted-foreground">Kurslar, kategoriyalar va holatlarni boshqarish</p>
         </div>
-        <Button className="gap-2" onClick={() => navigate("/teacher/courses/create")}>
-          <Plus className="h-4 w-4" />Yangi kurs
-        </Button>
+        <Button className="gap-2" onClick={() => navigate("/teacher/courses/create")}><Plus className="h-4 w-4" />Yangi kurs yaratish</Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Faol kurslar",   value: stats.active,   cls: "text-green-600" },
-          { label: "Jami talabalar", value: stats.students,  cls: "text-blue-600"  },
-          { label: "O'rtacha ball",  value: `${stats.avgScore}%`, cls: "text-yellow-600" },
-        ].map(({ label, value, cls }) => (
-          <Card key={label}>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle></CardHeader>
-            <CardContent><div className={`text-2xl font-bold ${cls}`}>{value}</div></CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Kurs yoki fan nomi..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Holat" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Barchasi</SelectItem>
-            <SelectItem value="published">Faol</SelectItem>
-            <SelectItem value="draft">Qoralama</SelectItem>
-            <SelectItem value="archived">Arxiv</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Course cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.length === 0 && (
-          <div className="col-span-3 text-center py-12 text-muted-foreground">Kurs topilmadi</div>
-        )}
-        {filtered.map((course) => {
-          const meta = STATUS_META[course.status] ?? STATUS_META.draft;
-          return (
-            <Card key={course.id} className="flex flex-col hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
-                    <div className="p-2 rounded-md bg-blue-100 dark:bg-blue-900/30 shrink-0">
-                      <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base leading-tight">{course.title}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">{course.groupName}</CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Badge className={meta.cls + " text-xs"}>{meta.label}</Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/teacher/courses/${course.id}`)} className="gap-2">
-                          <Eye className="h-4 w-4" />Ko'rish
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/teacher/courses/${course.id}`)} className="gap-2">
-                          <Edit className="h-4 w-4" />Tahrirlash
-                        </DropdownMenuItem>
-                        {course.status === "draft" && (
-                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: course.id, status: 'PUBLISHED' })} className="gap-2">
-                            <BookOpen className="h-4 w-4" />Nashr qilish
-                          </DropdownMenuItem>
-                        )}
-                        {course.status === "published" && (
-                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: course.id, status: 'ARCHIVED' })} className="gap-2">
-                            <Clock className="h-4 w-4" />Arxivlash
-                          </DropdownMenuItem>
-                        )}
-                        {course.status === "archived" && (
-                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: course.id, status: 'DRAFT' })} className="gap-2">
-                            <Edit className="h-4 w-4" />Qoralamaga qaytarish
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          disabled={course.status === "published" || deleteMutation.isPending}
-                          onClick={() => deleteMutation.mutate(course.id)}
-                          className="gap-2 text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />O'chirish
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-3">
-                <p className="text-xs text-muted-foreground line-clamp-2">{course.description}</p>
-
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div>
-                    <div className="font-semibold">—</div>
-                    <div className="text-muted-foreground">Modul</div>
-                  </div>
-                  <div>
-                    <div className="font-semibold">—</div>
-                    <div className="text-muted-foreground">Dars</div>
-                  </div>
-                  <div>
-                    <div className="font-semibold flex items-center justify-center gap-0.5">
-                      <Users className="h-3 w-3" />{course.students}
-                    </div>
-                    <div className="text-muted-foreground">Talaba</div>
-                  </div>
-                </div>
-
-                {course.status !== "draft" && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{course.progress}%</span>
-                    </div>
-                    <Progress value={course.progress} className="h-1.5" />
-                    {(course.avgScore ?? 0) > 0 && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <TrendingUp className="h-3 w-3 text-green-500" />
-                        O'rtacha: {course.avgScore}%
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1 gap-1.5 text-xs h-8"
-                    onClick={() => navigate(`/teacher/courses/${course.id}`)}
-                  >
-                    <Eye className="h-3.5 w-3.5" />Ko'rish
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 gap-1.5 text-xs h-8"
-                    onClick={() => navigate(`/teacher/courses/${course.id}/contents`)}
-                  >
-                    Kontent
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <CardTitle className="text-lg">Kurslar ro'yxati</CardTitle>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative min-w-64">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Qidirish" className="pl-9" />
+              </div>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
+                <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Barcha holatlar</SelectItem>
+                  <SelectItem value="draft">Qoralama</SelectItem>
+                  <SelectItem value="published">Faol</SelectItem>
+                  <SelectItem value="archived">Arxiv</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={pageSize} onValueChange={(value) => { setPageSize(value); setPage(1); }}>
+                <SelectTrigger className="w-full sm:w-24"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="10">10</SelectItem><SelectItem value="25">25</SelectItem><SelectItem value="50">50</SelectItem></SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead className="pl-5">Kurs</TableHead>
+              <TableHead>Holat</TableHead>
+              <TableHead>Kategoriya</TableHead>
+              <TableHead>Fan guruhi</TableHead>
+              <TableHead>Til / daraja</TableHead>
+              <TableHead>Narx</TableHead>
+              <TableHead className="pr-5 text-right">Amallar</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {visible.length === 0 && <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground">Kurs topilmadi</TableCell></TableRow>}
+              {visible.map((course) => {
+                const meta = STATUS_META[course.status] ?? STATUS_META.draft;
+                return <TableRow key={course.id}>
+                  <TableCell className="min-w-64 pl-5">
+                    <button className="flex items-center gap-3 text-left" onClick={() => navigate(`/teacher/courses/${course.id}/contents`)}>
+                      <span className="rounded-lg bg-primary/10 p-2"><BookOpen className="h-4 w-4 text-primary" /></span>
+                      <span><span className="block font-medium">{course.title}</span><span className="block max-w-56 truncate text-xs text-muted-foreground">{course.shortDescription || course.subjectName || "—"}</span></span>
+                    </button>
+                  </TableCell>
+                  <TableCell><Badge className={meta.className}>{meta.label}</Badge></TableCell>
+                  <TableCell>{course.categoryName || "—"}</TableCell>
+                  <TableCell><span className="block">{course.subjectName || "—"}</span><span className="text-xs text-muted-foreground">{course.groupName || "—"}</span></TableCell>
+                  <TableCell>{(course.language || "—").toUpperCase()} · {levelLabel(course.level)}</TableCell>
+                  <TableCell>
+                    {course.paid
+                      ? `${course.discountEnabled ? (course.discountedPrice ?? course.price ?? 0) : (course.price ?? 0)} so'm`
+                      : "Bepul"}
+                  </TableCell>
+                  <TableCell className="pr-5"><div className="flex justify-end gap-2">
+                    <Button variant="secondary" size="icon" aria-label="Kursni tahrirlash" onClick={() => navigate(`/teacher/courses/${course.id}/contents`)}><Edit className="h-4 w-4 text-emerald-600" /></Button>
+                    {course.status === "draft" && <Button variant="outline" size="sm" onClick={() => statusMutation.mutate({ id: course.id, status: "PUBLISHED" })}>Nashr</Button>}
+                    <Button variant="destructive" size="icon" aria-label="Kursni o'chirish" disabled={course.status === "published" || deleteMutation.isPending} onClick={() => deleteMutation.mutate(course.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div></TableCell>
+                </TableRow>;
+              })}
+            </TableBody>
+          </Table>
+          <div className="flex flex-col gap-3 border-t px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-muted-foreground">Jami {filtered.length} ta kurs</span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage(1)}>&lt;&lt; Birinchi</Button>
+              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Oldingi</Button>
+              <strong>{currentPage} / {totalPages}</strong>
+              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>Keyingi</Button>
+              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setPage(totalPages)}>Oxirgi &gt;&gt;</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
+}
+
+function levelLabel(value?: string | null) {
+  if (value === "BEGINNER") return "Boshlang'ich";
+  if (value === "INTERMEDIATE") return "O'rta";
+  if (value === "ADVANCED") return "Yuqori";
+  return value || "—";
 }

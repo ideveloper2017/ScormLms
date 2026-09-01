@@ -67,11 +67,15 @@ spring:
         prepStmtCacheSqlLimit: 2048
         useServerPrepStmts: true
         reWriteBatchedInserts: true
+        currentSchema: ${DB_SCHEMA:public}
 
   # Production schema versiyalari db/migration ichidagi o'zgarmas Flyway
   # migratsiyalari orqali boshqariladi.
   flyway:
     enabled: true
+    default-schema: ${DB_SCHEMA:public}
+    schemas: ${DB_SCHEMA:public}
+    create-schemas: false
 
   jpa:
     hibernate:

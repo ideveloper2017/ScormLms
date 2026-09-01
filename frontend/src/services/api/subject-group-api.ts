@@ -17,6 +17,8 @@ export interface AcademicSubjectGroup {
   subjectId?: number | null;
   subjectCode: string;
   subjectName: string;
+  subjectCategoryId?: number | null;
+  subjectCategoryName?: string | null;
   semester: number;
   credits: number;
   planItemType: "REQUIRED" | "ELECTIVE";

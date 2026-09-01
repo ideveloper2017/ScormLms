@@ -21,7 +21,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("70", flyway.info().current()?.version?.toString())
+        assertEquals("71", flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
@@ -145,7 +145,12 @@ class ScromLmsProjectsApplicationTests {
                     while (columns.next()) add(columns.getString("COLUMN_NAME").lowercase())
                 }
             }
-            assertTrue(courseColumns.containsAll(setOf("subject_id", "subject_group_id")))
+            assertTrue(courseColumns.containsAll(setOf(
+                "subject_id",
+                "subject_group_id",
+                "expiry_period_type",
+                "drip_content",
+            )))
             val contentColumns = buildSet {
                 metadata.getColumns(null, null, "course_contents", null).use { columns ->
                     while (columns.next()) add(columns.getString("COLUMN_NAME").lowercase())

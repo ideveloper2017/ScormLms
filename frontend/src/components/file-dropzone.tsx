@@ -8,6 +8,7 @@ interface FileDropzoneProps {
   existingFileName?: string;
   disabled?: boolean;
   hint?: string;
+  maxSizeMb?: number;
   onFileChange: (file: File | null) => void;
 }
 
@@ -17,6 +18,7 @@ export function FileDropzone({
   existingFileName,
   disabled = false,
   hint = "Faylni shu yerga tashlang yoki kompyuterdan tanlang",
+  maxSizeMb = 200,
   onFileChange,
 }: FileDropzoneProps) {
   const inputId = useId();
@@ -52,7 +54,7 @@ export function FileDropzone({
         <UploadCloud className="mb-3 h-8 w-8 text-primary" />
         <span className="font-medium">{hint}</span>
         <span className="mt-1 text-xs text-muted-foreground">
-          Bitta fayl, maksimum 200 MB
+          Bitta fayl, maksimum {maxSizeMb} MB
         </span>
         <input
           id={inputId}
