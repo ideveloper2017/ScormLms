@@ -114,6 +114,25 @@ tasks.named('test') {
     }
 }
 
+// Docker o'rnatilmagan oddiy development kompyuterida tez tekshiruv.
+// To'liq `test` vazifasi PostgreSQL Testcontainers integration testlarini ham
+// bajaradi; bu vazifa esa faqat konteyner talab qilmaydigan testlarni ishlatadi.
+tasks.register('testNoDocker', Test) {
+    group = 'verification'
+    description = 'Runs backend tests that do not require Docker/Testcontainers.'
+    useJUnitPlatform()
+    maxHeapSize = '2g'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    exclude '**/*IntegrationTest*'
+    exclude '**/*EndToEndTest*'
+    exclude '**/BackendApiRouteContractTest*'
+    exclude '**/ScromLmsProjectsApplicationTests*'
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}
+
 tasks.named('processResources') {
     from('docs/uat/decision-559-uat-evidence.json') {
         into 'uat'

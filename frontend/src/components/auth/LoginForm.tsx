@@ -29,7 +29,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     // Redirect if already logged in
     useEffect(() => {
         if (isAuthenticated) navigate('/', { replace: true });
-    }, [isAuthenticated]);
+    }, [isAuthenticated, navigate]);
 
     // Handle login success
     const handleLoginSuccess = () => {
@@ -50,8 +50,8 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
 
         // Basic validation
         const newErrors: typeof errors = {};
-        if (!formData.username.trim()) newErrors.username = 'Username or email is required';
-        if (!formData.password) newErrors.password = 'Password is required';
+        if (!formData.username.trim()) newErrors.username = 'Loginni kiriting';
+        if (!formData.password) newErrors.password = 'Parolni kiriting';
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             setIsSubmitting(false);
@@ -68,13 +68,13 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                     toast({ title: 'Success', description: result?.message, variant: 'default' });
                 }
             } else {
-                const errorMessage = result?.message || 'Login failed. Please try again.';
+                const errorMessage = result?.message || 'Tizimga kirib bo\'lmadi. Login va parolni tekshiring.';
                 setErrors({ general: errorMessage });
                 toast({ title: 'Login Failed', description: errorMessage, variant: 'destructive' });
             }
         } catch (error: any) {
             console.error('Login error:', error);
-            const errorMessage = error.response?.data?.message || error.message || 'An error occurred during login';
+            const errorMessage = error.response?.data?.message || error.message || 'Kirish vaqtida xatolik yuz berdi';
             setErrors({ general: errorMessage });
             toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
         } finally {
@@ -129,6 +129,32 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                             </div>
 
                             {errors.general && <div className="p-3 text-sm text-red-700 bg-red-100 rounded-md border border-red-200">{errors.general}</div>}
+
+                            {import.meta.env.DEV && (
+                                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+                                    <p className="mb-2 text-xs font-medium text-blue-800 dark:text-blue-200">Demo hisobni tez tanlang</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setFormData({ username: 'demo_student', password: 'Physics#Study2026' })}
+                                            disabled={isSubmitting || isAuthLoading}
+                                        >
+                                            Demo talaba
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setFormData({ username: 'demo_teacher', password: 'Physics#Teach2026' })}
+                                            disabled={isSubmitting || isAuthLoading}
+                                        >
+                                            Demo o'qituvchi
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Email / Username */}
                             <div className="space-y-2">

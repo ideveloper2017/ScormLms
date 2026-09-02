@@ -92,12 +92,17 @@ class DemoDataInitializer(
     private val enrollmentRepository: CourseEnrollmentRepository,
     @param:Value("\${app.seed.teacher-password:}") private val teacherPassword: String,
     @param:Value("\${app.seed.student-password:}") private val studentPassword: String,
+    @param:Value("\${app.seed.demo-staff-password:}") private val demoStaffPassword: String,
 ) : ApplicationRunner {
 
     @Transactional
     override fun run(args: ApplicationArguments) {
         val teacherUser = demoUser("demo_teacher", teacherPassword, "teacher")
         val studentUser = demoUser("demo_student", studentPassword, "student")
+        demoUser("demo_admin", demoStaffPassword, "admin")
+        demoUser("demo_metodist", demoStaffPassword, "metodist")
+        demoUser("demo_proctor", demoStaffPassword, "proctor")
+        demoUser("demo_monitoring", demoStaffPassword, "monitoring")
         if (teacherUser == null || studentUser == null) {
             demoLogger.warn {
                 "Demo ma'lumotlar yaratilmadi. demo_teacher/demo_student foydalanuvchilari mavjud bo'lishi yoki " +

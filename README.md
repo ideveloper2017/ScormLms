@@ -9,6 +9,42 @@ Amaldagi implementatsiya holati va keyingi ishlar [qaror bo'yicha rejada](docs/d
 Talablar: Java 21+, PostgreSQL, tashqi WAR deploy uchun Tomcat 11.0+ va
 Node.js 22.12+ (yoki 20.19+).
 
+### Eng oson usul (Windows)
+
+PostgreSQL ishlayotgan bo'lsa, loyiha ildizida bitta buyruq yetarli:
+
+```powershell
+.\start-local.ps1
+```
+
+Skript boshqa loyihalarning `8080/5173` portlariga tegmaydi. SCORM LMS backendini
+`http://localhost:8081`, frontendini `http://localhost:5174` manzilida ochadi,
+bazani migratsiya qiladi va bog'langan demo ma'lumotlarni tayyorlaydi. To'xtatish:
+
+```powershell
+.\stop-local.ps1
+```
+
+Asosiy oqimlarni avtomatik tekshirish:
+
+```powershell
+.\verify-local.ps1
+```
+
+Demo loginlar:
+
+- student: `demo_student` / `Physics#Study2026`
+- o'qituvchi: `demo_teacher` / `Physics#Teach2026`
+- admin: `demo_admin` / `Physics#Staff2026`
+- metodist: `demo_metodist` / `Physics#Staff2026`
+- proktor: `demo_proctor` / `Physics#Staff2026`
+- monitoring: `demo_monitoring` / `Physics#Staff2026`
+
+Windows'da Gradle `Unable to establish loopback connection` xatosi bersa ham
+`start-local.ps1` kerakli Java temp sozlamasini avtomatik qo'llaydi.
+
+### Qo'lda ishga tushirish
+
 1. PostgreSQL'da `scorm_lms` bazasini yarating.
 2. `.env.example` dan kerakli qiymatlarni IDE/terminal environment'iga kiriting. Spring Boot `.env` faylini o'zi avtomatik o'qimaydi.
 3. Backendni ishga tushiring:
@@ -40,7 +76,7 @@ $env:APP_SEED_STUDENT_PASSWORD="CHANGE_ME_STRONG_STUDENT_PASSWORD"
 .\gradlew.bat bootRun
 ```
 
-Shundan keyin `demo_teacher` va `demo_student` loginlari bilan tegishli parolda kirish mumkin. Agar bu loginlar oldindan mavjud bo'lsa, ularning paroli o'zgartirilmaydi. Seed takror ishga tushganda nusxa yozuv yaratmaydi, lekin demo to'plam tayyor bo'lgach `APP_DEMO_DATA_ENABLED=false` qilish tavsiya etiladi. Bu sozlama default holatda o'chiq va real ma'lumotlarni avtomatik o'chirmaydi.
+Shundan keyin `demo_teacher` va `demo_student` loginlari bilan tegishli parolda kirish mumkin. Development profilida demo seed standart holatda yoqilgan va takror ishga tushganda nusxa yozuv yaratmaydi. Demo akkauntlar mavjud bo'lsa, berilgan demo parollar qayta o'rnatiladi. Production profilida demo ma'lumotlar standart holatda o'chiq va real ma'lumotlar avtomatik o'chirilmaydi.
 
 ## Production environment
 
@@ -78,12 +114,16 @@ Frontend environment qiymatlari build vaqtida olinadi; ular [frontend/.env.examp
 ## Tekshiruvlar
 
 ```powershell
-.\gradlew.bat test
+$env:JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=$env:WINDIR\Temp"
+.\gradlew.bat testNoDocker
 Set-Location frontend
 npm run build
 npm run test:run
 npm audit
 ```
+
+Docker ishlayotgan muhitda barcha PostgreSQL integration testlari uchun
+`./gradlew.bat test` buyrug'idan foydalaniladi.
 
 SCORM paketlari, upload va xususiy UAT dalil kataloglari Git'ga kiritilmaydi; deploymentda alohida saqlash, backup va restore siyosati talab qilinadi.
 
