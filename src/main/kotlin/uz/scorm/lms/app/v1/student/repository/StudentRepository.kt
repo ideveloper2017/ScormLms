@@ -27,6 +27,15 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
     fun findByUserUsername(username: String): StudentProfile?
     fun findByUserId(userId: Long): StudentProfile?
     fun findByPinfl(pinfl: String): StudentProfile?
+    @Query("""
+        select s from StudentProfile s
+        where upper(trim(s.passportSeries)) = upper(:series)
+          and upper(trim(s.passportNumber)) = upper(:number)
+    """)
+    fun findByPassport(
+        @Param("series") series: String,
+        @Param("number") number: String,
+    ): List<StudentProfile>
     fun findByStudentNumber(studentNumber: String): StudentProfile?
     fun findByHemisId(hemisId: Long): StudentProfile?
     fun existsByPinfl(pinfl: String): Boolean

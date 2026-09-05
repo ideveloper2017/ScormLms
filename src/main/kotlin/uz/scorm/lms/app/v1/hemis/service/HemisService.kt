@@ -20,6 +20,7 @@ import java.util.Base64
 interface HemisDirectoryClient {
     fun fetchGroupList(): List<HemisGroupItem>
     fun fetchStudentsByGroup(groupId: Long, limit: Int = 200, offset: Int = 0): HemisStudentListData
+    fun fetchStudentsByIdentity(identity: String, limit: Int = 20): List<HemisStudent> = emptyList()
     fun credentialsConfigured(): Boolean
 }
 
@@ -89,6 +90,18 @@ class HemisService(
             .block()
             ?.data
             ?: HemisStudentListData(emptyList(), 0, limit, offset)
+    }
+
+    override fun fetchStudentsByIdentity(identity: String, limit: Int): List<HemisStudent> {
+        val token = adminToken()
+        return webClient.get()
+            .uri("$baseUrl/data/student-list?limit=${limit.coerceIn(1, 50)}&offset=0&search={identity}", identity)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+            .retrieve()
+            .bodyToMono(HemisStudentListResponse::class.java)
+            .block()
+            ?.data?.items
+            ?: emptyList()
     }
 
     override fun credentialsConfigured(): Boolean = adminLogin.isNotBlank() && adminPassword.isNotBlank()

@@ -26,7 +26,7 @@ function displayDate(value: string) {
 
 const emptyUrls = { room: "", building: "", liveUrl: "", recordingUrl: "", resourceUrl: "" };
 
-export function TeacherSessions() {
+export function TeacherSessions({ managementMode = false }: { managementMode?: boolean }) {
   const now = new Date();
   const [courseId, setCourseId] = useState("");
   const [title, setTitle] = useState("");
@@ -114,7 +114,8 @@ export function TeacherSessions() {
   const sessions = sessionsQuery.data ?? [];
   return (
     <div className="p-3 sm:p-6 space-y-6">
-      <div><h1 className="text-2xl font-bold">Mashg'ulotlar va dars jadvali</h1><p className="text-muted-foreground">Jonli dars, video yozuv va mustaqil resurslarni kurs jadvaliga nashr qiling.</p></div>
+      <div><h1 className="text-2xl font-bold">{managementMode ? "Dars jadvalini boshqarish" : "Mashg'ulotlar va dars jadvali"}</h1><p className="text-muted-foreground">{managementMode ? "Kursni tanlang, dars vaqti hamda o'tkazish joyini kiriting va talabalar uchun nashr qiling." : "Jonli dars, video yozuv va mustaqil resurslarni kurs jadvaliga nashr qiling."}</p></div>
+      {managementMode && <Alert><CalendarDays className="h-4 w-4" /><AlertDescription>Nashr qilingan dars kurs o'qituvchisi va shu kursga faol biriktirilgan talabalar kabinetida ko'rinadi. Draft yozuv talabaga ko'rinmaydi.</AlertDescription></Alert>}
       <Alert><CloudCog className="h-4 w-4" /><AlertDescription>Provider rejimida brauzerga credential berilmaydi. Backend adapter meetingni idempotent yaratadi; faqat READY holatidan keyin mashg'ulotni nashr qilish va studentga join URL berish mumkin. Provider sozlanmagan bo'lsa xato auditda saqlanadi.</AlertDescription></Alert>
 
       <Card>

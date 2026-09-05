@@ -85,6 +85,7 @@ class StudentService(
             throw IllegalArgumentException("Bu PINFL allaqachon ro'yxatdan o'tgan: ${req.pinfl}")
         if (studentRepository.existsByStudentNumber(req.studentNumber.trim()))
             throw IllegalArgumentException("Bu talaba raqami band: ${req.studentNumber}")
+        requirePassportNotAssigned(req.passportSeries, req.passportNumber)
 
         val user = userService.registerPendingCredentials(req.studentNumber.trim(), "student")
         user.fullName = listOf(req.lastName.trim(), req.firstName.trim(), normalized(req.middleName)).filterNotNull().joinToString(" ")
@@ -162,6 +163,7 @@ class StudentService(
             currentDistrict = current.districtName,
             currentAddress = req.currentAddress,
         )
+        requirePassportNotAssigned(req.passportSeries, req.passportNumber, student.id)
         student.lastName = req.lastName.trim()
         student.firstName = req.firstName.trim()
         student.middleName = normalized(req.middleName)
@@ -262,6 +264,15 @@ class StudentService(
 
     private fun normalized(value: String?): String? = value?.trim()?.takeIf(String::isNotBlank)
 
+    private fun requirePassportNotAssigned(series: String?, number: String?, currentStudentId: Long? = null) {
+        val normalizedSeries = normalized(series)?.filter(Char::isLetterOrDigit)?.uppercase() ?: return
+        val normalizedNumber = normalized(number)?.filter(Char::isLetterOrDigit)?.uppercase() ?: return
+        val existing = studentRepository.findByPassport(normalizedSeries, normalizedNumber).firstOrNull() ?: return
+        require(existing.id == currentStudentId) {
+            "Bu pasport seriya va raqami boshqa talabaga biriktirilgan"
+        }
+    }
+
     fun validateAcademicAdmission(student: StudentProfile, req: StudentAcademicAdmissionRequest) {
         academicPeriodService.requireActiveSemester(req.semesterNumber)
         val calculatedCourse = ((req.semesterNumber - 1) / 2) + 1
@@ -314,6 +325,7 @@ class StudentService(
             throw IllegalArgumentException("Bu PINFL allaqachon ro'yxatdan o'tgan: ${req.pinfl}")
         if (studentRepository.existsByStudentNumber(req.studentNumber))
             throw IllegalArgumentException("Bu talaba raqami band: ${req.studentNumber}")
+        requirePassportNotAssigned(req.passportSeries, req.passportNumber)
 
         validateDistanceAdmission(req)
 

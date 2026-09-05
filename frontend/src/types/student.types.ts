@@ -158,6 +158,37 @@ export interface StudentRegistryQuery {
     size?: number;
 }
 
+export type StudentLookupSource = 'LOCAL' | 'HEMIS' | 'NOT_FOUND';
+
+export interface HemisStudentCandidate {
+    hemisId: number;
+    pinfl: string;
+    passportSeries: string | null;
+    passportNumber: string | null;
+    firstName: string;
+    lastName: string;
+    middleName: string | null;
+    fullName: string;
+    birthDate: string | null;
+    gender: Gender | null;
+    citizenship: Citizenship;
+    studentNumber: string;
+    email: string | null;
+    photoUrl: string | null;
+    faculty: string;
+    group: string;
+    specialty: string;
+}
+
+export interface StudentIdentityLookupResult {
+    source: StudentLookupSource;
+    localStudent: StudentDto | null;
+    hemisStudent: HemisStudentCandidate | null;
+    hemisChecked: boolean;
+    manualEntryAllowed: boolean;
+    message: string;
+}
+
 export interface StudentRegistrationRequest {
     pinfl: string;
     lastName: string;

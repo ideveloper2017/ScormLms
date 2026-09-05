@@ -111,6 +111,7 @@ const ITEMS = {
   aAdmissionPolicies: { name: "Qabul va kontrakt", href: "/admin/admission-policies", icon: Landmark },
   aNonStateLicenses: { name: "Nodavlat litsenziyalari", href: "/admin/non-state-licenses", icon: BadgeCheck },
   aCourses:      { name: "Kurslar",             href: "/admin/courses",      icon: BookOpen        },
+  aSchedule:     { name: "Dars jadvali",        href: "/admin/schedule",     icon: CalendarDays    },
   aCalendar:     { name: "Akademik kalendar",   href: "/admin/calendar",     icon: Calendar        },
   aOrientations: { name: "LMS orientatsiyasi",  href: "/admin/orientations", icon: Presentation    },
   aPractices:    { name: "Talaba amaliyoti",    href: "/admin/practices",    icon: BriefcaseBusiness },
@@ -200,7 +201,7 @@ export function buildNav(role: string): NavGroup[] {
     ] },
     { label: "Yangiliklar", icon: Megaphone, collapsible: true, items: [
       referenceItem("Yangiliklar", "/content/posts", Megaphone),
-      referenceItem("Dars jadvali", "/content/schedule", CalendarDays),
+      ITEMS.aSchedule,
       referenceItem("Online resurslar", "/content/online-resource", Globe2),
     ] },
     { label: "Xabarlar",             href: "/messages", icon: MessageCircle, items: [] },
@@ -240,7 +241,7 @@ export function buildNav(role: string): NavGroup[] {
     METODIST: [
       { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
       { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.contingent] },
-      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aCurriculumStudents, ITEMS.aSyllabi, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.exams] },
+      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aCurriculumStudents, ITEMS.aSyllabi, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aSchedule, ITEMS.exams] },
       { label: "Nazorat va hisobot", items: [ITEMS.aContentReviews, ITEMS.aReports, ITEMS.aQualityStudies, ITEMS.aSurveys, ITEMS.stats] },
       { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers] },
       { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.teaching, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },

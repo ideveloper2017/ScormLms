@@ -12,6 +12,8 @@ data class HemisStudent(
     val university: String,
     val student_id_number: String,
     val pinfl: String? = null,
+    val passport_pin: String? = null,
+    val passport_number: String? = null,
     val gender: CodeName? = null,
     val image: String?,
     val birth_date: Long,

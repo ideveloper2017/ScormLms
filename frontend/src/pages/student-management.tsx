@@ -34,6 +34,7 @@ import {
   getStudent,
   listStudentLifecycle,
   listStudents,
+  lookupStudentIdentity,
   promoteStudent,
   setupStudentCredentials,
   transitionStudent,
@@ -51,8 +52,9 @@ import type {
   StudentLifecycleRequest,
   StudentStatus,
   StudentSummaryDto,
+  StudentIdentityLookupResult,
 } from '@/types/student.types';
-import { Loader2, Download, UserPlus, RefreshCcw, ArrowRightLeft, MoreHorizontal, DatabaseZap } from 'lucide-react';
+import { Loader2, Download, UserPlus, RefreshCcw, ArrowRightLeft, MoreHorizontal, DatabaseZap, Search, CircleCheck, TriangleAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { hasAuthority } from '@/lib/rbac-api';
@@ -131,6 +133,13 @@ export function StudentManagement({
   const [registryPageSize, setRegistryPageSize] = useState(20);
   const [exportingRegistry, setExportingRegistry] = useState(false);
   const [hemisImportOpen, setHemisImportOpen] = useState(false);
+  const [identityLookupOpen, setIdentityLookupOpen] = useState(false);
+  const [identityMode, setIdentityMode] = useState<'PINFL' | 'PASSPORT'>('PINFL');
+  const [lookupPinfl, setLookupPinfl] = useState('');
+  const [lookupPassportSeries, setLookupPassportSeries] = useState('');
+  const [lookupPassportNumber, setLookupPassportNumber] = useState('');
+  const [lookupResult, setLookupResult] = useState<StudentIdentityLookupResult | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedRegistrySearch(registrySearch.trim()), 300);
     return () => window.clearTimeout(timeout);
@@ -234,6 +243,73 @@ export function StudentManagement({
     variant: 'destructive',
   });
 
+  const resetIdentityLookup = () => {
+    setLookupPinfl(''); setLookupPassportSeries(''); setLookupPassportNumber(''); setLookupResult(null);
+  };
+
+  const fillFormFromStudent = (student: StudentDto) => {
+    setEditingStudent(student);
+    setFormData({
+      firstName: student.firstName || '', lastName: student.lastName || '', middleName: student.middleName || '', pinfl: student.pinfl || '',
+      studentNumber: student.studentNumber || '', birthDate: student.birthDate || '', gender: student.gender || 'MALE',
+      citizenship: student.citizenship || 'UZBEKISTAN', citizenshipCountryId: student.citizenshipCountryId ? String(student.citizenshipCountryId) : '', phoneNumber: student.phoneNumber || '', email: student.email || '',
+      photoUrl: student.photoUrl || '', passportType: student.passportType || 'NONE',
+      passportSeries: student.passportSeries || '', passportNumber: student.passportNumber || '',
+      passportIssuedDate: student.passportIssuedDate || '', passportExpiryDate: student.passportExpiryDate || '',
+      passportIssuedBy: student.passportIssuedBy || '', permanentRegion: student.permanentRegion || '', permanentRegionId: student.permanentRegionId ? String(student.permanentRegionId) : '',
+      permanentDistrict: student.permanentDistrict || '', permanentDistrictId: student.permanentDistrictId ? String(student.permanentDistrictId) : '', permanentAddress: student.permanentAddress || '',
+      currentRegion: student.currentRegion || '', currentRegionId: student.currentRegionId ? String(student.currentRegionId) : '', currentDistrict: student.currentDistrict || '', currentDistrictId: student.currentDistrictId ? String(student.currentDistrictId) : '', currentAddress: student.currentAddress || '',
+    });
+  };
+
+  const runIdentityLookup = async () => {
+    const pinfl = lookupPinfl.replace(/\D/g, '');
+    const passportSeries = lookupPassportSeries.replace(/[^a-z0-9]/gi, '').toUpperCase();
+    const passportNumber = lookupPassportNumber.replace(/[^a-z0-9]/gi, '').toUpperCase();
+    if (identityMode === 'PINFL' && pinfl.length !== 14) {
+      toast({ title: "JSHSHIR noto'g'ri", description: "14 ta raqam kiriting", variant: 'destructive' }); return;
+    }
+    if (identityMode === 'PASSPORT' && (passportSeries.length < 2 || passportNumber.length < 5)) {
+      toast({ title: "Pasport ma'lumoti noto'g'ri", description: "Seriya va raqamni to'liq kiriting", variant: 'destructive' }); return;
+    }
+    setLookingUp(true); setLookupResult(null);
+    try {
+      const result = await lookupStudentIdentity(identityMode === 'PINFL'
+        ? { pinfl }
+        : { passportSeries, passportNumber });
+      setLookupResult(result);
+    } catch (error) { showError(error); } finally { setLookingUp(false); }
+  };
+
+  const continueFromLookup = () => {
+    const candidate = lookupResult?.hemisStudent;
+    const next = emptyPersonalForm();
+    if (identityMode === 'PINFL') next.pinfl = lookupPinfl.replace(/\D/g, '');
+    else {
+      next.passportType = 'PASSPORT';
+      next.passportSeries = lookupPassportSeries.replace(/[^a-z0-9]/gi, '').toUpperCase();
+      next.passportNumber = lookupPassportNumber.replace(/[^a-z0-9]/gi, '').toUpperCase();
+    }
+    if (candidate) {
+      next.pinfl = candidate.pinfl;
+      next.firstName = candidate.firstName;
+      next.lastName = candidate.lastName;
+      next.middleName = candidate.middleName || '';
+      next.studentNumber = candidate.studentNumber;
+      next.birthDate = candidate.birthDate || '';
+      next.gender = candidate.gender || 'MALE';
+      next.citizenship = candidate.citizenship;
+      next.email = candidate.email || '';
+      next.photoUrl = candidate.photoUrl || '';
+      if (candidate.passportNumber) {
+        next.passportType = 'PASSPORT';
+        next.passportSeries = candidate.passportSeries || next.passportSeries;
+        next.passportNumber = candidate.passportNumber;
+      }
+    }
+    setFormData(next); setIdentityLookupOpen(false); setIsAdding(true);
+  };
+
   const handleSave = async () => {
     if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.pinfl.trim()
       || !formData.studentNumber.trim() || !formData.birthDate) {
@@ -287,18 +363,7 @@ export function StudentManagement({
     if (summary.id == null) return;
     try {
       const student = await getStudent(summary.id);
-      setEditingStudent(student);
-      setFormData({
-        firstName: student.firstName || '', lastName: student.lastName || '', middleName: student.middleName || '', pinfl: student.pinfl || '',
-        studentNumber: student.studentNumber || '', birthDate: student.birthDate || '', gender: student.gender || 'MALE',
-        citizenship: student.citizenship || 'UZBEKISTAN', citizenshipCountryId: student.citizenshipCountryId ? String(student.citizenshipCountryId) : '', phoneNumber: student.phoneNumber || '', email: student.email || '',
-        photoUrl: student.photoUrl || '', passportType: student.passportType || 'NONE',
-        passportSeries: student.passportSeries || '', passportNumber: student.passportNumber || '',
-        passportIssuedDate: student.passportIssuedDate || '', passportExpiryDate: student.passportExpiryDate || '',
-        passportIssuedBy: student.passportIssuedBy || '', permanentRegion: student.permanentRegion || '', permanentRegionId: student.permanentRegionId ? String(student.permanentRegionId) : '',
-        permanentDistrict: student.permanentDistrict || '', permanentDistrictId: student.permanentDistrictId ? String(student.permanentDistrictId) : '', permanentAddress: student.permanentAddress || '',
-        currentRegion: student.currentRegion || '', currentRegionId: student.currentRegionId ? String(student.currentRegionId) : '', currentDistrict: student.currentDistrict || '', currentDistrictId: student.currentDistrictId ? String(student.currentDistrictId) : '', currentAddress: student.currentAddress || '',
-      });
+      fillFormFromStudent(student);
     } catch (error) { showError(error); }
   };
 
@@ -521,7 +586,7 @@ export function StudentManagement({
       <div><h1 className="text-2xl font-bold">{title}</h1><p className="text-sm text-muted-foreground">{description}</p></div>
       <div className="flex flex-wrap gap-2">
         {allowCreate && canImportHemis && <Button variant="outline" className="gap-2" onClick={() => setHemisImportOpen(true)}><DatabaseZap className="h-4 w-4" />HEMISdan import</Button>}
-        {allowCreate && canManagePersonal && <Button className="gap-2" onClick={() => { setFormData(emptyPersonalForm()); setIsAdding(true); }}><UserPlus className="h-4 w-4" />Talaba qo'shish</Button>}
+        {allowCreate && canManagePersonal && <Button className="gap-2" onClick={() => { resetIdentityLookup(); setIdentityLookupOpen(true); }}><UserPlus className="h-4 w-4" />Talaba qo'shish</Button>}
       </div>
     </div>
     <Card><CardHeader><CardTitle>Talabalar reyestri</CardTitle></CardHeader><CardContent><DataTable
@@ -547,6 +612,21 @@ export function StudentManagement({
       onOpenChange={setHemisImportOpen}
       onImported={() => void invalidate()}
     />
+
+    <Dialog open={identityLookupOpen} onOpenChange={open => { setIdentityLookupOpen(open); if (!open) resetIdentityLookup(); }}>
+      <DialogContent className="max-w-xl"><DialogHeader><DialogTitle>Talabani tekshirish</DialogTitle></DialogHeader>
+        <div className="space-y-5 py-2">
+          <p className="text-sm text-muted-foreground">Tizim avval mahalliy bazadan, topilmasa HEMISdan qidiradi. Hech qayerda topilmasa qo'lda kiritish ochiladi.</p>
+          <Field label="Qidirish turi"><Select value={identityMode} onValueChange={(value: 'PINFL' | 'PASSPORT') => { setIdentityMode(value); setLookupResult(null); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="PINFL">JSHSHIR bo'yicha</SelectItem><SelectItem value="PASSPORT">Pasport bo'yicha</SelectItem></SelectContent></Select></Field>
+          {identityMode === 'PINFL' ? <Field label="JSHSHIR (14 raqam) *"><Input inputMode="numeric" maxLength={14} value={lookupPinfl} placeholder="12345678901234" onChange={e => { setLookupPinfl(e.target.value.replace(/\D/g, '')); setLookupResult(null); }} onKeyDown={e => { if (e.key === 'Enter') void runIdentityLookup(); }} /></Field>
+            : <div className="grid grid-cols-[120px_1fr] gap-3"><Field label="Seriya *"><Input maxLength={10} value={lookupPassportSeries} placeholder="AA" onChange={e => { setLookupPassportSeries(e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase()); setLookupResult(null); }} /></Field><Field label="Raqam *"><Input maxLength={20} value={lookupPassportNumber} placeholder="1234567" onChange={e => { setLookupPassportNumber(e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase()); setLookupResult(null); }} onKeyDown={e => { if (e.key === 'Enter') void runIdentityLookup(); }} /></Field></div>}
+          {lookupResult && <div className={`rounded-lg border p-4 ${lookupResult.source === 'LOCAL' ? 'border-green-300 bg-green-50 dark:bg-green-950/20' : lookupResult.source === 'HEMIS' ? 'border-blue-300 bg-blue-50 dark:bg-blue-950/20' : 'border-amber-300 bg-amber-50 dark:bg-amber-950/20'}`}>
+            <div className="flex items-start gap-3">{lookupResult.source === 'NOT_FOUND' ? <TriangleAlert className="mt-0.5 h-5 w-5 text-amber-600" /> : <CircleCheck className="mt-0.5 h-5 w-5 text-green-600" />}<div className="space-y-1"><p className="font-medium">{lookupResult.message}</p>{lookupResult.localStudent && <><p>{lookupResult.localStudent.fullName}</p><p className="text-sm text-muted-foreground">Talaba raqami: {lookupResult.localStudent.studentNumber}</p></>}{lookupResult.hemisStudent && <><p>{lookupResult.hemisStudent.fullName}</p><p className="text-sm text-muted-foreground">{lookupResult.hemisStudent.faculty} · {lookupResult.hemisStudent.group}</p><p className="text-xs text-muted-foreground">HEMIS ma'lumotlarini saqlashdan oldin tekshiring.</p></>}</div></div>
+          </div>}
+        </div>
+        <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setIdentityLookupOpen(false)}>Bekor qilish</Button>{lookupResult?.source === 'LOCAL' && lookupResult.localStudent && <Button onClick={() => { fillFormFromStudent(lookupResult.localStudent!); setIdentityLookupOpen(false); }}>Kartochkani ochish</Button>}{lookupResult?.manualEntryAllowed && <Button onClick={continueFromLookup}>{lookupResult.source === 'HEMIS' ? "Ma'lumotni qabul qilish" : "Qo'lda kiritish"}</Button>}<Button disabled={lookingUp} onClick={() => void runIdentityLookup()}>{lookingUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}{lookupResult ? 'Qayta tekshirish' : 'Tekshirish'}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <Dialog open={isAdding || !!editingStudent} onOpenChange={open => { if (!open) closeStudentDialog(); }}>
       <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-6xl"><DialogHeader><DialogTitle>{editingStudent ? "Shaxsiy ma'lumotlarni tahrirlash" : "Talabaning shaxsiy kartochkasi"}</DialogTitle></DialogHeader>

@@ -14,6 +14,7 @@ import uz.scorm.lms.app.v1.student.service.StudentRegistryService
 import uz.scorm.lms.app.v1.student.service.StudentAccountService
 import uz.scorm.lms.app.v1.student.service.StudentBulkTransferService
 import uz.scorm.lms.app.v1.student.service.StudentMovementReportService
+import uz.scorm.lms.app.v1.student.service.StudentIdentityLookupService
 import uz.scorm.lms.app.v1.student.model.StudentStatus
 import uz.scorm.lms.app.v1.user.model.User
 
@@ -26,6 +27,7 @@ class StudentController(
     private val accountService: StudentAccountService,
     private val bulkTransferService: StudentBulkTransferService,
     private val movementReportService: StudentMovementReportService,
+    private val identityLookupService: StudentIdentityLookupService,
 ) {
 
     @GetMapping
@@ -70,6 +72,14 @@ class StudentController(
     @PreAuthorize("hasAuthority('USER_READ')")
     fun getByStudentNumber(@PathVariable studentNumber: String): StudentDto =
         studentService.getByStudentNumber(studentNumber)
+
+    @GetMapping("/identity-lookup")
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
+    fun lookupIdentity(
+        @RequestParam(required = false) pinfl: String?,
+        @RequestParam(required = false) passportSeries: String?,
+        @RequestParam(required = false) passportNumber: String?,
+    ): StudentIdentityLookupDto = identityLookupService.lookup(pinfl, passportSeries, passportNumber)
 
     @PostMapping
     @PreAuthorize("hasAuthority('USER_MANAGE')")

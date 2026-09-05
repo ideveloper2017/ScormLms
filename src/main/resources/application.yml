@@ -87,12 +87,12 @@ springdoc:
 app:
   demo:
     # Faqat aniq yoqilganda bog'langan demo tuzilma, kurs va darslar yaratiladi.
-    enabled: ${APP_DEMO_DATA_ENABLED:false}
+    enabled: ${APP_DEMO_DATA_ENABLED:true}
   seed:
-    admin-password: ${APP_SEED_ADMIN_PASSWORD:}
-    teacher-password: ${APP_SEED_TEACHER_PASSWORD:}
-    student-password: ${APP_SEED_STUDENT_PASSWORD:}
-    demo-staff-password: ${APP_SEED_DEMO_STAFF_PASSWORD:}
+    admin-password: ${APP_SEED_ADMIN_PASSWORD:admin123}
+    teacher-password: ${APP_SEED_TEACHER_PASSWORD:admin123}
+    student-password: ${APP_SEED_STUDENT_PASSWORD:admin123}
+    demo-staff-password: ${APP_SEED_DEMO_STAFF_PASSWORD:admin123}
   jwt:
     # HS512 uchun kamida 64 baytlik secret talab qilinadi.
     expiration: 86400000 # 24 hours in milliseconds

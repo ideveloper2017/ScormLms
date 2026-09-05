@@ -326,7 +326,7 @@ function App() {
         <Route path="/commentary-lessons" element={<P roles={REPORTING_ROLES}><LessonCommentMonitoring /></P>} />
 
         <Route path="/content/posts" element={<P roles={TEACHER_ROLES}><TeacherAnnouncements /></P>} />
-        <Route path="/content/schedule" element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
+        <Route path="/content/schedule" element={<P roles={STAFF_ROLES}><TeacherSessions managementMode /></P>} />
         <Route path="/content/online-resource" element={<P roles={CONTENT_ROLES}><Resources /></P>} />
 
         <Route path="/accounts/admins" element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
@@ -376,6 +376,7 @@ function App() {
         <Route path="/admin/admission-policies" element={<P roles={STAFF_ROLES}><AdminAdmissionPolicies /></P>} />
         <Route path="/admin/non-state-licenses" element={<P roles={STAFF_ROLES}><AdminNonStateLicenses /></P>} />
         <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><Courses /></P>} />
+        <Route path="/admin/schedule"     element={<P roles={STAFF_ROLES}><TeacherSessions managementMode /></P>} />
         <Route path="/admin/calendar"     element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
         <Route path="/admin/orientations" element={<P roles={STAFF_ROLES}><AdminOrientations /></P>} />
         <Route path="/admin/practices"    element={<P roles={STAFF_ROLES}><AdminPractices /></P>} />

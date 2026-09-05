@@ -17,6 +17,7 @@ import {
     StudentBulkTransferResultDto,
     ReinstatementSubjectReportPageDto,
     ReinstatementSubjectReportQuery,
+    StudentIdentityLookupResult,
 } from "@/types/student.types";
 
 export async function listStudents(query: StudentRegistryQuery = {}): Promise<StudentRegistryPageDto> {
@@ -53,6 +54,15 @@ export async function getStudentByNumber(studentNumber: string): Promise<Student
 
 export async function createStudent(req: StudentRegistrationRequest): Promise<StudentDto> {
     const res = await api.post<StudentDto>("/students", req);
+    return res.data;
+}
+
+export async function lookupStudentIdentity(query: {
+    pinfl?: string;
+    passportSeries?: string;
+    passportNumber?: string;
+}): Promise<StudentIdentityLookupResult> {
+    const res = await api.get<StudentIdentityLookupResult>("/students/identity-lookup", { params: query });
     return res.data;
 }
 
