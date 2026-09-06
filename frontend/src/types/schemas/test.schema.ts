@@ -25,7 +25,7 @@ export const TestQuestionSchema = z.object({
   type: z.enum(['multiple-choice', 'true-false', 'short-answer', 'essay']),
   text: z.string().min(1, 'Question text is required'),
   points: z.number().min(0),
-  options: z.array(z.string()).optional(),
+  options: z.array(z.string()).nullish(),
 });
 
 export const TestDetailsSchema = TestSchema.extend({
@@ -42,6 +42,7 @@ export const TestSessionSchema = z.object({
   startedAt: z.coerce.date(),
   expiresAt: z.coerce.date(),
   questions: z.array(TestQuestionSchema),
+  answers: z.record(z.string()).optional(),
 });
 
 export const TestResultSchema = z.object({

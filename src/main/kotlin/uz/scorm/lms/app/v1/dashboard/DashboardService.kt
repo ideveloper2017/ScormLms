@@ -3,6 +3,11 @@ package uz.scorm.lms.app.v1.dashboard
 import com.sun.management.OperatingSystemMXBean
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import uz.scorm.lms.app.v1.academicresult.service.GradeCalculation
+import uz.scorm.lms.app.v1.attendance.service.AttendanceService
+import uz.scorm.lms.app.v1.quiz.repository.QuizAttemptRepository
+import uz.scorm.lms.app.v1.quiz.model.QuizAttemptStatus
+import uz.scorm.lms.app.v1.exam.repository.ExamResultRepository
 import uz.scorm.lms.app.v1.assignment.model.SubmissionStatus
 import uz.scorm.lms.app.v1.assignment.repository.AssignmentSubmissionRepository
 import uz.scorm.lms.app.v1.audit.model.AuditLog
@@ -43,6 +48,9 @@ class DashboardService(
     private val submissionRepository: AssignmentSubmissionRepository,
     private val learningSessionRepository: CourseLearningSessionRepository,
     private val auditLogRepository: AuditLogRepository,
+    private val quizAttemptRepository: QuizAttemptRepository,
+    private val examResultRepository: ExamResultRepository,
+    private val attendanceService: AttendanceService,
 ) {
     private val zone: ZoneId = ZoneId.systemDefault()
 
@@ -247,7 +255,9 @@ class DashboardService(
             totalStudents = stats.totalStudents,
             pendingSubmissions = stats.pendingAssignments,
             todayLessons = stats.todayLessons,
-            avgTestScore = 0.0,
+            avgTestScore = quizAttemptRepository.findAllByQuizCourseUserIdAndDeletedFalseOrderByStartedAtDesc(requireNotNull(user.id))
+                .filter { it.status != QuizAttemptStatus.IN_PROGRESS && !it.quiz.deleted }
+                .map { it.percentage }.averageOrZero(),
             newSubmissions = stats.newSubmissions,
             unreadMessages = stats.unreadMessages,
         )
@@ -260,43 +270,61 @@ class DashboardService(
             if (courseId == null) owned else listOf(owned.firstOrNull { it.id == courseId }
                 ?: throw NoSuchElementException("Kurs topilmadi yoki sizga tegishli emas: $courseId"))
         }
-        return courses.flatMap(::courseEnrollments)
-            .distinctBy { it.student.id }
-            .map { enrollment ->
-                val progress = enrollment.progress.toDouble()
-                TeacherStudentDto(
-                    id = requireNotNull(enrollment.student.id).toString(),
-                    fullName = enrollment.student.user.fullName
-                        ?: "${enrollment.student.lastName} ${enrollment.student.firstName}",
-                    studentNumber = enrollment.student.studentNumber,
-                    groupName = enrollment.course.groupName,
-                    attendance = 0.0,
-                    avgScore = progress,
-                    status = when {
-                        progress >= 85 -> "excellent"
-                        progress < 50 -> "at-risk"
-                        else -> "active"
-                    },
-                )
-            }
-            .sortedBy { it.fullName }
+        val grades = courses.flatMap { teacherGradebook(user, requireNotNull(it.id)) }.groupBy { it.studentId }
+        return courses.flatMap(::courseEnrollments).distinctBy { it.student.id }.map { enrollment ->
+            val studentId = requireNotNull(enrollment.student.id).toString()
+            val scores = grades[studentId].orEmpty().mapNotNull { it.finalGrade }
+            val avgScore = scores.takeIf { it.isNotEmpty() }?.average()?.let(::oneDecimal)
+            val attendanceScores = grades[studentId].orEmpty().mapNotNull { it.attendance }
+            TeacherStudentDto(
+                id = studentId,
+                fullName = enrollment.student.user.fullName ?: enrollment.student.fullName,
+                studentNumber = enrollment.student.studentNumber,
+                groupName = enrollment.course.groupName,
+                attendance = attendanceScores.takeIf { it.isNotEmpty() }?.average()?.let(::oneDecimal),
+                avgScore = avgScore,
+                status = when {
+                    avgScore == null -> "unassessed"
+                    avgScore >= 85 -> "excellent"
+                    avgScore < 50 -> "at-risk"
+                    else -> "active"
+                },
+            )
+        }.sortedBy { it.fullName }
     }
 
     @Transactional(readOnly = true)
     fun teacherGradebook(user: User, courseId: Long): List<TeacherGradebookEntryDto> {
         val course = ownedCourses(requireNotNull(user.id)).firstOrNull { it.id == courseId }
             ?: throw NoSuchElementException("Kurs topilmadi yoki sizga tegishli emas: $courseId")
+        val submissions = submissionRepository.findAllByAssignmentCourseUserIdAndDeletedFalseOrderBySubmittedAtDesc(requireNotNull(user.id))
+            .filter { it.assignment.course.id == courseId && !it.assignment.deleted && it.status == SubmissionStatus.GRADED }
+            .groupBy { it.enrollment.id }
+        val attempts = quizAttemptRepository.findAllByQuizCourseUserIdAndDeletedFalseOrderByStartedAtDesc(requireNotNull(user.id))
+            .filter { it.quiz.course.id == courseId && !it.quiz.deleted && it.status != QuizAttemptStatus.IN_PROGRESS }
+            .groupBy { it.enrollment.id }
+        val exams = examResultRepository.findAllByEnrollmentCourseIdAndDeletedFalseOrderByGradingDateDesc(courseId)
+            .groupBy { it.enrollment.id }
         return courseEnrollments(course).map { enrollment ->
-            val finalGrade = enrollment.progress.toDouble()
+            val assignmentScores = submissions[enrollment.id].orEmpty()
+                .distinctBy { it.assignment.id }.mapNotNull { submission ->
+                    submission.score?.takeIf { submission.assignment.maxScore > 0 }
+                        ?.let { it * 100.0 / submission.assignment.maxScore }
+                }
+            val testScores = attempts[enrollment.id].orEmpty().map { it.percentage }
+            val testScore = testScores.takeIf { it.isNotEmpty() }?.average()?.let { round(it * 100) / 100 }
+            val finalGrade = GradeCalculation.total(testScore, exams[enrollment.id]?.firstOrNull()?.percentage)
+            val attendance = attendanceService.studentStats(requireNotNull(enrollment.student.user.id), courseId)
             TeacherGradebookEntryDto(
                 studentId = requireNotNull(enrollment.student.id).toString(),
                 studentName = enrollment.student.user.fullName
                     ?: "${enrollment.student.lastName} ${enrollment.student.firstName}",
-                assignments = 0.0,
-                tests = 0.0,
-                attendance = 0.0,
+                assignments = assignmentScores.takeIf { it.isNotEmpty() }?.average()?.let(::oneDecimal),
+                tests = testScore,
+                attendance = attendance.attendancePercentage.takeIf { attendance.totalClasses > 0 },
                 finalGrade = finalGrade,
                 letterGrade = when {
+                    finalGrade == null -> null
                     finalGrade >= 90 -> "A"
                     finalGrade >= 80 -> "B"
                     finalGrade >= 70 -> "C"

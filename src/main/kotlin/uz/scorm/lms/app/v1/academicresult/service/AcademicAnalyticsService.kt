@@ -112,12 +112,7 @@ class AcademicAnalyticsService(
             val attempts = attemptsByEnrollment[enrollmentId].orEmpty()
             val interim = attempts.map { it.percentage }.averageOrNull()?.let(::twoDecimals)
             val final = exam?.percentage?.let(::twoDecimals)
-            val total = when {
-                interim != null && final != null -> twoDecimals((interim + final) / 2.0)
-                final != null -> final
-                interim != null -> interim
-                else -> null
-            }
+            val total = GradeCalculation.total(interim, final)
             val assessed = total != null
             val student = enrollment.student
             val course = enrollment.course

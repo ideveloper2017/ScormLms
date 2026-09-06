@@ -57,7 +57,14 @@ class CourseController(
     private val contentAssetService: CourseContentAssetService,
     private val contentReviewService: CourseContentReviewService,
     private val thumbnailService: CourseThumbnailService,
+    private val copyService: uz.scorm.lms.app.v1.productivity.CourseCopyService,
 ) {
+    @PostMapping("/{courseId}/copy")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun copy(@PathVariable courseId: Long, @CurrentUser user: User, authentication: Authentication): ResponseEntity<ApiResponse<CourseDto>> =
+        ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(copyService.copy(courseId,
+            requireNotNull(user.id), mayManageAll(authentication), user.role?.name.equals("teacher", true))))
+
     @GetMapping("/owned")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun owned(

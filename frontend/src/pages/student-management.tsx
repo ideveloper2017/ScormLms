@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { useEffect, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -126,7 +127,9 @@ export function StudentManagement({
   const canManageAccounts = hasAuthority(user, 'USER_MANAGE');
   const canExport = hasAuthority(user, 'USER_READ') && hasAuthority(user, 'REPORT_READ');
   const canImportHemis = hasAuthority(user, 'INTEGRATION_WRITE');
-  const [registrySearch, setRegistrySearch] = useState('');
+  const [urlParams] = useSearchParams();
+  const [registrySearch, setRegistrySearch] = useState(urlParams.get('search') ?? '');
+  useEffect(() => { setRegistrySearch(urlParams.get('search') ?? ''); setRegistryPage(0); }, [urlParams]);
   const [debouncedRegistrySearch, setDebouncedRegistrySearch] = useState('');
   const [registryStatus, setRegistryStatus] = useState<StudentStatus | 'ALL'>(initialStatus);
   const [registryPage, setRegistryPage] = useState(0);

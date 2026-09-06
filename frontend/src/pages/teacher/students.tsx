@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search, MessageCircle, ChevronRight, AlertTriangle, RefreshCw,
@@ -17,6 +18,7 @@ import { qk } from "@/lib/query-keys";
 import { teacherPortalApi } from "@/services/api/teacher-portal-api";
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
+  unassessed: { label: "Baholanmagan", cls: "bg-muted text-muted-foreground" },
   active:    { label: "Faol",         cls: "bg-green-100  text-green-800"  },
   atrisk:    { label: "Xavf ostida",  cls: "bg-orange-100 text-orange-800" },
   "at-risk": { label: "Xavf ostida",  cls: "bg-orange-100 text-orange-800" },
@@ -25,7 +27,9 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 };
 
 export function TeacherStudents() {
-  const [search, setSearch] = useState("");
+  const [urlParams] = useSearchParams();
+  const [search, setSearch] = useState(urlParams.get("search") ?? "");
+  useEffect(() => setSearch(urlParams.get("search") ?? ""), [urlParams]);
   const [statusF, setStatusF] = useState("all");
 
   const { data: students = [], isLoading, error, refetch } = useQuery({
@@ -37,7 +41,7 @@ export function TeacherStudents() {
   const filtered = students.filter((s) => {
     const t = search.toLowerCase();
     return (
-      (!t || s.fullName.toLowerCase().includes(t)) &&
+      (!t || `${s.fullName} ${s.studentNumber}`.toLowerCase().includes(t)) &&
       (statusF === "all" || s.status === statusF || (statusF === "atrisk" && s.status === "at-risk"))
     );
   });
@@ -130,10 +134,10 @@ export function TeacherStudents() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Ball: {s.avgScore}%</span>
-                    <span>Davomat: {s.attendance}%</span>
+                    <span>Ball: {s.avgScore == null ? '—' : `${s.avgScore}%`}</span>
+                    <span>Davomat: {s.attendance == null ? '—' : `${s.attendance}%`}</span>
                   </div>
-                  <Progress value={s.attendance} className="h-1.5" />
+                  <Progress value={s.attendance ?? 0} className="h-1.5" />
                 </div>
                 <div className="flex items-center justify-end gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8">

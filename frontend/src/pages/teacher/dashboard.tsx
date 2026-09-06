@@ -1,3 +1,4 @@
+import { TodayTasks } from "@/components/workspace-panels";
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import {
@@ -106,6 +107,8 @@ export function TeacherDashboard() {
           </Button>
         </div>
       </div>
+
+      <TodayTasks />
 
       {/* 6 ta metrik */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">

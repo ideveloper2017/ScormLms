@@ -92,7 +92,7 @@ class QuizController(
         @RequestBody request: QuizAnswerRequest,
         @CurrentUser user: User,
     ): ApiResponse<Unit> {
-        quizService.saveAnswer(quizId, questionId, requireNotNull(user.id), request.answer)
+        quizService.saveAnswer(quizId, questionId, requireNotNull(user.id), request.answer, request.attemptId)
         return ApiResponse.success("Javob saqlandi", Unit)
     }
 

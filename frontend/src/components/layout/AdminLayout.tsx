@@ -1,4 +1,4 @@
-import { Search, Shield, Monitor } from "lucide-react";
+import { Shield, Monitor } from "lucide-react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { RoleSwitcher } from "@/components/layout/role-switcher";
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { GlobalSearch } from "./global-search";
 import { Badge } from "@/components/ui/badge";
 
 interface DashboardLayoutProps {
@@ -31,19 +31,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
 
-          {/* Desktop qidiruv */}
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Kurslar, talabalar yoki imtihonlarni qidiring..."
-              className="w-56 lg:w-80 bg-muted/50 pl-10"
-            />
-          </div>
-
-          {/* Mobile qidiruv tugmasi */}
-          <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
-            <Search className="h-4 w-4" />
-          </Button>
+          <GlobalSearch />
 
           {/* O'ng tomon */}
           <div className="ml-auto flex items-center gap-1 sm:gap-2">

@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import api from '@/lib/api';
 import {
   ArrowLeft, Search, Clock, Star, Eye, AlertTriangle, RefreshCw, Download, FileText,
 } from "lucide-react";
@@ -29,6 +30,10 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 
 export function TeacherSubmissions() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [urlParams, setUrlParams] = useSearchParams();
+  const [preview, setPreview] = useState<{ url: string; image: boolean } | null>(null);
+  const [previewError, setPreviewError] = useState('');
   const { id: assignmentId } = useParams();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -64,20 +69,48 @@ export function TeacherSubmissions() {
     setScore(s.score?.toString() ?? "");
     setFeedback(s.feedback ?? "");
   };
+  const selectedSubmissionId = urlParams.get('submission');
+  useEffect(() => {
+    if (!selectedSubmissionId) return;
+    const selected = submissions.find(item => item.id === selectedSubmissionId);
+    if (selected) { openGrade(selected); setUrlParams({}, { replace: true }); }
+  }, [selectedSubmissionId, submissions, setUrlParams]);
+  useEffect(() => {
+    let disposed = false;
+    let objectUrl: string | undefined;
+    setPreview(null);
+    setPreviewError('');
+    if (grading?.fileName && /\.(pdf|png|jpe?g|webp)$/i.test(grading.fileName)) {
+      void api.get<Blob>(`/submissions/${grading.id}/file`, { responseType: 'blob' }).then(response => {
+        if (disposed) return;
+        if (!['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(response.data.type)) return;
+        objectUrl = URL.createObjectURL(response.data);
+        setPreview({ url: objectUrl, image: response.data.type.startsWith('image/') });
+      }).catch(() => { if (!disposed) setPreviewError('Fayl ko‘rinishi yuklanmadi. Yuklab olish orqali oching.'); });
+    }
+    return () => { disposed = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [grading?.id, grading?.fileName]);
 
-  const handleGrade = async () => {
+  const handleGrade = async (next = false) => {
+    if (saving) return;
     if (!score || !grading) { toast({ variant: "destructive", title: "Ball kiriting" }); return; }
     const numericScore = Number(score);
-    if (!Number.isFinite(numericScore) || numericScore < 0 || numericScore > grading.maxScore) {
+    if (!Number.isInteger(numericScore) || numericScore < 0 || numericScore > grading.maxScore) {
       toast({ variant: "destructive", title: `Ball 0–${grading.maxScore} oralig'ida bo'lishi kerak` });
       return;
     }
     setSaving(true);
     try {
       await teacherPortalApi.gradeSubmission(grading.id, numericScore, feedback.trim() || undefined);
-      await refetch();
+      const refreshed = await refetch();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['workspace'] }),
+        queryClient.invalidateQueries({ queryKey: qk.teacher.courses() }),
+        queryClient.invalidateQueries({ queryKey: ['teacher', 'gradebook'] }),
+      ]);
       toast({ title: "Baholandi", description: `${grading.studentName} — ${score} ball` });
-      setGrading(null);
+      const nextSubmission = next ? (refreshed.data ?? []).find(item => item.id !== grading.id && item.status !== 'graded') : undefined;
+      if (nextSubmission) openGrade(nextSubmission); else setGrading(null);
     } catch (e) {
       toast({ variant: "destructive", title: "Baholash saqlanmadi", description: (e as Error).message });
     } finally {
@@ -217,13 +250,19 @@ export function TeacherSubmissions() {
         ))}
       </div>
 
-      <Dialog open={!!grading} onOpenChange={(o) => { if (!o) setGrading(null); }}>
-        <DialogContent>
+      <Dialog open={!!grading} onOpenChange={(o) => { if (!o && !saving) setGrading(null); }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Baholash — {grading?.studentName}</DialogTitle>
             <DialogDescription>{grading?.assignmentTitle}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="grid gap-5 md:grid-cols-2"><div className="space-y-3">
+            <h3 className="font-medium">Talabaning javobi</h3>
+            {grading?.answer && <p className="whitespace-pre-wrap rounded border p-3 text-sm">{grading.answer}</p>}
+            {grading?.fileName && <Button variant="outline" onClick={() => teacherPortalApi.downloadSubmissionFile(grading.id, grading.fileName!).catch(() => setPreviewError('Fayl yuklab olinmadi. Qayta urinib ko‘ring.'))}><Download className="mr-2 h-4 w-4" />{grading.fileName}</Button>}
+            {previewError && <p role="alert" className="text-sm text-destructive">{previewError}</p>}
+            {preview && (preview.image ? <img src={preview.url} alt="Topshiriq fayli" className="max-h-96 object-contain" /> : <iframe title="Topshiriq PDF" src={preview.url} className="h-96 w-full rounded border" />)}
+          </div><div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label>Ball (0–{grading?.maxScore ?? 100})</Label>
               <Input
@@ -237,10 +276,11 @@ export function TeacherSubmissions() {
               <Label>Izoh</Label>
               <Textarea rows={3} placeholder="Talabaga izoh..." value={feedback} onChange={(e) => setFeedback(e.target.value)} />
             </div>
-          </div>
+          </div></div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setGrading(null)}>Yopish</Button>
-            <Button onClick={handleGrade} disabled={saving}>{saving ? "Saqlanmoqda..." : "Baholash"}</Button>
+            <Button variant="outline" disabled={saving} onClick={() => setGrading(null)}>Yopish</Button>
+            <Button variant="outline" onClick={() => handleGrade(false)} disabled={saving}>Saqlash</Button>
+            <Button onClick={() => handleGrade(true)} disabled={saving}>{saving ? "Saqlanmoqda..." : "Saqlash va keyingisi"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

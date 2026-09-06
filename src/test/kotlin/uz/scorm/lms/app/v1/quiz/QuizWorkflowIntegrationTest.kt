@@ -124,6 +124,10 @@ class QuizWorkflowIntegrationTest {
 
         val session = quizService.start(quiz.id.toLong(), requireNotNull(student.user.id))
         assertEquals(2, session.questions.size)
+        quizService.saveAnswer(quiz.id.toLong(), q1.id.toLong(), requireNotNull(student.user.id), "O(log n)", session.id.toLong())
+        val resumed = quizService.start(quiz.id.toLong(), requireNotNull(student.user.id))
+        assertEquals(session.id, resumed.id)
+        assertEquals(mapOf(q1.id to "O(log n)"), resumed.answers)
         assertEquals(listOf("O(n)", "O(log n)", "O(1)"), session.questions.first().options)
         val result = quizService.submit(
             quiz.id.toLong(),

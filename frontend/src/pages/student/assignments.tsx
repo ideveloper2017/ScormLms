@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { useState, useMemo } from "react";
 import {
   Clock, Upload, CheckCircle2, AlertCircle, ClipboardList,
@@ -51,6 +52,7 @@ function fmtDate(date: Date) {
 }
 
 export function StudentAssignments() {
+  const [urlParams, setUrlParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<Assignment['status'] | 'all'>("all");
   
@@ -77,11 +79,12 @@ export function StudentAssignments() {
   const filtered = useMemo(() => {
     return sortedAssignments.filter((a) => {
       const t = search.toLowerCase();
+      const matchSelected = !urlParams.get("assignment") || a.id === urlParams.get("assignment");
       const matchSearch = !t || a.title.toLowerCase().includes(t) || a.courseName.toLowerCase().includes(t);
       const matchStatus = statusFilter === "all" || a.status === statusFilter;
-      return matchSearch && matchStatus;
+      return matchSelected && matchSearch && matchStatus;
     });
-  }, [sortedAssignments, search, statusFilter]);
+  }, [sortedAssignments, search, statusFilter, urlParams]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -210,6 +213,8 @@ export function StudentAssignments() {
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Topshiriqlar</h1>
         <p className="text-xs sm:text-sm text-muted-foreground">Barcha kurslar bo'yicha topshiriqlar</p>
       </div>
+
+      {urlParams.get("assignment") && <Button variant="outline" onClick={() => setUrlParams({})}>Barchasini ko‘rsatish</Button>}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">

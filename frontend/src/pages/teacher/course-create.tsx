@@ -208,7 +208,7 @@ export function TeacherCourseCreate() {
         <div>
           <h1 className="text-2xl font-bold">Yangi Kurs Yaratish</h1>
           <p className="text-sm text-muted-foreground">
-            Asosiy ma'lumot, kategoriya, narx va media sozlamalarini kiriting
+            Fan va kurs nomini tanlang. Materiallar keyingi qadamda qo‘shiladi.
           </p>
         </div>
       </div>
@@ -275,6 +275,7 @@ export function TeacherCourseCreate() {
                 </SelectContent>
               </Select>
             </Field>
+            <details className="space-y-4 rounded-lg border p-4"><summary className="cursor-pointer font-medium">Qo‘shimcha sozlamalar: narx, muddat va kurs rasmi</summary>
             <Field label="Narxlash turi *">
               <RadioGroup value={form.paid ? "paid" : "free"} onValueChange={(value) => set("paid", value === "paid")} className="flex gap-5">
                 <RadioLabel value="free" label="Bepul" />
@@ -319,6 +320,7 @@ export function TeacherCourseCreate() {
                 <RadioLabel value="on" label="Yoqilgan" />
               </RadioGroup>
             </Field>
+            </details>
             {selectedGroup && (
               <div className="grid gap-2 rounded-lg border bg-muted/20 p-4 text-sm sm:grid-cols-2">
                 <Info label="Kategoriya" value={selectedGroup.subjectCategoryName || "—"} />

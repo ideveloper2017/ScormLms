@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from 'react-router-dom';
 import {
   Bell, BookOpen, GraduationCap, ClipboardList, FileQuestion,
   AlertTriangle, Info, CheckCircle2, Star, Calendar,
@@ -36,6 +37,7 @@ const ALL_TYPES: NotificationTypeFilter[] = [
 ];
 
 export function StudentNotifications() {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<NotificationTypeFilter>("all");
   const [showRead, setShowRead] = useState(true);
 
@@ -217,6 +219,7 @@ export function StudentNotifications() {
               )}
               onClick={() => handleMarkRead(notif.id)}
             >
+              {notif.actionUrl?.startsWith('/') && !notif.actionUrl.startsWith('//') && <Button variant="link" size="sm" className="ml-4 mt-2" onClick={event => { event.stopPropagation(); handleMarkRead(notif.id); navigate(notif.actionUrl!); }}>Tegishli sahifani ochish</Button>}
               <CardContent className="flex items-start gap-3 p-4">
                 {/* Icon */}
                 <div className={cn(

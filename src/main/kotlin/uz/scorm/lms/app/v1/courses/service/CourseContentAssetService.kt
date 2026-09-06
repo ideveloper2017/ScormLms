@@ -40,6 +40,32 @@ class CourseContentAssetService(
     private val storageRoot: Path = Path.of(storageDirectory).toAbsolutePath().normalize()
 
     @Transactional
+    fun copyForCourse(asset: CourseContentAsset, targetCourse: Course, userId: Long): Long {
+        require(!asset.deleted) { "Manba fayli o'chirilgan" }
+        val source = storagePath(assetScope(asset), asset.storageKey)
+        require(Files.isRegularFile(source)) { "Manba fayli topilmadi: ${asset.originalFileName}" }
+        val key = UUID.randomUUID().toString()
+        val target = storagePath(requireNotNull(targetCourse.id).toString(), key)
+        Files.createDirectories(target.parent)
+        try {
+            Files.copy(source, target)
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                object : org.springframework.transaction.support.TransactionSynchronization {
+                    override fun afterCompletion(status: Int) {
+                        if (status != org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED) Files.deleteIfExists(target)
+                    }
+                }
+            )
+            return requireNotNull(assetRepository.save(CourseContentAsset(course = targetCourse, storageKey = key,
+                originalFileName = asset.originalFileName, mediaType = asset.mediaType, sizeBytes = asset.sizeBytes,
+                sha256 = asset.sha256, uploadedBy = userId)).id)
+        } catch (cause: Exception) {
+            Files.deleteIfExists(target)
+            throw cause
+        }
+    }
+
+    @Transactional
     fun upload(courseId: Long, file: MultipartFile, userId: Long, mayManageAll: Boolean): CourseContentAssetDto {
         val course = accessService.requireManage(courseId, userId, mayManageAll)
         return store(file, userId, courseId.toString(), course = course)

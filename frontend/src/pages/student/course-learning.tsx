@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { workspaceApi } from '@/services/api/workspace-api';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -33,6 +34,8 @@ export function StudentCourseLearning() {
   const courseId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const selectedContentId = Number(params.get('content'));
   const { toast } = useToast();
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const enabled = Number.isInteger(courseId) && courseId > 0;
@@ -71,11 +74,21 @@ export function StudentCourseLearning() {
         description: cause.message,
       }),
   });
+  const viewMutation = useMutation({
+    mutationFn: (contentId: number) => workspaceApi.viewed(courseId, contentId),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['workspace'] }); },
+    onError: () => toast({ variant: 'destructive', title: 'Oxirgi dars saqlanmadi. Qayta ochib ko‘ring.' }),
+  });
+  useEffect(() => {
+    if (contentsQuery.data && selectedContentId) document.getElementById(`content-${selectedContentId}`)?.scrollIntoView({ block: 'start' });
+  }, [contentsQuery.data, selectedContentId]);
 
   async function downloadContent(contentId: number, asset: CourseContentAsset) {
     setDownloadingId(contentId);
     try {
       const blob = await teacherPortalApi.downloadContentFile(String(courseId), contentId);
+      viewMutation.mutate(contentId);
+      setParams({ content: String(contentId) }, { replace: true });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -177,11 +190,12 @@ export function StudentCourseLearning() {
           </Card>
         )}
         {contents.map((content) => (
-          <Card key={content.id}>
+          <Card key={content.id} id={`content-${content.id}`} className={selectedContentId === content.id ? 'scroll-mt-4 border-primary ring-1 ring-primary' : 'scroll-mt-4'}>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 {content.title}
+                <Button size="sm" variant="outline" disabled={viewMutation.isPending} onClick={() => { setParams({ content: String(content.id) }, { replace: true }); viewMutation.mutate(content.id); }}>Shu darsni o'qish</Button>
                 <Badge variant="outline">v{content.contentVersion}</Badge>
               </CardTitle>
               <CardDescription>
@@ -242,13 +256,15 @@ export function StudentCourseLearning() {
                 {content.contentUrl && (
                   <Button
                     variant="outline"
-                    onClick={() =>
+                    onClick={() => {
+                      viewMutation.mutate(content.id);
+                      setParams({ content: String(content.id) }, { replace: true });
                       window.open(
                         content.contentUrl!,
                         "_blank",
                         "noopener,noreferrer",
-                      )
-                    }
+                      );
+                    }}
                     className="gap-2"
                   >
                     <ExternalLink className="h-4 w-4" />

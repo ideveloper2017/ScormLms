@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Clock, AlertCircle, CheckCircle, Circle, ChevronLeft, ChevronRight,
   Send, AlertTriangle, Camera, CameraOff
@@ -26,18 +26,19 @@ import { TestSession as TestSessionType, TestQuestion } from "@/types/test.types
 import { format, differenceInSeconds } from "date-fns";
 import { uz } from "date-fns/locale";
 import { useProctoringMonitor } from "@/hooks/tests/useProctoringMonitor";
+import { useAnswerAutosave } from "@/hooks/tests/useAnswerAutosave";
 
 export function TestSession() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
-  const initialSession = location.state?.session as TestSessionType | undefined;
 
   // Fetch test details
   const { data: test, isLoading } = useTest(testId!);
   const submitTestMutation = useSubmitTest();
   const startTestMutation = useStartTest();
-  const [session, setSession] = useState<TestSessionType | undefined>(initialSession);
+  // Browser history state survives refresh and may contain an old, empty answer
+  // snapshot. Always restore the active attempt from the server before editing.
+  const [session, setSession] = useState<TestSessionType>();
   const resumeRequested = useRef(false);
   const submittingRef = useRef(false);
   const proctoringMonitor = useProctoringMonitor({
@@ -54,7 +55,9 @@ export function TestSession() {
 
   // Test state
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const autosave = useAnswerAutosave(session);
+  const { answers } = autosave;
+  const submitLatest = useRef<() => Promise<void>>(async () => undefined);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
@@ -67,7 +70,7 @@ export function TestSession() {
 
   // Initialize timer
   useEffect(() => {
-    if (!session && !test) return;
+    if (!session) return;
 
     const expiresAt = session?.expiresAt || new Date(Date.now() + (test?.duration || 0) * 60 * 1000);
     const updateTimer = () => {
@@ -75,7 +78,7 @@ export function TestSession() {
       setTimeRemaining(Math.max(0, remaining));
 
       if (remaining <= 0) {
-        handleAutoSubmit();
+        void submitLatest.current();
       }
     };
 
@@ -85,17 +88,9 @@ export function TestSession() {
     return () => clearInterval(interval);
   }, [session, test]);
 
-  // Handle auto-submit when time runs out
-  const handleAutoSubmit = async () => {
-    await handleSubmitTest();
-  };
-
   // Handle answer selection
   const handleAnswerChange = (questionId: string, answer: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: answer,
-    }));
+    if (!submittingRef.current && timeRemaining > 0) autosave.update(questionId, answer);
   };
 
   // Navigate between questions
@@ -117,20 +112,23 @@ export function TestSession() {
   };
 
   // Calculate progress
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.values(answers).filter(answer => answer.trim()).length;
   const progressPercent = (answeredCount / questions.length) * 100;
 
   // Submit test
   const handleSubmitTest = async () => {
-    if (!testId || submittingRef.current) return;
+    if (!testId || !session || submittingRef.current) return;
     submittingRef.current = true;
 
     try {
+      // Finish any in-flight save before submission; the full snapshot is also
+      // submitted if an autosave failed while the connection was interrupted.
+      await autosave.flush().catch(() => undefined);
       await proctoringMonitor.flush();
       const payload = {
         answers: questions.map(q => ({
           questionId: q.id,
-          answer: answers[q.id] || "",
+          answer: autosave.current.current[q.id] || "",
         })),
         submittedAt: new Date(),
       };
@@ -146,6 +144,7 @@ export function TestSession() {
       submittingRef.current = false;
     }
   };
+  submitLatest.current = handleSubmitTest;
 
   // Format time remaining
   const formatTime = (seconds: number) => {
@@ -155,7 +154,7 @@ export function TestSession() {
   };
 
   // Loading state
-  if (isLoading || (!session && startTestMutation.isPending)) {
+  if (isLoading || (!session && !startTestMutation.isError)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -201,6 +200,10 @@ export function TestSession() {
             <div>
               <h1 className="text-xl font-bold">{test.title}</h1>
               <p className="text-sm text-muted-foreground">{test.courseName}</p>
+              <p role="status" className={`text-xs ${autosave.status === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {autosave.status === 'saved' ? 'Javoblar saqlandi' : autosave.status === 'saving' ? 'Javoblar saqlanmoqda…' : 'Javoblar saqlanmadi. Aloqani tekshiring; avtomatik qayta uriniladi.'}
+              </p>
+              {autosave.status === 'error' && <Button size="sm" variant="outline" onClick={() => void autosave.flush().catch(() => undefined)}>Qayta saqlash</Button>}
             </div>
             <div className="flex items-center gap-4">
               <div className={`flex items-center gap-2 rounded-lg px-4 py-2 ${

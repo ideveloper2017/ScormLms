@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -23,6 +24,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 };
 
 export function StudentTests() {
+  const [urlParams, setUrlParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "upcoming" | "completed" | "in-progress" | "missed">("all");
 
@@ -46,9 +48,10 @@ export function StudentTests() {
     // Apply search and status filters
     const filtered = tests.filter((t) => {
       const s = search.toLowerCase();
+      const matchSelected = !urlParams.get("test") || t.id === urlParams.get("test");
       const matchSearch = !s || t.title.toLowerCase().includes(s) || t.courseName.toLowerCase().includes(s);
       const matchStatus = statusFilter === "all" || t.status === statusFilter;
-      return matchSearch && matchStatus;
+      return matchSelected && matchSearch && matchStatus;
     });
 
     // Separate upcoming and completed
@@ -72,7 +75,7 @@ export function StudentTests() {
         avgScore,
       },
     };
-  }, [tests, search, statusFilter]);
+  }, [tests, search, statusFilter, urlParams]);
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
@@ -121,6 +124,7 @@ export function StudentTests() {
         </div>
       </div>
 
+      {urlParams.get("test") && <Button variant="outline" onClick={() => setUrlParams({})}>Barchasini ko‘rsatish</Button>}
       {/* Loading State */}
       {showLoading && <TestCardSkeletonList count={6} />}
 

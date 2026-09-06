@@ -252,10 +252,11 @@ class QuizService(
     }
 
     @Transactional
-    fun saveAnswer(quizId: Long, questionId: Long, userId: Long, answer: String) {
+    fun saveAnswer(quizId: Long, questionId: Long, userId: Long, answer: String, attemptId: Long? = null) {
         val quiz = quiz(quizId)
         val enrollment = enrollment(quiz, userId, allowCompleted = false)
         val attempt = activeAttempt(quizId, enrollment.id!!)
+        require(attemptId == null || attempt.id == attemptId) { "Test urinishi o'zgargan; sahifani yangilang" }
         requireSubmissionOpen(attempt)
         saveAnswer(attempt, questionId, answer)
     }
@@ -557,6 +558,8 @@ class QuizService(
             startedAt = attempt.startedAt,
             expiresAt = attempt.expiresAt,
             questions = ids.mapNotNull { links[it]?.question }.map(::studentQuestionDto),
+            answers = answerRepository.findAllByAttemptIdAndDeletedFalseOrderByIdAsc(requireNotNull(attempt.id))
+                .associate { it.question.id.toString() to it.answer },
         )
     }
 

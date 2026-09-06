@@ -13,7 +13,7 @@ import {
 import { qk } from "@/lib/query-keys";
 import { teacherPortalApi, type GradebookEntry } from "@/services/api/teacher-portal-api";
 
-function cellCls(v: number | undefined) {
+function cellCls(v: number | null | undefined) {
   if (v === undefined || v === null) return "text-muted-foreground text-center";
   if (v >= 90) return "text-green-600 text-center font-medium";
   if (v >= 75) return "text-blue-600 text-center";
@@ -50,7 +50,7 @@ function makeColumns(): ColumnDef<GradebookEntry>[] {
       },
       cell: ({ getValue }) => {
         const v = getValue<number>();
-        return <span className={cellCls(v)}>{v}</span>;
+        return <span className={cellCls(v)}>{v ?? '—'}</span>;
       },
     },
     {
@@ -63,7 +63,7 @@ function makeColumns(): ColumnDef<GradebookEntry>[] {
       },
       cell: ({ getValue }) => {
         const v = getValue<number>();
-        return <span className={cellCls(v)}>{v}</span>;
+        return <span className={cellCls(v)}>{v ?? '—'}</span>;
       },
     },
     {
@@ -76,12 +76,12 @@ function makeColumns(): ColumnDef<GradebookEntry>[] {
       },
       cell: ({ getValue }) => {
         const v = getValue<number>();
-        return <span className={cellCls(v)}>{v}%</span>;
+        return <span className={cellCls(v)}>{v == null ? '—' : `${v}%`}</span>;
       },
     },
     {
       accessorKey: "finalGrade",
-      header: "Yakuniy",
+      header: "Joriy natija",
       enableSorting: true,
       footer: ({ table }) => {
         const rows = table.getFilteredRowModel().rows.map((r) => r.original);
@@ -90,7 +90,7 @@ function makeColumns(): ColumnDef<GradebookEntry>[] {
       },
       cell: ({ getValue }) => {
         const v = getValue<number>();
-        return <span className={`${cellCls(v)} font-semibold`}>{v}</span>;
+        return <span className={`${cellCls(v)} font-semibold`}>{v ?? '—'}</span>;
       },
     },
     {
@@ -100,7 +100,7 @@ function makeColumns(): ColumnDef<GradebookEntry>[] {
       footer: () => null,
       cell: ({ getValue }) => {
         const v = getValue<string>();
-        return <span className="text-center block font-bold">{v}</span>;
+        return <span className="text-center block font-bold">{v ?? '—'}</span>;
       },
     },
   ];
@@ -132,10 +132,11 @@ export function TeacherGradebook() {
     return !t || s.studentName.toLowerCase().includes(t);
   });
 
-  const topCount = filtered.filter((s) => s.finalGrade >= 90).length;
-  const avgFinal = filtered.length
-    ? Math.round(filtered.reduce((s, r) => s + r.finalGrade, 0) / filtered.length)
-    : 0;
+  const assessed = filtered.filter((s) => s.finalGrade != null);
+  const topCount = assessed.filter((s) => s.finalGrade! >= 90).length;
+  const avgFinal = assessed.length
+    ? Math.round(assessed.reduce((s, r) => s + r.finalGrade!, 0) / assessed.length)
+    : null;
 
   if (coursesLoading || gbLoading) return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
@@ -166,7 +167,7 @@ export function TeacherGradebook() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Baholash jurnali</h1>
-          <p className="text-muted-foreground">Talabalar baholarini boshqarish</p>
+          <p className="text-muted-foreground">Natija akademik reyestr kabi testlar o'rtachasi va oxirgi imtihon natijasidan hisoblanadi. Topshiriq va davomat alohida ko'rsatiladi; baholanmagan qiymat —.</p>
         </div>
         <Button variant="outline" className="gap-2">
           <Download className="h-4 w-4" />Excel yuklash
@@ -176,8 +177,8 @@ export function TeacherGradebook() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Jami talabalar", value: filtered.length,                  cls: "" },
-          { label: "O'rtacha ball",  value: avgFinal || "—",                  cls: "text-blue-600" },
-          { label: "A'lochi (%)",    value: `${Math.round(topCount / (filtered.length || 1) * 100)}%`, cls: "text-green-600" },
+          { label: "O'rtacha ball",  value: avgFinal ?? "—",                  cls: "text-blue-600" },
+          { label: "A'lochi (%)",    value: assessed.length ? `${Math.round(topCount / assessed.length * 100)}%` : '—', cls: "text-green-600" },
         ].map(({ label, value, cls }) => (
           <Card key={label}>
             <CardHeader className="pb-2">

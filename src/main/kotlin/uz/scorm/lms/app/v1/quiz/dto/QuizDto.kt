@@ -116,11 +116,12 @@ data class QuizSessionDto(
     val startedAt: Instant,
     val expiresAt: Instant,
     val questions: List<StudentQuizQuestionDto>,
+    val answers: Map<String, String> = emptyMap(),
 )
 
 data class StartQuizResponse(val session: QuizSessionDto)
 
-data class QuizAnswerRequest(val answer: String)
+data class QuizAnswerRequest(val answer: String, val attemptId: Long? = null)
 
 data class QuizAnswerItemRequest(val questionId: String, val answer: String)
 

@@ -21,7 +21,7 @@ export interface TestQuestion {
   type: 'multiple-choice' | 'true-false' | 'short-answer' | 'essay';
   text: string;
   points: number;
-  options?: string[];
+  options?: string[] | null;
 }
 
 export interface TestDetails extends Test {
@@ -38,6 +38,7 @@ export interface TestSession {
   startedAt: Date;
   expiresAt: Date;
   questions: TestQuestion[];
+  answers?: Record<string, string>;
 }
 
 export interface SubmitTestPayload {

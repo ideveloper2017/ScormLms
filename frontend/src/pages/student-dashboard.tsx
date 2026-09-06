@@ -1,4 +1,7 @@
+import { TodayTasks } from "@/components/workspace-panels";
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { workspaceApi } from '@/services/api/workspace-api';
 import {
   AlertTriangle, Bell, BookOpen, CalendarDays, CheckCircle2, ClipboardList,
   GraduationCap, Loader2, MessageCircle, Play, RefreshCw, User,
@@ -33,6 +36,7 @@ function SectionError({ text }: { text: string }) {
 export function StudentDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const resume = useQuery({ queryKey: ['workspace', user?.id, 'resume'], queryFn: workspaceApi.resume });
   const statsQuery = useDashboardStats();
   const coursesQuery = useRecentCourses();
   const assignmentsQuery = useUpcomingAssignments();
@@ -47,7 +51,7 @@ export function StudentDashboard() {
   const firstActiveCourse = courses.find(course => course.status === 'active') ?? courses[0];
 
   const quickActions = [
-    { title: 'Darsni davom ettirish', description: firstActiveCourse ? firstActiveCourse.title : 'Kurslar ro‘yxatini ochish', icon: Play, onClick: () => navigate(firstActiveCourse ? `/student/courses/${firstActiveCourse.id}/learn` : '/student/courses') },
+    { title: resume.data ? 'Darsni davom ettirish' : 'Kursni ochish', description: resume.data?.title ?? firstActiveCourse?.title ?? 'Kurslar ro‘yxatini ochish', icon: Play, onClick: () => navigate(resume.data?.url ?? (firstActiveCourse ? `/student/courses/${firstActiveCourse.id}/learn` : '/student/courses')) },
     { title: 'Topshiriqlar', description: `${stats?.pendingAssignments ?? 0} ta bajarilmagan`, icon: ClipboardList, onClick: () => navigate('/student/assignments') },
     { title: 'O‘qituvchi bilan aloqa', description: 'Xabarlar bo‘limini ochish', icon: MessageCircle, onClick: () => navigate('/student/messages') },
     { title: 'Shaxsiy kabinet', description: 'Profil va sozlamalar', icon: User, onClick: () => navigate('/student/profile') },
@@ -78,6 +82,8 @@ export function StudentDashboard() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {statCards.map(({ label, value, icon: Icon }) => <Card key={label}><CardContent className="flex items-center gap-3 p-4"><div className="rounded-lg bg-primary/10 p-2.5 text-primary"><Icon className="h-5 w-5" /></div><div><p className="text-2xl font-bold">{value}</p><p className="text-xs text-muted-foreground sm:text-sm">{label}</p></div></CardContent></Card>)}
       </div>
+
+      <TodayTasks />
 
       <section><h2 className="mb-3 text-lg font-semibold">Tezkor amallar</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{quickActions.map(({ title, description, icon: Icon, onClick }) => <button key={title} type="button" onClick={onClick} className="rounded-lg border bg-card p-4 text-left transition hover:border-primary/50 hover:shadow-sm"><Icon className="mb-3 h-5 w-5 text-primary" /><p className="font-medium">{title}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{description}</p></button>)}</div></section>
 

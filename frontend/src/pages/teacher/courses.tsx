@@ -51,6 +51,16 @@ export function TeacherCourses() {
     onError: (cause) => toast({ variant: "destructive", title: "Kurs o'chirilmadi", description: cause instanceof Error ? cause.message : undefined }),
   });
 
+  const copyMutation = useMutation({
+    mutationFn: teacherPortalApi.copyCourse,
+    onSuccess: async (course) => {
+      await queryClient.invalidateQueries({ queryKey: qk.teacher.courses() });
+      toast({ title: 'Kurs qoralamasi nusxalandi', description: 'Bo‘limlar va oddiy materiallar tayyor. Nashr qilishdan oldin tekshiring.' });
+      navigate(`/teacher/courses/${course.id}/contents`);
+    },
+    onError: (cause: Error) => toast({ variant: 'destructive', title: 'Kurs nusxalanmadi', description: cause.message }),
+  });
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return courses.filter((course) =>
@@ -141,6 +151,7 @@ export function TeacherCourses() {
                       : "Bepul"}
                   </TableCell>
                   <TableCell className="pr-5"><div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" disabled={copyMutation.isPending} onClick={() => copyMutation.mutate(course.id)}>Nusxa olish</Button>
                     <Button variant="secondary" size="icon" aria-label="Kursni tahrirlash" onClick={() => navigate(`/teacher/courses/${course.id}/contents`)}><Edit className="h-4 w-4 text-emerald-600" /></Button>
                     {course.status === "draft" && <Button variant="outline" size="sm" onClick={() => statusMutation.mutate({ id: course.id, status: "PUBLISHED" })}>Nashr</Button>}
                     <Button variant="destructive" size="icon" aria-label="Kursni o'chirish" disabled={course.status === "published" || deleteMutation.isPending} onClick={() => deleteMutation.mutate(course.id)}><Trash2 className="h-4 w-4" /></Button>

@@ -306,9 +306,9 @@ export interface TeacherStudent {
   fullName: string;
   studentNumber?: string;
   groupName?: string;
-  attendance: number;
-  avgScore: number;
-  status: 'active' | 'at-risk' | 'excellent';
+  attendance: number | null;
+  avgScore: number | null;
+  status: 'active' | 'at-risk' | 'excellent' | 'unassessed';
 }
 
 export interface TeacherAssignment {
@@ -470,11 +470,11 @@ export interface AttendanceSessionPayload {
 export interface GradebookEntry {
   studentId: string;
   studentName: string;
-  assignments: number;
-  tests: number;
-  attendance: number;
-  finalGrade: number;
-  letterGrade: string;
+  assignments: number | null;
+  tests: number | null;
+  attendance: number | null;
+  finalGrade: number | null;
+  letterGrade: string | null;
 }
 
 export interface TodaySchedule {
@@ -561,6 +561,10 @@ export const teacherPortalApi = {
   },
   createCourse: async (payload: CourseCreatePayload): Promise<TeacherCourse> => {
     const item = dataOf(await api.post<ApiResponse<Omit<TeacherCourse, 'id'> & { id: number }>>('/courses', payload), 'Kurs yaratilmadi');
+    return { ...item, id: String(item.id) };
+  },
+  copyCourse: async (courseId: string): Promise<TeacherCourse> => {
+    const item = dataOf(await api.post<ApiResponse<Omit<TeacherCourse, 'id'> & { id: number }>>(`/courses/${courseId}/copy`), 'Kurs nusxalanmadi');
     return { ...item, id: String(item.id) };
   },
   updateCourse: async (courseId: string, payload: Partial<CourseCreatePayload>): Promise<TeacherCourse> => {

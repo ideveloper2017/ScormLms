@@ -121,19 +121,19 @@ data class TeacherStudentDto(
     val fullName: String,
     val studentNumber: String,
     val groupName: String?,
-    val attendance: Double,
-    val avgScore: Double,
+    val attendance: Double?,
+    val avgScore: Double?,
     val status: String,
 )
 
 data class TeacherGradebookEntryDto(
     val studentId: String,
     val studentName: String,
-    val assignments: Double,
-    val tests: Double,
-    val attendance: Double,
-    val finalGrade: Double,
-    val letterGrade: String,
+    val assignments: Double?,
+    val tests: Double?,
+    val attendance: Double?,
+    val finalGrade: Double?,
+    val letterGrade: String?,
 )
 
 data class TeacherTodayScheduleDto(

@@ -370,7 +370,7 @@ class AssignmentService(
             dueDate = assignment.dueAt.toString(),
             status = when {
                 submission?.status == SubmissionStatus.GRADED -> "graded"
-                submission != null -> "submitted"
+                submission != null && submission.status != SubmissionStatus.RETURNED -> "submitted"
                 Instant.now().isAfter(assignment.dueAt) || assignment.status == AssignmentStatus.CLOSED -> "overdue"
                 else -> "pending"
             },
