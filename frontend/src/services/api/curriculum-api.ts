@@ -50,6 +50,7 @@ export interface CurriculumVersion {
   approvedAt?: string | null;
   approvedByName?: string | null;
   archivedAt?: string | null;
+  createdByUserId?: number | null;
 }
 
 export interface CurriculumStudent {
@@ -74,6 +75,8 @@ export interface CurriculumStudentPage {
 }
 
 export interface CurriculumStudentQuery {
+  semesterNumber?: number;
+  unassignedOnly?: boolean;
   search?: string;
   status?: CurriculumStudentStatus;
   page?: number;
@@ -157,6 +160,12 @@ export const curriculumInputError = (input: SaveCurriculumVersionInput): string 
   if (!input.validFrom || !input.validUntil || input.validFrom > academicFrom || input.validUntil < academicUntil) return "Amal qilish davri butun o'quv yilini qoplashi kerak";
   if (input.credentialType === "STATE_DIPLOMA" && input.normativeBasisType !== "STATE_EDUCATION_STANDARD") return "Davlat diplomi davlat ta'lim standartiga asoslanadi";
   if (input.credentialType === "NON_STATE_CREDENTIAL" && input.normativeBasisType !== "PROFESSIONAL_STANDARD") return "Nodavlat hujjat kasbiy standartga asoslanadi";
+  return null;
+};
+
+export const curriculumApprovalReason = (version: CurriculumVersion, actor?: import("@/types/auth.types").User | null) => {
+  if (actor?.id != null && version.createdByUserId != null && version.createdByUserId === actor.id && actor.role?.name?.toLowerCase() !== "super_admin")
+    return "O‘zingiz yaratgan rejani boshqa vakolatli xodim tasdiqlashi kerak.";
   return null;
 };
 

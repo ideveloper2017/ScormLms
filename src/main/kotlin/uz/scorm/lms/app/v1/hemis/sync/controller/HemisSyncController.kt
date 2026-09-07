@@ -8,12 +8,20 @@ import uz.scorm.lms.app.common.ApiResponse
 import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.hemis.sync.dto.*
 import uz.scorm.lms.app.v1.hemis.sync.service.HemisSyncService
+import uz.scorm.lms.app.v1.hemis.service.HemisService
 import uz.scorm.lms.app.v1.user.model.User
 
 @RestController
 @RequestMapping("/api/v1/hemis/sync")
 @PreAuthorize("hasAuthority('INTEGRATION_READ')")
-class HemisSyncController(private val service: HemisSyncService) {
+class HemisSyncController(private val service: HemisSyncService, private val connection: HemisService) {
+    @GetMapping("/connection")
+    fun connection() = ok(connection.connectionStatus())
+
+    @PostMapping("/connection/check")
+    @PreAuthorize("hasAuthority('INTEGRATION_WRITE')")
+    fun checkConnection() = ok(connection.checkConnection())
+
     @GetMapping("/overview")
     fun overview(authentication: Authentication) = ok(service.overview(canManage(authentication)))
 

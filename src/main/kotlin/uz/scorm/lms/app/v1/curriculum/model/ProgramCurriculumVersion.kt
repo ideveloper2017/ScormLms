@@ -50,6 +50,9 @@ class ProgramCurriculumVersion(
     @Column(name = "passing_score", nullable = false)
     var passingScore: Int = 60,
 
+    @Column(name = "passing_percentage")
+    var passingPercentage: Double? = null,
+
     @Column(name = "base_credit_amount", nullable = false)
     var baseCreditAmount: Long = 0,
 

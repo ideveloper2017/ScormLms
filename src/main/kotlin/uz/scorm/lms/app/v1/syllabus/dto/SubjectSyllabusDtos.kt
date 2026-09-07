@@ -16,7 +16,12 @@ data class SubjectSyllabusDto(
     val active: Boolean,
     val createdAt: Instant?,
     val updatedAt: Instant?,
+    val status: String = "DRAFT",
+    val revisionNumber: Int = 1,
 )
+
+data class SyllabusWorkflowRequest(val action: String)
+data class SyllabusRevisionDto(val revisionNumber: Int, val content: SubjectSyllabusDto, val approvedByName: String, val approvedAt: Instant)
 
 data class SubjectSyllabusRequest(
     val subjectId: Long,

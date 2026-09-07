@@ -39,7 +39,9 @@ class ProgramCurriculumController(private val service: ProgramCurriculumService)
         @RequestParam(required = false) status: StudentStatus?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
-    ) = service.students(id, search, status, page, size)
+        @RequestParam(required = false) semesterNumber: Int?,
+        @RequestParam(defaultValue = "false") unassignedOnly: Boolean,
+    ) = service.students(id, search, status, page, size, semesterNumber, unassignedOnly)
 
     @PostMapping
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")

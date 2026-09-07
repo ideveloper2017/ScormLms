@@ -24,6 +24,7 @@ class CurriculumOperationService(
     fun savePeriod(curriculumId: Long, request: CurriculumSemesterPeriodRequest): CurriculumSemesterPeriodDto {
         val curriculum = requireCurriculum(curriculumId)
         require(curriculum.status != CurriculumStatus.ARCHIVED) { "Arxivlangan o'quv reja semestri o'zgartirilmaydi" }
+        require(request.semesterNumber in 1..curriculum.semesterCount) { "Semestr o'quv reja chegarasidan tashqarida" }
         academicPeriods.requireActiveSemester(request.semesterNumber)
         require(request.endsOn > request.startsOn) { "Semestr tugash sanasi boshlanishidan keyin bo'lishi kerak" }
         require(!request.startsOn.isBefore(curriculum.validFrom) && !request.endsOn.isAfter(curriculum.validUntil)) {
@@ -45,6 +46,8 @@ class CurriculumOperationService(
     fun assign(curriculumId: Long, request: AssignCurriculumStudentsRequest): List<CurriculumStudentAssignmentDto> {
         val curriculum = requireCurriculum(curriculumId)
         require(curriculum.status == CurriculumStatus.APPROVED) { "Talaba faqat tasdiqlangan o'quv rejaga biriktiriladi" }
+        require(curriculum.active) { "O'quv reja faol emas" }
+        require(request.semesterNumber in 1..curriculum.semesterCount) { "Semestr o'quv reja chegarasidan tashqarida" }
         require(request.studentIds.isNotEmpty() && request.studentIds.size <= 200) { "1-200 talaba tanlanishi kerak" }
         val period = periods.findByCurriculumVersionIdAndSemesterNumberAndDeletedFalse(curriculumId, request.semesterNumber)
             ?: throw IllegalArgumentException("O'quv reja uchun ${request.semesterNumber}-semestr muddati kiritilmagan")
@@ -57,7 +60,7 @@ class CurriculumOperationService(
                 ?.let { studentId to it }
         }.toMap()
         selected.forEach { student ->
-            require(student.studentStatus == StudentStatus.ACTIVE) { "Faqat faol talaba o'quv rejaga biriktiriladi: ${student.studentNumber}" }
+            require(!student.user.deleted && student.studentStatus == StudentStatus.ACTIVE) { "Faqat faol talaba o'quv rejaga biriktiriladi: ${student.studentNumber}" }
             require(student.programId == curriculum.program.id) { "Talaba mutaxassisligi o'quv rejaga mos emas: ${student.studentNumber}" }
             require(student.academicYear == curriculum.academicYear) { "Talaba o'quv yili o'quv rejaga mos emas: ${student.studentNumber}" }
             require(student.semesterNumber == request.semesterNumber) { "Talaba semestri mos emas: ${student.studentNumber}" }

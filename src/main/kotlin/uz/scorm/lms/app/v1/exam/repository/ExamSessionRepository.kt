@@ -9,6 +9,9 @@ import uz.scorm.lms.app.v1.exam.model.ExamSessionStatus
 import java.time.LocalDate
 
 interface ExamSessionRepository : JpaRepository<ExamSession, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from ExamSession s where s.id = :id and s.deleted = false")
+    fun lockById(id: Long): ExamSession?
     @EntityGraph(attributePaths = ["course", "examiner", "secondaryExaminer"])
     fun findAllByDeletedFalseOrderByExamDateDesc(): List<ExamSession>
 

@@ -58,6 +58,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CourseEnrollmentPicker } from "@/components/course-enrollment-picker";
+import { useAuth } from "@/contexts/auth-context";
 import { CourseForum } from "@/components/course-forum";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
@@ -95,9 +97,11 @@ export function TeacherCourseDetail({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
   const courseId = id ?? "";
 
-  const [studentIds, setStudentIds] = useState("");
+  const [studentIds, setStudentIds] = useState<number[]>([]);
+  useEffect(() => { setStudentIds([]); }, [courseId]);
   const currentYear = new Date().getFullYear();
   const academicYearStart =
     new Date().getMonth() >= 8 ? currentYear : currentYear - 1;
@@ -148,6 +152,7 @@ export function TeacherCourseDetail({
   const profileQuery = useQuery({
     queryKey: ["teacher", "profile"],
     queryFn: teacherPortalApi.getProfile,
+    enabled: user?.role?.name.replace(/^ROLE_/i, '').toLowerCase() === 'teacher',
   });
   const enrollmentsQuery = useQuery({
     queryKey: ["teacher", "course", courseId, "enrollments"],
@@ -205,6 +210,7 @@ export function TeacherCourseDetail({
   const refreshEnrollments = () =>
     Promise.all([
       refreshCourse(),
+      queryClient.invalidateQueries({ queryKey: ["teacher", "course", courseId, "candidates"] }),
       queryClient.invalidateQueries({
         queryKey: ["teacher", "course", courseId, "enrollments"],
       }),
@@ -250,7 +256,7 @@ export function TeacherCourseDetail({
         required: enrollmentRequired === "true",
       }),
     onSuccess: async () => {
-      setStudentIds("");
+      setStudentIds([]);
       await refreshEnrollments();
       toast({ title: "Talabalar biriktirildi" });
     },
@@ -447,20 +453,8 @@ export function TeacherCourseDetail({
   }
 
   function enrollStudents() {
-    const ids = [
-      ...new Set(
-        studentIds
-          .split(/[\s,;]+/)
-          .filter(Boolean)
-          .map(Number),
-      ),
-    ].filter((value) => Number.isInteger(value) && value > 0);
-    if (!ids.length)
-      return toast({
-        variant: "destructive",
-        title: "Talaba IDlarini kiriting",
-      });
-    enrollMutation.mutate(ids);
+    if (!studentIds.length) return toast({ variant: "destructive", title: "Kamida bitta talabani tanlang" });
+    enrollMutation.mutate(studentIds);
   }
 
   function saveModule() {
@@ -1280,33 +1274,27 @@ export function TeacherCourseDetail({
               <CardDescription>
                 {course.subjectGroupId
                   ? "Faqat shu fan-guruhga tegishli talabalar biriktiriladi; o'quv yili, semestr va kredit o'quv rejadan avtomatik olinadi."
-                  : "Talaba profil IDlari bilan birga individual reja parametrlarini kiriting."}
+                  : "Talabalarni ism yoki guruh bo'yicha tanlang, so'ng individual reja parametrlarini kiriting."}
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col sm:flex-row gap-2">
-              <Input
-                className="flex-1"
-                value={studentIds}
-                onChange={(event) => setStudentIds(event.target.value)}
-                placeholder="Talaba IDlari: 12, 15"
-                disabled={course.status === "archived"}
-              />
+            <CardContent className="flex flex-col gap-3">
+              <CourseEnrollmentPicker key={`${user?.id}-${courseId}`} actorId={user?.id} courseId={courseId} selected={studentIds} onChange={setStudentIds} disabled={course.status === "archived" || enrollMutation.isPending} />
               {course.subjectGroupId ? (
                 <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
                   {course.academicYear || "O'quv yili"} · {course.semester ?? "?"}-semestr · {course.credits ?? 0} kredit
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 flex-[2]">
-                  <Input value={enrollmentAcademicYear} onChange={(event) => setEnrollmentAcademicYear(event.target.value)} placeholder="2026-2027" disabled={course.status === "archived"} />
-                  <Input type="number" min={1} max={20} value={enrollmentSemester} onChange={(event) => setEnrollmentSemester(event.target.value)} placeholder="Semestr" disabled={course.status === "archived"} />
-                  <Input type="number" min={0} max={100} value={enrollmentCredits} onChange={(event) => setEnrollmentCredits(event.target.value)} placeholder="Kredit" disabled={course.status === "archived"} />
-                  <Select value={enrollmentRequired} onValueChange={setEnrollmentRequired}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="true">Majburiy</SelectItem><SelectItem value="false">Tanlov</SelectItem></SelectContent></Select>
+                  <label className="space-y-1 text-sm">O'quv yili<Input value={enrollmentAcademicYear} onChange={(event) => setEnrollmentAcademicYear(event.target.value)} placeholder="2026-2027" disabled={course.status === "archived"} /></label>
+                  <label className="space-y-1 text-sm">Semestr<Input type="number" min={1} max={20} value={enrollmentSemester} onChange={(event) => setEnrollmentSemester(event.target.value)} disabled={course.status === "archived"} /></label>
+                  <label className="space-y-1 text-sm">Kredit<Input type="number" min={0} max={100} value={enrollmentCredits} onChange={(event) => setEnrollmentCredits(event.target.value)} disabled={course.status === "archived"} /></label>
+                  <div className="space-y-1 text-sm">Fan turi<Select value={enrollmentRequired} onValueChange={setEnrollmentRequired}><SelectTrigger aria-label="Fan turi"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="true">Majburiy</SelectItem><SelectItem value="false">Tanlov</SelectItem></SelectContent></Select></div>
                 </div>
               )}
                 <Button
                   onClick={enrollStudents}
                   disabled={
-                    course.status === "archived" || enrollMutation.isPending
+                    course.status === "archived" || enrollMutation.isPending || !studentIds.length
                   }
                   className="gap-2"
                 >
@@ -1316,7 +1304,8 @@ export function TeacherCourseDetail({
             </CardContent>
           </Card>
           {enrollmentsQuery.isLoading && <Loading />}
-          {!enrollmentsQuery.isLoading && enrollments.length === 0 && (
+          {enrollmentsQuery.isError && <div role="alert" className="rounded-md border p-4">Biriktirilgan talabalarni yuklab bo'lmadi. <Button variant="outline" onClick={() => void enrollmentsQuery.refetch()}>Qayta urinish</Button></div>}
+          {!enrollmentsQuery.isLoading && !enrollmentsQuery.isError && enrollments.length === 0 && (
             <Empty text="Hozircha talaba biriktirilmagan" />
           )}
           {enrollments.map((item) => (

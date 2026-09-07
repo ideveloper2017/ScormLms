@@ -36,6 +36,10 @@ class SubjectSyllabus(
 
     @Column(nullable = false)
     var active: Boolean = true,
+    @Column(nullable = false, length = 20)
+    var status: String = "DRAFT",
+    @Column(name = "revision_number", nullable = false)
+    var revisionNumber: Int = 1,
 ) : BaseEntity()
 
 enum class SyllabusLanguage { UZ, EN, RU, KAA, UZ_CYRILLIC }

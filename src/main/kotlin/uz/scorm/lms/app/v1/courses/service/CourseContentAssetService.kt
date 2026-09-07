@@ -133,7 +133,7 @@ class CourseContentAssetService(
     ): CourseContentDownload {
         val course = accessService.requireRead(courseId, userId, mayManageAll)
         val content = contentRepository.findById(contentId)
-            .filter { !it.deleted && it.module.course.id == courseId }
+            .filter { !it.deleted && !it.module.deleted && it.module.course.id == courseId }
             .orElseThrow { NoSuchElementException("Kurs kontenti topilmadi: $contentId") }
         val mayEdit = mayManageAll || course.userId == userId
         require(mayEdit || (

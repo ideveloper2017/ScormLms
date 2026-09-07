@@ -16,6 +16,9 @@ import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
+import uz.scorm.lms.app.v1.curriculum.service.CurriculumOperationService
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSemesterPeriodRequest
+import uz.scorm.lms.app.v1.curriculum.dto.AssignCurriculumStudentsRequest
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.role.model.Role
@@ -30,11 +33,12 @@ import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.LocalDate
 
-@SpringBootTest
+@SpringBootTest(properties = ["app.demo.enabled=false"])
 @ActiveProfiles("test")
 @Transactional
 class ProgramCurriculumWorkflowIntegrationTest {
     @Autowired private lateinit var service: ProgramCurriculumService
+    @Autowired private lateinit var operations: CurriculumOperationService
     @Autowired private lateinit var programRepository: ProgramRepository
     @Autowired private lateinit var subjectRepository: SubjectRepository
     @Autowired private lateinit var userRepository: UserRepository
@@ -161,6 +165,50 @@ class ProgramCurriculumWorkflowIntegrationTest {
         assertThrows<IllegalArgumentException> {
             service.students(curriculum.id, null, StudentStatus.REGISTERED, 0, 10)
         }
+    }
+
+    @Test
+    fun `semester and unassigned filters run before paging beyond first hundred students`() {
+        val author = user("paging-author")
+        val program = program("paging-program")
+        val plan = service.create(request(requireNotNull(program.id), versionSuffix = "paging"), requireNotNull(author.id))
+        val subject = subject(program, "PAGE", "Paging fan", 6)
+        service.addSubject(plan.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 3, CurriculumPlanItemType.REQUIRED), requireNotNull(author.id))
+        service.approve(plan.id, approval(), requireNotNull(user("paging-approver").id))
+        repeat(101) { index ->
+            student(program, "A-wrong-$index", StudentStatus.ACTIVE, "2026-2027").also { it.semesterNumber = 1; it.courseNumber = 1; studentRepository.save(it) }
+        }
+        val eligible = (1..22).map { student(program, "Z-eligible-${it.toString().padStart(2, '0')}", StudentStatus.ACTIVE, "2026-2027") }
+        operations.savePeriod(plan.id, CurriculumSemesterPeriodRequest(3, LocalDate.of(2026, 9, 1), LocalDate.of(2027, 1, 15), true))
+        operations.assign(plan.id, AssignCurriculumStudentsRequest(setOf(requireNotNull(eligible.first().id)), 3))
+        val pages = (0..2).map { service.students(plan.id, null, StudentStatus.ACTIVE, it, 10, 3, true) }
+        assertEquals(listOf(10, 10, 1), pages.map { it.items.size })
+        assertTrue(pages.all { it.totalElements == 21L && it.totalPages == 3 })
+        assertEquals(eligible.drop(1).map { it.id }.toSet(), pages.flatMap { it.items }.map { it.studentId }.toSet())
+        assertTrue(service.students(plan.id, "%", StudentStatus.ACTIVE, 0, 10, 3, true).items.isEmpty())
+        assertEquals(1, service.students(plan.id, "Z-eligible-22 Ali", StudentStatus.ACTIVE, 0, 10, 3, true).totalElements)
+        val assignment = operations.assignments(plan.id).single()
+        operations.remove(plan.id, assignment.id)
+        assertEquals(22, service.students(plan.id, null, StudentStatus.ACTIVE, 0, 10, 3, true).totalElements)
+    }
+
+    @Test
+    fun `out of plan semesters and deleted accounts cannot be assigned`() {
+        val author = user("semester-author")
+        val program = program("semester-program")
+        val plan = service.create(request(requireNotNull(program.id), versionSuffix = "bounds").copy(semesterCount = 4), requireNotNull(author.id))
+        assertThrows<IllegalArgumentException> { operations.savePeriod(plan.id, CurriculumSemesterPeriodRequest(5, LocalDate.of(2026, 9, 1), LocalDate.of(2027, 1, 15), true)) }
+        assertThrows<IllegalArgumentException> { service.students(plan.id, null, StudentStatus.ACTIVE, 0, 10, 5, true) }
+        assertThrows<IllegalArgumentException> { service.students(plan.id, null, StudentStatus.ACTIVE, 0, 10, null, true) }
+        val subject = subject(program, "BOUNDS", "Semestr fan", 6)
+        service.addSubject(plan.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 3, CurriculumPlanItemType.REQUIRED), requireNotNull(author.id))
+        service.approve(plan.id, approval(), requireNotNull(user("semester-approver").id))
+        operations.savePeriod(plan.id, CurriculumSemesterPeriodRequest(3, LocalDate.of(2026, 9, 1), LocalDate.of(2027, 1, 15), true))
+        val deleted = student(program, "Deleted", StudentStatus.ACTIVE, "2026-2027")
+        deleted.user.deleted = true
+        userRepository.save(deleted.user)
+        assertEquals(0, service.students(plan.id, null, StudentStatus.ACTIVE, 0, 10, 3, true).totalElements)
+        assertThrows<IllegalArgumentException> { operations.assign(plan.id, AssignCurriculumStudentsRequest(setOf(requireNotNull(deleted.id)), 3)) }
     }
 
     private fun request(

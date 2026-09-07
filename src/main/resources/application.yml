@@ -164,8 +164,9 @@ app:
       max-buckets: ${AUTH_RATE_MAX_BUCKETS:10000}
 
 hemis:
-  host: ${HEMIS_HOST:https://student.namdtu.uz}
-  api-base-path: /rest/v1
+  host: ${HEMIS_HOST:}
+  api-base-path: ${HEMIS_API_BASE_PATH:/rest/v1}
+  request-timeout-seconds: ${HEMIS_REQUEST_TIMEOUT_SECONDS:15}
   # Admin kreditsiallari — muassasaga HEMIS tomonidan berilgan
   admin-login: ${HEMIS_ADMIN_LOGIN:}
   admin-password: ${HEMIS_ADMIN_PASSWORD:}

@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { workspaceApi } from '@/services/api/workspace-api';
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Download,
   ExternalLink,
@@ -64,6 +66,8 @@ export function StudentCourseLearning() {
           queryKey: ["student", "course", courseId, "progress"],
         }),
         queryClient.invalidateQueries({ queryKey: ["courses"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["workspace"] }),
       ]);
       toast({ title: "Kontent bajarildi deb belgilandi" });
     },
@@ -79,15 +83,28 @@ export function StudentCourseLearning() {
     onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['workspace'] }); },
     onError: () => toast({ variant: 'destructive', title: 'Oxirgi dars saqlanmadi. Qayta ochib ko‘ring.' }),
   });
+  const contents = contentsQuery.data ?? [];
+  const activeIndex = Math.max(0, contents.findIndex(content => content.id === selectedContentId));
+  const activeContent = contents[activeIndex];
+  const lastViewed = useRef<string | null>(null);
+  const { mutate: saveViewed } = viewMutation;
   useEffect(() => {
-    if (contentsQuery.data && selectedContentId) document.getElementById(`content-${selectedContentId}`)?.scrollIntoView({ block: 'start' });
-  }, [contentsQuery.data, selectedContentId]);
+    if (!activeContent) return;
+    const key = `${courseId}:${activeContent.id}`;
+    if (lastViewed.current === key) return;
+    lastViewed.current = key;
+    saveViewed(activeContent.id);
+  }, [courseId, activeContent?.id, saveViewed]);
+
+  function selectLesson(index: number) {
+    const content = contents[index];
+    if (content) setParams({ content: String(content.id) });
+  }
 
   async function downloadContent(contentId: number, asset: CourseContentAsset) {
     setDownloadingId(contentId);
     try {
       const blob = await teacherPortalApi.downloadContentFile(String(courseId), contentId);
-      viewMutation.mutate(contentId);
       setParams({ content: String(contentId) }, { replace: true });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -136,7 +153,6 @@ export function StudentCourseLearning() {
       </div>
     );
 
-  const contents = contentsQuery.data ?? [];
   const packages = packagesQuery.data ?? [];
   const progress = progressQuery.data;
   return (
@@ -145,14 +161,15 @@ export function StudentCourseLearning() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate("/student/study-plan")}
+          aria-label="Kurslar ro‘yxatiga qaytish"
+          onClick={() => navigate("/student/courses")}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">Kurs materiallari</h1>
           <p className="text-sm text-muted-foreground">
-            Oddiy kontent va SCORM topshiriqlari bo'yicha progress
+            Darsni tanlang, o‘qing va yakunlang
           </p>
         </div>
         {progress && (
@@ -189,13 +206,22 @@ export function StudentCourseLearning() {
             </CardContent>
           </Card>
         )}
-        {contents.map((content) => (
+        {contents.length > 0 && <nav aria-label="Darslar" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {contents.map((content, index) => <button key={content.id} type="button"
+            aria-current={content.id === activeContent?.id ? 'step' : undefined}
+            onClick={() => selectLesson(index)}
+            className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm ${content.id === activeContent?.id ? 'border-primary bg-primary/5 font-medium' : 'hover:bg-muted/50'}`}>
+            {progress?.completedContentIds?.includes(content.id) ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" aria-label="Bajarilgan" /> : <span className="text-muted-foreground">{index + 1}.</span>}
+            <span>{content.title}</span>
+          </button>)}
+        </nav>}
+        {(activeContent ? [activeContent] : []).map((content) => (
           <Card key={content.id} id={`content-${content.id}`} className={selectedContentId === content.id ? 'scroll-mt-4 border-primary ring-1 ring-primary' : 'scroll-mt-4'}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <FileText className="h-4 w-4" />
                 {content.title}
-                <Button size="sm" variant="outline" disabled={viewMutation.isPending} onClick={() => { setParams({ content: String(content.id) }, { replace: true }); viewMutation.mutate(content.id); }}>Shu darsni o'qish</Button>
+
                 <Badge variant="outline">v{content.contentVersion}</Badge>
               </CardTitle>
               <CardDescription>
@@ -206,7 +232,9 @@ export function StudentCourseLearning() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+              {viewMutation.isError && <Button variant="outline" onClick={() => viewMutation.mutate(content.id)}>Davom ettirish uchun darsni qayta saqlash</Button>}
+              <details className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+                <summary className="cursor-pointer font-medium">Dars haqida: muallif va manba</summary>
                 <p>
                   <span className="font-medium text-foreground">Muallif:</span>{" "}
                   {content.authorName} ·{" "}
@@ -234,7 +262,7 @@ export function StudentCourseLearning() {
                   </span>{" "}
                   {content.validFrom} — {content.validUntil || "cheklanmagan"}
                 </p>
-              </div>
+              </details>
               {content.contentBody && (
                 <RichTextContent
                   value={content.contentBody}
@@ -257,7 +285,6 @@ export function StudentCourseLearning() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      viewMutation.mutate(content.id);
                       setParams({ content: String(content.id) }, { replace: true });
                       window.open(
                         content.contentUrl!,
@@ -273,16 +300,21 @@ export function StudentCourseLearning() {
                 )}
                 <Button
                   onClick={() => completeMutation.mutate(content.id)}
-                  disabled={completeMutation.isPending}
+                  disabled={completeMutation.isPending || progress?.completedContentIds?.includes(content.id)}
                   className="gap-2"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Bajarildi
+                  {progress?.completedContentIds?.includes(content.id) ? 'Dars bajarilgan' : completeMutation.isPending ? 'Saqlanmoqda...' : 'Darsni yakunlash'}
                 </Button>
               </div>
             </CardContent>
           </Card>
         ))}
+        {activeContent && <div className="flex items-center justify-between gap-3">
+          <Button variant="outline" disabled={activeIndex === 0} onClick={() => selectLesson(activeIndex - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Oldingi dars</Button>
+          <span className="text-sm text-muted-foreground">{activeIndex + 1} / {contents.length}</span>
+          <Button variant="outline" disabled={activeIndex === contents.length - 1} onClick={() => selectLesson(activeIndex + 1)}>Keyingi dars<ChevronRight className="ml-1 h-4 w-4" /></Button>
+        </div>}
       </section>
 
       <section className="space-y-3">

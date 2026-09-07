@@ -179,12 +179,13 @@ class ExamSessionService(
         userId: Long,
         mayManageAll: Boolean,
     ): TeacherExamSessionDto {
-        val session = examSessionRepository.findByIdAndDeletedFalse(sessionId)
+        val session = examSessionRepository.lockById(sessionId)
             ?: throw IllegalArgumentException("Imtihon sessiyasi topilmadi")
 
         courseAccessService.requireManage(session.course.id, userId, mayManageAll)
         require(session.status == ExamSessionStatus.ONGOING) { "Faqat davom etayotgan sessiya tugatiladi" }
         val attendance = examAttendanceRepository.findAllByExamSessionIdAndDeletedFalseOrderByArrivalTimeAsc(sessionId)
+        require(attendance.isNotEmpty()) { "Talabalar ro'yxati bo'sh" }
         require(attendance.filter { it.onsiteAttendanceRequired }
             .none { it.attendanceStatus == AttendanceStatus.EXPECTED || it.attendanceStatus == AttendanceStatus.EXCUSE }) {
             "Barcha talabalar davomati tasdiqlanishi kerak"

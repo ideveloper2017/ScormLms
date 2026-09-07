@@ -212,7 +212,7 @@ export function TeacherSubmissions() {
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />{new Date(s.submittedAt).toLocaleString("uz-Latn")}
                   </span>
-                  {s.score !== undefined && (
+                  {s.score != null && (
                     <span className="flex items-center gap-1 text-green-600 font-semibold">
                       <Star className="h-3 w-3" />{s.score} ball
                     </span>

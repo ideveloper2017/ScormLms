@@ -38,7 +38,74 @@ class WorkspaceIntegrationTest {
     @Autowired lateinit var contents: CourseContentRepository
     @Autowired lateinit var modules: CourseModuleRepository
     @Autowired lateinit var notifications: NotificationRepository
+    @Autowired lateinit var grades: uz.scorm.lms.app.v1.student.service.StudentGradeService
+    @Autowired lateinit var courseService: uz.scorm.lms.app.v1.courses.service.CourseService
+    @Autowired lateinit var studyPlan: uz.scorm.lms.app.v1.courses.service.StudyPlanService
     @Autowired lateinit var assets: CourseContentAssetService
+    @Autowired lateinit var reports: uz.scorm.lms.app.v1.student.service.StudentReportService
+    @Autowired lateinit var activity: uz.scorm.lms.app.v1.student.service.StudentActivityService
+    @Autowired lateinit var exports: uz.scorm.lms.app.v1.student.service.StudentExportService
+
+    @Test
+    fun `transcript includes unassessed courses without treating them as failed and exports numeric zero`() {
+        val (_, enrollment, _) = fixture()
+        enrollment.credits = 6
+        enrollment.academicYear = "2026-2027"
+        val studentId = enrollment.student.user.id!!
+        val unassessed = grades.transcript(studentId, enrollment.student)
+        assertEquals(6, unassessed.totalCredits)
+        assertEquals(0, unassessed.assessedCredits)
+        assertNull(unassessed.semesters.single().courses.single().score)
+        assertEquals("N/A", unassessed.semesters.single().courses.single().gradeLetter)
+        val quiz = save(CourseQuiz(course = enrollment.course, title = "Zero quiz", opensAt = Instant.now().minusSeconds(100), closesAt = Instant.now().plusSeconds(1000), durationMinutes = 10))
+        save(QuizAttempt(quiz, enrollment, 1, Instant.now().minusSeconds(50), Instant.now().plusSeconds(550), status = QuizAttemptStatus.SUBMITTED, questionOrder = "", score = 0, totalPoints = 100))
+        val assessed = grades.transcript(studentId, enrollment.student)
+        assertEquals(6, assessed.assessedCredits)
+        assertEquals(0, assessed.completedCredits)
+        assertEquals("F", assessed.semesters.single().courses.single().gradeLetter)
+        val xlsx = exports.transcript(assessed, uz.scorm.lms.app.v1.student.service.StudentExportFormat.XLSX)
+        org.apache.poi.xssf.usermodel.XSSFWorkbook(xlsx.inputStream()).use { book ->
+            assertEquals(0.0, book.getSheet("Transkript").getRow(1).getCell(5).numericCellValue)
+        }
+        val pdf = exports.transcript(assessed, uz.scorm.lms.app.v1.student.service.StudentExportFormat.PDF)
+        org.apache.pdfbox.Loader.loadPDF(pdf).use { document ->
+            assertTrue(org.apache.pdfbox.text.PDFTextStripper().getText(document).contains("MVP visible course"))
+        }
+        enrollment.deleted = true
+        em.flush()
+        assertTrue(grades.transcript(studentId, enrollment.student).semesters.isEmpty())
+    }
+
+    @Test
+    fun `student report filters dates in Tashkent and course scope and preserves no data counts`() {
+        val (_, enrollment, content) = fixture()
+        val userId = enrollment.student.user.id!!
+        val assignment = save(CourseAssignment(enrollment.course, "Boundary result", dueAt = Instant.now(), status = AssignmentStatus.PUBLISHED))
+        save(AssignmentSubmission(assignment, enrollment, 1, status = SubmissionStatus.GRADED, score = 85,
+            gradedAt = Instant.parse("2026-08-31T19:30:00Z")))
+        val report = reports.report(userId, LocalDate.parse("2026-09-01"), LocalDate.parse("2026-09-30"), enrollment.course.id)
+        assertEquals(1, report.gradeCount)
+        assertEquals(85.0, report.stats.avgScore)
+        assertEquals("2026-09", report.monthly.single().month)
+        assertEquals(0, report.monthly.single().attendanceCount)
+        assertEquals(0, reports.report(userId, LocalDate.parse("2026-08-01"), LocalDate.parse("2026-08-31")).gradeCount)
+        assertTrue(reports.report(userId, courseId = 999999).courses.isEmpty())
+        val otherStudentId = fixture().second.student.user.id!!
+        assertEquals(0, reports.report(otherStudentId).gradeCount)
+        assertTrue(reports.report(otherStudentId).courses.none { it.courseId == enrollment.course.id.toString() })
+        assertThrows(IllegalArgumentException::class.java) { reports.report(userId, LocalDate.parse("2026-09-30"), LocalDate.parse("2026-09-01")) }
+        assertThrows(IllegalArgumentException::class.java) { reports.report(userId, LocalDate.parse("2020-01-01"), LocalDate.parse("2026-09-01")) }
+        workspace.viewed(userId, enrollment.course.id!!, content.id!!)
+        assertTrue(activity.recent(userId).any { it.title == "Dars ochildi" && it.description.contains(content.title) })
+        assertTrue(activity.recent(otherStudentId).isEmpty())
+        val pdf = exports.report(report, enrollment.student.fullName, uz.scorm.lms.app.v1.student.service.StudentExportFormat.PDF)
+        org.apache.pdfbox.Loader.loadPDF(pdf).use { doc -> assertTrue(org.apache.pdfbox.text.PDFTextStripper().getText(doc).contains("85.0")) }
+        val xlsx = exports.report(report, enrollment.student.fullName, uz.scorm.lms.app.v1.student.service.StudentExportFormat.XLSX)
+        org.apache.poi.xssf.usermodel.XSSFWorkbook(xlsx.inputStream()).use { book ->
+            assertEquals(85.0, book.getSheet("Oylar").getRow(1).getCell(1).numericCellValue)
+            assertEquals(org.apache.poi.ss.usermodel.CellType.BLANK, book.getSheet("Oylar").getRow(1).getCell(3).cellType)
+        }
+    }
 
     private fun <T : Any> save(value: T): T = value.also { em.persist(it); em.flush() }
     private fun user() = save(User(username = "mvp-${UUID.randomUUID()}", password = "test-hash"))
@@ -150,4 +217,42 @@ class WorkspaceIntegrationTest {
         assertEquals(30.0, dashboard.teacherStudents(owner, enrollment.course.id!!).single().avgScore)
         assertThrows(NoSuchElementException::class.java) { dashboard.teacherGradebook(user(), enrollment.course.id!!) }
     }
+    @Test
+    fun `student grades include real zero and own results but hide unfinished exams`() {
+        val (owner, enrollment, content) = fixture()
+        val studentId = enrollment.student.user.id!!
+        enrollment.credits = 6
+        enrollment.academicYear = "2026-2027"
+        val assignment = save(CourseAssignment(enrollment.course, "Written task", dueAt = Instant.now(), status = AssignmentStatus.PUBLISHED))
+        save(AssignmentSubmission(assignment, enrollment, 1, status = SubmissionStatus.GRADED, score = 0))
+        assertEquals(0.0, grades.grades(studentId).single().earnedScore)
+        assertEquals(1, grades.summary(studentId).distribution.F)
+        assertEquals(0, grades.gpa(studentId).totalCredits)
+        val quiz = save(CourseQuiz(course = enrollment.course, title = "Quiz", opensAt = Instant.now().minusSeconds(100), closesAt = Instant.now().plusSeconds(1000), durationMinutes = 10))
+        save(QuizAttempt(quiz, enrollment, 1, Instant.now().minusSeconds(50), Instant.now().plusSeconds(550),
+            status = QuizAttemptStatus.SUBMITTED, questionOrder = "", score = 80, totalPoints = 100, percentage = 80.0))
+        val exam = save(uz.scorm.lms.app.v1.exam.model.ExamSession(course = enrollment.course, title = "Exam",
+            examDate = LocalDate.now(), examTime = java.time.LocalTime.NOON, location = "Room", examiner = owner))
+        save(uz.scorm.lms.app.v1.exam.model.ExamResult(examSession = exam, enrollment = enrollment,
+            score = java.math.BigDecimal("100"), percentage = 100.0, gradedBy = owner, gradingDate = Instant.now()))
+        assertEquals(2, grades.grades(studentId).size)
+        assertEquals(3.3, grades.gpa(studentId).cumulativeGPA)
+        exam.status = uz.scorm.lms.app.v1.exam.model.ExamSessionStatus.COMPLETED
+        em.flush()
+        assertEquals(3, grades.grades(studentId).size)
+        assertEquals(4.0, grades.gpa(studentId).cumulativeGPA)
+        assertEquals(6, grades.gpa(studentId).completedCredits)
+        assertTrue(grades.grades(owner.id!!).isEmpty())
+        assertTrue(grades.grades(studentId, academicYear = "2025-2026").isEmpty())
+        assertTrue(grades.grades(studentId, courseId = "999999").isEmpty())
+        assertThrows(IllegalArgumentException::class.java) { grades.grades(studentId, courseId = "bad") }
+        val result = studyPlan.recordContentProgress(enrollment.course.id!!, content.id!!, 100, studentId)
+        assertEquals(listOf(content.id), result.completedContentIds)
+        assertEquals(result.completedContentIds, studyPlan.courseProgress(enrollment.course.id!!, studentId).completedContentIds)
+        assertEquals(result.progress, courseService.get(enrollment.course.id!!, owner.id!!, false).progress)
+        enrollment.status = CourseEnrollmentStatus.WITHDRAWN
+        em.flush()
+        assertTrue(grades.grades(studentId).isEmpty())
+    }
+
 }

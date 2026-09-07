@@ -42,6 +42,29 @@ class LearningSessionWorkflowIntegrationTest {
     @Autowired private lateinit var studentRepository: StudentRepository
 
     @Test
+    fun `future session edits preserve identity status and become visible in student schedule`() {
+        val teacher = user("session-edit-teacher")
+        val student = student("40000000000009", "ST-SS-009", "session-edit-student")
+        val course = publishedCourse(teacher, "Tahrirlanadigan jadval")
+        enrollmentService.enroll(course.id, CourseEnrollmentRequest(setOf(student.id!!)), teacher.id!!, false)
+        val start = Instant.now().plusSeconds(86400)
+        val request = LearningSessionRequest(course.id, "Eski dars", format = LearningSessionFormat.SYNCHRONOUS,
+            startsAt = start, endsAt = start.plusSeconds(3600), room = "101", status = LearningSessionStatus.PUBLISHED)
+        val created = service.create(request, teacher.id!!, false)
+        val updated = service.update(created.id.toLong(), request.copy(title = "Yangi dars", startsAt = start.plusSeconds(3600),
+            endsAt = start.plusSeconds(7200), room = "202"), teacher.id!!, false)
+        assertEquals(created.id, updated.id)
+        assertEquals("published", updated.status)
+        val visible = service.studentSessions(student.user.id!!).single()
+        assertEquals("Yangi dars", visible.title)
+        assertEquals("202", visible.room)
+        assertEquals(start.plusSeconds(3600), visible.startsAt)
+        assertThrows(IllegalArgumentException::class.java) {
+            service.update(created.id.toLong(), request.copy(endsAt = start.minusSeconds(10)), teacher.id!!, false)
+        }
+    }
+
+    @Test
     fun `teacher live va asinxron mashgulot yaratadi student jadvaldan vakolat bilan ochadi`() {
         val teacher = user("session-teacher")
         val student = student("40000000000001", "ST-SS-001", "session-student")

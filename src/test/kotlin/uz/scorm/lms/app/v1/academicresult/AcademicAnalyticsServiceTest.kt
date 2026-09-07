@@ -57,6 +57,7 @@ class AcademicAnalyticsServiceTest {
         enrollmentRepo, sessionRepo, resultRepo, attemptRepo, answerRepo, courseRepo,
         moduleRepo, contentRepo, assignmentRepo, quizRepo, submissionRepo, studentRepo,
         programRepo, groupRepo, userRepo,
+        uz.scorm.lms.app.v1.academicresult.service.AcademicPassingPolicy(mockk(relaxed = true)),
     )
 
     @Test

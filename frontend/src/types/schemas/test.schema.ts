@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { apiOptional } from './api-optional';
 
 /**
  * Zod schema for Test data validation
@@ -17,7 +18,7 @@ export const TestSchema = z.object({
   totalPoints: z.number().min(0),
   proctoring: z.boolean(),
   status: z.enum(['upcoming', 'in-progress', 'completed', 'missed']),
-  score: z.number().min(0).optional(),
+  score: apiOptional(z.number().min(0)),
 });
 
 export const TestQuestionSchema = z.object({
@@ -33,7 +34,7 @@ export const TestDetailsSchema = TestSchema.extend({
   allowedAttempts: z.number().min(1),
   attemptsUsed: z.number().min(0),
   passingScore: z.number().min(0).max(100),
-  questions: z.array(TestQuestionSchema).optional(),
+  questions: apiOptional(z.array(TestQuestionSchema)),
 });
 
 export const TestSessionSchema = z.object({
@@ -42,7 +43,7 @@ export const TestSessionSchema = z.object({
   startedAt: z.coerce.date(),
   expiresAt: z.coerce.date(),
   questions: z.array(TestQuestionSchema),
-  answers: z.record(z.string()).optional(),
+  answers: apiOptional(z.record(z.string())),
 });
 
 export const TestResultSchema = z.object({
@@ -54,7 +55,7 @@ export const TestResultSchema = z.object({
     passed: z.boolean(),
     submittedAt: z.coerce.date(),
     proctoring: z.boolean().optional().default(false),
-    feedback: z.string().optional(),
+    feedback: apiOptional(z.string()),
 });
 
 export const TestHistoryItemSchema = z.object({

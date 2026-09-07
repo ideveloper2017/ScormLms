@@ -255,7 +255,7 @@ class AcademicSubjectGroupService(
     private fun validateStudent(group: AcademicSubjectGroup, student: StudentProfile) {
         val item = group.curriculumSubject
         val curriculum = item.curriculumVersion
-        require(student.studentStatus == StudentStatus.ACTIVE) { "Faqat ACTIVE talaba fan guruhiga biriktiriladi: ${student.studentNumber}" }
+        require(!student.user.deleted && student.studentStatus == StudentStatus.ACTIVE) { "Faqat faol talaba fan guruhiga biriktiriladi: ${student.studentNumber}" }
         require(student.programId == curriculum.program.id) { "Talaba fan guruhi dasturiga mos emas: ${student.studentNumber}" }
         require(student.academicYear == curriculum.academicYear) { "Talaba o'quv yili fan guruhiga mos emas: ${student.studentNumber}" }
         require(student.semesterNumber == item.semester) { "Talaba semestri fan guruhiga mos emas: ${student.studentNumber}" }

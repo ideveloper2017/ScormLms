@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { apiOptional } from './api-optional';
 
 /**
  * Zod schema for Course data validation
@@ -9,16 +10,16 @@ export const CourseSchema = z.object({
   title: z.string().min(1, 'Course title is required'),
   description: z.string(),
   instructor: z.string().min(1, 'Instructor name is required'),
-  instructorPhoto: z.string().url('Invalid instructor photo URL').optional(),
+  instructorPhoto: apiOptional(z.string().url('Invalid instructor photo URL')),
   progress: z.number().min(0).max(100, 'Progress must be between 0 and 100'),
-  grade: z.string().optional(),
+  grade: apiOptional(z.string()),
   status: z.enum(['active', 'completed', 'draft']),
-  imageUrl: z.string().url('Invalid image URL').optional(),
+  imageUrl: apiOptional(z.string().url('Invalid image URL')),
   nextLesson: z.object({
     title: z.string().min(1),
     date: z.coerce.date(),
   }).optional(),
-  dueDate: z.coerce.date().optional(),
+  dueDate: apiOptional(z.coerce.date()),
   credits: z.number().min(0, 'Credits must be non-negative'),
 });
 
@@ -58,10 +59,10 @@ export const CourseModuleSchema = z.object({
   title: z.string().min(1),
   description: z.string(),
   order: z.number().min(0),
-  duration: z.number().min(0).optional(),
+  duration: apiOptional(z.number().min(0)),
   type: z.enum(['video', 'document', 'quiz', 'assignment', 'scorm']),
   isCompleted: z.boolean(),
-  completedAt: z.coerce.date().optional(),
+  completedAt: apiOptional(z.coerce.date()),
 });
 
 export const CourseContentSchema = z.object({
@@ -69,13 +70,13 @@ export const CourseContentSchema = z.object({
   moduleId: z.string().min(1),
   courseId: z.string().min(1),
   title: z.string().min(1),
-  description: z.string().optional(),
+  description: apiOptional(z.string()),
   contentType: z.enum(['video', 'document', 'pdf', 'scorm', 'html', 'quiz']),
-  contentUrl: z.string().url('Invalid content URL').optional(),
-  duration: z.number().min(0).optional(),
+  contentUrl: apiOptional(z.string().url('Invalid content URL')),
+  duration: apiOptional(z.number().min(0)),
   order: z.number().min(0),
   isViewed: z.boolean(),
-  viewedAt: z.coerce.date().optional(),
+  viewedAt: apiOptional(z.coerce.date()),
 });
 
 // Array schemas

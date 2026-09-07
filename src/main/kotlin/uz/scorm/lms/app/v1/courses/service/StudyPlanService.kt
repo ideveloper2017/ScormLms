@@ -198,6 +198,7 @@ class StudyPlanService(
         enrollmentRepository.save(enrollment)
         return StudentCourseProgressDto(
             courseId = courseId,
+            completedContentIds = contents.filter { contentProgress[it.id]?.progress == 100 }.map { requireNotNull(it.id) },
             progress = calculated,
             completedContents = contents.count { contentProgress[it.id]?.progress == 100 },
             totalContents = contents.size,

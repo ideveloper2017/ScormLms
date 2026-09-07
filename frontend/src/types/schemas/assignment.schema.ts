@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { apiOptional } from './api-optional';
 
 /**
  * Zod schema for Assignment data validation
@@ -14,9 +15,9 @@ export const AssignmentSchema = z.object({
   status: z.enum(['pending', 'submitted', 'graded', 'overdue']),
   priority: z.enum(['low', 'medium', 'high']),
   maxScore: z.number().min(0, 'Max score must be non-negative'),
-  submittedAt: z.coerce.date().optional(),
-  grade: z.number().min(0).optional(),
-  feedback: z.string().optional(),
+  submittedAt: apiOptional(z.coerce.date()),
+  grade: apiOptional(z.number().min(0)),
+  feedback: apiOptional(z.string()),
 });
 
 export const AttachmentFileSchema = z.object({
@@ -37,22 +38,22 @@ export const AssignmentDetailsSchema = AssignmentSchema.extend({
   instructions: z.string(),
   attachments: z.array(AttachmentFileSchema),
   submissionType: z.enum(['file', 'text', 'both']),
-  rubric: z.array(RubricItemSchema).optional(),
+  rubric: apiOptional(z.array(RubricItemSchema)),
 });
 
 export const AssignmentSubmissionSchema = z.object({
   id: z.string().min(1),
   assignmentId: z.string().min(1),
   studentId: z.string().min(1),
-  fileUrl: z.string().min(1).optional(),
-  fileName: z.string().optional(),
-  answer: z.string().optional(),
+  fileUrl: apiOptional(z.string().min(1)),
+  fileName: apiOptional(z.string()),
+  answer: apiOptional(z.string()),
   submittedAt: z.coerce.date(),
-  grade: z.number().min(0).optional(),
-  feedback: z.string().optional(),
+  grade: apiOptional(z.number().min(0)),
+  feedback: apiOptional(z.string()),
   status: z.enum(['submitted', 'graded', 'returned']),
-  attemptNumber: z.number().int().positive().optional(),
-  late: z.boolean().optional(),
+  attemptNumber: apiOptional(z.number().int().positive()),
+  late: apiOptional(z.boolean()),
 });
 
 // Array schemas

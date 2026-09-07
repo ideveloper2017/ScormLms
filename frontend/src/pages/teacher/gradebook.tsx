@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { qk } from "@/lib/query-keys";
+import { downloadCsv } from "@/utils/csv-export";
 import { teacherPortalApi, type GradebookEntry } from "@/services/api/teacher-portal-api";
 
 function cellCls(v: number | null | undefined) {
@@ -110,7 +111,7 @@ export function TeacherGradebook() {
   const [search, setSearch] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
 
-  const { data: courses = [], isLoading: coursesLoading } = useQuery({
+  const { data: courses = [], isLoading: coursesLoading, error: coursesError, refetch: refetchCourses } = useQuery({
     queryKey: qk.teacher.courses(),
     queryFn: teacherPortalApi.getCourses,
     staleTime: 60_000,
@@ -148,15 +149,15 @@ export function TeacherGradebook() {
     </div>
   );
 
-  if (error) return (
+  if (error || coursesError) return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4">
       <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Baholash jurnali</h1>
       <Card className="border-destructive/50">
         <CardContent className="pt-6 text-center space-y-3">
           <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
           <p className="text-destructive font-medium">Ma'lumotlarni yuklab bo'lmadi</p>
-          <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
-          <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button>
+          <p className="text-sm text-muted-foreground">{(error || coursesError)?.message}</p>
+          <Button variant="outline" onClick={() => coursesError ? refetchCourses() : refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button>
         </CardContent>
       </Card>
     </div>
@@ -169,8 +170,13 @@ export function TeacherGradebook() {
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Baholash jurnali</h1>
           <p className="text-muted-foreground">Natija akademik reyestr kabi testlar o'rtachasi va oxirgi imtihon natijasidan hisoblanadi. Topshiriq va davomat alohida ko'rsatiladi; baholanmagan qiymat —.</p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />Excel yuklash
+        <Button variant="outline" className="gap-2" disabled={!filtered.length} onClick={() => downloadCsv(
+          `baholash-jurnali-${courseId}.csv`,
+          ['Kurs', 'Talaba', 'Topshiriqlar (%)', 'Testlar (%)', 'Davomat (%)', 'Joriy natija', 'Baho'],
+          filtered.map(row => [courses.find(course => course.id === courseId)?.title, row.studentName,
+            row.assignments, row.tests, row.attendance, row.finalGrade, row.letterGrade]),
+        )}>
+          <Download className="h-4 w-4" />CSV yuklash
         </Button>
       </div>
 

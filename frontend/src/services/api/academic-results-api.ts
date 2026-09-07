@@ -19,6 +19,15 @@ export interface AcademicStatementRow {
   passedCount: number; averageScore?: number | null;
 }
 
+export interface StatementStudent {
+  enrollmentId: number; fullName: string; studentNumber: string; attendance: string; verified: boolean;
+  score: number | null; maximum: number | null; percentage: number | null;
+  passingPercentage: number; passed: boolean | null; comments: string | null;
+}
+export interface StatementDetail { id: number; title: string; status: string; students: StatementStudent[]; completionProblems: string[] }
+export const getStatement = (id: number) => load<StatementDetail>(`/academic-results/statements/${id}`, "Vedomost yuklanmadi");
+export const completeStatement = (id: number) => create<StatementDetail, object>(`/academic-results/statements/${id}/complete`, {}, "Vedomost yakunlanmadi");
+
 export interface StudentAcademicResult {
   enrollmentId: number; studentId: number; fullName: string; studentNumber: string;
   group: string; program: string; courseNumber: number; academicYear: string; semester: number;

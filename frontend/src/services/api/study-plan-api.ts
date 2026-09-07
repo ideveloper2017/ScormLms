@@ -34,6 +34,7 @@ export interface StudyPlan {
 
 export interface CourseProgress {
   courseId: number;
+  completedContentIds?: number[];
   progress: number;
   completedContents: number;
   totalContents: number;

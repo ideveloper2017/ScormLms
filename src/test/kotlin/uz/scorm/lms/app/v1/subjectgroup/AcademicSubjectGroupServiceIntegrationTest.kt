@@ -137,7 +137,7 @@ class AcademicSubjectGroupServiceIntegrationTest {
         ))
 
         val missingScope = assertThrows<IllegalArgumentException> {
-            courses.create(CourseCreateRequest(title = "Rejasiz kurs"), requireNotNull(teacherUser.id))
+            courses.create(CourseCreateRequest(title = "Rejasiz kurs"), requireNotNull(teacherUser.id), enforceTeachingScope = true)
         }
         assertTrue(missingScope.message.orEmpty().contains("fan guruhi"))
         assertTrue(service.teachingOptions(requireNotNull(teacherUser.id)).isEmpty())
@@ -168,7 +168,7 @@ class AcademicSubjectGroupServiceIntegrationTest {
         val course = courses.create(CourseCreateRequest(
             title = "Curriculumga bog'langan kurs",
             subjectGroupId = group.id,
-        ), requireNotNull(teacherUser.id))
+        ), requireNotNull(teacherUser.id), enforceTeachingScope = true)
         assertEquals(group.id, course.subjectGroupId)
         assertEquals(fixture.curriculumSubjectId, course.curriculumSubjectId)
         assertEquals(fixture.subject.id, course.subjectId)
@@ -195,6 +195,17 @@ class AcademicSubjectGroupServiceIntegrationTest {
         assertEquals(3, enrollment.semester)
         assertEquals(6, enrollment.credits)
         assertTrue(enrollment.required)
+    }
+
+    @Test
+    fun `deleted student account is excluded from candidates and cannot be assigned`() {
+        val fixture = approvedCurriculum()
+        val group = service.create(CreateAcademicSubjectGroupRequest(fixture.curriculumSubjectId, "DEL-T", "Test fan oqimi", 25), fixture.authorId)
+        val removed = student(fixture.program, "Deleted", semester = 3)
+        removed.user.deleted = true
+        users.saveAndFlush(removed.user)
+        assertTrue(service.candidates(group.id, null, 0, 20).items.isEmpty())
+        assertThrows<IllegalArgumentException> { service.assign(group.id, AssignAcademicSubjectGroupStudentsRequest(setOf(requireNotNull(removed.id))), fixture.authorId) }
     }
 
     private fun approvedCurriculum(): Fixture {

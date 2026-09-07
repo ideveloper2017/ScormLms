@@ -10,6 +10,8 @@ interface CurriculumSemesterPeriodRepository : JpaRepository<CurriculumSemesterP
 }
 
 interface CurriculumStudentAssignmentRepository : JpaRepository<CurriculumStudentAssignment, Long> {
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = ["curriculumVersion", "curriculumVersion.ratingSystem"])
+    fun findAllByStudentIdAndAcademicYearAndSemesterNumberAndDeletedFalse(studentId: Long, academicYear: String, semesterNumber: Int): List<CurriculumStudentAssignment>
     fun findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterNumberAscStudentLastNameAsc(curriculumId: Long): List<CurriculumStudentAssignment>
     fun findByIdAndCurriculumVersionIdAndDeletedFalse(id: Long, curriculumId: Long): CurriculumStudentAssignment?
     fun findByCurriculumVersionIdAndStudentIdAndSemesterNumber(curriculumId: Long, studentId: Long, semesterNumber: Int): CurriculumStudentAssignment?

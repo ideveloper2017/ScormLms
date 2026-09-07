@@ -82,6 +82,7 @@ data class CurriculumVersionDto(
     val approvedAt: Instant?,
     val approvedByName: String?,
     val archivedAt: Instant?,
+    val createdByUserId: Long? = null,
 )
 
 data class CurriculumStudentDto(

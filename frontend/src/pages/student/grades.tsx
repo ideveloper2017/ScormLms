@@ -147,8 +147,8 @@ export function StudentGrades() {
     );
   }
 
-  const gpa = gpaData?.currentGPA.toFixed(2) ?? "—";
-  const cumulativeGPA = gpaData?.cumulativeGPA.toFixed(2) ?? "—";
+  const gpa = gpaData && gpaData.totalCredits > 0 ? gpaData.currentGPA.toFixed(2) : "—";
+  const cumulativeGPA = gpaData && gpaData.totalCredits > 0 ? gpaData.cumulativeGPA.toFixed(2) : "—";
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-fade-in">
@@ -157,6 +157,7 @@ export function StudentGrades() {
         <p className="text-xs sm:text-sm text-muted-foreground">Fanlar bo'yicha joriy va yakuniy baholar</p>
       </div>
 
+      <p className="text-sm text-muted-foreground">Topshiriq, test va e’lon qilingan imtihon natijalari shu yerda ko‘rinadi. GPA testlar va oxirgi e’lon qilingan imtihon asosida kreditlar bo‘yicha hisoblanadi.</p>
       {/* GPA + summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="col-span-2 md:col-span-1">

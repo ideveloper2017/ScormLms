@@ -4,10 +4,14 @@ import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 
 interface CourseEnrollmentRepository : JpaRepository<CourseEnrollment, Long> {
+    @Query("select avg(e.progress) from CourseEnrollment e where e.course.id = :courseId and e.deleted = false and e.status in :statuses")
+    fun averageProgress(courseId: Long, statuses: Collection<CourseEnrollmentStatus>): Double?
+
     @EntityGraph(attributePaths = ["student", "student.user", "course", "course.subject", "course.subject.program"])
     fun findAllByDeletedFalseOrderByAcademicYearDescSemesterDescEnrolledAtDesc(): List<CourseEnrollment>
 

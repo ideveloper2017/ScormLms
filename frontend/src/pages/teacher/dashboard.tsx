@@ -81,7 +81,7 @@ export function TeacherDashboard() {
     );
   }
 
-  const pendingSubmissions = submissions.filter(s => s.status === 'pending');
+  const pendingSubmissions = submissions.filter(s => s.status === 'pending' || s.status === 'late');
   const weeklyData = courses.slice(0, 5).map(c => ({
     day: c.title.slice(0, 8),
     progress: c.progress,
@@ -102,7 +102,7 @@ export function TeacherDashboard() {
           <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate("/teacher/courses/create")}>
             <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Yangi kurs
           </Button>
-          <Button size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate("/teacher/assignments")}>
+          <Button size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate("/teacher/assignments/create")}>
             <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Topshiriq
           </Button>
         </div>
@@ -115,9 +115,9 @@ export function TeacherDashboard() {
         {[
           { label: "Kurslar",            value: stats?.activeCourses ?? 0,       sub: `${stats?.totalStudents ?? 0} talaba`, icon: BookOpen,     cls: "text-blue-600",   href: "/teacher/courses"     },
           { label: "Tekshirilmagan",     value: stats?.pendingSubmissions ?? 0,  sub: "topshiriqlar",                        icon: ClipboardList, cls: "text-orange-600", href: "/teacher/assignments" },
-          { label: "Bugungi darslar",    value: stats?.todayLessons ?? 0,        sub: "reja bo'yicha",                       icon: CalendarDays,  cls: "text-green-600",  href: "/teacher/attendance"  },
+          { label: "Bugungi darslar",    value: stats?.todayLessons ?? 0,        sub: "reja bo'yicha",                       icon: CalendarDays,  cls: "text-green-600",  href: "/teacher/sessions"  },
           { label: "Test natijalari",    value: `${stats?.avgTestScore ?? 0}%`,  sub: "o'rtacha ball",                       icon: FileQuestion,  cls: "text-purple-600", href: "/teacher/tests"       },
-          { label: "Yangi topshiriqlar", value: stats?.newSubmissions ?? 0,      sub: "yangi",                               icon: TrendingUp,    cls: "text-teal-600",   href: "/teacher/students"    },
+          { label: "Yangi topshiriqlar", value: stats?.newSubmissions ?? 0,      sub: "yangi",                               icon: TrendingUp,    cls: "text-teal-600",   href: "/teacher/assignments"    },
           { label: "Yangi xabarlar",     value: stats?.unreadMessages ?? 0,      sub: "o'qilmagan",                          icon: MessageCircle, cls: "text-red-600",    href: "/teacher/messages"    },
         ].map(({ label, value, sub, icon: Icon, cls, href }) => (
           <Card key={label} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(href)}>
@@ -238,7 +238,7 @@ export function TeacherDashboard() {
                     <span className="text-xs text-muted-foreground ml-2">{c.students} talaba</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {c.avgScore !== undefined && (
+                    {c.avgScore != null && (
                       <>
                         <Star className="h-3.5 w-3.5 text-yellow-500" />
                         <span className="font-semibold">{c.avgScore}%</span>

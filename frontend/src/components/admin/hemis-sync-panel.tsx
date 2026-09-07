@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { hemisSyncApi, type HemisConflict, type HemisRunStatus } from '@/services/api/hemis-sync-api';
+import { HemisConnectionCheck } from './hemis-connection-check';
 
 const runVariant: Record<HemisRunStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   QUEUED: 'secondary', RUNNING: 'outline', COMPLETED: 'default', PARTIAL: 'secondary', FAILED: 'destructive',
@@ -20,6 +21,7 @@ export function HemisSyncPanel() {
   const { toast } = useToast();
   const [selectedConflict, setSelectedConflict] = useState<HemisConflict | null>(null);
   const [note, setNote] = useState('');
+  const [pilotGroup, setPilotGroup] = useState('');
   const overview = useQuery({ queryKey: ['hemis-sync', 'overview'], queryFn: hemisSyncApi.overview, refetchInterval: 10_000 });
   const runs = useQuery({ queryKey: ['hemis-sync', 'runs'], queryFn: hemisSyncApi.runs, refetchInterval: 10_000 });
   const mappings = useQuery({ queryKey: ['hemis-sync', 'mappings'], queryFn: hemisSyncApi.mappings });
@@ -52,27 +54,42 @@ export function HemisSyncPanel() {
   const state = overview.data;
   return <Card>
     <CardHeader className="gap-3 lg:flex-row lg:items-start lg:justify-between">
-      <div><CardTitle className="flex items-center gap-2"><DatabaseZap className="h-5 w-5" />HEMIS davriy sinxronlash</CardTitle><CardDescription>Checkpoint, idempotent yangilash, guruh mappingi va maskalangan konfliktlar.</CardDescription></div>
+      <div><CardTitle className="flex items-center gap-2"><DatabaseZap className="h-5 w-5" />HEMIS sinxronlash</CardTitle><CardDescription>Guruhlarni bog‘lang, bitta guruhni import qilib tekshiring va natijalarni kuzating.</CardDescription></div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" disabled={!state?.canManage || refreshRemote.isPending} onClick={() => refreshRemote.mutate()}><RefreshCw className="mr-2 h-4 w-4" />Guruhlarni olish</Button>
-        <Button disabled={!state?.canManage || !state.credentialsConfigured || !!state.currentRun || mutation.isPending} onClick={() => mutation.mutate(undefined)}><Play className="mr-2 h-4 w-4" />Sync boshlash</Button>
+        <Button variant="outline" disabled={!state?.canManage || !state.credentialsConfigured || refreshRemote.isPending} onClick={() => refreshRemote.mutate()}><RefreshCw className="mr-2 h-4 w-4" />Guruhlarni olish</Button>
+        <Button disabled={!state?.canManage || !state.credentialsConfigured || !state.mappingsReady || !!state.currentRun || mutation.isPending} onClick={() => mutation.mutate(undefined)}><Play className="mr-2 h-4 w-4" />Sinxronlashni boshlash</Button>
       </div>
     </CardHeader>
     <CardContent>
+      <HemisConnectionCheck canManage={state?.canManage ?? false} />
       {(overview.isLoading || runs.isLoading) && <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>}
       {overview.error && <p className="rounded border border-destructive/30 p-3 text-sm text-destructive">{overview.error.message}</p>}
       {state && <>
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Credential" value={state.credentialsConfigured ? 'Sozlangan' : 'Sozlanmagan'} good={state.credentialsConfigured} />
+          <Stat label="Kirish sozlamalari" value={state.credentialsConfigured ? 'Sozlangan' : 'Sozlanmagan'} good={state.credentialsConfigured} />
           <Stat label="Davriy ish" value={state.periodicEnabled ? 'Faol' : 'O‘chiq'} good={state.periodicEnabled} />
-          <Stat label="Tayyor mapping" value={`${state.mappingsReady}/${state.mappingsTotal}`} good={state.mappingsTotal > 0 && state.mappingsReady === state.mappingsTotal} />
+          <Stat label="Bog‘langan guruhlar" value={`${state.mappingsReady}/${state.mappingsTotal}`} good={state.mappingsTotal > 0 && state.mappingsReady === state.mappingsTotal} />
           <Stat label="Ochiq konflikt" value={String(state.openConflicts)} good={state.openConflicts === 0} />
         </div>
-        {!state.credentialsConfigured && <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm dark:bg-amber-950/20">HEMIS_ADMIN_LOGIN va HEMIS_ADMIN_PASSWORD sozlanmaguncha real sinxronlash boshlanmaydi.</div>}
+        <section aria-label="Bitta guruh importi" className="mb-4 space-y-3 rounded border p-4">
+          <h3 className="font-semibold">2. Bitta guruhni import qilib tekshirish</h3>
+          <p className="text-sm text-muted-foreground">Avval “Guruhlarni moslashtirish” bo‘limida guruhlarni bog‘lang. Bu amal tanlangan guruh talabalarini LMS’ga saqlaydi.</p>
+          <div className="flex flex-wrap gap-2">
+            <select aria-label="Import uchun HEMIS guruhi" className="h-10 min-w-0 flex-1 rounded border bg-background px-3 text-sm" value={pilotGroup}
+              disabled={!state.canManage || !!state.currentRun || mutation.isPending} onChange={event => setPilotGroup(event.target.value)}>
+              <option value="">Guruhni tanlang</option>
+              {mappings.data?.filter(mapping => mapping.active && mapping.localGroupId != null).map(mapping =>
+                <option key={mapping.hemisGroupId} value={mapping.hemisGroupId}>{mapping.hemisGroupName} → {mapping.localGroupName}</option>)}
+            </select>
+            <Button variant="outline" disabled={!state.canManage || !state.credentialsConfigured || !!state.currentRun || mutation.isPending ||
+              !mappings.data?.some(mapping => mapping.active && mapping.localGroupId != null && String(mapping.hemisGroupId) === pilotGroup)}
+              onClick={() => mutation.mutate(Number(pilotGroup))}>Tanlangan guruhni import qilish</Button>
+          </div>
+        </section>
       </>}
 
       <Tabs defaultValue="runs">
-        <TabsList className="grid w-full grid-cols-3"><TabsTrigger value="runs">Runlar</TabsTrigger><TabsTrigger value="mappings">Guruh mappingi</TabsTrigger><TabsTrigger value="conflicts">Konfliktlar</TabsTrigger></TabsList>
+        <TabsList className="grid w-full grid-cols-3"><TabsTrigger value="runs">Tarix</TabsTrigger><TabsTrigger value="mappings">Guruhlarni moslashtirish</TabsTrigger><TabsTrigger value="conflicts">Ziddiyatlar</TabsTrigger></TabsList>
         <TabsContent value="runs" className="space-y-2 pt-3">
           {runs.data?.map(run => <div key={run.id} className="grid gap-2 rounded border p-3 text-sm lg:grid-cols-[90px_120px_1fr_auto] lg:items-center">
             <strong>#{run.id}</strong><Badge variant={runVariant[run.status]} className="w-fit">{run.status}</Badge>

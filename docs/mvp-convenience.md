@@ -1,5 +1,7 @@
 # SCORMdan tashqari MVP qulayliklari
 
+2026-09-07 dagi amaliy nosozliklar, dars navigatsiyasi va baholar tuzatishlari [MVP UX auditida](mvp-ux-audit-2026-09-07.md) yozilgan. Quyidagi dastlabki tavsifdagi dars tanlash endi avtomatik saqlanadi.
+
 ## Foydalanish
 
 - Yuqoridagi qidiruv tugmasi yoki `Ctrl/Cmd + K` orqali sahifa, kurs va talabani topish mumkin. Qidiruv kamida 2 ta belgi bilan ishlaydi. Natijalar serverda vakolat bilan cheklanadi; o'qituvchi o'z kurslaridagi talabalarni ko'radi.
@@ -11,6 +13,8 @@
 - `Mening kurslarim → Nusxa olish` kurs, bo'limlar va oddiy materiallarni yangi qoralamaga ko'chiradi. Yuklangan material fayllari mustaqil nusxalanadi. Nashr/tasdiqlash holatlari qayta boshlanadi; talabalar, natijalar, topshiriqlar, testlar va SCORM paketlari ko'chirilmaydi.
 - Admin/metodist kabinetida dastlabki sozlash uchun 5 qadamli holat va tegishli sahifaga o'tish mavjud. Bu minimal boshlang'ich tayyorlik ko'rsatkichi.
 - O'qituvchining topshiriq baholash oynasida talaba javobi, PDF/rasm ko'rinishi, fayl yuklash, ball va izoh bir joyda. `Saqlash va keyingisi` navbatdagi tekshirilmagan ishni ochadi.
+
+HEMIS ulanishi uchun [ishga tushirish yo‘riqnomasi](hemis-connection.md) mavjud. Admin integratsiya sahifasida server sozlamalari, import qilmasdan API ulanishini tekshirish, guruhlarni moslashtirish va faqat tanlangan guruhni import qilish mumkin. Kirish ma’lumotlari mavjudligi haqiqiy ulanish tasdig‘i sifatida ko‘rsatilmaydi.
 
 ## Baholar semantikasi
 

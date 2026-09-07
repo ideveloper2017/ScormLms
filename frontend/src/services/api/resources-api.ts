@@ -4,7 +4,7 @@ export interface Resource {
   id: string;
   title: string;
   description?: string;
-  type: 'pdf' | 'video' | 'link' | 'document' | 'image' | 'archive';
+  type: 'pdf' | 'video' | 'link' | 'document' | 'image' | 'archive' | 'text';
   course?: string;
   courseId?: string;
   size?: number;
@@ -12,6 +12,9 @@ export interface Resource {
   uploadedAt: string;
   downloadCount?: number;
   tags?: string[];
+  contentId?: number;
+  fileName?: string | null;
+  externalUrl?: string | null;
 }
 
 export interface ResourceCategory {
@@ -21,8 +24,8 @@ export interface ResourceCategory {
 }
 
 export const resourcesApi = {
-  getResources: async (courseId?: string): Promise<Resource[]> => {
-    const res = await api.get<Resource[]>('/students/me/resources', {
+  getResources: async (courseId?: string, student = true): Promise<Resource[]> => {
+    const res = await api.get<Resource[]>(student ? '/students/me/resources' : '/resources', {
       params: courseId ? { courseId } : undefined,
     });
     return res.data;

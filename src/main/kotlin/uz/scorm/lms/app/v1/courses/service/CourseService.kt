@@ -209,6 +209,8 @@ class CourseService(
         metaKeywords = course.metaKeywords,
         metaDescription = course.metaDescription,
         ownerUserId = requireNotNull(course.userId),
+        progress = enrollmentRepository.averageProgress(requireNotNull(course.id),
+            setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED))?.let { kotlin.math.round(it).toInt() } ?: 0,
         students = enrollmentRepository.countByCourseIdAndStatusAndDeletedFalse(
             requireNotNull(course.id), CourseEnrollmentStatus.ACTIVE,
         ),

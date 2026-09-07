@@ -542,7 +542,16 @@ export interface TeacherLearningSessionPayload {
   status: 'DRAFT' | 'PUBLISHED';
 }
 
+export interface EnrollmentCandidates {
+  items: { id: number; fullName: string; studentNumber: string; groupName: string | null; eligible: boolean; reason: string | null }[];
+  groups: { id: number; name: string }[];
+  page: number; total: number; hasNext: boolean;
+}
 export const teacherPortalApi = {
+  getEnrollmentCandidates: async (courseId: string, search: string, groupId: string, page: number): Promise<EnrollmentCandidates> =>
+    dataOf(await api.get<ApiResponse<EnrollmentCandidates>>(`/courses/${courseId}/enrollment-candidates`, {
+      params: { search: search || undefined, groupId: groupId || undefined, page },
+    }), "Talabalar yuklanmadi"),
   getProfile: async (): Promise<TeacherProfile> => {
     const res = await api.get<TeacherProfile>('/teachers/me');
     return res.data;
@@ -753,6 +762,10 @@ export const teacherPortalApi = {
   },
   createLearningSession: async (payload: TeacherLearningSessionPayload): Promise<TeacherLearningSession> => {
     const res = await api.post<TeacherLearningSession>('/teachers/me/sessions', payload);
+    return res.data;
+  },
+  updateLearningSession: async (sessionId: string, payload: TeacherLearningSessionPayload): Promise<TeacherLearningSession> => {
+    const res = await api.put<TeacherLearningSession>(`/teachers/me/sessions/${sessionId}`, payload);
     return res.data;
   },
   updateLearningSessionStatus: async (

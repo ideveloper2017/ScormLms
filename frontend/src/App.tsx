@@ -14,7 +14,6 @@ import HemisCallbackPage from "@/pages/auth/hemis-callback";
 
 // Dashboards
 import { AdminDashboard } from "@/pages/admin-dashboard";
-import { InstructorDashboard } from "@/pages/instructor-dashboard";
 import { StudentDashboard } from "@/pages/student-dashboard";
 import { StudentCourses } from "@/pages/student/courses";
 import { ProctorDashboard } from "@/pages/proctor-dashboard";
@@ -96,6 +95,7 @@ import { StudentTests } from "@/pages/student/tests";
 import { TestSession } from "@/pages/student/test-session";
 import { TestResults } from "@/pages/student/test-results";
 import { StudentGrades } from "@/pages/student/grades";
+import { StudentTranscript, StudentReports } from "@/pages/student/academic-reports";
 import { StudentAttendance } from "@/pages/student/attendance";
 import { StudentNotifications } from "@/pages/student/notifications";
 import { StudentStudyPlan } from "@/pages/student/study-plan";
@@ -234,6 +234,9 @@ function App() {
         <Route path="/student/exams"         element={<P roles={[R_STU]}><Exams /></P>} />
         <Route path="/student/attestations"  element={<P roles={[R_STU]}><StudentAttestations /></P>} />
         <Route path="/student/grades"        element={<P roles={[R_STU]}><StudentGrades /></P>} />
+        <Route path="/student/transcript" element={<P roles={[R_STU]}><StudentTranscript /></P>} />
+        <Route path="/student/reports" element={<P roles={[R_STU]}><StudentReports /></P>} />
+        <Route path="/student/resources" element={<P roles={[R_STU]}><Resources /></P>} />
         <Route path="/student/attendance"    element={<P roles={[R_STU]}><StudentAttendance /></P>} />
         <Route path="/student/messages"      element={<P roles={[R_STU]}><Communication /></P>} />
         <Route path="/student/notifications" element={<P roles={[R_STU]}><StudentNotifications /></P>} />
@@ -375,7 +378,7 @@ function App() {
         <Route path="/admin/curriculum-students" element={<P roles={STAFF_ROLES}><AdminCurriculumStudents /></P>} />
         <Route path="/admin/admission-policies" element={<P roles={STAFF_ROLES}><AdminAdmissionPolicies /></P>} />
         <Route path="/admin/non-state-licenses" element={<P roles={STAFF_ROLES}><AdminNonStateLicenses /></P>} />
-        <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><Courses /></P>} />
+        <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><TeacherCourses title="Kurslarni boshqarish" /></P>} />
         <Route path="/admin/schedule"     element={<P roles={STAFF_ROLES}><TeacherSessions managementMode /></P>} />
         <Route path="/admin/calendar"     element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
         <Route path="/admin/orientations" element={<P roles={STAFF_ROLES}><AdminOrientations /></P>} />
@@ -437,7 +440,7 @@ function P({ roles, children }: { roles: string[]; children: ReactNode }) {
 // ─── Dashboard routing by role ──────────────────────────────────────────────────────
 function getDashboardComponent(user: ReturnType<typeof useAuth>["user"]) {
   if (isStudent(user))                return <StudentDashboard />;
-  if (hasRole(user, R_TEACH))         return <InstructorDashboard />;
+  if (hasRole(user, R_TEACH))         return <TeacherDashboard />;
   if (hasRole(user, R_PROC))          return <ProctorDashboard />;
   if (hasRole(user, R_MON))           return <MonitorDashboard />;
   if (hasRole(user, R_SUPER) ||

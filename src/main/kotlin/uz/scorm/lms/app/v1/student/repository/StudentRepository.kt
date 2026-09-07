@@ -105,13 +105,20 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
         where student.programId = :programId
           and student.academicYear = :academicYear
           and student.studentStatus <> :unassignedStatus
+          and student.user.deleted = false
           and (:status is null or student.studentStatus = :status)
+          and (:semesterNumber is null or student.semesterNumber = :semesterNumber)
+          and (:unassignedCurriculumId is null or not exists (
+            select assignment.id from CurriculumStudentAssignment assignment
+            where assignment.curriculumVersion.id = :unassignedCurriculumId
+              and assignment.student.id = student.id
+              and assignment.semesterNumber = :semesterNumber
+              and assignment.deleted = false
+          ))
           and (
             :search = ''
-            or lower(student.studentNumber) like concat('%', :search, '%')
-            or lower(student.lastName) like concat('%', :search, '%')
-            or lower(student.firstName) like concat('%', :search, '%')
-            or lower(coalesce(student.middleName, '')) like concat('%', :search, '%')
+            or lower(student.studentNumber) like concat('%', :search, '%') escape '!'
+            or lower(concat(student.lastName, ' ', student.firstName, ' ', coalesce(student.middleName, ''))) like concat('%', :search, '%') escape '!'
           )
     """)
     fun findCurriculumStudents(
@@ -120,6 +127,8 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
         @Param("unassignedStatus") unassignedStatus: StudentStatus,
         @Param("status") status: StudentStatus?,
         @Param("search") search: String,
+        @Param("semesterNumber") semesterNumber: Int?,
+        @Param("unassignedCurriculumId") unassignedCurriculumId: Long?,
         pageable: Pageable,
     ): Page<StudentProfile>
 
@@ -130,6 +139,7 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
           and student.academicYear = :academicYear
           and student.semesterNumber = :semester
           and student.studentStatus = :status
+          and student.user.deleted = false
           and (
             :search = ''
             or lower(student.studentNumber) like concat('%', :search, '%')

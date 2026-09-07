@@ -62,6 +62,8 @@ export interface Transcript {
   cumulativeGPA: number;
   totalCredits: number;
   degreeProgress: number;
+  assessedCredits?: number;
+  completedCredits?: number;
 }
 
 /**
@@ -73,6 +75,7 @@ export interface TranscriptSemester {
   courses: TranscriptCourse[];
   semesterGPA: number;
   creditsEarned: number;
+  assessedCredits?: number;
 }
 
 /**
@@ -86,6 +89,8 @@ export interface TranscriptCourse {
   gradeLetter: string;
   gradePoints: number;
   instructor: string;
+  score?: number | null;
+  status?: string;
 }
 
 /**

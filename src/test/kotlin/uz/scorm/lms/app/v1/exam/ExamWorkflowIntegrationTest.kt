@@ -36,6 +36,7 @@ import java.time.LocalTime
 @ActiveProfiles("test")
 @Transactional
 class ExamWorkflowIntegrationTest {
+    @Autowired private lateinit var statements: uz.scorm.lms.app.v1.academicresult.service.AcademicStatementService
     @Autowired private lateinit var sessions: ExamSessionService
     @Autowired private lateinit var attendance: ExamAttendanceService
     @Autowired private lateinit var results: ExamResultService
@@ -69,13 +70,21 @@ class ExamWorkflowIntegrationTest {
             RecordAttendanceRequest(AttendanceStatus.PRESENT), teacher.id!!, false)
         assertNotNull(verified.verificationTime)
         assertEquals(teacher.fullName, verified.verifiedBy)
+        assertTrue(statements.detail(session.id.toLong()).completionProblems.any { it.contains("bahosi") })
+        assertThrows(IllegalArgumentException::class.java) { statements.complete(session.id.toLong(), teacher.id!!) }
 
         val result = results.record(session.id.toLong(), enrollment.id!!,
             RecordExamResultRequest(enrollment.id!!, BigDecimal("75"), grade = "A"), teacher.id!!, false)
         assertEquals(75.0, result.percentage)
         assertEquals("C", result.grade)
         assertTrue(result.passed)
-        sessions.completeExamSession(session.id.toLong(), CompleteExamSessionRequest(), teacher.id!!, false)
+        assertTrue(statements.detail(session.id.toLong()).completionProblems.isEmpty())
+        val closed = statements.complete(session.id.toLong(), teacher.id!!)
+        assertEquals("COMPLETED", closed.status)
+        assertEquals(75.0, closed.students.single().percentage)
+        assertThrows(IllegalArgumentException::class.java) {
+            results.record(session.id.toLong(), enrollment.id!!, RecordExamResultRequest(enrollment.id!!, BigDecimal("99")), teacher.id!!, false)
+        }
 
         val studentResults = results.studentResults(student.user.id!!)
         assertEquals(1, studentResults.size)

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { apiOptional } from './api-optional';
 
 /**
  * Zod schema for Grade data validation
@@ -8,17 +9,17 @@ export const GradeSchema = z.object({
   id: z.string().min(1, 'Grade ID is required'),
   courseId: z.string().min(1, 'Course ID is required'),
   courseName: z.string().min(1, 'Course name is required'),
-  assignmentId: z.string().optional(),
-  assignmentName: z.string().optional(),
-  testId: z.string().optional(),
-  testName: z.string().optional(),
+  assignmentId: apiOptional(z.string()),
+  assignmentName: apiOptional(z.string()),
+  testId: apiOptional(z.string()),
+  testName: apiOptional(z.string()),
   gradeLetter: z.string().min(1, 'Grade letter is required'),
   gradePoints: z.number().min(0).max(4, 'Grade points must be 0-4'),
   scorePercentage: z.number().min(0).max(100, 'Score percentage must be 0-100'),
   maxScore: z.number().min(0),
   earnedScore: z.number().min(0),
   date: z.coerce.date(),
-  feedback: z.string().optional(),
+  feedback: apiOptional(z.string()),
 });
 
 export const GradeDistributionSchema = z.object({

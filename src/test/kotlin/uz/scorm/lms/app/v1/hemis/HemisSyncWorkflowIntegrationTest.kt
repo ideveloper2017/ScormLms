@@ -34,7 +34,7 @@ import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 
-@SpringBootTest
+@SpringBootTest(properties = ["app.demo.enabled=false", "hemis.host=", "hemis.admin-login=", "hemis.admin-password="])
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(HemisSyncWorkflowIntegrationTest.Config::class)
@@ -86,6 +86,24 @@ class HemisSyncWorkflowIntegrationTest {
             jsonPath("$.data.canManage") { value(false) }
         }
         mockMvc.post("/api/v1/hemis/sync/runs").andExpect { status { isForbidden() } }
+        mockMvc.get("/api/v1/hemis/sync/connection").andExpect {
+            status { isOk() }
+            jsonPath("$.data.status") { value("NOT_CONFIGURED") }
+        }
+        mockMvc.post("/api/v1/hemis/sync/connection/check").andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    @WithMockUser(username = "hemis-manager", authorities = ["INTEGRATION_READ", "INTEGRATION_WRITE"])
+    fun `manager can diagnose missing settings without starting an import`() {
+        val before = runs.count()
+        mockMvc.post("/api/v1/hemis/sync/connection/check").andExpect {
+            status { isOk() }
+            jsonPath("$.data.status") { value("NOT_CONFIGURED") }
+            jsonPath("$.data.missingFields") { isArray() }
+            jsonPath("$.data.adminPassword") { doesNotExist() }
+        }
+        assertEquals(before, runs.count())
     }
 
     private fun user(username: String): User = users.findByUsername(username)

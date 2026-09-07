@@ -67,6 +67,7 @@ import { academicPeriodApi } from "@/services/api/academic-period-api";
 import { listRatingSystems } from "@/services/api/academic-results-api";
 import {
   canApproveCurriculum,
+  curriculumApprovalReason,
   curriculumApi,
   curriculumInputError,
   type CurriculumEducationForm,
@@ -1014,10 +1015,11 @@ export function AdminStudyPlanEditor() {
                           </div>
                         ))}
                       </div>
+                      {curriculumApprovalReason(item, user) && <p className="text-sm text-muted-foreground">{curriculumApprovalReason(item, user)}</p>}
                       {canWrite && (
                         <div className="flex justify-end border-t pt-5">
                           <Button
-                            disabled={!canApproveCurriculum(item)}
+                            disabled={!canApproveCurriculum(item) || Boolean(curriculumApprovalReason(item, user))}
                             onClick={() => setApprovalOpen(true)}
                           >
                             <FileCheck2 className="mr-2 h-4 w-4" />

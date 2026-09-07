@@ -623,9 +623,8 @@ class DemoDataInitializer(
 
     private fun seedEnrollment(course: Course, student: StudentProfile, academicYear: String, credits: Int, progress: Int) {
         val enrollment = enrollmentRepository.findByCourseIdAndStudentId(course.id!!, student.id!!)
-            ?: CourseEnrollment(course = course, student = student)
-        enrollment.status = CourseEnrollmentStatus.ACTIVE
-        enrollment.progress = progress
+            ?: CourseEnrollment(course = course, student = student, progress = 0)
+        // Re-running local startup must preserve the learner's saved progress and status.
         enrollment.academicYear = academicYear
         enrollment.semester = 1
         enrollment.credits = credits

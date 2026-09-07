@@ -45,7 +45,7 @@ export interface ValidationOptions {
  * ```
  */
 export function validateData<T>(
-  schema: ZodSchema<T>,
+  schema: ZodSchema<T, z.ZodTypeDef, unknown>,
   data: unknown,
   options: ValidationOptions = {}
 ): ValidationResult<T> {
@@ -104,7 +104,7 @@ export function validateData<T>(
  * ```
  */
 export function validateDataOrThrow<T>(
-  schema: ZodSchema<T>,
+  schema: ZodSchema<T, z.ZodTypeDef, unknown>,
   data: unknown,
   options: ValidationOptions = {}
 ): T {
@@ -141,7 +141,7 @@ export function validateDataOrThrow<T>(
  * ```
  */
 export function validateDataOrFallback<T>(
-  schema: ZodSchema<T>,
+  schema: ZodSchema<T, z.ZodTypeDef, unknown>,
   data: unknown,
   fallback: T,
   options: ValidationOptions = {}
@@ -180,7 +180,7 @@ export function validateDataOrFallback<T>(
  * ```
  */
 export function validateArrayPartial<T>(
-  itemSchema: ZodSchema<T>,
+  itemSchema: ZodSchema<T, z.ZodTypeDef, unknown>,
   data: unknown,
   options: ValidationOptions = {}
 ): T[] {

@@ -23,7 +23,16 @@ import uz.scorm.lms.app.v1.user.model.User
 class AcademicResultController(
     private val ratingSystems: RatingSystemService,
     private val analytics: AcademicAnalyticsService,
+    private val statementWorkflow: uz.scorm.lms.app.v1.academicresult.service.AcademicStatementService,
 ) {
+    @GetMapping("/statements/{id}")
+    @PreAuthorize("hasAuthority('REPORT_READ')")
+    fun statement(@PathVariable id: Long) = statementWorkflow.detail(id)
+
+    @PostMapping("/statements/{id}/complete")
+    @PreAuthorize("hasAuthority('REPORT_READ') and hasAuthority('ACADEMIC_WRITE')")
+    fun completeStatement(@PathVariable id: Long, @CurrentUser user: User) =
+        statementWorkflow.complete(id, requireNotNull(user.id))
     @GetMapping("/rating-systems")
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")
     fun ratingSystems() = ratingSystems.list()

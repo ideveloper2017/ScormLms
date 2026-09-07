@@ -144,6 +144,7 @@ data class StudentStudyPlanCourseDto(
 
 data class StudentCourseProgressDto(
     val courseId: Long,
+    val completedContentIds: List<Long> = emptyList(),
     val progress: Int,
     val completedContents: Int,
     val totalContents: Int,
@@ -273,6 +274,8 @@ data class TranscriptCourseDto(
     val gradeLetter: String,
     val gradePoints: Double,
     val instructor: String,
+    val score: Double? = null,
+    val status: String = "active",
 )
 
 data class TranscriptSemesterDto(
@@ -281,6 +284,7 @@ data class TranscriptSemesterDto(
     val courses: List<TranscriptCourseDto> = emptyList(),
     val semesterGPA: Double = 0.0,
     val creditsEarned: Int = 0,
+    val assessedCredits: Int = 0,
 )
 
 data class StudentTranscriptDto(
@@ -291,6 +295,8 @@ data class StudentTranscriptDto(
     val cumulativeGPA: Double = 0.0,
     val totalCredits: Int = 0,
     val degreeProgress: Double = 0.0,
+    val assessedCredits: Int = 0,
+    val completedCredits: Int = 0,
 )
 
 // ─── Assignment ──────────────────────────────────────────────────────────────
@@ -413,6 +419,8 @@ data class MonthlyDataDto(
     val avgScore: Double = 0.0,
     val attendance: Double = 0.0,
     val completedCourses: Int = 0,
+    val gradeCount: Int = 0,
+    val attendanceCount: Int = 0,
 )
 
 data class CourseCompletionDto(
@@ -420,6 +428,18 @@ data class CourseCompletionDto(
     val completion: Double = 0.0,
     val avgScore: Double = 0.0,
     val students: Int = 0,
+    val courseId: String = "",
+    val gradeCount: Int = 0,
+)
+
+data class StudentReportDto(
+    val from: LocalDate,
+    val to: LocalDate,
+    val stats: AcademicStatsDto,
+    val gradeCount: Int,
+    val assessedCredits: Int,
+    val monthly: List<MonthlyDataDto>,
+    val courses: List<CourseCompletionDto>,
 )
 
 // ─── Resource ────────────────────────────────────────────────────────────────
@@ -433,6 +453,11 @@ data class StudentResourceDto(
     val courseName: String? = null,
     val uploadedAt: String,
     val size: Long? = null,
+    val description: String? = null,
+    val course: String? = null,
+    val contentId: Long? = null,
+    val fileName: String? = null,
+    val externalUrl: String? = null,
 )
 
 data class ResourceCategoryDto(

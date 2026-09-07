@@ -7,6 +7,9 @@ import uz.scorm.lms.app.common.ApiResponse
 import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.service.StudentPortalService
+import uz.scorm.lms.app.v1.student.service.StudentReportService
+import uz.scorm.lms.app.v1.student.service.StudentExportService
+import uz.scorm.lms.app.v1.student.service.StudentExportFormat
 import uz.scorm.lms.app.v1.courses.service.StudyPlanService
 import uz.scorm.lms.app.v1.session.dto.StudentLearningSessionDto
 import uz.scorm.lms.app.v1.user.model.User
@@ -21,6 +24,9 @@ import java.time.temporal.WeekFields
 class StudentPortalController(
     private val svc: StudentPortalService,
     private val studyPlanService: StudyPlanService,
+    private val reports: StudentReportService,
+    private val exports: StudentExportService,
+    private val resources: uz.scorm.lms.app.v1.courses.service.CourseResourceService,
 ) {
 
     // ─── Profile ─────────────────────────────────────────────────────────────
@@ -214,7 +220,7 @@ class StudentPortalController(
         @CurrentUser user: User,
         @PathVariable courseId: String,
     ): ResponseEntity<ApiResponse<List<StudentGradeDto>>> =
-        ResponseEntity.ok(ApiResponse.success(emptyList()))
+        ResponseEntity.ok(ApiResponse.success(svc.getGrades(user, courseId)))
 
     // ─── Grades ──────────────────────────────────────────────────────────────
 
@@ -225,7 +231,7 @@ class StudentPortalController(
         @RequestParam(required = false) semester: String?,
         @RequestParam(required = false) academicYear: String?,
     ): ResponseEntity<ApiResponse<List<StudentGradeDto>>> =
-        ResponseEntity.ok(ApiResponse.success(svc.getGrades(user, courseId)))
+        ResponseEntity.ok(ApiResponse.success(svc.getGrades(user, courseId, semester, academicYear)))
 
     @GetMapping("/grades/summary")
     fun getGradeSummary(@CurrentUser user: User): ResponseEntity<ApiResponse<StudentGradeSummaryDto>> =
@@ -233,7 +239,7 @@ class StudentPortalController(
 
     @GetMapping("/grades/distribution")
     fun getGradeDistribution(@CurrentUser user: User): ResponseEntity<ApiResponse<StudentGradeDistributionDto>> =
-        ResponseEntity.ok(ApiResponse.success(StudentGradeDistributionDto()))
+        ResponseEntity.ok(ApiResponse.success(svc.getGradeSummary(user).distribution))
 
     @GetMapping("/gpa")
     fun getGPA(@CurrentUser user: User): ResponseEntity<ApiResponse<StudentGPADto>> =
@@ -242,6 +248,10 @@ class StudentPortalController(
     @GetMapping("/transcript")
     fun getTranscript(@CurrentUser user: User): ResponseEntity<ApiResponse<StudentTranscriptDto>> =
         ResponseEntity.ok(ApiResponse.success(svc.getTranscript(user)))
+
+    @GetMapping("/transcript/export")
+    fun exportTranscript(@CurrentUser user: User, @RequestParam format: StudentExportFormat): ResponseEntity<ByteArray> =
+        download(exports.transcript(svc.getTranscript(user), format), "transcript", format)
 
     // ─── Assignments ─────────────────────────────────────────────────────────
 
@@ -286,7 +296,24 @@ class StudentPortalController(
 
     @GetMapping("/reports")
     fun getReports(@CurrentUser user: User): ResponseEntity<List<ReportSummaryDto>> =
-        ResponseEntity.ok(emptyList())
+        ResponseEntity.ok(listOf(ReportSummaryDto("academic", "O'qish hisoboti", "academic", java.time.Instant.now().toString(), "Tanlangan davr")))
+
+    @GetMapping("/reports/overview")
+    fun getReport(@CurrentUser user: User, @RequestParam(required = false) from: LocalDate?,
+                  @RequestParam(required = false) to: LocalDate?, @RequestParam(required = false) courseId: Long?): ResponseEntity<StudentReportDto> =
+        ResponseEntity.ok(reports.report(requireNotNull(user.id), from, to, courseId))
+
+    @GetMapping("/reports/export")
+    fun exportReport(@CurrentUser user: User, @RequestParam format: StudentExportFormat,
+                     @RequestParam(required = false) from: LocalDate?, @RequestParam(required = false) to: LocalDate?,
+                     @RequestParam(required = false) courseId: Long?): ResponseEntity<ByteArray> = download(
+        exports.report(reports.report(requireNotNull(user.id), from, to, courseId), svc.getProfile(user).fullName, format), "study-report", format)
+
+    private fun download(bytes: ByteArray, name: String, format: StudentExportFormat): ResponseEntity<ByteArray> =
+        ResponseEntity.ok().header("Content-Disposition", "attachment; filename=\"$name.${format.name.lowercase()}\"")
+            .header("Cache-Control", "no-store")
+            .contentType(org.springframework.http.MediaType.parseMediaType(if (format == StudentExportFormat.PDF) "application/pdf"
+                else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).body(bytes)
 
     @GetMapping("/reports/academic")
     fun getAcademicStats(@CurrentUser user: User): ResponseEntity<AcademicStatsDto> =
@@ -294,11 +321,11 @@ class StudentPortalController(
 
     @GetMapping("/reports/monthly")
     fun getMonthlyData(@CurrentUser user: User): ResponseEntity<List<MonthlyDataDto>> =
-        ResponseEntity.ok(svc.getMonthlyData())
+        ResponseEntity.ok(svc.getMonthlyData(user))
 
     @GetMapping("/reports/courses")
     fun getCourseCompletion(@CurrentUser user: User): ResponseEntity<List<CourseCompletionDto>> =
-        ResponseEntity.ok(emptyList())
+        ResponseEntity.ok(reports.report(requireNotNull(user.id)).courses)
 
     // ─── Resources (raw response) ─────────────────────────────────────────────
 
@@ -309,9 +336,11 @@ class StudentPortalController(
         @RequestParam(required = false) type: String?,
         @RequestParam(required = false) category: String?,
     ): ResponseEntity<List<StudentResourceDto>> =
-        ResponseEntity.ok(emptyList())
+        ResponseEntity.ok(resources.list(requireNotNull(user.id), courseId = courseId?.let {
+            requireNotNull(it.toLongOrNull()?.takeIf { id -> id > 0 }) { "Kurs identifikatori noto'g'ri" }
+        }, type = type, category = category))
 
     @GetMapping("/resources/categories")
     fun getResourceCategories(@CurrentUser user: User): ResponseEntity<List<ResourceCategoryDto>> =
-        ResponseEntity.ok(emptyList())
+        ResponseEntity.ok(resources.categories(requireNotNull(user.id)))
 }

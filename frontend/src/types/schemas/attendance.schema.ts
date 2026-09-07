@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { apiOptional } from './api-optional';
 
 /**
  * Zod schema for Attendance data validation
@@ -10,9 +11,9 @@ export const AttendanceRecordSchema = z.object({
   courseName: z.string().min(1, 'Course name is required'),
   date: z.coerce.date(),
   status: z.enum(['present', 'absent', 'late', 'excused']),
-  reason: z.string().optional(),
-  checkInTime: z.coerce.date().optional(),
-  checkOutTime: z.coerce.date().optional(),
+  reason: apiOptional(z.string()),
+  checkInTime: apiOptional(z.coerce.date()),
+  checkOutTime: apiOptional(z.coerce.date()),
 });
 
 export const CourseAttendanceSchema = z.object({

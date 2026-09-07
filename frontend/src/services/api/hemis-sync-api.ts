@@ -2,6 +2,11 @@ import api, { type ApiResponse } from '@/lib/api';
 
 export type HemisRunStatus = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'PARTIAL' | 'FAILED';
 
+export interface HemisConnectionStatus {
+  status: string; host?: string | null; apiBasePath?: string | null; missingFields: string[];
+  message: string; checkedAt?: string | null; groupsTotal?: number | null;
+}
+
 export interface HemisSyncRun {
   id: number; trigger: 'MANUAL' | 'SCHEDULED'; status: HemisRunStatus; scopeGroupId?: number | null;
   recordsSeen: number; created: number; updated: number; unchanged: number; conflicts: number; errors: number;
@@ -34,6 +39,8 @@ function dataOf<T>(response: { data: ApiResponse<T> }, fallback: string): T {
 }
 
 export const hemisSyncApi = {
+  connection: async () => dataOf(await api.get<ApiResponse<HemisConnectionStatus>>('/hemis/sync/connection'), "HEMIS sozlamalarini yuklab bo‘lmadi"),
+  checkConnection: async () => dataOf(await api.post<ApiResponse<HemisConnectionStatus>>('/hemis/sync/connection/check', undefined, { timeout: 125_000 }), "HEMIS ulanishini tekshirib bo‘lmadi"),
   overview: async () => dataOf(await api.get<ApiResponse<HemisSyncOverview>>('/hemis/sync/overview'), "HEMIS holatini yuklab bo'lmadi"),
   runs: async () => dataOf(await api.get<ApiResponse<HemisSyncRun[]>>('/hemis/sync/runs'), "HEMIS runlarini yuklab bo'lmadi"),
   start: async (groupId?: number) => dataOf(await api.post<ApiResponse<HemisSyncRun>>('/hemis/sync/runs', groupId ? { groupId } : {}), "HEMIS syncni boshlashning iloji bo'lmadi"),

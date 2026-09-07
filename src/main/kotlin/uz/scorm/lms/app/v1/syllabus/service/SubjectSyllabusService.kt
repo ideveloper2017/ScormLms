@@ -12,6 +12,9 @@ import uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRepository
 class SubjectSyllabusService(
     private val syllabi: SubjectSyllabusRepository,
     private val subjects: SubjectService,
+    private val revisions: uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRevisionRepository,
+    private val mapper: tools.jackson.databind.ObjectMapper,
+    private val audit: uz.scorm.lms.app.v1.audit.service.AuditService,
 ) {
     @Transactional(readOnly = true)
     fun list(subjectId: Long?): List<SubjectSyllabusDto> = (subjectId?.let {
@@ -33,7 +36,11 @@ class SubjectSyllabusService(
 
     @Transactional
     fun update(id: Long, request: SubjectSyllabusRequest): SubjectSyllabusDto {
-        val value = requireEntity(id)
+        val value = lock(id)
+        require(value.status == "DRAFT") { "Faqat qoralama tahrirlanadi. Avval yangi versiya oching." }
+        require(value.revisionNumber == 1 || (value.subject.id == request.subjectId && value.language == request.language)) {
+            "Yangi versiyada fan va til o'zgartirilmaydi; boshqa fan uchun alohida dastur yarating"
+        }
         val normalized = normalize(request)
         require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalseAndIdNot(request.subjectId, request.language, normalized.name, id)) {
             "Ushbu fan, til va nom uchun o'quv dasturi mavjud"
@@ -50,9 +57,52 @@ class SubjectSyllabusService(
 
     @Transactional
     fun delete(id: Long) {
-        val value = requireEntity(id)
+        val value = lock(id)
+        require(value.status == "DRAFT" && value.revisionNumber == 1) { "Tasdiqlash tarixi mavjud dastur o'chirilmaydi" }
         syllabi.delete(value)
     }
+
+    @Transactional(readOnly = true)
+    fun history(id: Long): List<uz.scorm.lms.app.v1.syllabus.dto.SyllabusRevisionDto> {
+        requireEntity(id)
+        return revisions.findAllBySyllabusIdOrderByRevisionNumberDesc(id).map {
+            uz.scorm.lms.app.v1.syllabus.dto.SyllabusRevisionDto(it.revisionNumber,
+                mapper.readValue(it.content, SubjectSyllabusDto::class.java), it.approvedByName, it.approvedAt)
+        }
+    }
+
+    @Transactional
+    fun transition(id: Long, action: String, actor: uz.scorm.lms.app.v1.user.model.User): SubjectSyllabusDto {
+        val value = lock(id)
+        when (action) {
+            "SUBMIT" -> {
+                require(value.status == "DRAFT") { "Faqat qoralama tekshiruvga yuboriladi" }
+                require(value.subject.active && !value.subject.deleted && value.active) { "Fan va dastur faol bo'lishi kerak" }
+                value.status = "IN_REVIEW"
+            }
+            "RETURN" -> {
+                require(value.status == "IN_REVIEW") { "Faqat tekshiruvdagi versiya qaytariladi" }
+                value.status = "DRAFT"
+            }
+            "APPROVE" -> {
+                require(value.status == "IN_REVIEW") { "Avval tekshiruvga yuboring" }
+                require(value.subject.active && !value.subject.deleted && value.active) { "Fan va dastur faol bo'lishi kerak" }
+                value.status = "APPROVED"
+                revisions.save(uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusRevision(id, value.revisionNumber,
+                    mapper.writeValueAsString(dto(value)), actor.fullName ?: actor.username, java.time.Instant.now()))
+            }
+            "NEW_VERSION" -> {
+                require(value.status == "APPROVED") { "Yangi versiya faqat tasdiqlangan dasturdan ochiladi" }
+                value.revisionNumber += 1
+                value.status = "DRAFT"
+            }
+            else -> throw IllegalArgumentException("Noma'lum amal")
+        }
+        audit.logAction("SYLLABUS_$action", requireNotNull(actor.id), "syllabus=$id; revision=${value.revisionNumber}")
+        return dto(syllabi.save(value))
+    }
+
+    private fun lock(id: Long) = syllabi.lockById(id) ?: throw NoSuchElementException("O'quv dasturi topilmadi: $id")
 
     private fun requireEntity(id: Long) = syllabi.findByIdAndDeletedFalse(id)
         ?: throw NoSuchElementException("O'quv dasturi topilmadi: $id")
@@ -70,5 +120,6 @@ class SubjectSyllabusService(
         shortDescription = value.shortDescription, requirements = value.requirements,
         fullDescription = value.fullDescription, active = value.active,
         createdAt = value.createdAt, updatedAt = value.updatedAt,
+        status = value.status, revisionNumber = value.revisionNumber,
     )
 }

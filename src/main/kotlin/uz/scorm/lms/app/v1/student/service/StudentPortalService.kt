@@ -35,6 +35,9 @@ class StudentPortalService(
     private val examSessionService: ExamSessionService,
     private val examResultService: ExamResultService,
     private val classifierService: GeographyClassifierService,
+    private val gradeService: StudentGradeService,
+    private val activityService: StudentActivityService,
+    private val reportService: StudentReportService,
 ) {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -83,9 +86,9 @@ class StudentPortalService(
             pendingAssignments   = assignmentService.studentAssignments(requireNotNull(user.id))
                 .count { it.status == "pending" || it.status == "overdue" },
             upcomingTests        = quizService.studentQuizzes(requireNotNull(user.id)).count { it.status == "upcoming" },
-            averageGrade         = 0.0,
+            averageGrade         = gradeService.summary(requireNotNull(user.id)).averageScore,
             attendancePercentage = attendance.attendancePercentage,
-            gpa                  = 0.0,
+            gpa                  = gradeService.gpa(requireNotNull(user.id)).cumulativeGPA,
             totalCredits         = plan.completedCredits,
             learningStreak       = 0,
         )
@@ -165,37 +168,18 @@ class StudentPortalService(
     // ─── Grades ──────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getGrades(user: User, courseId: String? = null): List<StudentGradeDto> = emptyList()
+    fun getGrades(user: User, courseId: String? = null, semester: String? = null, academicYear: String? = null): List<StudentGradeDto> =
+        gradeService.grades(requireNotNull(user.id), courseId, semester, academicYear)
 
     @Transactional(readOnly = true)
-    fun getGradeSummary(user: User): StudentGradeSummaryDto = StudentGradeSummaryDto()
+    fun getGradeSummary(user: User): StudentGradeSummaryDto = gradeService.summary(requireNotNull(user.id))
 
     @Transactional(readOnly = true)
-    fun getGPA(user: User): StudentGPADto {
-        val s = profile(user)
-        return StudentGPADto(
-            currentGPA       = 0.0,
-            cumulativeGPA    = 0.0,
-            totalCredits     = 0,
-            completedCredits = 0,
-            gradePoints      = 0.0,
-        )
-    }
+    fun getGPA(user: User): StudentGPADto = gradeService.gpa(requireNotNull(user.id))
 
     @Transactional(readOnly = true)
-    fun getTranscript(user: User): StudentTranscriptDto {
-        val s = profile(user)
-        val fullName = s?.let { "${it.lastName} ${it.firstName}" } ?: user.username
-        return StudentTranscriptDto(
-            studentId    = s?.id?.toString() ?: user.id.toString(),
-            studentName  = fullName,
-            academicYear = s?.academicYear ?: "2024-2025",
-            semesters    = emptyList(),
-            cumulativeGPA = 0.0,
-            totalCredits  = 0,
-            degreeProgress = 0.0,
-        )
-    }
+    fun getTranscript(user: User): StudentTranscriptDto =
+        gradeService.transcript(requireNotNull(user.id), profileOrThrow(user))
 
     // ─── Assignments ─────────────────────────────────────────────────────────
 
@@ -224,36 +208,7 @@ class StudentPortalService(
     // ─── Activity ────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    fun getActivity(user: User): List<StudentActivityItemDto> {
-        val userId = requireNotNull(user.id)
-        val assignmentActivity = assignmentService.studentAssignments(userId)
-            .filter { it.status == "submitted" || it.status == "graded" }
-            .mapNotNull { assignment ->
-                assignment.submittedAt?.let { submittedAt ->
-                    StudentActivityItemDto(
-                        id = "assignment-${assignment.id}",
-                        type = if (assignment.status == "graded") "grade" else "assignment",
-                        title = if (assignment.status == "graded") "Topshiriq baholandi" else "Topshiriq yuborildi",
-                        description = "${assignment.courseName}: ${assignment.title}",
-                        timestamp = submittedAt,
-                    )
-                }
-            }
-        val testActivity = quizService.studentQuizzes(userId)
-            .filter { it.status == "completed" }
-            .map { test ->
-                StudentActivityItemDto(
-                    id = "test-${test.id}",
-                    type = "test",
-                    title = "Test yakunlandi",
-                    description = "${test.courseName}: ${test.title}${test.score?.let { " — $it ball" }.orEmpty()}",
-                    timestamp = "${test.date}T${test.startTime}:00Z",
-                )
-            }
-        return (assignmentActivity + testActivity)
-            .sortedByDescending(StudentActivityItemDto::timestamp)
-            .take(10)
-    }
+    fun getActivity(user: User): List<StudentActivityItemDto> = activityService.recent(requireNotNull(user.id))
 
     // ─── Notification summary ─────────────────────────────────────────────────
 
@@ -315,21 +270,9 @@ class StudentPortalService(
 
     // ─── Reports ─────────────────────────────────────────────────────────────
 
-    @Transactional(readOnly = true)
-    fun getAcademicStats(user: User): AcademicStatsDto = AcademicStatsDto()
+    fun getAcademicStats(user: User): AcademicStatsDto = reportService.report(requireNotNull(user.id)).stats
 
-    @Transactional(readOnly = true)
-    fun getMonthlyData(): List<MonthlyDataDto> {
-        val currentYear = LocalDate.now().year
-        return listOf(
-            MonthlyDataDto("Sentabr",  0.0, 0.0, 0),
-            MonthlyDataDto("Oktabr",   0.0, 0.0, 0),
-            MonthlyDataDto("Noyabr",   0.0, 0.0, 0),
-            MonthlyDataDto("Dekabr",   0.0, 0.0, 0),
-            MonthlyDataDto("Yanvar",   0.0, 0.0, 0),
-            MonthlyDataDto("Fevral",   0.0, 0.0, 0),
-        )
-    }
+    fun getMonthlyData(user: User): List<MonthlyDataDto> = reportService.report(requireNotNull(user.id)).monthly
 
     // ─── Mapper ──────────────────────────────────────────────────────────────
 

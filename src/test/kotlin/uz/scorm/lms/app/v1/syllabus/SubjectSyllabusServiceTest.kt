@@ -16,7 +16,7 @@ import uz.scorm.lms.app.v1.syllabus.service.SubjectSyllabusService
 class SubjectSyllabusServiceTest {
     private val repository = mockk<SubjectSyllabusRepository>()
     private val subjects = mockk<SubjectService>()
-    private val service = SubjectSyllabusService(repository, subjects)
+    private val service = SubjectSyllabusService(repository, subjects, mockk(), mockk(), mockk())
 
     @Test
     fun `oquv dasturi fan va til boyicha yaratiladi`() {

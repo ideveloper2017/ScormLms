@@ -58,7 +58,15 @@ class CourseController(
     private val contentReviewService: CourseContentReviewService,
     private val thumbnailService: CourseThumbnailService,
     private val copyService: uz.scorm.lms.app.v1.productivity.CourseCopyService,
+    private val candidatesService: uz.scorm.lms.app.v1.courses.service.CourseEnrollmentCandidateService,
 ) {
+    @GetMapping("/{courseId}/enrollment-candidates")
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
+    fun candidates(@PathVariable courseId: Long, @CurrentUser user: User, authentication: Authentication,
+                   @RequestParam(required = false) search: String?, @RequestParam(required = false) groupId: Long?,
+                   @RequestParam(defaultValue = "0") page: Int) = ApiResponse.success(
+        candidatesService.candidates(courseId, requireNotNull(user.id), mayManageAll(authentication), search, groupId, page))
+
     @PostMapping("/{courseId}/copy")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
     fun copy(@PathVariable courseId: Long, @CurrentUser user: User, authentication: Authentication): ResponseEntity<ApiResponse<CourseDto>> =

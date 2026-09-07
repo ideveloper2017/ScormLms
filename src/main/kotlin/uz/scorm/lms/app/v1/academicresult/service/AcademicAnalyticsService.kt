@@ -57,6 +57,7 @@ class AcademicAnalyticsService(
     private val programs: ProgramRepository,
     private val groups: GroupRepository,
     private val users: UserRepository,
+    private val passingPolicy: AcademicPassingPolicy,
 ) {
     private val zone = ZoneId.of("Asia/Tashkent")
 
@@ -87,7 +88,7 @@ class AcademicAnalyticsService(
                     finalStatement = isFinal,
                     addedDate = (session.createdAt?.atZone(zone)?.toLocalDate() ?: session.examDate),
                     resultCount = results.size,
-                    passedCount = results.count { it.passed },
+                    passedCount = results.count { passingPolicy.passed(it.enrollment, it.percentage) },
                     averageScore = results.map { it.percentage }.averageOrNull()?.let(::twoDecimals),
                 )
             }
@@ -116,7 +117,8 @@ class AcademicAnalyticsService(
             val assessed = total != null
             val student = enrollment.student
             val course = enrollment.course
-            val mark = total?.let(::mark)
+            val threshold = passingPolicy.threshold(enrollment)
+            val mark = total?.let { if (it < threshold) 2 else mark(it).coerceAtLeast(3) }
             val lastQuiz = attempts.mapNotNull { it.submittedAt ?: it.startedAt }.maxOrNull()
             val assessedAt = listOfNotNull(exam?.gradingDate, lastQuiz).maxOrNull()
             StudentAcademicResultDto(
@@ -138,9 +140,9 @@ class AcademicAnalyticsService(
                 finalScore = final,
                 totalScore = total,
                 mark = mark,
-                letterGrade = total?.let(::letterGrade),
-                gpaPoint = total?.let(::gpaPoint),
-                passed = assessed && requireNotNull(total) >= 60.0,
+                letterGrade = total?.let { GradeCalculation.letterGrade(it, threshold) },
+                gpaPoint = total?.let { GradeCalculation.gpaPoint(it, threshold) },
+                passed = assessed && requireNotNull(total) >= threshold,
                 hemisStatus = when {
                     student.hemisId == null -> "NOT_LINKED"
                     student.hemisSyncedAt == null -> "PENDING"
@@ -353,27 +355,8 @@ class AcademicAnalyticsService(
         else -> 2
     }
 
-    private fun letterGrade(score: Double): String = when {
-        score >= 90 -> "A"
-        score >= 85 -> "B+"
-        score >= 80 -> "B"
-        score >= 75 -> "C+"
-        score >= 70 -> "C"
-        score >= 65 -> "D+"
-        score >= 60 -> "D"
-        else -> "F"
-    }
-
-    private fun gpaPoint(score: Double): Double = when {
-        score >= 90 -> 4.0
-        score >= 85 -> 3.7
-        score >= 80 -> 3.3
-        score >= 75 -> 3.0
-        score >= 70 -> 2.7
-        score >= 65 -> 2.3
-        score >= 60 -> 2.0
-        else -> 0.0
-    }
+    private fun letterGrade(score: Double) = GradeCalculation.letterGrade(score)
+    private fun gpaPoint(score: Double) = GradeCalculation.gpaPoint(score)
 
     private fun twoDecimals(value: Double): Double = round(value * 100.0) / 100.0
     private fun List<Double>.averageOrNull(): Double? = if (isEmpty()) null else average()

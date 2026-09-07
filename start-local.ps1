@@ -78,9 +78,21 @@ if (-not (Wait-ForPort $BackendPort 120)) {
 $backendPid = (Get-NetTCPConnection -LocalPort $BackendPort -State Listen | Select-Object -First 1).OwningProcess
 Set-Content -LiteralPath (Join-Path $runDirectory "backend.pid") -Value $backendPid
 
-$health = Invoke-RestMethod -Uri "http://127.0.0.1:$BackendPort/actuator/health" -TimeoutSec 30
-if ($health.status -ne "UP") {
-    throw "Backend health holati UP emas."
+# The HTTP port can open before migrations, seeds and readiness checks finish.
+# Wait for readiness instead of failing on a transient OUT_OF_SERVICE response.
+$healthDeadline = (Get-Date).AddSeconds(90)
+$backendReady = $false
+do {
+    try {
+        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$BackendPort/actuator/health" -TimeoutSec 10
+        $backendReady = $health.status -eq "UP"
+    } catch {
+        $backendReady = $false
+    }
+    if (-not $backendReady) { Start-Sleep -Seconds 2 }
+} while (-not $backendReady -and (Get-Date) -lt $healthDeadline)
+if (-not $backendReady) {
+    throw "Backend tayyor holatga o'tmadi. Log: $logDirectory\scorm-local-backend.out.log"
 }
 
 if (-not $NoFrontend) {

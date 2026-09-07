@@ -46,6 +46,9 @@ class CourseEnrollmentService(
         val saved = request.studentIds.map { studentId ->
             val student = studentRepository.findById(studentId)
                 .orElseThrow { NoSuchElementException("Talaba topilmadi: $studentId") }
+            require(!student.user.deleted && student.studentStatus == uz.scorm.lms.app.v1.student.model.StudentStatus.ACTIVE) {
+                "Faqat faol talabani kursga biriktirish mumkin"
+            }
             require(!student.lmsOrientationRequired) {
                 "559-son qarorning 21-bandiga ko'ra talaba LMS bilan shaxsan tanishtirilib, yo'riqnomani tasdiqlamaguncha kursga biriktirilmaydi"
             }

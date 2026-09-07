@@ -24,11 +24,13 @@ class ExamResultService(
     private val userRepository: UserRepository,
     private val courseAccessService: CourseAccessService,
     private val auditService: AuditService,
+    private val passingPolicy: uz.scorm.lms.app.v1.academicresult.service.AcademicPassingPolicy,
 ) {
     @Transactional
     fun record(sessionId: Long, enrollmentId: Long, request: RecordExamResultRequest, userId: Long, mayManageAll: Boolean): TeacherExamResultDto {
         require(request.enrollmentId == enrollmentId) { "Biriktiruv identifikatori mos emas" }
-        val session = managedSession(sessionId, userId, mayManageAll)
+        val session = sessionRepository.lockById(sessionId) ?: throw IllegalArgumentException("Imtihon topilmadi")
+        courseAccessService.requireManage(session.course.id, userId, mayManageAll)
         require(session.status == ExamSessionStatus.ONGOING) { "Natija faqat davom etayotgan imtihonda kiritiladi" }
         val enrollment = enrollmentRepository.findById(enrollmentId).orElseThrow { IllegalArgumentException("Talaba biriktiruvi topilmadi") }
         require(enrollment.course.id == session.course.id && !enrollment.deleted) { "Talaba ushbu kursga biriktirilmagan" }
@@ -45,8 +47,8 @@ class ExamResultService(
         result.score = request.score
         result.totalScore = request.totalScore
         result.percentage = calculated.first
-        result.passed = calculated.first >= 60.0
-        result.grade = calculated.second
+        result.passed = passingPolicy.passed(enrollment, calculated.first)
+        result.grade = if (!result.passed) "F" else calculated.second.takeUnless { it == "F" } ?: "D"
         result.gradedBy = grader
         result.gradingDate = Instant.now()
         result.comments = request.comments?.trim()?.takeIf(String::isNotBlank)
@@ -71,10 +73,10 @@ class ExamResultService(
         val results = resultRepository.findAllByExamSessionIdAndDeletedFalseOrderByScoreDesc(sessionId)
         val rosterSize = attendanceRepository.findAllByExamSessionIdAndDeletedFalseOrderByArrivalTimeAsc(sessionId).size
         return ExamResultsStatisticsDto(
-            sessionId.toString(), session.title, rosterSize, results.size, results.count { it.passed }, results.count { !it.passed },
+            sessionId.toString(), session.title, rosterSize, results.size, results.count { passingPolicy.passed(it.enrollment, it.percentage) }, results.count { !passingPolicy.passed(it.enrollment, it.percentage) },
             results.map { it.percentage }.averageOrZero(), results.maxOfOrNull { it.percentage } ?: 0.0,
-            results.minOfOrNull { it.percentage } ?: 0.0, results.groupingBy { it.grade ?: "-" }.eachCount(),
-            if (results.isEmpty()) 0.0 else results.count { it.passed } * 100.0 / results.size,
+            results.minOfOrNull { it.percentage } ?: 0.0, results.groupingBy { effectiveGrade(it) }.eachCount(),
+            if (results.isEmpty()) 0.0 else results.count { passingPolicy.passed(it.enrollment, it.percentage) } * 100.0 / results.size,
         )
     }
 
@@ -118,8 +120,8 @@ class ExamResultService(
             val calculated = calculate(newScore, appeal.examResult.totalScore)
             appeal.examResult.score = newScore
             appeal.examResult.percentage = calculated.first
-            appeal.examResult.passed = calculated.first >= 60.0
-            appeal.examResult.grade = calculated.second
+            appeal.examResult.passed = passingPolicy.passed(appeal.examResult.enrollment, calculated.first)
+            appeal.examResult.grade = if (!appeal.examResult.passed) "F" else calculated.second.takeUnless { it == "F" } ?: "D"
             resultRepository.save(appeal.examResult)
             appeal.newScore = newScore
         } else require(request.newScore == null) { "Rad etilgan apellyatsiyada yangi ball bo'lmaydi" }
@@ -143,11 +145,14 @@ class ExamResultService(
         return percentage to grade
     }
 
+    private fun effectiveGrade(result: ExamResult): String =
+        if (!passingPolicy.passed(result.enrollment, result.percentage)) "F" else result.grade?.takeUnless { it == "F" } ?: "D"
+
     private fun toTeacherDto(result: ExamResult): TeacherExamResultDto {
         val student = result.enrollment.student
         return TeacherExamResultDto(result.id!!.toString(), result.examSession.id!!.toString(), result.examSession.title,
             result.enrollment.id!!.toString(), student.id!!.toString(), student.fullName, student.email ?: student.user.email.orEmpty(),
-            result.score.toDouble(), result.totalScore.toDouble(), result.percentage, result.passed, result.grade, result.comments,
+            result.score.toDouble(), result.totalScore.toDouble(), result.percentage, passingPolicy.passed(result.enrollment, result.percentage), effectiveGrade(result), result.comments,
             result.gradedBy.fullName ?: result.gradedBy.username, result.gradingDate)
     }
 
@@ -155,7 +160,7 @@ class ExamResultService(
         val attendance = attendanceRepository.findByExamSessionIdAndEnrollmentIdAndDeletedFalse(result.examSession.id!!, result.enrollment.id!!)
         return StudentExamResultDto(result.id!!.toString(), result.examSession.id!!.toString(), result.examSession.title,
             result.examSession.examDate.toString(), result.score.toDouble(), result.totalScore.toDouble(), result.percentage,
-            result.passed, result.grade, result.comments, attendance?.attendanceStatus?.name ?: AttendanceStatus.EXPECTED.name, result.gradingDate)
+            passingPolicy.passed(result.enrollment, result.percentage), effectiveGrade(result), result.comments, attendance?.attendanceStatus?.name ?: AttendanceStatus.EXPECTED.name, result.gradingDate)
     }
 
     private fun toAppealDto(appeal: ExamAppeal) = ExamAppealResponseDto(

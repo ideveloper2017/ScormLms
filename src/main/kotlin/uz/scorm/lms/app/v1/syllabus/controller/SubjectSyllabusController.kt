@@ -10,6 +10,14 @@ import uz.scorm.lms.app.v1.syllabus.service.SubjectSyllabusService
 @RestController
 @RequestMapping("/api/v1/syllabi")
 class SubjectSyllabusController(private val service: SubjectSyllabusService) {
+    @GetMapping("/{id}/history")
+    @PreAuthorize("hasAuthority('ACADEMIC_READ')")
+    fun history(@PathVariable id: Long) = service.history(id)
+
+    @PostMapping("/{id}/workflow")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun workflow(@PathVariable id: Long, @RequestBody request: uz.scorm.lms.app.v1.syllabus.dto.SyllabusWorkflowRequest,
+        @uz.scorm.lms.app.security.CurrentUser user: uz.scorm.lms.app.v1.user.model.User) = service.transition(id, request.action, user)
     @GetMapping
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")
     fun list(@RequestParam(required = false) subjectId: Long?) = service.list(subjectId)

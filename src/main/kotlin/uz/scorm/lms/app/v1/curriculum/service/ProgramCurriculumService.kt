@@ -58,6 +58,8 @@ class ProgramCurriculumService(
         status: StudentStatus?,
         page: Int,
         size: Int,
+        semesterNumber: Int? = null,
+        unassignedOnly: Boolean = false,
     ): CurriculumStudentPageDto {
         require(page >= 0) { "Sahifa manfiy bo'lishi mumkin emas" }
         require(size in 10..100) { "Sahifa hajmi 10-100 oralig'ida bo'lishi shart" }
@@ -66,12 +68,16 @@ class ProgramCurriculumService(
         require(status != StudentStatus.REGISTERED) { "REGISTERED talaba o'quv rejaga akademik biriktirilmagan" }
 
         val version = requireVersion(id)
+        require(semesterNumber == null || semesterNumber in 1..version.semesterCount) { "Semestr o'quv reja chegarasidan tashqarida" }
+        require(!unassignedOnly || semesterNumber != null) { "Biriktirilmagan talabalar uchun semestrni tanlang" }
         val students = studentRepository.findCurriculumStudents(
             programId = requireNotNull(version.program.id),
             academicYear = version.academicYear,
             unassignedStatus = StudentStatus.REGISTERED,
             status = status,
-            search = normalizedSearch,
+            search = normalizedSearch.replace("!", "!!").replace("%", "!%").replace("_", "!_"),
+            semesterNumber = semesterNumber,
+            unassignedCurriculumId = if (unassignedOnly) id else null,
             pageable = PageRequest.of(
                 page,
                 size,
@@ -255,6 +261,7 @@ class ProgramCurriculumService(
             subjectItemRepository.save(item)
         }
         version.status = CurriculumStatus.APPROVED
+        version.passingPercentage = version.passingScore * 100.0 / version.ratingSystem.maxScore
         version.approvalOrderNumber = request.approvalOrderNumber.trim()
         version.approvalOrderDate = request.approvalOrderDate
         version.approvedAt = Instant.now()
@@ -363,6 +370,7 @@ class ProgramCurriculumService(
             approvalOrderDate = version.approvalOrderDate, approvedAt = version.approvedAt,
             approvedByName = version.approvedByUser?.fullName ?: version.approvedByUser?.username,
             archivedAt = version.archivedAt,
+            createdByUserId = version.createdByUser.id,
         )
     }
 }

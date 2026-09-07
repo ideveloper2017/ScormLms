@@ -151,7 +151,7 @@ export function StudentManagement({
     setRegistryStatus(initialStatus);
     setRegistryPage(0);
   }, [initialStatus]);
-  const { data: registry, isLoading } = useQuery({
+  const { data: registry, isLoading, isError: registryError, refetch: retryRegistry } = useQuery({
     queryKey: [...qk.students(), debouncedRegistrySearch, registryStatus, registryPage, registryPageSize],
     queryFn: () => listStudents({
       search: debouncedRegistrySearch || undefined,
@@ -349,13 +349,16 @@ export function StudentManagement({
         await updateStudentPersonalProfile(editingStudent.id, personalPayload);
         toast({ title: 'Muvaffaqiyatli', description: "Talabaning shaxsiy ma'lumotlari yangilandi" });
       } else {
-        await createStudent({
+        const created = await createStudent({
           ...personalPayload,
           pinfl: formData.pinfl.trim(), studentNumber: formData.studentNumber.trim(), birthDate: formData.birthDate,
           gender: formData.gender, citizenship: formData.citizenship,
           citizenshipCountryId: optionalId(formData.citizenshipCountryId),
         });
-        toast({ title: "Talaba yaratildi", description: "Parol berish va o'qishga biriktirish amallari ro'yxatdagi menyuda mavjud" });
+        setRegistrySearch(created.studentNumber);
+        setRegistryStatus('ALL');
+        setRegistryPage(0);
+        toast({ title: "Talaba yaratildi", description: "Yangi talaba ro'yxatda ko'rsatiladi. Keyingi qadam: o'qishga biriktirish va parol berish." });
       }
       closeStudentDialog();
       await invalidate();
@@ -564,7 +567,10 @@ export function StudentManagement({
       const status = student.studentStatus ?? 'REGISTERED';
       const shouldEnable = !student.accountEnabled;
       const enableAllowed = student.studentStatus === 'ACTIVE';
-      return <div className="text-right"><DropdownMenu>
+      return <div className="flex items-center justify-end gap-2">
+        {canManageAcademic && status === 'REGISTERED' && <Button size="sm" variant="outline" onClick={() => openAdmission(student)}>O'qishga biriktirish</Button>}
+        {canManageAccounts && status === 'ACTIVE' && !student.credentialsInitialized && <Button size="sm" variant="outline" onClick={() => { setCredentialTarget(student); setCredentialPassword(''); setCredentialConfirmation(''); }}>Parol berish</Button>}
+        <DropdownMenu>
         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label={`${student.fullName} amallari`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-52">
           {canManagePersonal && <DropdownMenuItem onSelect={() => handleEditClick(student)}>Shaxsiy ma'lumotlarni tahrirlash</DropdownMenuItem>}
@@ -592,6 +598,13 @@ export function StudentManagement({
         {allowCreate && canManagePersonal && <Button className="gap-2" onClick={() => { resetIdentityLookup(); setIdentityLookupOpen(true); }}><UserPlus className="h-4 w-4" />Talaba qo'shish</Button>}
       </div>
     </div>
+    {allowCreate && canManagePersonal && <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-2">
+      <p className="font-medium">Talabani ishga tayyorlash</p>
+      <p>1. Shaxsiy kartochka yarating. 2. O'quv yili, dastur, semestr va guruhga biriktiring. 3. Parol bering. 4. LMS orientatsiyasini yakunlang. 5. Nashrdagi kurslarga talaba biriktirilganini tekshiring.</p>
+      <p className="text-muted-foreground">Guruhga qabul qilish kurslarga avtomatik kirish bermaydi. Kurslar bo'limida har bir kursning talabalari boshqariladi.</p>
+      {canManageAcademic && <a className="inline-block text-primary underline" href="/admin/courses">Kurslarni ochish</a>}
+    </div>}
+    {registryError && <div role="alert" className="rounded-lg border border-destructive p-4 text-sm">Talabalar ro'yxatini yuklab bo'lmadi. <Button variant="outline" size="sm" className="ml-3" onClick={() => void retryRegistry()}>Qayta urinish</Button></div>}
     <Card><CardHeader><CardTitle>Talabalar reyestri</CardTitle></CardHeader><CardContent><DataTable
       columns={registryColumns} data={students} searchPlaceholder="Ism, talaba raqami yoki JSHSHIR..." showColumnToggle emptyText="Talabalar topilmadi"
       serverSearch={{ value: registrySearch, onChange: value => { setRegistrySearch(value); setRegistryPage(0); } }}

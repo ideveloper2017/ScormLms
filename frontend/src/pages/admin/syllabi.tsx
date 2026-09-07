@@ -1,4 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { SyllabusWorkflow, syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,13 +20,23 @@ export function AdminSyllabi() {
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
   const data = useCrudData<SubjectSyllabus>(["syllabi"], () => syllabusApi.list());
   const subjects = useQuery({ queryKey: ["subjects", "syllabus-options"], queryFn: () => listSubjects() });
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selected = data.items.find(item => item.id === selectedId);
   return <div className="space-y-6 p-3 sm:p-6">
+    {subjects.isLoading && <p>Fanlar yuklanmoqda...</p>}
+    {subjects.isError && <div role="alert">Fanlar yuklanmadi. <Button variant="outline" onClick={() => subjects.refetch()}>Fanlarni qayta yuklash</Button></div>}
+    {selected && <SyllabusWorkflow item={selected} canWrite={canWrite} reload={data.reload} close={() => setSelectedId(null)} />}
     <div><h1 className="text-2xl font-bold">O'quv dasturi</h1><p className="text-sm text-muted-foreground">Fan, til, qisqa ta'rif, talablar va to'liq mazmun bo'yicha syllabus katalogi.</p></div>
     <CrudSection<SubjectSyllabus, Form>
       title="O'quv dasturlari" description="Tasdiqlangan fanlar uchun metodik dasturlar" searchPlaceholder="Nomi, fan yoki til..."
       items={data.items} loading={data.loading} error={data.error} onReload={data.reload} canWrite={canWrite}
+      allowCreate={subjects.isSuccess}
+      canEditItem={item => item.status === "DRAFT" && subjects.isSuccess}
+      canDeleteItem={item => item.status === "DRAFT" && item.revisionNumber === 1}
       getId={(x) => x.id} getName={(x) => x.name} search={(x) => `${x.name} ${x.subjectName} ${x.subjectCode ?? ""} ${x.language}`}
       columns={[
+        { header: "Versiya", cell: x => `${x.revisionNumber} · ${syllabusStatuses[x.status]}` },
+        { header: "Ko‘rish", cell: x => <Button size="sm" variant="outline" onClick={() => setSelectedId(x.id)}>Mazmun va tarix</Button> },
         { header: "Holati", cell: (x) => <Badge variant={x.active ? "default" : "secondary"}>{x.active ? "Faol" : "Nofaol"}</Badge> },
         { header: "Nomi", cell: (x) => <span className="font-medium">{x.name}</span> },
         { header: "Fan", cell: (x) => `${x.subjectCode ?? "—"} · ${x.subjectName}` },
@@ -36,7 +49,7 @@ export function AdminSyllabi() {
       onUpdate={(id, f) => syllabusApi.update(id, { ...f, name: f.name.trim(), shortDescription: f.shortDescription.trim(), requirements: f.requirements.trim() || null, fullDescription: f.fullDescription.trim() }).then(() => undefined)}
       onDelete={syllabusApi.delete}
       renderForm={(f, set) => <>
-        <div className="space-y-1.5"><Label>Fan *</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={f.subjectId} onChange={(e) => set({ subjectId: Number(e.target.value) })}><option value={0}>Fan tanlang</option>{(subjects.data ?? []).filter(x => x.active).map(x => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></div>
+        <div className="space-y-1.5"><Label>Fan *</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={f.subjectId} onChange={(e) => set({ subjectId: Number(e.target.value) })}><option value={0}>Fan tanlang</option>{(subjects.data ?? []).filter(x => x.active || x.id === f.subjectId).map(x => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></div>
         <div className="grid grid-cols-[1fr_160px] gap-3"><div className="space-y-1.5"><Label>Nomi *</Label><Input value={f.name} onChange={(e) => set({ name: e.target.value })} /></div><div className="space-y-1.5"><Label>Dastur tili *</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={f.language} onChange={(e) => set({ language: e.target.value as SyllabusLanguage })}><option value="UZ">O'zbekcha</option><option value="EN">English</option><option value="RU">Русский</option><option value="KAA">Qaraqalpaqsha</option><option value="UZ_CYRILLIC">Ўзбекча</option></select></div></div>
         <div className="space-y-1.5"><Label>Qisqa ta'rif *</Label><Textarea value={f.shortDescription} onChange={(e) => set({ shortDescription: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Talablar</Label><Textarea value={f.requirements} onChange={(e) => set({ requirements: e.target.value })} /></div>

@@ -19,7 +19,7 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
   archived: { label: "Arxivlangan", className: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" },
 };
 
-export function TeacherCourses() {
+export function TeacherCourses({ title = "Mening kurslarim" }: { title?: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -88,7 +88,7 @@ export function TeacherCourses() {
     <div className="space-y-5 p-3 sm:p-4 md:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Mening kurslarim</h1>
+          <h1 className="text-2xl font-bold">{title}</h1>
           <p className="text-sm text-muted-foreground">Kurslar, kategoriyalar va holatlarni boshqarish</p>
         </div>
         <Button className="gap-2" onClick={() => navigate("/teacher/courses/create")}><Plus className="h-4 w-4" />Yangi kurs yaratish</Button>

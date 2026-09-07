@@ -41,6 +41,7 @@ class CourseContentService(
         val contents = contentRepository.findAllByModuleCourseIdAndDeletedFalseOrderByModulePositionAscPositionAsc(courseId)
         val compatibility = compatibilityService.evaluateAll(course, contents.map { it.languageCode })
         return contents
+            .filter { !it.module.deleted }
             .filter { mayEdit || (
                 it.status == LearningItemStatus.PUBLISHED.name &&
                     it.reviewStatus == ContentReviewStatus.APPROVED.name &&

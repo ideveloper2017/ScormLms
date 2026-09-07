@@ -55,6 +55,18 @@ data class TranscriptPdfData(
 class AcademicDocumentPdfService(
     @param:Value("\${app.pdf.font-path:}") private val configuredFontPath: String,
 ) {
+    /** A personal portal extract, separate from registrar-issued academic documents. */
+    fun studentExtract(title: String, studentName: String, sections: List<Pair<String, List<String>>>): ByteArray = create { _, writer ->
+        writer.center(title, 17f, Color(15, 23, 42))
+        writer.paragraph(studentName, 12f)
+        writer.paragraph("Shaxsiy kabinetdan ko'chirma · ${format(LocalDate.now())}", 10f, Color.DARK_GRAY)
+        sections.forEach { (heading, lines) ->
+            writer.space(12f)
+            writer.paragraph(heading, 12f, Color(30, 64, 175))
+            lines.forEach { writer.paragraph(it, 10f) }
+        }
+    }
+
     fun callLetter(data: CallLetterPdfData): ByteArray = create { document, writer ->
         writer.center("NAMANGAN DAVLAT TEXNIKA UNIVERSITETI", 14f, Color(30, 64, 175))
         writer.space(12f)
