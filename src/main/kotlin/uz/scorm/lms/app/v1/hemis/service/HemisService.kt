@@ -2,7 +2,6 @@ package uz.scorm.lms.app.v1.hemis.service
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -20,6 +19,7 @@ import java.net.URI
 import java.util.concurrent.TimeoutException
 import java.time.ZoneId
 import java.util.Base64
+import tools.jackson.databind.JsonNode
 
 interface HemisDirectoryClient {
     fun fetchGroupList(): List<HemisGroupItem>
@@ -33,11 +33,10 @@ class HemisService(
     private val webClient: WebClient,
     @param:Value("\${hemis.host:}") private val hemisHost: String,
     @param:Value("\${hemis.api-base-path:/rest/v1}") private val apiBasePath: String,
-    @param:Value("\${hemis.admin-login:}") private val adminLogin: String,
-    @param:Value("\${hemis.admin-password:}") private val adminPassword: String,
+    @param:Value("\${hemis.api-token:}") private val apiToken: String,
     @param:Value("\${hemis.request-timeout-seconds:15}") private val timeoutSeconds: Long = 15,
 ) : HemisDirectoryClient {
-    private data class HemisPasswordLoginRequest(val login: String, val password: String)
+    private val bearerToken get() = apiToken.trim().replaceFirst(Regex("^Bearer\\s+", RegexOption.IGNORE_CASE), "")
 
     private val baseUrl get() = "${hemisHost.trim().trimEnd('/')}/${apiBasePath.trim().trim('/')}"
     private val timeout get() = Duration.ofSeconds(timeoutSeconds.coerceIn(1, 60))
@@ -51,8 +50,7 @@ class HemisService(
         val missing = buildList {
             if (!validHost) add("HEMIS_HOST")
             if (!validPath) add("HEMIS_API_BASE_PATH")
-            if (adminLogin.isBlank()) add("HEMIS_ADMIN_LOGIN")
-            if (adminPassword.isBlank()) add("HEMIS_ADMIN_PASSWORD")
+            if (bearerToken.isBlank() || bearerToken.any(Char::isWhitespace)) add("HEMIS_API_TOKEN")
         }
         return HemisConnectionStatus(
             status = if (missing.isEmpty()) "NOT_CHECKED" else "NOT_CONFIGURED",
@@ -75,7 +73,7 @@ class HemisService(
             val causes = generateSequence<Throwable>(error) { it.cause }.take(10).toList()
             val http = causes.filterIsInstance<WebClientResponseException>().firstOrNull()?.statusCode?.value()
             val (status, message) = when {
-                http == 401 -> "AUTH_FAILED" to "HEMIS kirish ma’lumotlarini qabul qilmadi."
+                http == 401 -> "AUTH_FAILED" to "HEMIS API tokenini qabul qilmadi. Token yaroqliligini tekshiring."
                 http == 403 -> "ACCESS_DENIED" to "HEMIS guruhlarini o‘qish uchun ruxsat yetarli emas."
                 http == 404 -> "API_NOT_FOUND" to "HEMIS API yo‘li topilmadi. API manzilini muassasa administratori bilan tekshiring."
                 causes.any { it is TimeoutException } -> "TIMEOUT" to "HEMIS belgilangan vaqtda javob bermadi. Qayta tekshiring."
@@ -87,18 +85,6 @@ class HemisService(
             configuration.copy(status = status, message = message, checkedAt = Instant.now())
         }
     }
-
-    private fun signInHemis(login: String, password: String): String = webClient.post()
-        .uri("$baseUrl/auth/login")
-        .contentType(MediaType.APPLICATION_JSON)
-        .accept(MediaType.APPLICATION_JSON)
-        .bodyValue(HemisPasswordLoginRequest(login, password))
-        .retrieve()
-        .bodyToMono(HemisTokenResponse::class.java)
-        .timeout(timeout)
-        .block()
-        ?.takeIf { it.success }?.data?.token?.takeIf { it.isNotBlank() }
-        ?: error("HEMIS token olinmadi")
 
     fun fetchStudentByToken(token: String): HemisStudent = webClient.get()
         .uri("$baseUrl/account/me")
@@ -114,56 +100,74 @@ class HemisService(
         require(connectionStatus().missingFields.isEmpty()) {
             "HEMIS server manzili, API yo‘li yoki kirish ma’lumotlari sozlanmagan"
         }
-        return signInHemis(adminLogin, adminPassword)
+        return bearerToken
     }
 
     override fun fetchGroupList(): List<HemisGroupItem> {
-        return fetchGroupPage(500).items
+        val groups = linkedMapOf<Long, HemisGroupItem>()
+        var pageNumber = 1
+        do {
+            val page = fetchGroupPage(200, pageNumber++)
+            val previousSize = groups.size
+            page.items.forEach { groups[it.id] = it }
+            if (groups.size >= page.total) return groups.values.toList()
+            check(groups.size > previousSize) { "HEMIS_GROUP_PAGINATION_STALLED" }
+        } while (true)
     }
 
-    private fun fetchGroupPage(limit: Int): HemisGroupListData {
-        val token = adminToken()
-        return webClient.get()
-            .uri("$baseUrl/data/group-list?limit=$limit&offset=0")
-            .header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .retrieve()
-            .bodyToMono(HemisGroupListResponse::class.java)
-            .timeout(timeout)
-            .block()
-            ?.takeIf { it.success }?.data
-            ?: error("HEMIS_GROUP_RESPONSE_INVALID")
+    private fun fetchGroupPage(limit: Int, pageNumber: Int = 1): HemisGroupListData {
+        val page = HemisBackendResponseParser.page(
+            fetchBackend("data/group-list?limit=$limit&page=$pageNumber"), limit)
+        return HemisGroupListData(page.items.map {
+            check(it.path("id").canConvertToLong() && it.path("name").isString) { "HEMIS_GROUP_INVALID" }
+            HemisGroupItem(it.path("id").asLong(), it.path("name").asText(),
+                it.path("studentsCount").takeUnless { count -> count.isMissingNode || count.isNull }?.asInt())
+        }, page.total)
     }
 
     override fun fetchStudentsByGroup(groupId: Long, limit: Int, offset: Int): HemisStudentListData {
-        val token = adminToken()
-        return webClient.get()
-            .uri("$baseUrl/data/student-list?limit=$limit&offset=$offset&_group=$groupId")
-            .header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .retrieve()
-            .bodyToMono(HemisStudentListResponse::class.java)
-            .timeout(timeout)
-            .block()
-            ?.takeIf { it.success }?.data
-            ?: error("HEMIS_STUDENT_RESPONSE_INVALID")
+        require(offset >= 0) { "HEMIS_OFFSET_INVALID" }
+        val size = limit.coerceIn(1, 200)
+        val pageNumber = offset / size + 1
+        val page = HemisBackendResponseParser.page(fetchBackend(
+            "data/student-list?limit=$size&page=$pageNumber&_group=$groupId&_student_status=-1"), size)
+        check(page.size == size) { "HEMIS_PAGE_SIZE_MISMATCH" }
+        val students = page.items.drop(offset % size).map(HemisBackendResponseParser::student)
+        check(students.isNotEmpty() || offset >= page.total) { "HEMIS_STUDENT_PAGINATION_STALLED" }
+        return HemisStudentListData(students, page.total, size, offset)
     }
 
     override fun fetchStudentsByIdentity(identity: String, limit: Int): List<HemisStudent> {
+        val size = limit.coerceIn(1, 50)
+        return HemisBackendResponseParser.page(fetchBackend(
+            "data/student-list?limit=$size&page=1&_student_status=-1&search={identity}", identity), size)
+            .items.map(HemisBackendResponseParser::student)
+    }
+
+    private var lastBackendRequestNanos = 0L
+
+    @Synchronized
+    private fun fetchBackend(path: String, vararg variables: Any): JsonNode {
         val token = adminToken()
+        // The documented IP limit is 10 requests/second. Pace this backend client's requests.
+        val remaining = 125_000_000L - (System.nanoTime() - lastBackendRequestNanos)
+        if (remaining > 0) {
+            try { Thread.sleep(Duration.ofNanos(remaining)) }
+            catch (error: InterruptedException) { Thread.currentThread().interrupt(); throw error }
+        }
+        lastBackendRequestNanos = System.nanoTime()
         return webClient.get()
-            .uri("$baseUrl/data/student-list?limit=${limit.coerceIn(1, 50)}&offset=0&search={identity}", identity)
+            .uri("$baseUrl/$path", *variables)
             .header(HttpHeaders.AUTHORIZATION, "Bearer $token")
-            .retrieve()
-            .bodyToMono(HemisStudentListResponse::class.java)
-            .timeout(timeout)
-            .block()
-            ?.takeIf { it.success }?.data?.items
-            ?: error("HEMIS_STUDENT_RESPONSE_INVALID")
+            .retrieve().bodyToMono(JsonNode::class.java).timeout(timeout).block()
+            ?: error("HEMIS_RESPONSE_INVALID")
     }
 
     override fun credentialsConfigured(): Boolean = connectionStatus().missingFields.isEmpty()
 
     fun HemisStudent.toCreateRequest(): StudentCreateRequest {
-        val validPinfl = pinfl?.filter(Char::isDigit)?.takeIf { it.length == 14 }
+        val validPinfl = sequenceOf(pinfl, passport_pin).filterNotNull()
+            .map { it.filter(Char::isDigit) }.firstOrNull { it.length == 14 }
             ?: throw IllegalArgumentException("HEMIS_PINFL_MISSING")
         val birthMillis = normalizeEpochMillis(birth_date)
         val birthLocalDate = runCatching { Instant.ofEpochMilli(birthMillis).atZone(TASHKENT).toLocalDate() }

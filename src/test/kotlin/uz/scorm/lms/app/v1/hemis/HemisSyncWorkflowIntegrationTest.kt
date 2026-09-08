@@ -34,7 +34,7 @@ import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 
-@SpringBootTest(properties = ["app.demo.enabled=false", "hemis.host=", "hemis.admin-login=", "hemis.admin-password="])
+@SpringBootTest(properties = ["app.demo.enabled=false", "hemis.host=", "hemis.api-token="])
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(HemisSyncWorkflowIntegrationTest.Config::class)

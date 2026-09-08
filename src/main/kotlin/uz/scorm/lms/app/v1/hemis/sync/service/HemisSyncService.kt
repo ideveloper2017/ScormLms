@@ -221,7 +221,7 @@ class HemisSyncWorker(
     @param:Value("\${app.hemis.sync.page-size:100}") configuredPageSize: Int,
 ) {
     private val tx = TransactionTemplate(transactionManager)
-    private val pageSize = configuredPageSize.coerceIn(1, 500)
+    private val pageSize = configuredPageSize.coerceIn(1, 200)
 
     @Async
     fun executeAsync(runId: Long) = execute(runId)

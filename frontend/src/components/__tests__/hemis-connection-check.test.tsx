@@ -14,9 +14,9 @@ function mount(canManage = true) {
 }
 
 it('explains missing settings and does not automatically contact HEMIS', async () => {
-  vi.mocked(hemisSyncApi.connection).mockResolvedValue({ ...configured, status: 'NOT_CONFIGURED', missingFields: ['HEMIS_ADMIN_LOGIN', 'HEMIS_ADMIN_PASSWORD'] });
+  vi.mocked(hemisSyncApi.connection).mockResolvedValue({ ...configured, status: 'NOT_CONFIGURED', missingFields: ['HEMIS_API_TOKEN'] });
   mount();
-  expect(await screen.findByRole('status')).toHaveTextContent('API login, API parol');
+  expect(await screen.findByRole('status')).toHaveTextContent('HEMIS API tokeni');
   expect(hemisSyncApi.checkConnection).not.toHaveBeenCalled();
 });
 

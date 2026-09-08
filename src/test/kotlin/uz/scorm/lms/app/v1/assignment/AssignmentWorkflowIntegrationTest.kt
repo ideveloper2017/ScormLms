@@ -40,6 +40,36 @@ class AssignmentWorkflowIntegrationTest {
     @Autowired private lateinit var enrollmentService: CourseEnrollmentService
     @Autowired private lateinit var userRepository: UserRepository
     @Autowired private lateinit var studentRepository: StudentRepository
+    @Autowired private lateinit var enrollments: uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
+    @Autowired private lateinit var quizzes: uz.scorm.lms.app.v1.quiz.service.QuizService
+
+    @Test
+    fun `completed lessons do not block open assignments or quizzes but withdrawal still blocks both`() {
+        val teacher = user("completed-assessment-teacher")
+        val student = student("20000000000009", "ST-ASG-009", "completed-assessment-student")
+        val course = publishedCourse(teacher, "Materiallari tugallangan kurs")
+        enrollmentService.enroll(course.id, CourseEnrollmentRequest(setOf(student.id!!)), teacher.id!!, false)
+        val enrollment = enrollments.findByCourseIdAndStudentId(course.id, student.id!!)!!
+        enrollment.status = uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus.COMPLETED
+        enrollment.progress = 100
+        enrollments.saveAndFlush(enrollment)
+        val assignment = assignmentService.create(AssignmentRequest(course.id, "Ochiq topshiriq",
+            dueDate = Instant.now().plusSeconds(3600), submissionType = AssignmentSubmissionType.TEXT), teacher.id!!, false)
+        assertEquals("submitted", assignmentService.submit(assignment.id.toLong(), student.user.id!!, "Tayyor javob", null).status)
+        val question = quizzes.createQuestion(uz.scorm.lms.app.v1.quiz.dto.QuizQuestionRequest(course.id,
+            "2 + 2?", uz.scorm.lms.app.v1.quiz.model.QuizQuestionType.SHORT_ANSWER, correctAnswer = "4"), teacher.id!!, false)
+        val quiz = quizzes.createQuiz(uz.scorm.lms.app.v1.quiz.dto.QuizRequest(course.id, "Ochiq test",
+            opensAt = Instant.now().minusSeconds(60), closesAt = Instant.now().plusSeconds(3600), durationMinutes = 15,
+            questionIds = listOf(question.id.toLong())), teacher.id!!, false)
+        quizzes.start(quiz.id.toLong(), student.user.id!!)
+        quizzes.saveAnswer(quiz.id.toLong(), question.id.toLong(), student.user.id!!, "4")
+        assertEquals(100.0, quizzes.submit(quiz.id.toLong(), student.user.id!!,
+            listOf(uz.scorm.lms.app.v1.quiz.dto.QuizAnswerItemRequest(question.id, "4"))).percentage)
+        enrollment.status = uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus.WITHDRAWN
+        enrollments.saveAndFlush(enrollment)
+        assertThrows(IllegalArgumentException::class.java) { assignmentService.submit(assignment.id.toLong(), student.user.id!!, "Yana javob", null) }
+        assertThrows(IllegalArgumentException::class.java) { quizzes.start(quiz.id.toLong(), student.user.id!!) }
+    }
 
     @Test
     fun `teacher topshiriq yaratadi student topshiradi va feedback bilan baho oladi`() {

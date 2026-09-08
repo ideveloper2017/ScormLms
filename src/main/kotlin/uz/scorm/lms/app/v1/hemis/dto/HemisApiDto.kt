@@ -46,7 +46,7 @@ data class HemisGroupListData(
 data class HemisGroupItem(
     val id: Long,
     val name: String,
-    val studentsCount: Int?,
+    val studentsCount: Int? = null,
 )
 
 // ── Import DTOs (frontend ↔ backend) ─────────────────────────────────────────

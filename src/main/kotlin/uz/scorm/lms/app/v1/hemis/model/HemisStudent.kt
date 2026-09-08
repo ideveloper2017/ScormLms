@@ -15,9 +15,9 @@ data class HemisStudent(
     val passport_pin: String? = null,
     val passport_number: String? = null,
     val gender: CodeName? = null,
-    val image: String?,
+    val image: String? = null,
     val birth_date: Long,
-    val email: String?,
+    val email: String? = null,
     val group: Group,
     val faculty: Faculty,
     val educationLang: CodeName,
@@ -31,10 +31,10 @@ data class HemisStudent(
     val country: CodeName,
     val district: CodeName,
     val province: CodeName,
-    val address: String?,
+    val address: String? = null,
     val socialCategory: CodeName,
     val accommodation: CodeName,
-    val validateUrl: String?,
+    val validateUrl: String? = null,
     val hash: String
 )
 
@@ -49,7 +49,7 @@ data class CodeName(
 data class EducationYear(
     val code: String,
     val name: String,
-    val current: Boolean
+    val current: Boolean = false
 )
 
 // Semester information
@@ -58,7 +58,7 @@ data class Semester(
     val id: Long,
     val code: String,
     val name: String,
-    val current: Boolean,
+    val current: Boolean = false,
     val education_year: EducationYear
 )
 

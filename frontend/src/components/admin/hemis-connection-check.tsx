@@ -5,7 +5,7 @@ import { hemisSyncApi } from '@/services/api/hemis-sync-api';
 
 const fieldLabels: Record<string, string> = {
   HEMIS_HOST: 'HEMIS server manzili', HEMIS_API_BASE_PATH: 'API yo‘li',
-  HEMIS_ADMIN_LOGIN: 'API login', HEMIS_ADMIN_PASSWORD: 'API parol',
+  HEMIS_API_TOKEN: 'HEMIS API tokeni',
 };
 
 export function HemisConnectionCheck({ canManage }: { canManage: boolean }) {

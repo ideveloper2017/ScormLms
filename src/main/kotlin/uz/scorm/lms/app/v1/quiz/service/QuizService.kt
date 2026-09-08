@@ -211,7 +211,7 @@ class QuizService(
         val now = Instant.now()
         require(quiz.status == QuizStatus.PUBLISHED) { "Test boshlash uchun ochiq emas" }
         require(!now.isBefore(quiz.opensAt) && now.isBefore(quiz.closesAt)) { "Testning vaqt oynasi yopiq" }
-        val enrollment = enrollment(quiz, userId, allowCompleted = false)
+        val enrollment = enrollment(quiz, userId, allowCompleted = true)
         val inProgress = attemptRepository.findFirstByQuizIdAndEnrollmentIdAndStatusAndDeletedFalseOrderByAttemptNumberDesc(
             quizId,
             enrollment.id!!,
@@ -254,7 +254,7 @@ class QuizService(
     @Transactional
     fun saveAnswer(quizId: Long, questionId: Long, userId: Long, answer: String, attemptId: Long? = null) {
         val quiz = quiz(quizId)
-        val enrollment = enrollment(quiz, userId, allowCompleted = false)
+        val enrollment = enrollment(quiz, userId, allowCompleted = true)
         val attempt = activeAttempt(quizId, enrollment.id!!)
         require(attemptId == null || attempt.id == attemptId) { "Test urinishi o'zgargan; sahifani yangilang" }
         requireSubmissionOpen(attempt)
@@ -264,7 +264,7 @@ class QuizService(
     @Transactional
     fun submit(quizId: Long, userId: Long, answers: List<QuizAnswerItemRequest>): QuizResultDto {
         val quiz = quiz(quizId)
-        val enrollment = enrollment(quiz, userId, allowCompleted = false)
+        val enrollment = enrollment(quiz, userId, allowCompleted = true)
         val attempt = activeAttempt(quizId, enrollment.id!!)
         requireSubmissionOpen(attempt)
         answers.forEach { item ->

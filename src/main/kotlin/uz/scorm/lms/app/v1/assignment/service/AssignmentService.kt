@@ -187,7 +187,8 @@ class AssignmentService(
     fun submit(id: Long, userId: Long, answer: String?, file: MultipartFile?): StudentSubmissionDto {
         val assignment = assignment(id)
         require(assignment.status == AssignmentStatus.PUBLISHED) { "Topshiriq topshirish uchun ochiq emas" }
-        val enrollment = enrollmentFor(assignment, userId, allowCompleted = false)
+        // Reading every lesson marks the enrollment completed; an open assignment remains actionable.
+        val enrollment = enrollmentFor(assignment, userId, allowCompleted = true)
         val cleanAnswer = answer?.trim()?.takeIf { it.isNotEmpty() }
         val hasFile = file != null && !file.isEmpty
         when (assignment.submissionType) {

@@ -89,7 +89,7 @@ app:
     # Faqat aniq yoqilganda bog'langan demo tuzilma, kurs va darslar yaratiladi.
     enabled: ${APP_DEMO_DATA_ENABLED:true}
   seed:
-    admin-password: ${APP_SEED_ADMIN_PASSWORD:admin123}
+    admin-password: ${APP_SEED_ADMIN_PASSWORD:}
     teacher-password: ${APP_SEED_TEACHER_PASSWORD:admin123}
     student-password: ${APP_SEED_STUDENT_PASSWORD:admin123}
     demo-staff-password: ${APP_SEED_DEMO_STAFF_PASSWORD:admin123}
@@ -164,12 +164,11 @@ app:
       max-buckets: ${AUTH_RATE_MAX_BUCKETS:10000}
 
 hemis:
-  host: ${HEMIS_HOST:}
+  host: ${HEMIS_HOST:https://student.namdtu.uz}
   api-base-path: ${HEMIS_API_BASE_PATH:/rest/v1}
   request-timeout-seconds: ${HEMIS_REQUEST_TIMEOUT_SECONDS:15}
-  # Admin kreditsiallari — muassasaga HEMIS tomonidan berilgan
-  admin-login: ${HEMIS_ADMIN_LOGIN:}
-  admin-password: ${HEMIS_ADMIN_PASSWORD:}
+  # Muassasa API tokeni faqat backendda saqlanadi.
+  api-token: ${HEMIS_API_TOKEN:JOJAogatlmzbKk9YVhrof0E3bAwSCTiZxj3uTMBD}
 
 
 # File Storage Configuration
