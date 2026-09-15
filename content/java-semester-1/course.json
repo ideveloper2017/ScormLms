@@ -1,0 +1,2391 @@
+{
+  "schemaVersion": 1,
+  "title": "Java dasturlash asoslari — 1-semestr",
+  "programName": "Dasturiy injinering",
+  "subjectName": "Dasturlash Asoslari",
+  "startDate": "2026-09-14",
+  "weeks": 15,
+  "requirements": "Kompyuterdan foydalanish, fayl/papka bilan ishlash va maktab arifmetikasi. Oldindan dasturlash tajribasi shart emas. JDK 21 va matn muharriri yoki Java IDE.",
+  "outcomes": [
+    "Konsoldan kirish olib, shartlar va sikllar bilan masala yechish.",
+    "Metodlar, massivlar va String bilan ma’lumotni qayta ishlash.",
+    "Klass, inkapsulyatsiya, meros va interfeys bilan sodda model tuzish.",
+    "List, Set, Map, istisnolar va UTF-8 fayllardan foydalanish.",
+    "Chegara sinovlari yozish, xatoni topish va konsol loyihasini hujjatlashtirish."
+  ],
+  "syllabusHtml": "<h1>Java dasturlash asoslari — 1-semestr</h1><p>Dasturiy injinering • Dasturlash Asoslari • 15 hafta • o‘zbek tili • JDK 21</p><p>Bu 1-semestr uchun tayyorlangan namunaviy fan dasturi. 6 kredit va 180 akademik soat taklif qilinadi: 30 soat nazariya, 30 soat laboratoriya, 120 soat mustaqil ish. Rasmiy tasdiqlangan o‘quv reja o‘rnini bosmaydi. Akademik soat davomiyligi muassasa qoidasi bo‘yicha olinadi; video davomiyligi bilan tenglashtirilmaydi.</p><h2>Boshlang‘ich talablar</h2><p>Kompyuterdan foydalanish, fayl/papka bilan ishlash va maktab arifmetikasi. Oldindan dasturlash tajribasi shart emas. JDK 21 va matn muharriri yoki Java IDE.</p><h2>O‘quv natijalari</h2><ul><li>Konsoldan kirish olib, shartlar va sikllar bilan masala yechish.</li><li>Metodlar, massivlar va String bilan ma’lumotni qayta ishlash.</li><li>Klass, inkapsulyatsiya, meros va interfeys bilan sodda model tuzish.</li><li>List, Set, Map, istisnolar va UTF-8 fayllardan foydalanish.</li><li>Chegara sinovlari yozish, xatoni topish va konsol loyihasini hujjatlashtirish.</li></ul><h2>Haftalik o‘quv reja</h2><table><thead><tr><th>Hafta</th><th>Mavzu</th><th>Nazariya</th><th>Laboratoriya</th><th>Mustaqil</th></tr></thead><tbody><tr><td>1</td><td>Java muhiti va birinchi dastur</td><td>2</td><td>2</td><td>8</td></tr><tr><td>2</td><td>O‘zgaruvchilar, operatorlar va konsoldan kiritish</td><td>2</td><td>2</td><td>8</td></tr><tr><td>3</td><td>Shartlar va chegaraviy qiymatlar</td><td>2</td><td>2</td><td>8</td></tr><tr><td>4</td><td>Sikllar va algoritmik fikrlash</td><td>2</td><td>2</td><td>8</td></tr><tr><td>5</td><td>Metodlar va masalani qismlarga ajratish</td><td>2</td><td>2</td><td>8</td></tr><tr><td>6</td><td>Massivlar va qidirish</td><td>2</td><td>2</td><td>8</td></tr><tr><td>7</td><td>String va matnni qayta ishlash</td><td>2</td><td>2</td><td>8</td></tr><tr><td>8</td><td>Debugging, testlash va oraliq nazorat</td><td>2</td><td>2</td><td>8</td></tr><tr><td>9</td><td>Klasslar, obyektlar va inkapsulyatsiya</td><td>2</td><td>2</td><td>8</td></tr><tr><td>10</td><td>Meros olish va kompozitsiya</td><td>2</td><td>2</td><td>8</td></tr><tr><td>11</td><td>Interfeyslar va polimorfizm</td><td>2</td><td>2</td><td>8</td></tr><tr><td>12</td><td>Kolleksiyalar: List, Set va Map</td><td>2</td><td>2</td><td>8</td></tr><tr><td>13</td><td>Istisnolar va ishonchli kiritish</td><td>2</td><td>2</td><td>8</td></tr><tr><td>14</td><td>Fayllar va ma’lumotni saqlash</td><td>2</td><td>2</td><td>8</td></tr><tr><td>15</td><td>Yakuniy loyiha: mini kutubxona</td><td>2</td><td>2</td><td>8</td></tr></tbody></table><h2>Har hafta qanday o‘qiyman?</h2><ul><li>Nazariy konspektni o‘qing va kodni avval o‘zingiz taxmin qiling.</li><li>Videoni ko‘ring, to‘xtatib kichik tajribani takrorlang. Inglizcha videolar qo‘shimcha; mavzuning o‘zbekcha izohi konspektda berilgan.</li><li>Laboratoriya qadamlarini bajaring, keyin mustaqil topshiriqqa o‘ting.</li><li>O‘zini tekshirish testini ishlang. Natija past bo‘lsa xato mavzuni qayta o‘qing.</li><li>Kod, README va test dalillarini topshiriq orqali yuboring.</li></ul><h2>Mustaqil ishning haftalik 8 soati</h2><ul><li>2 soat: konspekt, video va qaydlar.</li><li>3 soat: mustaqil topshiriqni yozish.</li><li>2 soat: kodni sinash, xatolarni tuzatish va loyiha bosqichi.</li><li>1 soat: test, refleksiya va README.</li></ul><h2>Taklif etilgan baholash</h2><ul><li>13 ta odatiy haftalik topshiriqning o‘rtachasi — 40%.</li><li>8-hafta oraliq amaliy ish — 15%; oraliq test — 5%.</li><li>15-hafta yakuniy loyiha — 30%; yakuniy test — 10%.</li><li>Haftalik 3 savolli testlar o‘zini tekshirish uchun; yakuniy bahoga alohida qo‘shilmaydi.</li><li>Misol: 80, 70, 90, 85, 80 natijalari bilan yakuniy ball = 80*0.40 + 70*0.15 + 90*0.05 + 85*0.30 + 80*0.10 = 80.5.</li></ul><h2>Semestr va muddatlar</h2><p>Boshlanish sanasi namunada 2026-09-14. 15-hafta 2026-12-21 dan 2026-12-27 gacha. Haftalik topshiriqlar yakshanba 23:59 (Toshkent) uchun qoralama muddat bilan tayyorlanadi. Bayramlar, kech topshirish va qayta topshirish tartibi o‘qituvchi tomonidan dars boshlanishida aniqlashtiriladi.</p><h2>Akademik halollik va yordam</h2><p>Birga muhokama qilish mumkin, lekin topshirilgan kodni o‘zingiz tushuntira olishingiz kerak. Ishlatilgan kod, video, AI yordam va maslahat manbalarini READMEda ko‘rsating. Qiyin joyda kichik takrorlanadigan misol va xato matni bilan savol bering. Namuna ism va ma’lumotlar yetarli.</p><h2>Yakuniy loyiha bosqichlari</h2><ul><li>9-hafta: Book modeli va invariantlar.</li><li>10–11-hafta: mas’uliyatlar va interfeyslar.</li><li>12-hafta: xotiradagi registr va menyu.</li><li>14-hafta: saqlash va yuklash.</li><li>15-hafta: test, hujjat, namoyish va himoya.</li></ul><h2>Manbalar</h2><p>Asosiy konspektlar, kodlar va topshiriqlar ushbu kurs uchun original yozilgan. Qo‘shimcha rasmiy ma’lumot:</p><p>https://dev.java/learn/</p><p>https://dev.java/learn/language-basics/</p><p>https://dev.java/learn/classes-objects/</p><p>https://dev.java/learn/exceptions/</p><p>https://dev.java/learn/java-io/</p>",
+  "modules": [
+    {
+      "title": "00. Kursni boshlash va o‘quv reja",
+      "description": "O‘qish tartibi, syllabus, baholash, atamalar va yuklab olinadigan paket.",
+      "contents": [
+        {
+          "title": "O‘quv reja va syllabus",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Java dasturlash asoslari — 1-semestr</h1><p>Dasturiy injinering • Dasturlash Asoslari • 15 hafta • o‘zbek tili • JDK 21</p><p>Bu 1-semestr uchun tayyorlangan namunaviy fan dasturi. 6 kredit va 180 akademik soat taklif qilinadi: 30 soat nazariya, 30 soat laboratoriya, 120 soat mustaqil ish. Rasmiy tasdiqlangan o‘quv reja o‘rnini bosmaydi. Akademik soat davomiyligi muassasa qoidasi bo‘yicha olinadi; video davomiyligi bilan tenglashtirilmaydi.</p><h2>Boshlang‘ich talablar</h2><p>Kompyuterdan foydalanish, fayl/papka bilan ishlash va maktab arifmetikasi. Oldindan dasturlash tajribasi shart emas. JDK 21 va matn muharriri yoki Java IDE.</p><h2>O‘quv natijalari</h2><ul><li>Konsoldan kirish olib, shartlar va sikllar bilan masala yechish.</li><li>Metodlar, massivlar va String bilan ma’lumotni qayta ishlash.</li><li>Klass, inkapsulyatsiya, meros va interfeys bilan sodda model tuzish.</li><li>List, Set, Map, istisnolar va UTF-8 fayllardan foydalanish.</li><li>Chegara sinovlari yozish, xatoni topish va konsol loyihasini hujjatlashtirish.</li></ul><h2>Haftalik o‘quv reja</h2><table><thead><tr><th>Hafta</th><th>Mavzu</th><th>Nazariya</th><th>Laboratoriya</th><th>Mustaqil</th></tr></thead><tbody><tr><td>1</td><td>Java muhiti va birinchi dastur</td><td>2</td><td>2</td><td>8</td></tr><tr><td>2</td><td>O‘zgaruvchilar, operatorlar va konsoldan kiritish</td><td>2</td><td>2</td><td>8</td></tr><tr><td>3</td><td>Shartlar va chegaraviy qiymatlar</td><td>2</td><td>2</td><td>8</td></tr><tr><td>4</td><td>Sikllar va algoritmik fikrlash</td><td>2</td><td>2</td><td>8</td></tr><tr><td>5</td><td>Metodlar va masalani qismlarga ajratish</td><td>2</td><td>2</td><td>8</td></tr><tr><td>6</td><td>Massivlar va qidirish</td><td>2</td><td>2</td><td>8</td></tr><tr><td>7</td><td>String va matnni qayta ishlash</td><td>2</td><td>2</td><td>8</td></tr><tr><td>8</td><td>Debugging, testlash va oraliq nazorat</td><td>2</td><td>2</td><td>8</td></tr><tr><td>9</td><td>Klasslar, obyektlar va inkapsulyatsiya</td><td>2</td><td>2</td><td>8</td></tr><tr><td>10</td><td>Meros olish va kompozitsiya</td><td>2</td><td>2</td><td>8</td></tr><tr><td>11</td><td>Interfeyslar va polimorfizm</td><td>2</td><td>2</td><td>8</td></tr><tr><td>12</td><td>Kolleksiyalar: List, Set va Map</td><td>2</td><td>2</td><td>8</td></tr><tr><td>13</td><td>Istisnolar va ishonchli kiritish</td><td>2</td><td>2</td><td>8</td></tr><tr><td>14</td><td>Fayllar va ma’lumotni saqlash</td><td>2</td><td>2</td><td>8</td></tr><tr><td>15</td><td>Yakuniy loyiha: mini kutubxona</td><td>2</td><td>2</td><td>8</td></tr></tbody></table><h2>Har hafta qanday o‘qiyman?</h2><ul><li>Nazariy konspektni o‘qing va kodni avval o‘zingiz taxmin qiling.</li><li>Videoni ko‘ring, to‘xtatib kichik tajribani takrorlang. Inglizcha videolar qo‘shimcha; mavzuning o‘zbekcha izohi konspektda berilgan.</li><li>Laboratoriya qadamlarini bajaring, keyin mustaqil topshiriqqa o‘ting.</li><li>O‘zini tekshirish testini ishlang. Natija past bo‘lsa xato mavzuni qayta o‘qing.</li><li>Kod, README va test dalillarini topshiriq orqali yuboring.</li></ul><h2>Mustaqil ishning haftalik 8 soati</h2><ul><li>2 soat: konspekt, video va qaydlar.</li><li>3 soat: mustaqil topshiriqni yozish.</li><li>2 soat: kodni sinash, xatolarni tuzatish va loyiha bosqichi.</li><li>1 soat: test, refleksiya va README.</li></ul><h2>Taklif etilgan baholash</h2><ul><li>13 ta odatiy haftalik topshiriqning o‘rtachasi — 40%.</li><li>8-hafta oraliq amaliy ish — 15%; oraliq test — 5%.</li><li>15-hafta yakuniy loyiha — 30%; yakuniy test — 10%.</li><li>Haftalik 3 savolli testlar o‘zini tekshirish uchun; yakuniy bahoga alohida qo‘shilmaydi.</li><li>Misol: 80, 70, 90, 85, 80 natijalari bilan yakuniy ball = 80*0.40 + 70*0.15 + 90*0.05 + 85*0.30 + 80*0.10 = 80.5.</li></ul><h2>Semestr va muddatlar</h2><p>Boshlanish sanasi namunada 2026-09-14. 15-hafta 2026-12-21 dan 2026-12-27 gacha. Haftalik topshiriqlar yakshanba 23:59 (Toshkent) uchun qoralama muddat bilan tayyorlanadi. Bayramlar, kech topshirish va qayta topshirish tartibi o‘qituvchi tomonidan dars boshlanishida aniqlashtiriladi.</p><h2>Akademik halollik va yordam</h2><p>Birga muhokama qilish mumkin, lekin topshirilgan kodni o‘zingiz tushuntira olishingiz kerak. Ishlatilgan kod, video, AI yordam va maslahat manbalarini READMEda ko‘rsating. Qiyin joyda kichik takrorlanadigan misol va xato matni bilan savol bering. Namuna ism va ma’lumotlar yetarli.</p><h2>Yakuniy loyiha bosqichlari</h2><ul><li>9-hafta: Book modeli va invariantlar.</li><li>10–11-hafta: mas’uliyatlar va interfeyslar.</li><li>12-hafta: xotiradagi registr va menyu.</li><li>14-hafta: saqlash va yuklash.</li><li>15-hafta: test, hujjat, namoyish va himoya.</li></ul><h2>Manbalar</h2><p>Asosiy konspektlar, kodlar va topshiriqlar ushbu kurs uchun original yozilgan. Qo‘shimcha rasmiy ma’lumot:</p><p>https://dev.java/learn/</p><p>https://dev.java/learn/language-basics/</p><p>https://dev.java/learn/classes-objects/</p><p>https://dev.java/learn/exceptions/</p><p>https://dev.java/learn/java-io/</p>",
+          "durationMinutes": 30,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14"
+        },
+        {
+          "title": "Boshlash: JDK, papkalar va topshirish",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Birinchi 30 daqiqa</h2><ul><li>java -version va javac -version bilan JDK 21 ni tekshiring.</li><li>java-semester-1 papkasini oching. Har haftani alohida papkada saqlang.</li><li>Week01.java ni kompilyatsiya qilib ishga tushiring.</li><li>README.md ichiga ishga tushirish buyrug‘i, kirish formati va test natijalarini yozing.</li><li>Topshiriqni ZIP ko‘rinishida yuborish mumkin: .java, README.md, tests.md. .class, IDE kesh va maxfiy fayllarni yubormang.</li></ul><pre><code>javac -encoding UTF-8 Week01.java\njava Week01</code></pre><h2>Yordam so‘rash namunasi</h2><p>Mavzu: 6-hafta minimum. Kirish: [4,8]. Kutilgan: 4. Amaldagi: 0. Kod: eng kichik qayta ishlaydigan namuna. Men sinab ko‘rgan yechim: min boshlanishini tekshirdim.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14"
+        },
+        {
+          "title": "Baholash mezonlari va test hisoboti",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Har bir odatiy ish — 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><p>Har mezonda to‘liq bajarilgan bo‘lsa to‘liq ball, asosiy qismi ishlasa yarim ball, bajarilmasa 0 ball. O‘qituvchi dalilga asoslangan oraliq ball va izoh berishi mumkin.</p><h2>Yakuniy loyiha — 100 ball</h2><ul><li>Asosiy foydalanish ssenariylari: 30 ball</li><li>Model va mas’uliyatlar ajratilishi: 20 ball</li><li>Saqlash/yuklash va yaxlitlik: 15 ball</li><li>Validatsiya va xato xabarlari: 10 ball</li><li>12 ta test va dalillar: 15 ball</li><li>README, chizma va himoya: 10 ball</li></ul><h2>Test hisoboti qolipi</h2><pre><code>ID | Kirish/harakat | Kutilgan natija | Amaldagi natija | O‘tdi/yiqildi\nT01 | ... | ... | ... | ...</code></pre><p>Skrinshotning o‘zi kod va ishga tushirish ko‘rsatmasi o‘rnini bosmaydi. Tekshiriladigan dalil va qisqa tushuntirish bo‘lsin.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14"
+        },
+        {
+          "title": "Java atamalari: qisqa lug‘at",
+          "contentType": "TEXT",
+          "contentBody": "<h2>30 ta asosiy atama</h2><ul><li>JDK — Java dasturini yaratish va ishga tushirish vositalari to‘plami.</li><li>JVM — Java baytkodini bajaradigan virtual mashina.</li><li>Kompilyatsiya — manba kodni bajariladigan oraliq shaklga o‘girish.</li><li>Algoritm — masalani yechish qadamlari.</li><li>O‘zgaruvchi — nomlangan qiymat saqlash joyi.</li><li>Tur — qiymat va ruxsat etilgan amallar toifasi.</li><li>Shart — true yoki false bo‘ladigan tekshiruv.</li><li>Sikl — takror bajariladigan qadamlar.</li><li>Metod — nomlangan vazifa va uning kod bloki.</li><li>Parametr — metod qabul qiladigan qiymat.</li><li>Massiv — uzunligi belgilangan bir turdagi elementlar.</li><li>Indeks — elementning noldan boshlanadigan o‘rni.</li><li>String — o‘zgarmas matn obyekti.</li><li>Klass — obyekt tuzilishi va xulqi ta’rifi.</li><li>Obyekt — klass asosida yaratilgan aniq nusxa.</li><li>Konstruktor — obyekt boshlang‘ich holatini belgilovchi kod.</li><li>Inkapsulyatsiya — holatga kirish va o‘zgarishni qoidalar bilan boshqarish.</li><li>Invariant — har doim saqlanishi kerak bo‘lgan qoida.</li><li>Meros — ota klass xulqini kengaytirish.</li><li>Kompozitsiya — obyekt ichida boshqa obyekt saqlash.</li><li>Interfeys — xulq shartnomasi.</li><li>Polimorfizm — bir shartnoma orqali turli mos xulqlarni chaqirish.</li><li>List — tartibli, takrorlarga ruxsat beradigan ro‘yxat.</li><li>Set — takrorsiz to‘plam.</li><li>Map — kalit va qiymat bog‘lanishi.</li><li>Exception — xato yoki alohida holat signali.</li><li>UTF-8 — matn belgilarini baytlarga kodlash usuli.</li><li>Test case — kirish, kutilgan natija va tekshiruv.</li><li>Regression — avval ishlagan holatning o‘zgarishdan keyin buzilishi.</li><li>README — loyihani tushunish va ishga tushirish ko‘rsatmasi.</li></ul>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14"
+        },
+        {
+          "title": "Video manbalari va foydalanish izohi",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Videolar va qo‘shimcha o‘qish</h2><p>Videolar mualliflarning YouTube sahifalariga tashqi havolalar sifatida berilgan; video fayllari qayta joylanmagan. 2026-09-14 kuni sahifa metadata mavjudligi tekshirildi; ijro, subtitr va hududiy kirish to‘liq tekshirilmagan. Eski IDE ko‘rinishi videoda farq qilishi mumkin; kurs kodi JDK 21ga mos. Inglizcha videolar o‘zbekcha konspektga qo‘shimcha.</p><p>akramjonpulatov — Java dasturlash tilidan darslar 6 Scanner Klasi haqida (uz)</p><p><a href=\"https://www.youtube.com/watch?v=4sedhBrnYUs\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 24 Nasl olishni amalda bajaramiz 2-qism (uz)</p><p><a href=\"https://www.youtube.com/watch?v=BLrk_Z2Ph0I\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 9 if operatori (uz)</p><p><a href=\"https://www.youtube.com/watch?v=DlEQ_SkmjLM\">Videoni ochish</a></p><p>freeCodeCamp.org — Intro to Java Programming - Course for Absolute Beginners (en)</p><p><a href=\"https://www.youtube.com/watch?v=GoXwIVyNvX0\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 2 Birinchi Loyihani yaratamiz (uz)</p><p><a href=\"https://www.youtube.com/watch?v=OQqmpjZPiAg\">Videoni ochish</a></p><p>Bro Code — Java String methods 💬 (en)</p><p><a href=\"https://www.youtube.com/watch?v=P9hEmbfdiuc\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 15 Sikl While haqida (uz)</p><p><a href=\"https://www.youtube.com/watch?v=PPoZho4XsuI\">Videoni ochish</a></p><p>Bro Code — How to WRITE FILES with Java in 8 minutes! ✍ (en)</p><p><a href=\"https://www.youtube.com/watch?v=Pg0aoSbrqOE\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 1 - Kirish (uz)</p><p><a href=\"https://www.youtube.com/watch?v=TM8Cgik_qVo\">Videoni ochish</a></p><p>akramjonpulatov — Java darsi  21 OOP haqida va obyektlardan nasl olish (uz)</p><p><a href=\"https://www.youtube.com/watch?v=YRdWqNb0yjs\">Videoni ochish</a></p><p>Bro Code — Java exception handling ⚠️ (en)</p><p><a href=\"https://www.youtube.com/watch?v=adTDlH0lhaA\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 22 Abstract klas haqida (uz)</p><p><a href=\"https://www.youtube.com/watch?v=i0G7nfgxkFo\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 14 Mahluq o`yini davomi Xatolarni tuzatamiz (uz)</p><p><a href=\"https://www.youtube.com/watch?v=mlEemeFbqLw\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 23 Nasl olishni amalda bajaramiz (uz)</p><p><a href=\"https://www.youtube.com/watch?v=nNM3ND15LH8\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 19 Switch haqida (uz)</p><p><a href=\"https://www.youtube.com/watch?v=q2iHfJqM8O0\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 3 Tiplar va o`zgaruvchilar haqida ma`lumot (uz)</p><p><a href=\"https://www.youtube.com/watch?v=rCCLyHR5P1I\">Videoni ochish</a></p><p>Bro Code — Java methods explained in 10+ minutes! 📞 (en)</p><p><a href=\"https://www.youtube.com/watch?v=v5p_SUfi710\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 25 toString metodini tatbiq qilamiz (uz)</p><p><a href=\"https://www.youtube.com/watch?v=wF-0nfL0W2o\">Videoni ochish</a></p><p>akramjonpulatov — Java dasturlash tilidan darslar 16 Sikl For (uz)</p><p><a href=\"https://www.youtube.com/watch?v=zEroZ1eXdrk\">Videoni ochish</a></p>",
+          "durationMinutes": 10,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14"
+        }
+      ]
+    },
+    {
+      "title": "01-hafta. Java muhiti va birinchi dastur",
+      "description": "JDK, kompilyator va JVM vazifalarini ajratish • Terminaldan Java dasturini ishga tushirish",
+      "contents": [
+        {
+          "title": "01.1 Nazariya — Java muhiti va birinchi dastur",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Java muhiti va birinchi dastur</h1><h2>Dars oxirida</h2><ul><li>JDK, kompilyator va JVM vazifalarini ajratish</li><li>Terminaldan Java dasturini ishga tushirish</li></ul><h2>Tushuntirish</h2><p>Dasturiy injinering muammoni tushunishdan boshlanadi. Avval dastur kimga kerakligi, qanday ma’lumot olishi va qanday natija berishini yozamiz. Keyin algoritm tuzamiz, kod yozamiz va natijani tekshiramiz. Bu semestrda har bir mashqda shu ketma-ketlikni qo‘llaymiz.</p><p>Java dasturi .java faylda saqlanadi. JDK tarkibidagi javac uni JVM bajaradigan baytkodga aylantiradi. Java buyrug‘i JVMni ishga tushiradi. Kompilyatsiya muvaffaqiyatli bo‘lishi natija to‘g‘riligini kafolatlamaydi: ekranga noto‘g‘ri son chiqaradigan dastur ham kompilyatsiyadan o‘tishi mumkin.</p><p>Kurs misollari JDK 21 bilan tekshiriladi. Terminalda java -version va javac -version buyruqlarini bajaring. Ikkalasi ham topilishi kerak. IDEda Project SDK sifatida JDK 21 ni tanlang. IntelliJ IDEA yoki boshqa Java muhiti ishlatilishi mumkin; misollar maxsus IDEga bog‘liq emas. Dastur kirish nuqtasi public static void main(String[] args). Hozircha bu yozuvni o‘zgartirmang, metod va klasslarni keyin batafsil ko‘ramiz.</p><p>Quyidagi kodni Week01.java nomida UTF-8 bilan saqlang. Public klass nomi fayl nomi bilan mos. Terminalni shu papkada ochib javac -encoding UTF-8 Week01.java, so‘ng java Week01 bajaring. println yangi qatorga o‘tadi. Matn qo‘shtirnoq ichida yoziladi; buyruq nuqtali vergul bilan tugaydi. Xato bo‘lsa avval kompilyator ko‘rsatgan birinchi qatorni tuzating. READMEga ishga tushirish buyrug‘ini yozish boshqa odamga dasturingizni takrorlash imkonini beradi.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week01 {\n    public static void main(String[] args) {\n        System.out.println(&quot;Salom, Java!&quot;);\n        System.out.println(&quot;Dasturiy injinering | 1-semestr&quot;);\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week01.java\njava Week01</code></pre><h2>Kutilgan chiqish</h2><pre><code>Salom, Java!\nDasturiy injinering | 1-semestr</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Java va JavaScript boshqa tillar.</li><li>java buyrug‘iga klass nomini .class qo‘shimchasiz bering.</li><li>IDE ishlasa ham terminaldagi Java versiyasini tekshiring.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "01.2.1 Video — o‘zbekcha: Java dasturlash tilidan darslar 1 - Kirish",
+          "description": "Mavzu: Java muhiti va birinchi dastur. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=TM8Cgik_qVo",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 1 - Kirish",
+          "sourceUrl": "https://www.youtube.com/watch?v=TM8Cgik_qVo",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "01.2.2 Video — o‘zbekcha: Java dasturlash tilidan darslar 2 Birinchi Loyihani yaratamiz",
+          "description": "Mavzu: Java muhiti va birinchi dastur. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=OQqmpjZPiAg",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 2 Birinchi Loyihani yaratamiz",
+          "sourceUrl": "https://www.youtube.com/watch?v=OQqmpjZPiAg",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "01.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Java muhiti va birinchi dastur</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>JDK versiyasini tekshiring va java/javac farqini ikki jumlada yozing.</li><li>Namunani terminalda kompilyatsiya qiling; matnga o‘z faningizni kiriting.</li><li>Ataylab bitta nuqtali vergulni olib tashlang, xato matnini o‘qing va tiklang.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>JDK, kompilyator va JVM vazifalarini ajratish</li><li>Terminaldan Java dasturini ishga tushirish</li><li>Java va JavaScript boshqa tillar.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        },
+        {
+          "title": "01.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>StudentCard.java yarating: uch qatorda talaba ismi, guruh kodi va semestrni chiqarsin. READMEda kirish ma’lumoti yo‘qligini va ishga tushirish buyruqlarini yozing. Shaxsiy ma’lumot o‘rniga namuna ism ishlatish mumkin.</p><h2>Qabul mezonlari</h2><ul><li>Chiqish aynan uch qator; har qatorda qiymat bor.</li><li>Fayl va public klass nomi StudentCard.</li><li>Yangi papkada faqat manba fayli yordamida kompilyatsiya bo‘ladi.</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “01-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 4
+        }
+      ]
+    },
+    {
+      "title": "02-hafta. O‘zgaruvchilar, operatorlar va konsoldan kiritish",
+      "description": "Masalaga mos ma’lumot turini tanlash • Scanner orqali son o‘qish va formula hisoblash",
+      "contents": [
+        {
+          "title": "02.1 Nazariya — O‘zgaruvchilar, operatorlar va konsoldan kiritish",
+          "contentType": "TEXT",
+          "contentBody": "<h1>O‘zgaruvchilar, operatorlar va konsoldan kiritish</h1><h2>Dars oxirida</h2><ul><li>Masalaga mos ma’lumot turini tanlash</li><li>Scanner orqali son o‘qish va formula hisoblash</li></ul><h2>Tushuntirish</h2><p>O‘zgaruvchi nom, tur va qiymatga ega. int butun son, long kattaroq butun son, double kasr son, boolean true yoki false, char bitta UTF-16 kod birligini saqlaydi. String matn uchun ishlatiladi. Nomni vazifaga qarab tanlang: a o‘rniga totalMinutes o‘qishga osonroq. Lokal o‘zgaruvchini o‘qishdan oldin qiymat bering.</p><p>Arifmetikada tur muhim: 7 / 2 natijasi 3, chunki ikkala operand butun. 7 / 2.0 esa 3.5. Qoldiq operatori % bilan 135 daqiqani 2 soat 15 daqiqaga ajratamiz. Hisoblashdan keyin doublega o‘tkazish yo‘qolgan kasrni tiklamaydi. Qavslar formulani aniq qiladi. final qiymatni qayta tayinlashni cheklaydi; o‘zgarmas koeffitsient uchun ishlating.</p><p>Scanner konsoldan ma’lumot oladi. nextInt butun tokenni o‘qiydi; foydalanuvchi harf kiritsa xato chiqishi mumkin. Hozir topshiriqda son kiritish shartini aniq belgilaymiz, 13-haftada xatolarni boshqaramiz. nextInt ortidan nextLine chaqirilganda qator oxiri qolgan bo‘lishi mumkin; butun qatorni nextLine orqali o‘qib keyin parse qilish ham bir yechim.</p><p>Quyidagi misolda Scanner konsol o‘rniga belgilangan 135 matnidan o‘qiydi, shuning uchun natijani avtomatik tekshirish mumkin. Laboratoriyada uni new Scanner(System.in) bilan almashtiring. Qo‘shishdagi + matn operand bilan birikishni bildiradi. Pulga oid aniq hisoblar uchun double har doim mos emas; bu bosqichda daqiqa, dona va butun birliklardan foydalanamiz.</p><h2>Ishlaydigan namuna</h2><pre><code>import java.util.Scanner;\npublic class Week02 {\n    public static void main(String[] args) {\n        Scanner input = new Scanner(&quot;135&quot;);\n        int totalMinutes = input.nextInt();\n        System.out.println(totalMinutes / 60 + &quot; soat &quot; + totalMinutes % 60 + &quot; daqiqa&quot;);\n        System.out.println(7 / 2.0);\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week02.java\njava Week02</code></pre><h2>Kutilgan chiqish</h2><pre><code>2 soat 15 daqiqa\n3.5</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>int / int kasr qismini tashlaydi.</li><li>O‘zgaruvchini e’lon qilish unga avtomatik lokal qiymat bermaydi.</li><li>Ko‘paytirish natijasi int chegarasidan oshishi mumkin.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "02.2.1 Video — o‘zbekcha: Java dasturlash tilidan darslar 3 Tiplar va o`zgaruvchilar haqida ma`lumot",
+          "description": "Mavzu: O‘zgaruvchilar, operatorlar va konsoldan kiritish. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=rCCLyHR5P1I",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 3 Tiplar va o`zgaruvchilar haqida ma`lumot",
+          "sourceUrl": "https://www.youtube.com/watch?v=rCCLyHR5P1I",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "02.2.2 Video — o‘zbekcha: Java dasturlash tilidan darslar 6 Scanner Klasi haqida",
+          "description": "Mavzu: O‘zgaruvchilar, operatorlar va konsoldan kiritish. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=4sedhBrnYUs",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 6 Scanner Klasi haqida",
+          "sourceUrl": "https://www.youtube.com/watch?v=4sedhBrnYUs",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "02.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: O‘zgaruvchilar, operatorlar va konsoldan kiritish</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>Scanner manbasini System.in qiling va 0, 60, 135 kiriting.</li><li>7 / 2 va 7 / 2.0 natijalarini izohlang.</li><li>Selsiydan Farengeytga o‘tkazuvchi formula yozing: F = C * 9.0 / 5 + 32.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Masalaga mos ma’lumot turini tanlash</li><li>Scanner orqali son o‘qish va formula hisoblash</li><li>int / int kasr qismini tashlaydi.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        },
+        {
+          "title": "02.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>TimeConverter.java: 0..86400 oralig‘idagi butun son sekundni soat, daqiqa va sekundga ajrating. Chiqish h:m:s ko‘rinishida; nol bilan to‘ldirish shart emas. Ushbu haftada kirish to‘g‘ri son deb olinadi.</p><h2>Qabul mezonlari</h2><ul><li>0 → 0:0:0</li><li>3661 → 1:1:1</li><li>86400 → 24:0:0</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “02-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 4
+        }
+      ]
+    },
+    {
+      "title": "03-hafta. Shartlar va chegaraviy qiymatlar",
+      "description": "if/else orqali qaror yozish • Chegara holatlarini test qilish",
+      "contents": [
+        {
+          "title": "03.1 Nazariya — Shartlar va chegaraviy qiymatlar",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Shartlar va chegaraviy qiymatlar</h1><h2>Dars oxirida</h2><ul><li>if/else orqali qaror yozish</li><li>Chegara holatlarini test qilish</li></ul><h2>Tushuntirish</h2><p>Shart operatori dastur yo‘lini tanlaydi. if ichidagi ifoda boolean bo‘lishi kerak. else if bir nechta tartibli holat uchun, else qolgan holatlar uchun xizmat qiladi. Ballni bahoga aylantirishda avval 0..100 diapazonini tekshiramiz; keyin yuqoridan pastga chegara qo‘yamiz. Aks holda 105 ham eng yuqori bahoga tushib qoladi.</p><p>== tenglikni, != teng emaslikni, &gt;= va &lt;= chegarani ham qamrab olishni bildiradi. &amp;&amp; ikkala shart rost bo‘lishini, || kamida bittasi rost bo‘lishini talab qiladi. &amp;&amp; va || qisqa tutashuv qiladi: natija ma’lum bo‘lsa o‘ng ifoda baholanmaydi. Masalan, divisor != 0 &amp;&amp; total / divisor &gt; 3 bo‘lishdan oldin nolni tekshiradi.</p><p>Shartlar jadvalini avval qog‘ozga yozing. Bizning mashq: 0..59 qayta ishlash, 60..79 qoniqarli, 80..100 yaxshi. Bu o‘quv misolidagi chegaralar, universitetning rasmiy baholash shkalasi emas. 59, 60, 79, 80, -1 va 101 sinovlari oddiy 75 sinovidan ko‘proq xato topishi mumkin.</p><p>Bir qiymatga qarab menyu tanlashda switch qulay. An’anaviy case bloklarida break unutish keyingi blokka o‘tishga olib kelishi mumkin. Boshlanishida oddiy if/else bilan to‘g‘ri yechim tuzing, keyin menyuni switch bilan qayta yozing. Matnlarni == bilan solishtirmang; mazmun uchun equals ishlatiladi. Bu farqni 7-haftada mashq qilamiz.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week03 {\n    public static void main(String[] args) {\n        int score = 80;\n        if (score &lt; 0 || score &gt; 100) System.out.println(&quot;Noto&#x27;g&#x27;ri ball&quot;);\n        else if (score &gt;= 80) System.out.println(&quot;Yaxshi&quot;);\n        else if (score &gt;= 60) System.out.println(&quot;Qoniqarli&quot;);\n        else System.out.println(&quot;Qayta ishlash&quot;);\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week03.java\njava Week03</code></pre><h2>Kutilgan chiqish</h2><pre><code>Yaxshi</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>= qiymat beradi, == solishtiradi.</li><li>if dan keyingi ortiqcha ; bo‘sh shart tanasini yaratadi.</li><li>Keng shartni boshiga qo‘yish tor shartga yetib bormaslikka olib keladi.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "03.2.1 Video — o‘zbekcha: Java dasturlash tilidan darslar 9 if operatori",
+          "description": "Mavzu: Shartlar va chegaraviy qiymatlar. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=DlEQ_SkmjLM",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 9 if operatori",
+          "sourceUrl": "https://www.youtube.com/watch?v=DlEQ_SkmjLM",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "03.2.2 Video — o‘zbekcha: Java dasturlash tilidan darslar 19 Switch haqida",
+          "description": "Mavzu: Shartlar va chegaraviy qiymatlar. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=q2iHfJqM8O0",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 19 Switch haqida",
+          "sourceUrl": "https://www.youtube.com/watch?v=q2iHfJqM8O0",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "03.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Shartlar va chegaraviy qiymatlar</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>Namunadagi score qiymatini chegara qiymatlariga almashtiring.</li><li>Musbat/manfiy/nol aniqlagich yarating.</li><li>1, 2, 0 buyruqlarini taniydigan menyu yozing; qolganida “Noma’lum buyruq”.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>if/else orqali qaror yozish</li><li>Chegara holatlarini test qilish</li><li>= qiymat beradi, == solishtiradi.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        },
+        {
+          "title": "03.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>Ticket.java: yosh 0..120 oralig‘ida. 0..6 uchun “Bepul”, 7..17 uchun “Bolalar”, 18..59 uchun “Oddiy”, 60..120 uchun “Imtiyozli”, boshqa qiymat uchun “Noto‘g‘ri yosh” chiqaring.</p><h2>Qabul mezonlari</h2><ul><li>6 → Bepul; 7 → Bolalar</li><li>17 → Bolalar; 18 → Oddiy</li><li>59 → Oddiy; 60 → Imtiyozli</li><li>-1 va 121 → Noto‘g‘ri yosh</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “03-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 4
+        }
+      ]
+    },
+    {
+      "title": "04-hafta. Sikllar va algoritmik fikrlash",
+      "description": "for va while bilan takrorlash • Sikl tugash shartini asoslash",
+      "contents": [
+        {
+          "title": "04.1 Nazariya — Sikllar va algoritmik fikrlash",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Sikllar va algoritmik fikrlash</h1><h2>Dars oxirida</h2><ul><li>for va while bilan takrorlash</li><li>Sikl tugash shartini asoslash</li></ul><h2>Tushuntirish</h2><p>Bir xil amal ko‘p marta kerak bo‘lsa sikl yozamiz. for boshlang‘ich qiymat, davom etish sharti va yangilanishni bir joyda beradi. Takrorlar soni oldindan ma’lum bo‘lsa qulay. while shart rost bo‘lganda davom etadi; foydalanuvchi chiqish buyrug‘i berguncha ishlaydigan menyuga mos. do/while tanani kamida bir marta bajaradi.</p><p>Yig‘uvchi o‘zgaruvchi sikldan oldin 0 bo‘ladi. 1..n yig‘indisida har qadamda i qo‘shiladi. i=1, n=5 uchun qo‘lda jadval tuzing: qadamlar oxirida sum 1, 3, 6, 10, 15 bo‘ladi. Shu jadval dastur izini tushunishga yordam beradi. Sikl ichida sum=0 yozilsa oldingi natija yo‘qoladi.</p><p>Siklning to‘xtashini tekshiring: hisoblagich chegaraga yaqinlashyaptimi? while ichida o‘zgaruvchi yangilanmasa cheksiz takrorlanishi mumkin. break eng yaqin sikldan chiqadi; continue joriy qadamning qolganini tashlab keyingi takrorga o‘tadi. Ularni shartlarni yashirish uchun ortiqcha ishlatmang.</p><p>Ichma-ich sikl jadval yaratishi mumkin: tashqi sikl satrlar, ichki sikl ustunlar uchun. n ta elementni bir marta ko‘rish O(n), n*n juftlikni ko‘rish O(n²) ish hajmiga olib keladi. Hozir bu belgilarni isbotlashdan ko‘ra amallar sonini sanang. 0, 1 va ko‘p takror holatini tekshirish chegaradagi xatolarni ochadi.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week04 {\n    public static void main(String[] args) {\n        int sum = 0;\n        for (int i = 1; i &lt;= 5; i++) sum += i;\n        System.out.println(sum);\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week04.java\njava Week04</code></pre><h2>Kutilgan chiqish</h2><pre><code>15</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>&lt; va &lt;= orasida bitta takror farqi bor.</li><li>Yig‘uvchini sikl ichida qayta nollamang.</li><li>while davom etishi uchun emas, tugashi uchun ham sabab bo‘lsin.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "04.2.1 Video — o‘zbekcha: Java dasturlash tilidan darslar 15 Sikl While haqida",
+          "description": "Mavzu: Sikllar va algoritmik fikrlash. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=PPoZho4XsuI",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 15 Sikl While haqida",
+          "sourceUrl": "https://www.youtube.com/watch?v=PPoZho4XsuI",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "04.2.2 Video — o‘zbekcha: Java dasturlash tilidan darslar 16 Sikl For",
+          "description": "Mavzu: Sikllar va algoritmik fikrlash. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=zEroZ1eXdrk",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 16 Sikl For",
+          "sourceUrl": "https://www.youtube.com/watch?v=zEroZ1eXdrk",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "04.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Sikllar va algoritmik fikrlash</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>1..5 yig‘indisini for, so‘ng while bilan hisoblang.</li><li>1..20 ichidagi juft sonlarni chiqaring.</li><li>3x4 yulduzchali jadvalni ichma-ich sikl bilan yozing.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>for va while bilan takrorlash</li><li>Sikl tugash shartini asoslash</li><li>&lt; va &lt;= orasida bitta takror farqi bor.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        },
+        {
+          "title": "04.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>DigitSum.java: 0..1000000000 butun sonning raqamlari yig‘indisini while bilan hisoblang. Har qadamda % 10 va / 10 dan foydalaning. Kirish to‘g‘ri, manfiy emas deb olinadi. Sonni Stringga aylantirmang.</p><h2>Qabul mezonlari</h2><ul><li>0 → 0</li><li>507 → 12</li><li>1000000000 → 1</li><li>9999 → 36</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “04-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 4
+        }
+      ]
+    },
+    {
+      "title": "05-hafta. Metodlar va masalani qismlarga ajratish",
+      "description": "Parametr va qaytish qiymatini ishlatish • Konsolni hisoblash mantiqidan ajratish",
+      "contents": [
+        {
+          "title": "05.1 Nazariya — Metodlar va masalani qismlarga ajratish",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Metodlar va masalani qismlarga ajratish</h1><h2>Dars oxirida</h2><ul><li>Parametr va qaytish qiymatini ishlatish</li><li>Konsolni hisoblash mantiqidan ajratish</li></ul><h2>Tushuntirish</h2><p>Metod nomlangan vazifani bajaradi. Parametr metodga kiruvchi ma’lumot; return natijani chaqiruvchiga qaytaradi. int sum(int a, int b) ikki butun son oladi va butun natija beradi. void natija qaytarmaslikni bildiradi. println qilish va return qilish bir xil emas: chiqarilgan sonni boshqa hisoblashga bevosita uzata olmaysiz.</p><p>Metodga bitta aniq mas’uliyat bering. Masalan, isEven sonning juftligini tekshirsin, foydalanuvchiga savol bermasin. main kirishni o‘qib, metodni chaqirib, natijani chiqarsin. Shunday tuzilma metodni ko‘p kirishlarda konsolsiz tekshirishga imkon beradi. Metodning shartnomasida ruxsat etilgan kirishlar va natija ma’nosi yoziladi.</p><p>Java argumentlarni qiymat bo‘yicha uzatadi. int parametr qiymatini metod ichida almashtirish chaqiruvchining int o‘zgaruvchisini o‘zgartirmaydi. Obyekt havolasining nusxasi uzatilganda obyekt holatini o‘zgartirish mumkin; massivlarda buni keyin ko‘ramiz. Lokal o‘zgaruvchi o‘z blokidan tashqarida ko‘rinmaydi.</p><p>Overloading bir nomdagi metodlarning parametr ro‘yxati farqlanishidir. Faqat qaytish turini o‘zgartirish yetmaydi. Boshlanishida ko‘p variant o‘rniga sodda aniq metodlar yozing. Namunadagi clamp ballni oraliqqa sig‘diradi: past bo‘lsa pastki, yuqori bo‘lsa yuqori chegara qaytadi. Bu validatsiya o‘rniga barcha joyda ishlatilishi kerak degani emas; noto‘g‘ri kirishni rad etish talab qilingan joyda yashirib tuzatish xato.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week05 {\n    static int clamp(int value, int min, int max) {\n        if (value &lt; min) return min;\n        if (value &gt; max) return max;\n        return value;\n    }\n    public static void main(String[] args) {\n        System.out.println(clamp(105, 0, 100));\n        System.out.println(clamp(72, 0, 100));\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week05.java\njava Week05</code></pre><h2>Kutilgan chiqish</h2><pre><code>100\n72</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>return dan keyingi bajarilmaydigan kodni yozmang.</li><li>Faqat qaytish turi overloading yaratmaydi.</li><li>Parametr nomi chaqiruvchi o‘zgaruvchi nomi bilan bir xil bo‘lishi shart emas.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "05.2.1 Video — inglizcha qo‘shimcha: Java methods explained in 10+ minutes! 📞",
+          "description": "Mavzu: Metodlar va masalani qismlarga ajratish. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=v5p_SUfi710",
+          "languageCode": "en",
+          "authorName": "Bro Code",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java methods explained in 10+ minutes! 📞",
+          "sourceUrl": "https://www.youtube.com/watch?v=v5p_SUfi710",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "05.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Metodlar va masalani qismlarga ajratish</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>maxOfThree metodini yozing va teng sonlar bilan tekshiring.</li><li>isEven metodini printlnsiz yozing.</li><li>clamp metodining min &lt;= max shartini READMEda hujjatlashtiring.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Parametr va qaytish qiymatini ishlatish</li><li>Konsolni hisoblash mantiqidan ajratish</li><li>return dan keyingi bajarilmaydigan kodni yozmang.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "05.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>NumberTools.java: static int digitSum(int n), static boolean isPrime(int n) yozing. n 0..1000000. main faqat namuna chaqiruvlarini ko‘rsatsin. isPrime 0 va 1 uchun false qaytarsin. Sinovlar jadvalini ilova qiling.</p><h2>Qabul mezonlari</h2><ul><li>digitSum(507) → 12; digitSum(0) → 0</li><li>isPrime(0), isPrime(1), isPrime(9) → false</li><li>isPrime(2), isPrime(97) → true</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “05-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        }
+      ]
+    },
+    {
+      "title": "06-hafta. Massivlar va qidirish",
+      "description": "Massiv indekslari bilan xavfsiz ishlash • Minimum, o‘rtacha va chiziqli qidirish yozish",
+      "contents": [
+        {
+          "title": "06.1 Nazariya — Massivlar va qidirish",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Massivlar va qidirish</h1><h2>Dars oxirida</h2><ul><li>Massiv indekslari bilan xavfsiz ishlash</li><li>Minimum, o‘rtacha va chiziqli qidirish yozish</li></ul><h2>Tushuntirish</h2><p>Massiv bir turdagi elementlar ketma-ketligi bo‘lib, uzunligi yaratilganda belgilanadi. int[] scores = {70, 90, 80} uch elementga ega. Birinchi indeks 0, oxirgisi length-1. scores[3] bu massivda mavjud emas. for shartida i &lt; scores.length yozish shu chegarani saqlaydi.</p><p>Yig‘indi uchun 0 dan boshlash to‘g‘ri, minimum uchun esa 0 noto‘g‘ri bo‘lishi mumkin. Faqat musbat sonlardan iborat massivda bunday minimum sun’iy 0 bo‘lib qoladi. Massiv bo‘sh emasligi tekshirilgach, minimumni birinchi elementdan boshlang. O‘rtacha uchun butun bo‘lishga tushmaslik maqsadida yig‘indini doublega o‘tkazing; bo‘sh massiv uchun natija siyosatini oldindan belgilang.</p><p>Chiziqli qidiruv elementlarni chapdan o‘ngga tekshiradi. Topilganda indeks, topilmaganda -1 qaytarish keng tarqalgan shartnoma. Takrorlangan qiymatlarda birinchi uchragani qaytarilishini aniq ayting. for-each qiymatlarni o‘qishga qulay, lekin indeks kerak bo‘lsa oddiy for tushunarliroq.</p><p>Massiv havola turidir. int[] other = scores yangi nusxa yaratmaydi: ikkala o‘zgaruvchi bir massivni ko‘rsatadi. other[0] almashtirilsa scores[0] ham o‘zgaradi. Mustaqil nusxa uchun clone yoki Arrays.copyOf ishlatiladi. Birinchi semestrda kod yozish bilan birga kirish holati o‘zgaradimi degan savolni doim bering.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week06 {\n    static int indexOf(int[] values, int target) {\n        for (int i = 0; i &lt; values.length; i++) {\n            if (values[i] == target) return i;\n        }\n        return -1;\n    }\n    public static void main(String[] args) {\n        int[] scores = {70, 90, 80};\n        System.out.println(indexOf(scores, 90));\n        System.out.println(indexOf(scores, 60));\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week06.java\njava Week06</code></pre><h2>Kutilgan chiqish</h2><pre><code>1\n-1</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Oxirgi indeks length emas, length-1.</li><li>Massiv uzunligi length; length() emas.</li><li>Massivni boshqa o‘zgaruvchiga tayinlash nusxa olish emas.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "06.2.1 Video — inglizcha qo‘shimcha: Intro to Java Programming - Course for Absolute Beginners",
+          "description": "Mavzu: Massivlar va qidirish. Videoning 4038-sekundidan tegishli bo‘limni ko‘ring. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=GoXwIVyNvX0&t=4038s",
+          "languageCode": "en",
+          "authorName": "freeCodeCamp.org",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Intro to Java Programming - Course for Absolute Beginners",
+          "sourceUrl": "https://www.youtube.com/watch?v=GoXwIVyNvX0",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "06.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Massivlar va qidirish</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>Massivdagi eng katta qiymatni toping; bo‘sh massivni alohida tekshiring.</li><li>Massiv va uning clone nusxasini o‘zgartirib farqini ko‘ring.</li><li>Chiziqli qidiruvda elementlar necha marta tekshirilganini hisoblang.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Massiv indekslari bilan xavfsiz ishlash</li><li>Minimum, o‘rtacha va chiziqli qidirish yozish</li><li>Oxirgi indeks length emas, length-1.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "06.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>ScoreStats.java: 1..100 ta 0..100 ball uchun minimum, maksimum, o‘rtacha va 60 dan kam ballar sonini hisoblang. Hisoblash metodlariga int[] uzating. Bo‘sh massivda “Ma’lumot yo‘q” yozing; nolga bo‘lmang.</p><h2>Qabul mezonlari</h2><ul><li>[70,90,80] → min70 max90 avg80.0 low0</li><li>[0,60,100] → min0 max100 avg53.333... low1</li><li>[55] → min55 max55 avg55.0 low1</li><li>[] → Ma’lumot yo‘q</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “06-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        }
+      ]
+    },
+    {
+      "title": "07-hafta. String va matnni qayta ishlash",
+      "description": "Matn mazmunini to‘g‘ri solishtirish • Kiritilgan matnni tozalash va tahlil qilish",
+      "contents": [
+        {
+          "title": "07.1 Nazariya — String va matnni qayta ishlash",
+          "contentType": "TEXT",
+          "contentBody": "<h1>String va matnni qayta ishlash</h1><h2>Dars oxirida</h2><ul><li>Matn mazmunini to‘g‘ri solishtirish</li><li>Kiritilgan matnni tozalash va tahlil qilish</li></ul><h2>Tushuntirish</h2><p>String o‘zgarmas matn obyektidir. trim yoki toUpperCase yangi natija qaytaradi; uni saqlamasangiz eski matn o‘zgarishsiz qoladi. String name = raw.trim() chetdagi oddiy bo‘shliqlarni olib tashlaydi. isBlank faqat bo‘shliqdan iborat matnni ham aniqlaydi. Bu usullar matnni tekshirishga yordam beradi, ammo ma’nosini avtomatik to‘g‘rilamaydi.</p><p>== havolalarning aynan bir obyektni ko‘rsatishini tekshiradi. equals matn mazmunini solishtiradi. Literal bilan test qilganda == tasodifan kutilgan natija berishi mumkin; kiritilgan matnda bunga tayanmang. null bo‘lishi mumkin bo‘lgan o‘zgaruvchida metod chaqirish xato; “java”.equals(value) null uchun false qaytaradi.</p><p>length UTF-16 kod birliklari sonini beradi. charAt indeks bilan ishlaydi, biroq ayrim emoji ikki kod birlikdan iborat; bu semestrning harf bo‘yicha oddiy mashqlari lotin ASCII belgilariga cheklanadi. substring boshlanishni oladi, tugash indeksini olmaydi. 0..3 oralig‘i birinchi uch kod birlikni beradi.</p><p>split muntazam ifoda qabul qiladi. Oddiy vergul bilan ajratilgan mashq matnini bo‘lish mumkin, ammo qo‘shtirnoqli haqiqiy CSV formatini shunchaki split bilan to‘liq tahlil qilib bo‘lmaydi. Ko‘p marta matn yig‘ishda StringBuilder qulay. Foydalanuvchi ismini faqat bir xil qolipga majburlashdan ko‘ra bo‘sh emasligi va ruxsat etilgan uzunligini tekshirish odatda maqsadga muvofiq.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week07 {\n    public static void main(String[] args) {\n        String raw = &quot;  Java asoslari  &quot;;\n        String clean = raw.trim();\n        System.out.println(clean);\n        System.out.println(&quot;java&quot;.equalsIgnoreCase(&quot;JAVA&quot;));\n        System.out.println(clean.split(&quot; &quot;).length);\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week07.java\njava Week07</code></pre><h2>Kutilgan chiqish</h2><pre><code>Java asoslari\ntrue\n2</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>equals va == vazifalari boshqa.</li><li>trim natijasini o‘zgaruvchiga saqlang.</li><li>Bo‘sh satrni split qilishdan oldin tekshiring.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "07.2.1 Video — inglizcha qo‘shimcha: Java String methods 💬",
+          "description": "Mavzu: String va matnni qayta ishlash. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=P9hEmbfdiuc",
+          "languageCode": "en",
+          "authorName": "Bro Code",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java String methods 💬",
+          "sourceUrl": "https://www.youtube.com/watch?v=P9hEmbfdiuc",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "07.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: String va matnni qayta ishlash</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>Bo‘sh, faqat bo‘shliqli va odatiy satrni isBlank bilan tekshiring.</li><li>new String(&quot;java&quot;) bilan equals va == farqini kuzating.</li><li>StringBuilder yordamida 1 dan 5 gacha sonlarni vergul bilan birlashtiring.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Matn mazmunini to‘g‘ri solishtirish</li><li>Kiritilgan matnni tozalash va tahlil qilish</li><li>equals va == vazifalari boshqa.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "07.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>TextAnalyzer.java: lotin ASCII harflari va bo‘shliqlardan iborat qator uchun so‘zlar hamda unli harflar (a,e,i,o,u; katta-kichik farqsiz) sonini hisoblang. Ketma-ket bo‘shliqlar bitta ajratuvchi deb olinadi; bo‘sh satrda 0 so‘z.</p><h2>Qabul mezonlari</h2><ul><li>“Java til” → 2 so‘z, 3 unli</li><li>“   ” → 0 so‘z, 0 unli</li><li>“  SALOM   Java ” → 2 so‘z, 4 unli</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “07-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        }
+      ]
+    },
+    {
+      "title": "08-hafta. Debugging, testlash va oraliq nazorat",
+      "description": "Xatoni takrorlanadigan misol bilan ko‘rsatish • Normal, chegara va noto‘g‘ri kirish testlarini ajratish",
+      "contents": [
+        {
+          "title": "08.1 Nazariya — Debugging, testlash va oraliq nazorat",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Debugging, testlash va oraliq nazorat</h1><h2>Dars oxirida</h2><ul><li>Xatoni takrorlanadigan misol bilan ko‘rsatish</li><li>Normal, chegara va noto‘g‘ri kirish testlarini ajratish</li></ul><h2>Tushuntirish</h2><p>Xatolarni uch guruhda kuzatamiz: sintaksis xatosi kompilyatsiyaga to‘sqinlik qiladi; bajarilish xatosi ish vaqtida yuz beradi; mantiqiy xato dastur ishlasa ham noto‘g‘ri natija beradi. Dastur yiqilmagani uning to‘g‘riligiga dalil emas. Xato haqidagi hisobotda kirish, kutilgan natija, amaldagi natija va takrorlash buyrug‘i bo‘lsin.</p><p>Debugger breakpointda dasturni to‘xtatadi. Step over keyingi qadamga o‘tadi; step into chaqirilayotgan metod ichiga kiradi. O‘zgaruvchilar oynasida qiymatlarni kuzating. Yig‘indi noto‘g‘ri bo‘lsa har qatordan shubhalanish o‘rniga birinchi noto‘g‘ri qiymat paydo bo‘lgan qadamni toping. println ham sodda kuzatuv uchun foydali, lekin tayyor yechim chiqishini keraksiz diagnostika bilan buzmasin.</p><p>Testning kutilgan javobini tekshirilayotgan algoritmning aynan nusxasi bilan hisoblamang: bitta xato ikkala joyga ko‘chadi. Kichik misolni qo‘lda hisoblang. Minimum topishda [8,9], [-3,-1], bitta element va bo‘sh kirish alohida holatlar. Chegaraviy sinov shart operatorlaridagi tenglik xatolarini topadi.</p><p>Quyida oddiy tekshiruv metodi kutilgan qiymat bilan natijani solishtiradi va farqda AssertionError beradi. Bu Java assert kalit so‘ziga bog‘liq emas va -ea talab qilmaydi. Keyingi kurslarda JUnit bilan ishlash mumkin. Hozir tashqi kutubxonasiz takrorlanadigan sinov yozishni o‘rganamiz. Gitda kichik mazmunli commitlar yordamida ishlaydigan holatlarni saqlash, READMEda buyruqlarni yozish ham sifatning bir qismi.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week08 {\n    static int max(int a, int b) { return a &gt; b ? a : b; }\n    static void check(int expected, int actual) {\n        if (expected != actual) throw new AssertionError(expected + &quot; != &quot; + actual);\n    }\n    public static void main(String[] args) {\n        check(9, max(8, 9));\n        check(-1, max(-3, -1));\n        check(5, max(5, 5));\n        System.out.println(&quot;3 test o&#x27;tdi&quot;);\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week08.java\njava Week08</code></pre><h2>Kutilgan chiqish</h2><pre><code>3 test o&#x27;tdi</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Faqat odatiy kirish bilan cheklanmang.</li><li>Mantiqiy xatoda kompilyator yordam bermasligi mumkin.</li><li>Testni o‘chirish xatoni tuzatish emas.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "08.2.1 Video — o‘zbekcha: Java dasturlash tilidan darslar 14 Mahluq o`yini davomi Xatolarni tuzatamiz",
+          "description": "Mavzu: Debugging, testlash va oraliq nazorat. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=mlEemeFbqLw",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 14 Mahluq o`yini davomi Xatolarni tuzatamiz",
+          "sourceUrl": "https://www.youtube.com/watch?v=mlEemeFbqLw",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "08.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Debugging, testlash va oraliq nazorat</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>max metodidagi &gt; ni &lt; ga o‘zgartiring va qaysi test yiqilishini ko‘ring.</li><li>Breakpoint bilan birinchi noto‘g‘ri qaytishni toping.</li><li>Bug-report.md: kirish, kutilgan, amaldagi natija va tuzatishni yozing.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Xatoni takrorlanadigan misol bilan ko‘rsatish</li><li>Normal, chegara va noto‘g‘ri kirish testlarini ajratish</li><li>Faqat odatiy kirish bilan cheklanmang.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "08.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>Oraliq amaliy ish: konsol orqali 5 ta 0..100 ball olib, massivga joylang; min, max, o‘rtacha va 60+ ballar sonini metodlarda hisoblang. Diapazondan tashqari sonni qayta so‘rang. 5 ta test va bitta topilgan xato hisobotini topshiring. Harf kiritishni boshqarish bu ishda talab qilinmaydi.</p><h2>Qabul mezonlari</h2><ul><li>[0,0,0,0,0] → avg0, pass0</li><li>[100,100,100,100,100] → avg100, pass5</li><li>[59,60,79,80,100] → avg75.6, pass4</li><li>-1 yoki 101 ball massivga saqlanmaydi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “08-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        }
+      ]
+    },
+    {
+      "title": "09-hafta. Klasslar, obyektlar va inkapsulyatsiya",
+      "description": "Predmet sohasini klass orqali modellashtirish • Obyekt holatini konstruktor va metodlarda himoyalash",
+      "contents": [
+        {
+          "title": "09.1 Nazariya — Klasslar, obyektlar va inkapsulyatsiya",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Klasslar, obyektlar va inkapsulyatsiya</h1><h2>Dars oxirida</h2><ul><li>Predmet sohasini klass orqali modellashtirish</li><li>Obyekt holatini konstruktor va metodlarda himoyalash</li></ul><h2>Tushuntirish</h2><p>Klass obyektlarning tuzilishi va xulqini belgilaydi. Student klassida name va score maydonlari hamda score ni yangilash metodi bo‘lishi mumkin. new har safar yangi obyekt yaratadi. Ikkita talaba bir klassdan yaratilsa ham holati mustaqil. Konstruktor boshlang‘ich holatni o‘rnatadi va klass bilan bir xil nomga ega, qaytish turi yozilmaydi.</p><p>Inkapsulyatsiya maydonlarni yashirish bilangina tugamaydi. Obyektning ruxsat etilgan holatini saqlash kerak. Ball 0..100 bo‘lsa, konstruktor ham yangilash metodi ham shu shartni tekshiradi. private maydonga tashqaridan istalgan qiymat berishni cheklaydi; public metod biznes qoidani bajaradi. Hamma maydon uchun majburiy setter yaratish shart emas.</p><p>this joriy obyektni bildiradi. Parametr va maydon nomi bir xil bo‘lsa this.score = score ularni ajratadi. static a’zo alohida obyektga tegishli emas; umumiy yordamchi hisoblashlar uchun ishlatilishi mumkin. Talabaning shaxsiy ballini static qilish barcha obyektlar uchun bir qiymat yaratadi va modelni buzadi.</p><p>Namunada noto‘g‘ri ball uchun IllegalArgumentException ishlatiladi. Hozir uni shartnoma buzilganda ishni to‘xtatish sifatida ko‘ring, ushlab foydalanuvchiga xabar berishni 13-haftada o‘rganamiz. Obyektni chiqarishda toString qisqa mazmun beradi. Maxfiy qiymatlarni toStringga kiritishdan saqlaning; mashqlarda namuna ma’lumot ishlating.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week09 {\n    static class Student {\n        private final String name;\n        private int score;\n        Student(String name, int score) { this.name = name; setScore(score); }\n        void setScore(int score) {\n            if (score &lt; 0 || score &gt; 100) throw new IllegalArgumentException(&quot;Ball 0..100&quot;);\n            this.score = score;\n        }\n        public String toString() { return name + &quot;: &quot; + score; }\n    }\n    public static void main(String[] args) {\n        Student student = new Student(&quot;Ali&quot;, 70);\n        student.setScore(85);\n        System.out.println(student);\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week09.java\njava Week09</code></pre><h2>Kutilgan chiqish</h2><pre><code>Ali: 85</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Konstruktor oldiga void yozmang.</li><li>private maydonni public setter bilan shartsiz ochish himoyani yo‘qotadi.</li><li>Shaxsiy holatni static qilmang.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "09.2.1 Video — o‘zbekcha: Java darsi  21 OOP haqida va obyektlardan nasl olish",
+          "description": "Mavzu: Klasslar, obyektlar va inkapsulyatsiya. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=YRdWqNb0yjs",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java darsi  21 OOP haqida va obyektlardan nasl olish",
+          "sourceUrl": "https://www.youtube.com/watch?v=YRdWqNb0yjs",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "09.2.2 Video — o‘zbekcha: Java dasturlash tilidan darslar 25 toString metodini tatbiq qilamiz",
+          "description": "Mavzu: Klasslar, obyektlar va inkapsulyatsiya. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=wF-0nfL0W2o",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 25 toString metodini tatbiq qilamiz",
+          "sourceUrl": "https://www.youtube.com/watch?v=wF-0nfL0W2o",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "09.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Klasslar, obyektlar va inkapsulyatsiya</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>Ikki Student yarating, birining ballini o‘zgartirib ikkinchisini tekshiring.</li><li>Konstruktor va setterga -1 berib shart buzilishini kuzating.</li><li>name uchun bo‘sh emaslik shartini qo‘shing.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Predmet sohasini klass orqali modellashtirish</li><li>Obyekt holatini konstruktor va metodlarda himoyalash</li><li>Konstruktor oldiga void yozmang.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        },
+        {
+          "title": "09.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>Book klassi: private final id va title, private borrowed. Konstruktor bo‘sh id/title ni rad etsin. borrow() band kitob uchun false, aks holda band qilib true qaytarsin. giveBack() bo‘sh kitob uchun false, aks holda qaytarib true qaytarsin. Setter orqali borrowedni tashqaridan almashtirmang.</p><h2>Qabul mezonlari</h2><ul><li>Yangi kitobni birinchi borrow → true; ikkinchi → false</li><li>giveBack → true; qayta giveBack → false</li><li>Ikki kitob holati mustaqil</li><li>Bo‘sh nom konstruktor tomonidan rad etiladi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “09-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 4
+        }
+      ]
+    },
+    {
+      "title": "10-hafta. Meros olish va kompozitsiya",
+      "description": "is-a va has-a munosabatlarini farqlash • Override va superni maqsadli ishlatish",
+      "contents": [
+        {
+          "title": "10.1 Nazariya — Meros olish va kompozitsiya",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Meros olish va kompozitsiya</h1><h2>Dars oxirida</h2><ul><li>is-a va has-a munosabatlarini farqlash</li><li>Override va superni maqsadli ishlatish</li></ul><h2>Tushuntirish</h2><p>Meros olish umumiy xulqni kengaytirish imkonini beradi. PrintedBook — Book turi bo‘lishi mumkin; Library esa Book emas, unda kitoblar bor. Birinchisi is-a, ikkinchisi has-a. Faqat kodni qayta ishlatish istagi uchun noto‘g‘ri meros zanjiri qurmaslik kerak. Ko‘p holatda obyektni maydon sifatida saqlash, ya’ni kompozitsiya, modelni tushunarli qiladi.</p><p>extends bilan ota klass tanlanadi. Java klassi faqat bitta klassdan bevosita meros oladi. super konstruktorni yoki ota metodni chaqirishga yordam beradi. Ota konstruktor parametr talab qilsa farzand konstruktori kerakli qiymatni uzatadi. Ota klass private maydoniga farzand to‘g‘ridan-to‘g‘ri kira olmaydi; mos metod orqali ishlaydi.</p><p>Override — meros olingan metod xulqini mos imzo bilan almashtirish. @Override yozuvi xato imzoni kompilyatorga tekshirtiradi. Overloading esa bitta nomdagi turli parametrli metodlar. Bu tushunchalarni aralashtirmang. Ota turidagi o‘zgaruvchi farzand obyektini ushlashi mumkin; chaqirilgan instance metodning mos override varianti bajariladi.</p><p>Namunada Resource nomli umumiy resurs va VideoLesson bor. Haqiqiy loyiha uchun resurslar soni kam bo‘lsa bu ierarxiya ortiqcha bo‘lishi mumkin; maqsad polymorphismni ko‘rsatish. Dizaynni chizmada tushuntiring: qaysi ma’lumot umumiy, qaysi xulq farq qiladi, foydalanuvchi qaysi birini chaqiradi. Farzand klass ota klassning va’dalarini buzmasligi kerak.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week10 {\n    static class Resource {\n        private final String title;\n        Resource(String title) { this.title = title; }\n        String label() { return title; }\n    }\n    static class VideoLesson extends Resource {\n        VideoLesson(String title) { super(title); }\n        @Override String label() { return &quot;Video: &quot; + super.label(); }\n    }\n    public static void main(String[] args) {\n        Resource item = new VideoLesson(&quot;Java&quot;);\n        System.out.println(item.label());\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week10.java\njava Week10</code></pre><h2>Kutilgan chiqish</h2><pre><code>Video: Java</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>extends “ichida bor” degani emas.</li><li>@Override xatolarni erta aniqlashga yordam beradi.</li><li>Farzand ota private maydonini to‘g‘ridan-to‘g‘ri o‘qimaydi.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "10.2.1 Video — o‘zbekcha: Java dasturlash tilidan darslar 23 Nasl olishni amalda bajaramiz",
+          "description": "Mavzu: Meros olish va kompozitsiya. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=nNM3ND15LH8",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 23 Nasl olishni amalda bajaramiz",
+          "sourceUrl": "https://www.youtube.com/watch?v=nNM3ND15LH8",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "10.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Meros olish va kompozitsiya</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>Resource va TextLesson klasslarini yozing.</li><li>Ikkalasini Resource[] orqali aylanib label ni chaqiring.</li><li>Library has-a Book munosabatini kichik chizma bilan ifodalang.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>is-a va has-a munosabatlarini farqlash</li><li>Override va superni maqsadli ishlatish</li><li>extends “ichida bor” degani emas.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "10.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>LibraryItem ota klassiga id va title bering. PrintedBook pageCount, EBook sizeKb maydoniga ega bo‘lsin. description() har bir turga mos matn qaytarsin. Barcha obyektlarni LibraryItem[]da saqlab bitta siklda chiqaring. Manfiy sahifa/hajm rad etilsin.</p><h2>Qabul mezonlari</h2><ul><li>PrintedBook tavsifida sahifa soni bor</li><li>EBook tavsifida KB hajmi bor</li><li>Ota turidagi havola orqali to‘g‘ri override chaqiriladi</li><li>0 yoki manfiy pageCount rad etiladi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “10-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        }
+      ]
+    },
+    {
+      "title": "11-hafta. Interfeyslar va polimorfizm",
+      "description": "Xulq shartnomasini interface bilan berish • Kodga yangi amalga oshirishni ulash",
+      "contents": [
+        {
+          "title": "11.1 Nazariya — Interfeyslar va polimorfizm",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Interfeyslar va polimorfizm</h1><h2>Dars oxirida</h2><ul><li>Xulq shartnomasini interface bilan berish</li><li>Kodga yangi amalga oshirishni ulash</li></ul><h2>Tushuntirish</h2><p>Interfeys biror qobiliyatning shartnomasini ifodalaydi. Notifier “xabar yubora oladi” degani; xabar konsolga yoziladimi yoki boshqa yo‘l bilan yetkaziladimi, undan foydalanuvchi kod uchun alohida masala. implements bilan klass shartnomani bajaradi. Bir klass bir nechta interfeysni amalga oshirishi mumkin.</p><p>Interfeys turidagi parametr qabul qilgan metod konkret klassga kamroq bog‘lanadi. Masalan, report(Notifier n) faqat n.send ni biladi. ConsoleNotifier o‘rniga test uchun xabarni xotirada saqlaydigan variantni berish mumkin. Bu semestrdagi misollar haqiqiy email yoki SMS jo‘natmaydi; tashqi ta’sirsiz modellashtiramiz.</p><p>Abstract klass umumiy holat va qisman bajarilgan metodlarni bir joyda berishi mumkin; undan bevosita obyekt yaratilmaydi. Interfeys esa asosiy e’tiborni bajarilishi kerak bo‘lgan xulqqa qaratadi. Zamonaviy Java interfeyslarida default metod ham bo‘lishi mumkin, lekin bu mashqda oddiy abstract metod bilan cheklanamiz.</p><p>Polimorfizm bir xil chaqiruv turli obyektlarda mos xulqni bajarishidir. Har yangi tur uchun if (type.equals(...)) qo‘shish o‘rniga kerakli klassni shartnoma bilan ulash mumkin. Biroq ikkita oddiy ifni yo‘qotish uchungina o‘nlab klass yaratish ham shart emas. Dizaynni talablardagi o‘zgarish bilan asoslang: yangi format qo‘shilganda qaysi fayllar o‘zgaradi?</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week11 {\n    interface Notifier { void send(String message); }\n    static class ConsoleNotifier implements Notifier {\n        public void send(String message) { System.out.println(&quot;Xabar: &quot; + message); }\n    }\n    static void report(Notifier notifier) { notifier.send(&quot;Topshiriq tayyor&quot;); }\n    public static void main(String[] args) { report(new ConsoleNotifier()); }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week11.java\njava Week11</code></pre><h2>Kutilgan chiqish</h2><pre><code>Xabar: Topshiriq tayyor</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Interfeysdagi public metodni kuchsizroq kirish bilan amalga oshirmang.</li><li>Abstract klassdan new bilan bevosita obyekt olmang.</li><li>Shartnomani nom emas, kutilgan xulq ham belgilaydi.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "11.2.1 Video — o‘zbekcha: Java dasturlash tilidan darslar 22 Abstract klas haqida",
+          "description": "Mavzu: Interfeyslar va polimorfizm. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=i0G7nfgxkFo",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 22 Abstract klas haqida",
+          "sourceUrl": "https://www.youtube.com/watch?v=i0G7nfgxkFo",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "11.2.2 Video — inglizcha qo‘shimcha: Intro to Java Programming - Course for Absolute Beginners",
+          "description": "Mavzu: Interfeyslar va polimorfizm. Videoning 12323-sekundidan tegishli bo‘limni ko‘ring. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=GoXwIVyNvX0&t=12323s",
+          "languageCode": "en",
+          "authorName": "freeCodeCamp.org",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Intro to Java Programming - Course for Absolute Beginners",
+          "sourceUrl": "https://www.youtube.com/watch?v=GoXwIVyNvX0",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "11.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Interfeyslar va polimorfizm</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>UppercaseNotifier yozing; report metodini o‘zgartirmang.</li><li>ConsoleNotifier va yangi variantni bir massivda chaqiring.</li><li>Interfeys va abstract klass farqini o‘z misolingizda tushuntiring.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Xulq shartnomasini interface bilan berish</li><li>Kodga yangi amalga oshirishni ulash</li><li>Interfeysdagi public metodni kuchsizroq kirish bilan amalga oshirmang.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        },
+        {
+          "title": "11.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>ReportFormatter interfeysi format(String title, int count) metodiga ega. PlainFormatter “Java: 3”, CsvFormatter “Java,3” qaytarsin. Hisobot funksiyasi ReportFormatter qabul qilsin. CSV mashqida title ichida vergul yoki yangi qator bo‘lmasin; bu cheklovni hujjatlashtiring.</p><h2>Qabul mezonlari</h2><ul><li>PlainFormatter(Java,3) → Java: 3</li><li>CsvFormatter(Java,3) → Java,3</li><li>Hisobot funksiyasi konkret formatter klassiga cast qilmaydi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “11-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 4
+        }
+      ]
+    },
+    {
+      "title": "12-hafta. Kolleksiyalar: List, Set va Map",
+      "description": "Vazifaga mos kolleksiya tanlash • Generics yordamida tur xavfsizligini saqlash",
+      "contents": [
+        {
+          "title": "12.1 Nazariya — Kolleksiyalar: List, Set va Map",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Kolleksiyalar: List, Set va Map</h1><h2>Dars oxirida</h2><ul><li>Vazifaga mos kolleksiya tanlash</li><li>Generics yordamida tur xavfsizligini saqlash</li></ul><h2>Tushuntirish</h2><p>Massiv uzunligi o‘zgarmaydi; dinamik ro‘yxat uchun ArrayList qulay. List tartibni saqlaydi va takror qiymatlarga ruxsat beradi. Set takror elementni saqlamaydi. Map kalitdan qiymatga bog‘lanishni beradi: talaba kodi → ball. Bir xil kalitga put yana chaqirilsa oldingi qiymat almashtiriladi, yangi mustaqil yozuv qo‘shilmaydi.</p><p>List&lt;String&gt; faqat String elementlari bilan ishlash niyatini kompilyatorga bildiradi. Generics noto‘g‘ri tur qo‘shishni erta ushlaydi. Primitive int o‘rniga kolleksiyada Integer ishlatiladi; Java ko‘pincha boxing/unboxingni avtomatik qiladi. Null Integerni intga aylantirish xato bo‘lishi mumkin, shuning uchun topilmagan qiymat holatini tekshiring.</p><p>ArrayListda size(), massivda length ishlatiladi. remove(int) indeksni olib tashlashi, remove(Object) qiymatni olib tashlashi mumkin. Integer ro‘yxatida bu farq muhim. Oddiy for-each paytida ro‘yxatning o‘zini o‘zgartirishdan saqlaning; kerak bo‘lsa removeIf yoki iterator ishlating.</p><p>HashMap va HashSet chiqarish tartibini kafolatlamaydi. Namunada natija takrorlanuvchan bo‘lishi uchun TreeMap tanlangan; u kalitlarni tartiblaydi. Talaba registrida IDni kalit qilish qidiruvni soddalashtiradi. Takror ID uchun mavjud yozuvni indamay almashtirish o‘rniga containsKey bilan tekshirib foydalanuvchiga tushunarli xabar bering.</p><h2>Ishlaydigan namuna</h2><pre><code>import java.util.Map;\nimport java.util.TreeMap;\npublic class Week12 {\n    public static void main(String[] args) {\n        Map&lt;String, Integer&gt; counts = new TreeMap&lt;&gt;();\n        for (String word : new String[]{&quot;java&quot;, &quot;kod&quot;, &quot;java&quot;}) {\n            counts.put(word, counts.getOrDefault(word, 0) + 1);\n        }\n        System.out.println(counts);\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week12.java\njava Week12</code></pre><h2>Kutilgan chiqish</h2><pre><code>{java=2, kod=1}</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Mapda bir kalit uchun bitta qiymat mavjud.</li><li>HashMap tartibiga tayanmang.</li><li>List&lt;Integer&gt;.remove(1) qiymat1 emas, indeks1ni o‘chiradi.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "12.2.1 Video — inglizcha qo‘shimcha: Intro to Java Programming - Course for Absolute Beginners",
+          "description": "Mavzu: Kolleksiyalar: List, Set va Map. Videoning 6050-sekundidan tegishli bo‘limni ko‘ring. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=GoXwIVyNvX0&t=6050s",
+          "languageCode": "en",
+          "authorName": "freeCodeCamp.org",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Intro to Java Programming - Course for Absolute Beginners",
+          "sourceUrl": "https://www.youtube.com/watch?v=GoXwIVyNvX0",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "12.2.2 Video — inglizcha qo‘shimcha: Intro to Java Programming - Course for Absolute Beginners",
+          "description": "Mavzu: Kolleksiyalar: List, Set va Map. Videoning 6925-sekundidan tegishli bo‘limni ko‘ring. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=GoXwIVyNvX0&t=6925s",
+          "languageCode": "en",
+          "authorName": "freeCodeCamp.org",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Intro to Java Programming - Course for Absolute Beginners",
+          "sourceUrl": "https://www.youtube.com/watch?v=GoXwIVyNvX0",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "12.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Kolleksiyalar: List, Set va Map</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>ArrayListga uch nom qo‘shing, birini indeks bilan o‘chiring.</li><li>HashSet yordamida takror nomlarni ajrating.</li><li>Mapda mavjud bo‘lmagan kalit uchun get va getOrDefaultni solishtiring.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Vazifaga mos kolleksiya tanlash</li><li>Generics yordamida tur xavfsizligini saqlash</li><li>Mapda bir kalit uchun bitta qiymat mavjud.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        },
+        {
+          "title": "12.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>StudentRegistry: Map&lt;String,Integer&gt; orqali ID va ball saqlang. add takror IDni rad etsin, update mavjud ID ballini yangilasin, find topilmagan IDni aniq bildirsin. Ball 0..100. Ro‘yxatni ID bo‘yicha tartiblab chiqaring.</p><h2>Qabul mezonlari</h2><ul><li>add(S1,70), add(S1,80) → ikkinchisi rad; qiymat70</li><li>update(S1,90), find(S1) → 90</li><li>find(S9) → topilmadi</li><li>add(S2,101) → rad</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “12-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 4
+        }
+      ]
+    },
+    {
+      "title": "13-hafta. Istisnolar va ishonchli kiritish",
+      "description": "Kutiladigan kirish xatosini boshqarish • Istisnoni yashirmasdan foydalanuvchiga tushuntirish",
+      "contents": [
+        {
+          "title": "13.1 Nazariya — Istisnolar va ishonchli kiritish",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Istisnolar va ishonchli kiritish</h1><h2>Dars oxirida</h2><ul><li>Kutiladigan kirish xatosini boshqarish</li><li>Istisnoni yashirmasdan foydalanuvchiga tushuntirish</li></ul><h2>Tushuntirish</h2><p>Foydalanuvchi son o‘rniga harf kiritishi yoki fayl topilmasligi mumkin. Exception muvaffaqiyatsiz yo‘lni ifodalashga yordam beradi. try xavfli amalni, catch mos xatoni boshqarishni belgilaydi. finally odatda yakuniy tozalash uchun ishlatiladi; fayl kabi AutoCloseable resurslar uchun try-with-resources sodda va ishonchliroq.</p><p>Integer.parseInt(&quot;abc&quot;) NumberFormatException beradi. Bu xatoni aniq ushlab “Butun son kiriting” deyish foydali. catch(Exception e) bilan hamma narsani yashirib davom etish dasturdagi haqiqiy nuqsonni niqoblashi mumkin. Bo‘sh catch bloki qoldirmang. Xatoni tiklash, qayta so‘rash yoki yuqoriga uzatish siyosatini tanlang.</p><p>Checked exception uchun kompilyator ushlash yoki throws bilan e’lon qilishni talab qiladi; IOException shunday misol. RuntimeException oilasi uchun bu majburiyat yo‘q. throw yangi xatoni chiqaradi; throws metod shartnomasida mumkin bo‘lgan xatoni ko‘rsatadi. Bu ikkisi boshqa vazifa bajaradi.</p><p>Kirishni tekshirishni ikki qavatda qo‘llang. Konsol qavati matnning son ekanini tekshiradi; domen metodi esa ball 0..100 ekanini tekshiradi. Keyinroq shu domen metodini boshqa interfeys chaqirsa ham qoida saqlanadi. Foydalanuvchiga texnik stack trace o‘rniga qisqa yo‘l-yo‘riq bering; laboratoriya hisobotida esa xatoning aniq turi va sababi bo‘lsin.</p><h2>Ishlaydigan namuna</h2><pre><code>public class Week13 {\n    static String parseScore(String raw) {\n        try {\n            int value = Integer.parseInt(raw.trim());\n            if (value &lt; 0 || value &gt; 100) return &quot;Ball 0..100 bo&#x27;lsin&quot;;\n            return &quot;Qabul: &quot; + value;\n        } catch (NumberFormatException error) {\n            return &quot;Butun son kiriting&quot;;\n        }\n    }\n    public static void main(String[] args) {\n        System.out.println(parseScore(&quot;abc&quot;));\n        System.out.println(parseScore(&quot; 85 &quot;));\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week13.java\njava Week13</code></pre><h2>Kutilgan chiqish</h2><pre><code>Butun son kiriting\nQabul: 85</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Bo‘sh catch xatoni yashiradi.</li><li>NumberFormatException va noto‘g‘ri ball diapazoni alohida holat.</li><li>EOF bo‘lsa hasNextLine false qaytadi.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "13.2.1 Video — inglizcha qo‘shimcha: Java exception handling ⚠️",
+          "description": "Mavzu: Istisnolar va ishonchli kiritish. Ko‘rgach nazariy darsdagi kod bilan taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=adTDlH0lhaA",
+          "languageCode": "en",
+          "authorName": "Bro Code",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java exception handling ⚠️",
+          "sourceUrl": "https://www.youtube.com/watch?v=adTDlH0lhaA",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "13.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Istisnolar va ishonchli kiritish</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>abc, bo‘sh matn, 101 va 85 kirishlarini solishtiring.</li><li>Konsolda noto‘g‘ri kirishda qayta so‘rash siklini yozing.</li><li>throw va throws farqini bitta misolda tushuntiring.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Kutiladigan kirish xatosini boshqarish</li><li>Istisnoni yashirmasdan foydalanuvchiga tushuntirish</li><li>Bo‘sh catch xatoni yashiradi.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "13.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>SafeScoreInput.java: foydalanuvchi 0..100 butun ball yoki q kiritsin. Noto‘g‘ri matn va chegaradan tashqari son dasturga zarar bermasin; sababini yozib qayta so‘rasin. q kiritilganda toza tugasin. EOF kelganda ham cheksiz siklga tushmasin.</p><h2>Qabul mezonlari</h2><ul><li>abc → “Butun son kiriting”, qayta so‘raydi</li><li>101 → diapazon xabari</li><li> 85 → qabul qiladi</li><li>q va bo‘sh kirish oqimi → dastur tugaydi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “13-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        }
+      ]
+    },
+    {
+      "title": "14-hafta. Fayllar va ma’lumotni saqlash",
+      "description": "UTF-8 matn faylini o‘qish va yozish • Yuklashda buzilgan ma’lumotni aniqlash",
+      "contents": [
+        {
+          "title": "14.1 Nazariya — Fayllar va ma’lumotni saqlash",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Fayllar va ma’lumotni saqlash</h1><h2>Dars oxirida</h2><ul><li>UTF-8 matn faylini o‘qish va yozish</li><li>Yuklashda buzilgan ma’lumotni aniqlash</li></ul><h2>Tushuntirish</h2><p>Dastur xotirasidagi ro‘yxat jarayon tugaganda yo‘qoladi. Faylga yozish holatni keyingi ishga tushirishga saqlaydi. Path fayl manzilini, Files ko‘p o‘qish-yozish amallarini beradi. Files.writeString va readString kichik matnlar uchun qulay. Katta faylni butun xotiraga yuklash o‘rniga oqim bo‘yicha o‘qish kerak bo‘lishi mumkin.</p><p>Kodlashni UTF-8 deb aniq ko‘rsating: o‘zbekcha belgilar boshqa muhitda ham bir xil o‘qiladi. Nisbiy yo‘l joriy ish papkasiga bog‘liq. Dastur “fayl topilmadi” desa avval qaysi papkadan ishga tushganini tekshiring. Yozish mavjud faylni almashtirishi mumkin; foydalanuvchi ma’lumotini saqlashda xatoni ko‘rsatish va zaxira siyosatini o‘ylash zarur.</p><p>O‘quv registri uchun har qatorda id;title;status shaklini tanlaymiz. Bu to‘liq CSV standarti emas. id va title ichida nuqtali vergul hamda yangi qatorni taqiqlash shartnomani soddalashtiradi. split(&quot;;&quot;, -1) oxirgi bo‘sh ustunni ham saqlaydi. Ustunlar soni, status qiymati va takror ID tekshirilsin.</p><p>Yuklashni avval vaqtinchalik kolleksiyaga bajaring. Bir qator xato bo‘lsa mavjud xotira holatini yarim yuklangan ma’lumot bilan almashtirmang. Fayl topilmasa birinchi ishga tushirishda bo‘sh ro‘yxat maqbul bo‘lishi mumkin, ammo ruxsat xatosini bo‘sh ro‘yxat deb yashirmang. Quyidagi namuna vaqtinchalik fayl ishlatib, nihoyat uni tozalaydi; foydalanuvchi fayllariga tegmaydi.</p><h2>Ishlaydigan namuna</h2><pre><code>import java.nio.file.Files;\nimport java.nio.file.Path;\nimport java.nio.charset.StandardCharsets;\nimport java.io.IOException;\npublic class Week14 {\n    public static void main(String[] args) throws IOException {\n        Path file = Files.createTempFile(&quot;java-course-&quot;, &quot;.txt&quot;);\n        try {\n            Files.writeString(file, &quot;B1;Java;available&quot;, StandardCharsets.UTF_8);\n            System.out.println(Files.readString(file, StandardCharsets.UTF_8));\n        } finally {\n            Files.deleteIfExists(file);\n        }\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week14.java\njava Week14</code></pre><h2>Kutilgan chiqish</h2><pre><code>B1;Java;available</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Fayl yo‘li ish papkasiga bog‘liq.</li><li>split sukut bo‘yicha oxirgi bo‘sh ustunlarni tashlashi mumkin.</li><li>Yarim yuklangan holatni asosiy ro‘yxatga yozmang.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "14.2.1 Video — inglizcha qo‘shimcha: How to WRITE FILES with Java in 8 minutes! ✍",
+          "description": "Mavzu: Fayllar va ma’lumotni saqlash. Ko‘rgach nazariy darsdagi kod bilan taqqoslang. Videoda FileWriter; matnli darsda Files API ishlatiladi. Ikkalasining vazifasini taqqoslang.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=Pg0aoSbrqOE",
+          "languageCode": "en",
+          "authorName": "Bro Code",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "How to WRITE FILES with Java in 8 minutes! ✍",
+          "sourceUrl": "https://www.youtube.com/watch?v=Pg0aoSbrqOE",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "14.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Fayllar va ma’lumotni saqlash</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>Namuna matnga o‘zbekcha sarlavha qo‘shib qayta o‘qing.</li><li>split(&quot;;&quot;, -1) bilan uch ustunni ajrating.</li><li>Buzilgan qator uchun qator raqami ko‘rsatiladigan xabar yozing.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>UTF-8 matn faylini o‘qish va yozish</li><li>Yuklashda buzilgan ma’lumotni aniqlash</li><li>Fayl yo‘li ish papkasiga bog‘liq.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "14.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>RegistryStore: talabalar ID va ballini UTF-8 faylga id;score ko‘rinishida saqlang va yuklang. ID ichida ; yoki yangi qator bo‘lmasin, ball 0..100, ID takrorlanmasin. Noto‘g‘ri fayl yuklansa avvalgi xotira holati saqlansin. Ma’lumot papkasi hujjatlashtirilsin.</p><h2>Qabul mezonlari</h2><ul><li>Ikki yozuvni save/load qilish natijani saqlaydi</li><li>Buzilgan qator → qator raqami bilan xato</li><li>Takror ID → yuklash rad</li><li>Mavjud bo‘lmagan fayl → hujjatlashtirilgan bo‘sh boshlanish</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “14-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        }
+      ]
+    },
+    {
+      "title": "15-hafta. Yakuniy loyiha: mini kutubxona",
+      "description": "Talabdan ishlaydigan konsol dasturigacha yetkazish • Natijani test, README va namoyish bilan himoya qilish",
+      "contents": [
+        {
+          "title": "15.1 Nazariya — Yakuniy loyiha: mini kutubxona",
+          "contentType": "TEXT",
+          "contentBody": "<h1>Yakuniy loyiha: mini kutubxona</h1><h2>Dars oxirida</h2><ul><li>Talabdan ishlaydigan konsol dasturigacha yetkazish</li><li>Natijani test, README va namoyish bilan himoya qilish</li></ul><h2>Tushuntirish</h2><p>Yakuniy loyihada semestr mavzulari birlashadi. Foydalanuvchi kutubxonachi rolida kitob qo‘shadi, qidiradi, ro‘yxatni ko‘radi, kitobni beradi va qaytaradi. Bu mahalliy konsol dasturi; haqiqiy talaba ma’lumotlari talab qilinmaydi. Muammoni eng kichik ishlaydigan bosqichdan boshlang: avval xotiradagi bitta kitobni qo‘shish va ko‘rsatish.</p><p>Book obyektida id, title va borrowed holati bo‘ladi. LibraryService takror ID, bo‘sh nom va band kitobni qayta berish kabi qoidalarni tekshiradi. ConsoleMenu kiritish va xabarlar bilan shug‘ullanadi. FileStore saqlash/yuklashni boshqaradi. Domen klasslari ichida Scanner chaqirmaslik testlashni osonlashtiradi.</p><p>Qabul mezonini foydalanuvchi harakati sifatida yozing: “B1 kitobini qo‘shdim; B1 ni yana qo‘shsam rad etildi; oldingi nom o‘zgarmadi”. Har xato yo‘ldan keyin holatni ham tekshiring. Dastur qayta ochilganda band holat saqlanishi kerak. Fayl buzilsa tushunarli xabar chiqsin; eski xotira holatini buzmasin.</p><p>Ishni 9-haftada domen modeli, 12-haftada kolleksiya, 14-haftada saqlash va 15-haftada yakunlash bosqichlariga ajrating. Har bosqich kichik ishlaydigan natija bersin. Himoyada faqat kod o‘qish yetarli emas: oddiy oqim, noto‘g‘ri kirish va qayta ishga tushirishni namoyish qiling. README boshqa talaba loyihani sizsiz ishga tushira oladigan darajada bo‘lsin. Quyidagi kichik misol yakuniy javob emas, takror ID qoidasining mustaqil boshlang‘ich namunasi.</p><h2>Ishlaydigan namuna</h2><pre><code>import java.util.Map;\nimport java.util.TreeMap;\npublic class Week15 {\n    static boolean add(Map&lt;String, String&gt; books, String id, String title) {\n        if (id.isBlank() || title.isBlank() || books.containsKey(id)) return false;\n        books.put(id, title);\n        return true;\n    }\n    public static void main(String[] args) {\n        Map&lt;String, String&gt; books = new TreeMap&lt;&gt;();\n        System.out.println(add(books, &quot;B1&quot;, &quot;Java&quot;));\n        System.out.println(add(books, &quot;B1&quot;, &quot;Boshqa nom&quot;));\n        System.out.println(books.get(&quot;B1&quot;));\n    }\n}</code></pre><h2>Ishga tushirish</h2><pre><code>javac -encoding UTF-8 Week15.java\njava Week15</code></pre><h2>Kutilgan chiqish</h2><pre><code>true\nfalse\nJava</code></pre><h2>Ko‘p uchraydigan xatolar</h2><ul><li>Barcha mantiqni main ichiga yig‘mang.</li><li>Faqat muvaffaqiyatli oqimni namoyish qilish yetarli emas.</li><li>READMEda boshqa kompyuterdagi mutlaq yo‘lni yozmang.</li></ul>",
+          "durationMinutes": 40,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 0
+        },
+        {
+          "title": "15.2.1 Video — o‘zbekcha: Java dasturlash tilidan darslar 24 Nasl olishni amalda bajaramiz 2-qism",
+          "description": "Mavzu: Yakuniy loyiha: mini kutubxona. Ko‘rgach nazariy darsdagi kod bilan taqqoslang. Bu video OOP amaliyotini takrorlash uchun; mini kutubxonaning tayyor yechimi emas.",
+          "contentType": "VIDEO",
+          "contentUrl": "https://www.youtube.com/watch?v=BLrk_Z2Ph0I",
+          "languageCode": "uz",
+          "authorName": "akramjonpulatov",
+          "contentVersion": "source-2026-09-14",
+          "sourceName": "Java dasturlash tilidan darslar 24 Nasl olishni amalda bajaramiz 2-qism",
+          "sourceUrl": "https://www.youtube.com/watch?v=BLrk_Z2Ph0I",
+          "validFrom": "2026-09-14",
+          "position": 1
+        },
+        {
+          "title": "15.3 Laboratoriya",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Laboratoriya: Yakuniy loyiha: mini kutubxona</h2><p>Natija: ishlaydigan .java fayllari va qisqa test hisoboti. Ajratilgan vaqt: 2 akademik soat.</p><ul><li>Talablarni 6 ta foydalanuvchi ssenariysiga ajrating.</li><li>Domen modeli va menyuni alohida klasslarda yozing.</li><li>Bir kursdoshingiz README bilan dasturni ishga tushirsin; tushunarsiz joylarni yozib tuzating.</li></ul><h2>Bajarish tartibi</h2><ul><li>10 daqiqa: masalani o‘qing, kirish va chiqishni yozing.</li><li>20 daqiqa: namunani ishga tushiring va bir o‘zgarish kiriting.</li><li>35 daqiqa: mashqlarni mustaqil bajaring.</li><li>15 daqiqa: chegara testlarini tekshiring.</li><li>10 daqiqa: natijani izohlang va fayllarni tayyorlang.</li></ul><p>Ushbu 90 daqiqalik laboratoriya tartibi 45 daqiqalik akademik soat uchun namuna; muassasa jadvaliga moslashtiriladi.</p><h2>Video bilan ishlash</h2><p>Videodagi kodni to‘liq ko‘chirishdan oldin natijani taxmin qiling. Har 5–10 daqiqada pauza qiling, bir qiymatni o‘zgartirib natijani solishtiring. Quyidagi dars maqsadlariga mos uchta qayd yozing:</p><ul><li>Talabdan ishlaydigan konsol dasturigacha yetkazish</li><li>Natijani test, README va namoyish bilan himoya qilish</li><li>Barcha mantiqni main ichiga yig‘mang.</li></ul>",
+          "durationMinutes": 90,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 2
+        },
+        {
+          "title": "15.4 Topshiriq va qabul mezonlari",
+          "contentType": "TEXT",
+          "contentBody": "<h2>Mustaqil topshiriq</h2><p>Mini Library yakuniy loyiha: qo‘shish, ID/nom bo‘yicha qidirish, ro‘yxat, berish, qaytarish, UTF-8 faylga saqlash/yuklash va chiqish menyusi. Kamida Book, LibraryService, ConsoleMenu, FileStore ajratilsin. 12 ta avtomatik yoki takrorlanadigan qo‘lda test, README, klasslar chizmasi va 3–5 daqiqalik namoyish tayyorlang. Tayyor kutubxona tizimi ko‘chirmasini topshirmang; foydalangan yordam va manbalarni yozing.</p><h2>Qabul mezonlari</h2><ul><li>B1 qo‘shiladi; takror B1 rad etilib eski nom saqlanadi</li><li>B1 ni berish → muvaffaqiyat; yana berish → rad</li><li>B1 ni qaytarish → muvaffaqiyat; qayta qaytarish → rad</li><li>Mavjud bo‘lmagan ID → tushunarli xabar</li><li>Save, dasturdan chiqish, load → nom va band holat saqlangan</li><li>Buzilgan fayl va noto‘g‘ri menyu kirishi ma’lumotni buzmaydi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Asosiy foydalanish ssenariylari: 30 ball</li><li>Model va mas’uliyatlar ajratilishi: 20 ball</li><li>Saqlash/yuklash va yaxlitlik: 15 ball</li><li>Validatsiya va xato xabarlari: 10 ball</li><li>12 ta test va dalillar: 15 ball</li><li>README, chizma va himoya: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “15-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+          "durationMinutes": 20,
+          "languageCode": "uz",
+          "authorName": "Codex yordamida tayyorlangan o‘quv material",
+          "contentVersion": "1.0.0",
+          "sourceName": "Java 1-semestr: original konspekt, kod va mashqlar",
+          "validFrom": "2026-09-14",
+          "position": 3
+        }
+      ]
+    }
+  ],
+  "assignments": [
+    {
+      "week": 1,
+      "title": "01-hafta: Java muhiti va birinchi dastur",
+      "description": "StudentCard.java yarating: uch qatorda talaba ismi, guruh kodi va semestrni chiqarsin. READMEda kirish ma’lumoti yo‘qligini va ishga tushirish buyruqlarini yozing. Shaxsiy ma’lumot o‘rniga namuna ism ishlatish mumkin.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>StudentCard.java yarating: uch qatorda talaba ismi, guruh kodi va semestrni chiqarsin. READMEda kirish ma’lumoti yo‘qligini va ishga tushirish buyruqlarini yozing. Shaxsiy ma’lumot o‘rniga namuna ism ishlatish mumkin.</p><h2>Qabul mezonlari</h2><ul><li>Chiqish aynan uch qator; har qatorda qiymat bor.</li><li>Fayl va public klass nomi StudentCard.</li><li>Yangi papkada faqat manba fayli yordamida kompilyatsiya bo‘ladi.</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “01-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 2,
+      "title": "02-hafta: O‘zgaruvchilar, operatorlar va konsoldan kiritish",
+      "description": "TimeConverter.java: 0..86400 oralig‘idagi butun son sekundni soat, daqiqa va sekundga ajrating. Chiqish h:m:s ko‘rinishida; nol bilan to‘ldirish shart emas. Ushbu haftada kirish to‘g‘ri son deb olinadi.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>TimeConverter.java: 0..86400 oralig‘idagi butun son sekundni soat, daqiqa va sekundga ajrating. Chiqish h:m:s ko‘rinishida; nol bilan to‘ldirish shart emas. Ushbu haftada kirish to‘g‘ri son deb olinadi.</p><h2>Qabul mezonlari</h2><ul><li>0 → 0:0:0</li><li>3661 → 1:1:1</li><li>86400 → 24:0:0</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “02-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 3,
+      "title": "03-hafta: Shartlar va chegaraviy qiymatlar",
+      "description": "Ticket.java: yosh 0..120 oralig‘ida. 0..6 uchun “Bepul”, 7..17 uchun “Bolalar”, 18..59 uchun “Oddiy”, 60..120 uchun “Imtiyozli”, boshqa qiymat uchun “Noto‘g‘ri yosh” chiqaring.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>Ticket.java: yosh 0..120 oralig‘ida. 0..6 uchun “Bepul”, 7..17 uchun “Bolalar”, 18..59 uchun “Oddiy”, 60..120 uchun “Imtiyozli”, boshqa qiymat uchun “Noto‘g‘ri yosh” chiqaring.</p><h2>Qabul mezonlari</h2><ul><li>6 → Bepul; 7 → Bolalar</li><li>17 → Bolalar; 18 → Oddiy</li><li>59 → Oddiy; 60 → Imtiyozli</li><li>-1 va 121 → Noto‘g‘ri yosh</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “03-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 4,
+      "title": "04-hafta: Sikllar va algoritmik fikrlash",
+      "description": "DigitSum.java: 0..1000000000 butun sonning raqamlari yig‘indisini while bilan hisoblang. Har qadamda % 10 va / 10 dan foydalaning. Kirish to‘g‘ri, manfiy emas deb olinadi. Sonni Stringga aylantirmang.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>DigitSum.java: 0..1000000000 butun sonning raqamlari yig‘indisini while bilan hisoblang. Har qadamda % 10 va / 10 dan foydalaning. Kirish to‘g‘ri, manfiy emas deb olinadi. Sonni Stringga aylantirmang.</p><h2>Qabul mezonlari</h2><ul><li>0 → 0</li><li>507 → 12</li><li>1000000000 → 1</li><li>9999 → 36</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “04-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 5,
+      "title": "05-hafta: Metodlar va masalani qismlarga ajratish",
+      "description": "NumberTools.java: static int digitSum(int n), static boolean isPrime(int n) yozing. n 0..1000000. main faqat namuna chaqiruvlarini ko‘rsatsin. isPrime 0 va 1 uchun false qaytarsin. Sinovlar jadvalini ilova qiling.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>NumberTools.java: static int digitSum(int n), static boolean isPrime(int n) yozing. n 0..1000000. main faqat namuna chaqiruvlarini ko‘rsatsin. isPrime 0 va 1 uchun false qaytarsin. Sinovlar jadvalini ilova qiling.</p><h2>Qabul mezonlari</h2><ul><li>digitSum(507) → 12; digitSum(0) → 0</li><li>isPrime(0), isPrime(1), isPrime(9) → false</li><li>isPrime(2), isPrime(97) → true</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “05-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 6,
+      "title": "06-hafta: Massivlar va qidirish",
+      "description": "ScoreStats.java: 1..100 ta 0..100 ball uchun minimum, maksimum, o‘rtacha va 60 dan kam ballar sonini hisoblang. Hisoblash metodlariga int[] uzating. Bo‘sh massivda “Ma’lumot yo‘q” yozing; nolga bo‘lmang.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>ScoreStats.java: 1..100 ta 0..100 ball uchun minimum, maksimum, o‘rtacha va 60 dan kam ballar sonini hisoblang. Hisoblash metodlariga int[] uzating. Bo‘sh massivda “Ma’lumot yo‘q” yozing; nolga bo‘lmang.</p><h2>Qabul mezonlari</h2><ul><li>[70,90,80] → min70 max90 avg80.0 low0</li><li>[0,60,100] → min0 max100 avg53.333... low1</li><li>[55] → min55 max55 avg55.0 low1</li><li>[] → Ma’lumot yo‘q</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “06-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 7,
+      "title": "07-hafta: String va matnni qayta ishlash",
+      "description": "TextAnalyzer.java: lotin ASCII harflari va bo‘shliqlardan iborat qator uchun so‘zlar hamda unli harflar (a,e,i,o,u; katta-kichik farqsiz) sonini hisoblang. Ketma-ket bo‘shliqlar bitta ajratuvchi deb olinadi; bo‘sh satrda 0 so‘z.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>TextAnalyzer.java: lotin ASCII harflari va bo‘shliqlardan iborat qator uchun so‘zlar hamda unli harflar (a,e,i,o,u; katta-kichik farqsiz) sonini hisoblang. Ketma-ket bo‘shliqlar bitta ajratuvchi deb olinadi; bo‘sh satrda 0 so‘z.</p><h2>Qabul mezonlari</h2><ul><li>“Java til” → 2 so‘z, 3 unli</li><li>“   ” → 0 so‘z, 0 unli</li><li>“  SALOM   Java ” → 2 so‘z, 4 unli</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “07-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 8,
+      "title": "08-hafta: Oraliq amaliy ish",
+      "description": "Oraliq amaliy ish: konsol orqali 5 ta 0..100 ball olib, massivga joylang; min, max, o‘rtacha va 60+ ballar sonini metodlarda hisoblang. Diapazondan tashqari sonni qayta so‘rang. 5 ta test va bitta topilgan xato hisobotini topshiring. Harf kiritishni boshqarish bu ishda talab qilinmaydi.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>Oraliq amaliy ish: konsol orqali 5 ta 0..100 ball olib, massivga joylang; min, max, o‘rtacha va 60+ ballar sonini metodlarda hisoblang. Diapazondan tashqari sonni qayta so‘rang. 5 ta test va bitta topilgan xato hisobotini topshiring. Harf kiritishni boshqarish bu ishda talab qilinmaydi.</p><h2>Qabul mezonlari</h2><ul><li>[0,0,0,0,0] → avg0, pass0</li><li>[100,100,100,100,100] → avg100, pass5</li><li>[59,60,79,80,100] → avg75.6, pass4</li><li>-1 yoki 101 ball massivga saqlanmaydi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “08-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "HIGH",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 9,
+      "title": "09-hafta: Klasslar, obyektlar va inkapsulyatsiya",
+      "description": "Book klassi: private final id va title, private borrowed. Konstruktor bo‘sh id/title ni rad etsin. borrow() band kitob uchun false, aks holda band qilib true qaytarsin. giveBack() bo‘sh kitob uchun false, aks holda qaytarib true qaytarsin. Setter orqali borrowedni tashqaridan almashtirmang.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>Book klassi: private final id va title, private borrowed. Konstruktor bo‘sh id/title ni rad etsin. borrow() band kitob uchun false, aks holda band qilib true qaytarsin. giveBack() bo‘sh kitob uchun false, aks holda qaytarib true qaytarsin. Setter orqali borrowedni tashqaridan almashtirmang.</p><h2>Qabul mezonlari</h2><ul><li>Yangi kitobni birinchi borrow → true; ikkinchi → false</li><li>giveBack → true; qayta giveBack → false</li><li>Ikki kitob holati mustaqil</li><li>Bo‘sh nom konstruktor tomonidan rad etiladi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “09-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 10,
+      "title": "10-hafta: Meros olish va kompozitsiya",
+      "description": "LibraryItem ota klassiga id va title bering. PrintedBook pageCount, EBook sizeKb maydoniga ega bo‘lsin. description() har bir turga mos matn qaytarsin. Barcha obyektlarni LibraryItem[]da saqlab bitta siklda chiqaring. Manfiy sahifa/hajm rad etilsin.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>LibraryItem ota klassiga id va title bering. PrintedBook pageCount, EBook sizeKb maydoniga ega bo‘lsin. description() har bir turga mos matn qaytarsin. Barcha obyektlarni LibraryItem[]da saqlab bitta siklda chiqaring. Manfiy sahifa/hajm rad etilsin.</p><h2>Qabul mezonlari</h2><ul><li>PrintedBook tavsifida sahifa soni bor</li><li>EBook tavsifida KB hajmi bor</li><li>Ota turidagi havola orqali to‘g‘ri override chaqiriladi</li><li>0 yoki manfiy pageCount rad etiladi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “10-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 11,
+      "title": "11-hafta: Interfeyslar va polimorfizm",
+      "description": "ReportFormatter interfeysi format(String title, int count) metodiga ega. PlainFormatter “Java: 3”, CsvFormatter “Java,3” qaytarsin. Hisobot funksiyasi ReportFormatter qabul qilsin. CSV mashqida title ichida vergul yoki yangi qator bo‘lmasin; bu cheklovni hujjatlashtiring.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>ReportFormatter interfeysi format(String title, int count) metodiga ega. PlainFormatter “Java: 3”, CsvFormatter “Java,3” qaytarsin. Hisobot funksiyasi ReportFormatter qabul qilsin. CSV mashqida title ichida vergul yoki yangi qator bo‘lmasin; bu cheklovni hujjatlashtiring.</p><h2>Qabul mezonlari</h2><ul><li>PlainFormatter(Java,3) → Java: 3</li><li>CsvFormatter(Java,3) → Java,3</li><li>Hisobot funksiyasi konkret formatter klassiga cast qilmaydi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “11-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 12,
+      "title": "12-hafta: Kolleksiyalar: List, Set va Map",
+      "description": "StudentRegistry: Map<String,Integer> orqali ID va ball saqlang. add takror IDni rad etsin, update mavjud ID ballini yangilasin, find topilmagan IDni aniq bildirsin. Ball 0..100. Ro‘yxatni ID bo‘yicha tartiblab chiqaring.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>StudentRegistry: Map&lt;String,Integer&gt; orqali ID va ball saqlang. add takror IDni rad etsin, update mavjud ID ballini yangilasin, find topilmagan IDni aniq bildirsin. Ball 0..100. Ro‘yxatni ID bo‘yicha tartiblab chiqaring.</p><h2>Qabul mezonlari</h2><ul><li>add(S1,70), add(S1,80) → ikkinchisi rad; qiymat70</li><li>update(S1,90), find(S1) → 90</li><li>find(S9) → topilmadi</li><li>add(S2,101) → rad</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “12-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 13,
+      "title": "13-hafta: Istisnolar va ishonchli kiritish",
+      "description": "SafeScoreInput.java: foydalanuvchi 0..100 butun ball yoki q kiritsin. Noto‘g‘ri matn va chegaradan tashqari son dasturga zarar bermasin; sababini yozib qayta so‘rasin. q kiritilganda toza tugasin. EOF kelganda ham cheksiz siklga tushmasin.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>SafeScoreInput.java: foydalanuvchi 0..100 butun ball yoki q kiritsin. Noto‘g‘ri matn va chegaradan tashqari son dasturga zarar bermasin; sababini yozib qayta so‘rasin. q kiritilganda toza tugasin. EOF kelganda ham cheksiz siklga tushmasin.</p><h2>Qabul mezonlari</h2><ul><li>abc → “Butun son kiriting”, qayta so‘raydi</li><li>101 → diapazon xabari</li><li> 85 → qabul qiladi</li><li>q va bo‘sh kirish oqimi → dastur tugaydi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “13-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 14,
+      "title": "14-hafta: Fayllar va ma’lumotni saqlash",
+      "description": "RegistryStore: talabalar ID va ballini UTF-8 faylga id;score ko‘rinishida saqlang va yuklang. ID ichida ; yoki yangi qator bo‘lmasin, ball 0..100, ID takrorlanmasin. Noto‘g‘ri fayl yuklansa avvalgi xotira holati saqlansin. Ma’lumot papkasi hujjatlashtirilsin.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>RegistryStore: talabalar ID va ballini UTF-8 faylga id;score ko‘rinishida saqlang va yuklang. ID ichida ; yoki yangi qator bo‘lmasin, ball 0..100, ID takrorlanmasin. Noto‘g‘ri fayl yuklansa avvalgi xotira holati saqlansin. Ma’lumot papkasi hujjatlashtirilsin.</p><h2>Qabul mezonlari</h2><ul><li>Ikki yozuvni save/load qilish natijani saqlaydi</li><li>Buzilgan qator → qator raqami bilan xato</li><li>Takror ID → yuklash rad</li><li>Mavjud bo‘lmagan fayl → hujjatlashtirilgan bo‘sh boshlanish</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Talablar va asosiy algoritm: 40 ball</li><li>Chegara holatlari va validatsiya: 20 ball</li><li>Metodlar, nomlash va o‘qiladigan kod: 15 ball</li><li>Takrorlanadigan testlar: 15 ball</li><li>README va tushuntirish: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “14-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "MEDIUM",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    },
+    {
+      "week": 15,
+      "title": "15-hafta: Mini kutubxona — yakuniy loyiha",
+      "description": "Mini Library yakuniy loyiha: qo‘shish, ID/nom bo‘yicha qidirish, ro‘yxat, berish, qaytarish, UTF-8 faylga saqlash/yuklash va chiqish menyusi. Kamida Book, LibraryService, ConsoleMenu, FileStore ajratilsin. 12 ta avtomatik yoki takrorlanadigan qo‘lda test, README, klasslar chizmasi va 3–5 daqiqalik namoyish tayyorlang. Tayyor kutubxona tizimi ko‘chirmasini topshirmang; foydalangan yordam va manbalarni yozing.",
+      "instructions": "<h2>Mustaqil topshiriq</h2><p>Mini Library yakuniy loyiha: qo‘shish, ID/nom bo‘yicha qidirish, ro‘yxat, berish, qaytarish, UTF-8 faylga saqlash/yuklash va chiqish menyusi. Kamida Book, LibraryService, ConsoleMenu, FileStore ajratilsin. 12 ta avtomatik yoki takrorlanadigan qo‘lda test, README, klasslar chizmasi va 3–5 daqiqalik namoyish tayyorlang. Tayyor kutubxona tizimi ko‘chirmasini topshirmang; foydalangan yordam va manbalarni yozing.</p><h2>Qabul mezonlari</h2><ul><li>B1 qo‘shiladi; takror B1 rad etilib eski nom saqlanadi</li><li>B1 ni berish → muvaffaqiyat; yana berish → rad</li><li>B1 ni qaytarish → muvaffaqiyat; qayta qaytarish → rad</li><li>Mavjud bo‘lmagan ID → tushunarli xabar</li><li>Save, dasturdan chiqish, load → nom va band holat saqlangan</li><li>Buzilgan fayl va noto‘g‘ri menyu kirishi ma’lumotni buzmaydi</li></ul><h2>Topshirish</h2><p>Manba kod (.java), README.md va tests.md ni ZIPga joylang yoki LMS topshirig‘iga matn shaklida kiriting. READMEda ishga tushirish, kirish cheklovlari va foydalangan manbalarni yozing. Talabni o‘zgartirsangiz asosini tushuntiring.</p><h2>Baholash: 100 ball</h2><ul><li>Asosiy foydalanish ssenariylari: 30 ball</li><li>Model va mas’uliyatlar ajratilishi: 20 ball</li><li>Saqlash/yuklash va yaxlitlik: 15 ball</li><li>Validatsiya va xato xabarlari: 10 ball</li><li>12 ta test va dalillar: 15 ball</li><li>README, chizma va himoya: 10 ball</li></ul><h2>O‘zini tekshirish</h2><p>LMSdagi “15-hafta: o‘zini tekshirish” testini ishlang. Uch savolga javob berishdan oldin kodni ishga tushirmasdan fikrlab ko‘ring.</p>",
+      "maxScore": 100,
+      "priority": "HIGH",
+      "submissionType": "BOTH",
+      "status": "DRAFT"
+    }
+  ],
+  "questions": [
+    {
+      "key": "W01Q1",
+      "text": "[W01Q1] Java manbasini kompilyatsiya qiladigan buyruq?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "javac",
+        "java",
+        "cd",
+        "git"
+      ],
+      "correctAnswer": "javac",
+      "explanation": "javac .java manbadan .class baytkod yaratadi."
+    },
+    {
+      "key": "W01Q2",
+      "text": "[W01Q2] Dastur boshlanadigan metod nomi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "main",
+        "start",
+        "runAll",
+        "print"
+      ],
+      "correctAnswer": "main",
+      "explanation": "Bu kursdagi an’anaviy Java dasturi main metodidan boshlanadi."
+    },
+    {
+      "key": "W01Q3",
+      "text": "[W01Q3] public class Book qaysi faylda bo‘ladi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "Book.java",
+        "book.txt",
+        "Main.class",
+        "Book.js"
+      ],
+      "correctAnswer": "Book.java",
+      "explanation": "Public klass va fayl nomi mos keladi."
+    },
+    {
+      "key": "W02Q1",
+      "text": "[W02Q1] 9 / 2 natijasi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "4",
+        "4.5",
+        "5",
+        "0"
+      ],
+      "correctAnswer": "4",
+      "explanation": "Ikkala operand int bo‘lgani uchun butun bo‘lish bajariladi."
+    },
+    {
+      "key": "W02Q2",
+      "text": "[W02Q2] 17 % 5 natijasi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "2",
+        "3",
+        "5",
+        "17"
+      ],
+      "correctAnswer": "2",
+      "explanation": "17 = 3 * 5 + 2."
+    },
+    {
+      "key": "W02Q3",
+      "text": "[W02Q3] Mantiqiy qiymat turi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "boolean",
+        "String",
+        "double",
+        "char"
+      ],
+      "correctAnswer": "boolean",
+      "explanation": "boolean faqat true yoki false oladi."
+    },
+    {
+      "key": "W03Q1",
+      "text": "[W03Q1] Ikkala shart rost bo‘lishi uchun qaysi operator?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "&&",
+        "||",
+        "!",
+        "="
+      ],
+      "correctAnswer": "&&",
+      "explanation": "Mantiqiy AND ikkala operand rost bo‘lganda rost."
+    },
+    {
+      "key": "W03Q2",
+      "text": "[W03Q2] x=60 bo‘lsa x >= 60 natijasi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "true",
+        "false",
+        "60",
+        "Xato"
+      ],
+      "correctAnswer": "true",
+      "explanation": "Tenglik ham chegaraga kiradi."
+    },
+    {
+      "key": "W03Q3",
+      "text": "[W03Q3] 0..100 diapazonidan tashqarini tekshirish?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "x < 0 || x > 100",
+        "x < 0 && x > 100",
+        "x == 0",
+        "x > 0"
+      ],
+      "correctAnswer": "x < 0 || x > 100",
+      "explanation": "Pastki yoki yuqori chegaradan chiqish kifoya."
+    },
+    {
+      "key": "W04Q1",
+      "text": "[W04Q1] for(int i=0;i<3;i++) necha marta ishlaydi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "3",
+        "2",
+        "4",
+        "0"
+      ],
+      "correctAnswer": "3",
+      "explanation": "i qiymatlari 0, 1, 2."
+    },
+    {
+      "key": "W04Q2",
+      "text": "[W04Q2] Sikldan darhol chiqish?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "break",
+        "continue",
+        "next",
+        "skip"
+      ],
+      "correctAnswer": "break",
+      "explanation": "break eng yaqin siklni tugatadi."
+    },
+    {
+      "key": "W04Q3",
+      "text": "[W04Q3] Kamida bir marta bajariladigan sikl?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "do/while",
+        "while",
+        "for har doim",
+        "Hech biri"
+      ],
+      "correctAnswer": "do/while",
+      "explanation": "Shart tana bajarilgandan keyin tekshiriladi."
+    },
+    {
+      "key": "W05Q1",
+      "text": "[W05Q1] Natija qaytaradigan kalit so‘z?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "return",
+        "print",
+        "break",
+        "new"
+      ],
+      "correctAnswer": "return",
+      "explanation": "return metod natijasini chaqiruvchiga uzatadi."
+    },
+    {
+      "key": "W05Q2",
+      "text": "[W05Q2] void nimani bildiradi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "Natija qaytarmaydi",
+        "Faqat nol qaytaradi",
+        "Parametr olmaydi",
+        "Metod private"
+      ],
+      "correctAnswer": "Natija qaytarmaydi",
+      "explanation": "void metod parametr olishi va ish bajarishi mumkin."
+    },
+    {
+      "key": "W05Q3",
+      "text": "[W05Q3] Overloading uchun nima farqlanadi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "Parametr ro‘yxati",
+        "Faqat return turi",
+        "Faqat metod tanasi",
+        "Fayl rangi"
+      ],
+      "correctAnswer": "Parametr ro‘yxati",
+      "explanation": "Parametr soni yoki turlari farqlanishi kerak."
+    },
+    {
+      "key": "W06Q1",
+      "text": "[W06Q1] 5 elementli massivning oxirgi indeksi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "4",
+        "5",
+        "1",
+        "6"
+      ],
+      "correctAnswer": "4",
+      "explanation": "Indekslar 0 dan boshlanadi."
+    },
+    {
+      "key": "W06Q2",
+      "text": "[W06Q2] int[] a={2,3}; a.length nechaga teng?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "2",
+        "1",
+        "3",
+        "0"
+      ],
+      "correctAnswer": "2",
+      "explanation": "length elementlar soni."
+    },
+    {
+      "key": "W06Q3",
+      "text": "[W06Q3] Topilmagan indeks uchun kursdagi shartnoma?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "-1",
+        "0",
+        "1",
+        "100"
+      ],
+      "correctAnswer": "-1",
+      "explanation": "0 haqiqiy birinchi indeks bo‘lishi mumkin."
+    },
+    {
+      "key": "W07Q1",
+      "text": "[W07Q1] String mazmuni tengligini qaysi metod tekshiradi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "equals",
+        "==",
+        "same",
+        "compareReference"
+      ],
+      "correctAnswer": "equals",
+      "explanation": "equals mazmunni solishtiradi."
+    },
+    {
+      "key": "W07Q2",
+      "text": "[W07Q2] \"Java\".substring(0,2) natijasi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "Ja",
+        "Jav",
+        "av",
+        "Java"
+      ],
+      "correctAnswer": "Ja",
+      "explanation": "Tugash indeksi kiritilmaydi."
+    },
+    {
+      "key": "W07Q3",
+      "text": "[W07Q3] String o‘zgaruvchanmi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "Yo‘q, obyekt o‘zgarmas",
+        "Ha, har bir metod o‘zgartiradi",
+        "Faqat int bo‘lsa",
+        "Har doim null"
+      ],
+      "correctAnswer": "Yo‘q, obyekt o‘zgarmas",
+      "explanation": "Matnni o‘zgartiruvchi usullar yangi natija qaytaradi."
+    },
+    {
+      "key": "W08Q1",
+      "text": "[W08Q1] Chegaraviy test juftligi qaysi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "59 va 60",
+        "71 va 73",
+        "20 va 30",
+        "10 va 40"
+      ],
+      "correctAnswer": "59 va 60",
+      "explanation": "60 chegarasining ikki tomonini tekshiradi."
+    },
+    {
+      "key": "W08Q2",
+      "text": "[W08Q2] Dastur ishlab noto‘g‘ri natija bersa?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "Mantiqiy xato",
+        "Faqat sintaksis xatosi",
+        "Kompilyatsiya to‘xtaydi",
+        "Muammo yo‘q"
+      ],
+      "correctAnswer": "Mantiqiy xato",
+      "explanation": "Algoritm yoki shart noto‘g‘ri bo‘lishi mumkin."
+    },
+    {
+      "key": "W08Q3",
+      "text": "[W08Q3] Yaxshi bug hisobotida nima zarur?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "points": 1,
+      "options": [
+        "Kirish va kutilgan/amaldagi natija",
+        "Faqat “ishlamadi”",
+        "Faqat fayl rangi",
+        "Faqat kompyuter nomi"
+      ],
+      "correctAnswer": "Kirish va kutilgan/amaldagi natija",
+      "explanation": "Boshqa odam xatoni takrorlashi kerak."
+    },
+    {
+      "key": "W09Q1",
+      "text": "[W09Q1] Obyekt yaratish operatori?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "new",
+        "class",
+        "return",
+        "this"
+      ],
+      "correctAnswer": "new",
+      "explanation": "new konstruktor yordamida obyekt yaratadi."
+    },
+    {
+      "key": "W09Q2",
+      "text": "[W09Q2] private maydonga odatda qayerdan kiriladi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Shu klass ichidan",
+        "Istalgan klassdan",
+        "Faqat terminaldan",
+        "Faqat READMEdan"
+      ],
+      "correctAnswer": "Shu klass ichidan",
+      "explanation": "private klassning ichki holatini himoya qiladi."
+    },
+    {
+      "key": "W09Q3",
+      "text": "[W09Q3] Konstruktor qaytish turi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Yozilmaydi",
+        "void majburiy",
+        "int majburiy",
+        "String majburiy"
+      ],
+      "correctAnswer": "Yozilmaydi",
+      "explanation": "Konstruktor nomi klass nomi bilan mos va qaytish turi yo‘q."
+    },
+    {
+      "key": "W10Q1",
+      "text": "[W10Q1] Meros olish kalit so‘zi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "extends",
+        "implementsOnly",
+        "new",
+        "import"
+      ],
+      "correctAnswer": "extends",
+      "explanation": "Klassdan meros olish uchun extends."
+    },
+    {
+      "key": "W10Q2",
+      "text": "[W10Q2] Library va Book uchun mos munosabat?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Library has-a Book",
+        "Library is-a Book",
+        "Book is-a String",
+        "Munosabat bo‘lmaydi"
+      ],
+      "correctAnswer": "Library has-a Book",
+      "explanation": "Kutubxona kitoblarni o‘zida saqlaydi."
+    },
+    {
+      "key": "W10Q3",
+      "text": "[W10Q3] Override nima?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Meros olingan metod xulqini almashtirish",
+        "Faqat boshqa parametr qo‘shish",
+        "Fayl nomini almashtirish",
+        "Konstruktorni o‘chirish"
+      ],
+      "correctAnswer": "Meros olingan metod xulqini almashtirish",
+      "explanation": "Mos metod imzosi bilan yangi bajarilish beriladi."
+    },
+    {
+      "key": "W11Q1",
+      "text": "[W11Q1] Interfeysni amalga oshirish kalit so‘zi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "implements",
+        "extendsClass",
+        "newInterface",
+        "package"
+      ],
+      "correctAnswer": "implements",
+      "explanation": "Klass interfeysni implements orqali bajaradi."
+    },
+    {
+      "key": "W11Q2",
+      "text": "[W11Q2] Abstract klassdan bevosita new qilish mumkinmi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Yo‘q",
+        "Ha har doim",
+        "Faqat Windowsda",
+        "Faqat static bo‘lsa"
+      ],
+      "correctAnswer": "Yo‘q",
+      "explanation": "Konkret farzand klass kerak."
+    },
+    {
+      "key": "W11Q3",
+      "text": "[W11Q3] Notifier parametrining afzalligi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Turli amalga oshirishlarni qabul qiladi",
+        "Faqat bitta klassni oladi",
+        "Testlashni taqiqlaydi",
+        "Har doim tarmoq ishlatadi"
+      ],
+      "correctAnswer": "Turli amalga oshirishlarni qabul qiladi",
+      "explanation": "Interfeysga mos obyektlarni almashtirish mumkin."
+    },
+    {
+      "key": "W12Q1",
+      "text": "[W12Q1] Takror elementni saqlamaydigan tuzilma?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Set",
+        "List",
+        "Oddiy massiv",
+        "StringBuilder"
+      ],
+      "correctAnswer": "Set",
+      "explanation": "Set noyob elementlar to‘plami."
+    },
+    {
+      "key": "W12Q2",
+      "text": "[W12Q2] Kalit-qiymat juftligini nima saqlaydi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Map",
+        "List",
+        "char",
+        "boolean"
+      ],
+      "correctAnswer": "Map",
+      "explanation": "Map kalitni qiymatga bog‘laydi."
+    },
+    {
+      "key": "W12Q3",
+      "text": "[W12Q3] ArrayList elementlar soni?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "size()",
+        "length",
+        "countField",
+        "capacity()"
+      ],
+      "correctAnswer": "size()",
+      "explanation": "Kolleksiyalar size metodiga ega."
+    },
+    {
+      "key": "W13Q1",
+      "text": "[W13Q1] Integer.parseInt(\"abc\") qanday xato?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "NumberFormatException",
+        "IOException",
+        "Hech qanday",
+        "NullPointerException har doim"
+      ],
+      "correctAnswer": "NumberFormatException",
+      "explanation": "Matn butun son ko‘rinishida emas."
+    },
+    {
+      "key": "W13Q2",
+      "text": "[W13Q2] Xatoni chiqarish kalit so‘zi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "throw",
+        "throws",
+        "try",
+        "finally"
+      ],
+      "correctAnswer": "throw",
+      "explanation": "throw aniq istisnoni chiqaradi."
+    },
+    {
+      "key": "W13Q3",
+      "text": "[W13Q3] Fayl resursini avtomatik yopish?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "try-with-resources",
+        "Bo‘sh catch",
+        "Faqat println",
+        "while(true)"
+      ],
+      "correctAnswer": "try-with-resources",
+      "explanation": "AutoCloseable resurs blok tugaganda yopiladi."
+    },
+    {
+      "key": "W14Q1",
+      "text": "[W14Q1] Matn kodlashini aniq belgilash uchun?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "StandardCharsets.UTF_8",
+        "Math.PI",
+        "System.in",
+        "Integer.MAX_VALUE"
+      ],
+      "correctAnswer": "StandardCharsets.UTF_8",
+      "explanation": "UTF-8 kodlash shartnomasini aniq beradi."
+    },
+    {
+      "key": "W14Q2",
+      "text": "[W14Q2] Path nimani ifodalaydi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Fayl yoki papka yo‘li",
+        "Faqat fayl ichidagi matn",
+        "HTTP javob",
+        "Java klass nomi"
+      ],
+      "correctAnswer": "Fayl yoki papka yo‘li",
+      "explanation": "Path fayl tizimidagi manzil bilan ishlaydi."
+    },
+    {
+      "key": "W14Q3",
+      "text": "[W14Q3] Buzilgan fayl yuklansa eng xavfsiz holat?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Avvalgi holatni saqlab xabar berish",
+        "Yarmini indamay qabul qilish",
+        "Barcha fayllarni o‘chirish",
+        "Ballni tasodifiy tanlash"
+      ],
+      "correctAnswer": "Avvalgi holatni saqlab xabar berish",
+      "explanation": "Vaqtinchalik holatda tekshirib keyin almashtirish yaxlitlikni saqlaydi."
+    },
+    {
+      "key": "W15Q1",
+      "text": "[W15Q1] Takror ID kiritilganda loyiha talabi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Rad etish, eski yozuvni saqlash",
+        "Indamay almashtirish",
+        "Tasodifiy ID berish",
+        "Dastur yiqilishi"
+      ],
+      "correctAnswer": "Rad etish, eski yozuvni saqlash",
+      "explanation": "Ma’lumot yaxlitligi saqlanishi kerak."
+    },
+    {
+      "key": "W15Q2",
+      "text": "[W15Q2] ConsoleMenu mas’uliyati?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Kiritish va foydalanuvchi xabarlari",
+        "Barcha fayl formatlari",
+        "Faqat baholash",
+        "JDK o‘rnatish"
+      ],
+      "correctAnswer": "Kiritish va foydalanuvchi xabarlari",
+      "explanation": "Domen qoidalari servisda, interfeys konsol qavatida."
+    },
+    {
+      "key": "W15Q3",
+      "text": "[W15Q3] Qayta ishga tushirish testi nimani tekshiradi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Saqlash va yuklashni",
+        "Faqat kompilyatsiyani",
+        "Faqat ranglarni",
+        "Internet tezligini"
+      ],
+      "correctAnswer": "Saqlash va yuklashni",
+      "explanation": "Jarayon tugagandan keyin holat tiklanishini tekshiradi."
+    },
+    {
+      "key": "F01",
+      "text": "[F01] int x=5; System.out.println(x/2 + x%2); natijasi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "3",
+        "2.5",
+        "2",
+        "4"
+      ],
+      "correctAnswer": "3",
+      "explanation": "5/2 = 2 va 5%2 = 1; yig‘indi 3."
+    },
+    {
+      "key": "F02",
+      "text": "[F02] int sum=0; for(int i=2;i<=6;i+=2) sum+=i; sum nechaga teng?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "12",
+        "6",
+        "8",
+        "14"
+      ],
+      "correctAnswer": "12",
+      "explanation": "2+4+6 = 12."
+    },
+    {
+      "key": "F03",
+      "text": "[F03] static void f(int x){x=9;} int a=3; f(a); a nechaga teng?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "3",
+        "9",
+        "0",
+        "Kompilyatsiya xatosi"
+      ],
+      "correctAnswer": "3",
+      "explanation": "Primitive argument qiymati nusxalanadi."
+    },
+    {
+      "key": "F04",
+      "text": "[F04] int[] a={1,2}; int[] b=a; b[0]=7; a[0] nechaga teng?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "7",
+        "1",
+        "2",
+        "0"
+      ],
+      "correctAnswer": "7",
+      "explanation": "Ikkala havola bitta massivga qaragan."
+    },
+    {
+      "key": "F05",
+      "text": "[F05] \"  Java  \".trim().length() natijasi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "4",
+        "8",
+        "6",
+        "0"
+      ],
+      "correctAnswer": "4",
+      "explanation": "Chetdagi bo‘shliqlarsiz Java to‘rt kod birlikdan iborat."
+    },
+    {
+      "key": "F06",
+      "text": "[F06] Minimum uchun int min=0 qaysi kirishda xato natija beradi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "[4,8]",
+        "[-2,3]",
+        "[0,8]",
+        "[-9,0]"
+      ],
+      "correctAnswer": "[4,8]",
+      "explanation": "Musbat massivda 0 haqiqiy minimum emas."
+    },
+    {
+      "key": "F07",
+      "text": "[F07] Klassdagi shaxsiy balance maydoni nega private bo‘lishi kerak?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "O‘zgarishni qoidali metod orqali boshqarish",
+        "Kompilyator sonni oshirsin",
+        "Obyekt yaratilmasin",
+        "Har bir obyekt bitta qiymatga ega bo‘lsin"
+      ],
+      "correctAnswer": "O‘zgarishni qoidali metod orqali boshqarish",
+      "explanation": "Holat invariantini himoyalash uchun."
+    },
+    {
+      "key": "F08",
+      "text": "[F08] Base x=new Child(); x.label(); da Child labelni override qilgan. Qaysi instance metod ishlaydi?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Child.label",
+        "Base.label har doim",
+        "Konstruktor qayta ishlaydi",
+        "Hech biri"
+      ],
+      "correctAnswer": "Child.label",
+      "explanation": "Dinamik dispatch obyektning amaldagi turiga qaraydi."
+    },
+    {
+      "key": "F09",
+      "text": "[F09] ReportFormatterga yangi JsonFormatter qo‘shishda qaysi yechim mos?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Interfeysni amalga oshirish",
+        "Eski barcha klassni Stringga almashtirish",
+        "Har metodni static qilish",
+        "Barcha testni o‘chirish"
+      ],
+      "correctAnswer": "Interfeysni amalga oshirish",
+      "explanation": "Hisobot kodi shartnomaga bog‘langan bo‘lsa yangi variant ulanadi."
+    },
+    {
+      "key": "F10",
+      "text": "[F10] Mapda put(\"S1\",70); put(\"S1\",80); dan keyin size va get(\"S1\")?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "1 va 80",
+        "2 va 70",
+        "2 va 80",
+        "1 va 70"
+      ],
+      "correctAnswer": "1 va 80",
+      "explanation": "Takror kalit qiymati yangilanadi."
+    },
+    {
+      "key": "F11",
+      "text": "[F11] List<Integer> a=new ArrayList<>(List.of(10,20,30)); a.remove(1); natija?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "[10,30]",
+        "[20,30]",
+        "[10,20]",
+        "[10,20,30]"
+      ],
+      "correctAnswer": "[10,30]",
+      "explanation": "int argument indeks1ni bildiradi."
+    },
+    {
+      "key": "F12",
+      "text": "[F12] Konsol EOF bo‘lganda qayta so‘rash sikli nima qilishi kerak?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Tushunarli tugashi",
+        "Cheksiz qayta so‘rashi",
+        "Barcha faylni o‘chirishi",
+        "Tasodifiy ball olishi"
+      ],
+      "correctAnswer": "Tushunarli tugashi",
+      "explanation": "hasNextLine bilan kirish oqimi tugaganini aniqlash mumkin."
+    },
+    {
+      "key": "F13",
+      "text": "[F13] Faylning 3-qatori buzilgan bo‘lsa yaxlit yuklash uchun nima kerak?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Avval vaqtinchalik ro‘yxatda to‘liq tekshirish",
+        "1-2 qatorni darhol asosiy holatga qo‘shish",
+        "Xatoni yutib yuborish",
+        "Qolganini taxmin qilish"
+      ],
+      "correctAnswer": "Avval vaqtinchalik ro‘yxatda to‘liq tekshirish",
+      "explanation": "Muvaffaqiyatdan keyingina asosiy holat almashtiriladi."
+    },
+    {
+      "key": "F14",
+      "text": "[F14] Kitobni ikkinchi marta berish rad etilganda yana nimani tekshirish kerak?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "Avvalgi band holat saqlanganini",
+        "Fayl rangini",
+        "Internet tezligini",
+        "Barcha kitob o‘chganini"
+      ],
+      "correctAnswer": "Avvalgi band holat saqlanganini",
+      "explanation": "Rad etilgan amal holatni buzmasligi kerak."
+    },
+    {
+      "key": "F15",
+      "text": "[F15] Loyihani boshqa kompyuterda takrorlash uchun READMEda eng zarur ma’lumot?",
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "points": 1,
+      "options": [
+        "JDK talabi va kompilyatsiya/ishga tushirish buyruqlari",
+        "Faqat muallif ismi",
+        "Faqat ekran rasmi",
+        "Faqat klasslar soni"
+      ],
+      "correctAnswer": "JDK talabi va kompilyatsiya/ishga tushirish buyruqlari",
+      "explanation": "Takrorlanuvchan ishga tushirish tekshirish uchun zarur."
+    }
+  ],
+  "quizzes": [
+    {
+      "title": "01-hafta: o‘zini tekshirish",
+      "week": 1,
+      "questionKeys": [
+        "W01Q1",
+        "W01Q2",
+        "W01Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "02-hafta: o‘zini tekshirish",
+      "week": 2,
+      "questionKeys": [
+        "W02Q1",
+        "W02Q2",
+        "W02Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "03-hafta: o‘zini tekshirish",
+      "week": 3,
+      "questionKeys": [
+        "W03Q1",
+        "W03Q2",
+        "W03Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "04-hafta: o‘zini tekshirish",
+      "week": 4,
+      "questionKeys": [
+        "W04Q1",
+        "W04Q2",
+        "W04Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "05-hafta: o‘zini tekshirish",
+      "week": 5,
+      "questionKeys": [
+        "W05Q1",
+        "W05Q2",
+        "W05Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "06-hafta: o‘zini tekshirish",
+      "week": 6,
+      "questionKeys": [
+        "W06Q1",
+        "W06Q2",
+        "W06Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "07-hafta: o‘zini tekshirish",
+      "week": 7,
+      "questionKeys": [
+        "W07Q1",
+        "W07Q2",
+        "W07Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "08-hafta: o‘zini tekshirish",
+      "week": 8,
+      "questionKeys": [
+        "W08Q1",
+        "W08Q2",
+        "W08Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "09-hafta: o‘zini tekshirish",
+      "week": 9,
+      "questionKeys": [
+        "W09Q1",
+        "W09Q2",
+        "W09Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "10-hafta: o‘zini tekshirish",
+      "week": 10,
+      "questionKeys": [
+        "W10Q1",
+        "W10Q2",
+        "W10Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "11-hafta: o‘zini tekshirish",
+      "week": 11,
+      "questionKeys": [
+        "W11Q1",
+        "W11Q2",
+        "W11Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "12-hafta: o‘zini tekshirish",
+      "week": 12,
+      "questionKeys": [
+        "W12Q1",
+        "W12Q2",
+        "W12Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "13-hafta: o‘zini tekshirish",
+      "week": 13,
+      "questionKeys": [
+        "W13Q1",
+        "W13Q2",
+        "W13Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "14-hafta: o‘zini tekshirish",
+      "week": 14,
+      "questionKeys": [
+        "W14Q1",
+        "W14Q2",
+        "W14Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "15-hafta: o‘zini tekshirish",
+      "week": 15,
+      "questionKeys": [
+        "W15Q1",
+        "W15Q2",
+        "W15Q3"
+      ],
+      "durationMinutes": 10,
+      "allowedAttempts": 3,
+      "passingPercentage": 67,
+      "instructions": "Mustaqil ishlang. Bu mashq testi; noto‘g‘ri javobdan keyin tegishli konspektni qayta o‘qing.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "Oraliq nazorat — 1–8-haftalar",
+      "week": 8,
+      "questionKeys": [
+        "W01Q1",
+        "W01Q2",
+        "W01Q3",
+        "W02Q1",
+        "W02Q2",
+        "W02Q3",
+        "W03Q1",
+        "W03Q2",
+        "W03Q3",
+        "W04Q1",
+        "W04Q2",
+        "W04Q3",
+        "W05Q1",
+        "W05Q2",
+        "W05Q3",
+        "W06Q1",
+        "W06Q2",
+        "W06Q3",
+        "W07Q1",
+        "W07Q2",
+        "W07Q3",
+        "W08Q1",
+        "W08Q2",
+        "W08Q3"
+      ],
+      "durationMinutes": 35,
+      "allowedAttempts": 1,
+      "passingPercentage": 60,
+      "instructions": "Bitta javobni belgilang. Kodli savollarda natijani o‘zingiz hisoblang. Barcha savollar teng ball. Oraliq test 24, yakuniy test 15 savol.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    },
+    {
+      "title": "Yakuniy nazorat — Java 1-semestr",
+      "week": 15,
+      "questionKeys": [
+        "F01",
+        "F02",
+        "F03",
+        "F04",
+        "F05",
+        "F06",
+        "F07",
+        "F08",
+        "F09",
+        "F10",
+        "F11",
+        "F12",
+        "F13",
+        "F14",
+        "F15"
+      ],
+      "durationMinutes": 30,
+      "allowedAttempts": 1,
+      "passingPercentage": 60,
+      "instructions": "Bitta javobni belgilang. Kodli savollarda natijani o‘zingiz hisoblang. Barcha savollar teng ball. Oraliq test 24, yakuniy test 15 savol.",
+      "status": "DRAFT",
+      "showResult": true,
+      "shuffleQuestions": true,
+      "proctoring": false,
+      "proctorIds": []
+    }
+  ]
+}

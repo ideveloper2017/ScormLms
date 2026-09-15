@@ -1,0 +1,56 @@
+/* Read-only lesson typography must also work before the editor is loaded. */
+.rich-text-reader {
+  min-width: 0;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.rich-text-reader :is(h1, h2, h3, h4, h5, h6) {
+  margin-block: 1.5em 0.6em;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.rich-text-reader h1 { font-size: 1.5em; }
+.rich-text-reader h2 { font-size: 1.25em; }
+.rich-text-reader h3 { font-size: 1.1em; }
+.rich-text-reader :is(p, ul, ol, pre, blockquote, table) { margin-block: 0.85em; }
+.rich-text-reader > :first-child { margin-top: 0; }
+.rich-text-reader > :last-child { margin-bottom: 0; }
+.rich-text-reader :is(ul, ol) { padding-inline-start: 1.5em; }
+.rich-text-reader ul { list-style-type: disc; }
+.rich-text-reader ol { list-style-type: decimal; }
+.rich-text-reader li + li { margin-top: 0.35em; }
+.rich-text-reader a { color: var(--primary); text-decoration: underline; }
+
+.rich-text-reader pre {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: var(--muted);
+  font-size: 0.875em;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-wrap: normal;
+  tab-size: 4;
+}
+
+.rich-text-reader table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+.rich-text-reader :is(th, td) {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: start;
+}
+.rich-text-reader th { background: var(--muted); font-weight: 600; }
+.rich-text-reader blockquote {
+  border-inline-start: 3px solid var(--border);
+  padding-inline-start: 1rem;
+}
+

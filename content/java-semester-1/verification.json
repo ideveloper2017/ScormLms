@@ -1,0 +1,82 @@
+{
+  "javaRelease": 21,
+  "examples": [
+    {
+      "example": "Week01",
+      "status": "passed",
+      "expectedOutput": "Salom, Java!\nDasturiy injinering | 1-semestr"
+    },
+    {
+      "example": "Week02",
+      "status": "passed",
+      "expectedOutput": "2 soat 15 daqiqa\n3.5"
+    },
+    {
+      "example": "Week03",
+      "status": "passed",
+      "expectedOutput": "Yaxshi"
+    },
+    {
+      "example": "Week04",
+      "status": "passed",
+      "expectedOutput": "15"
+    },
+    {
+      "example": "Week05",
+      "status": "passed",
+      "expectedOutput": "100\n72"
+    },
+    {
+      "example": "Week06",
+      "status": "passed",
+      "expectedOutput": "1\n-1"
+    },
+    {
+      "example": "Week07",
+      "status": "passed",
+      "expectedOutput": "Java asoslari\ntrue\n2"
+    },
+    {
+      "example": "Week08",
+      "status": "passed",
+      "expectedOutput": "3 test o'tdi"
+    },
+    {
+      "example": "Week09",
+      "status": "passed",
+      "expectedOutput": "Ali: 85"
+    },
+    {
+      "example": "Week10",
+      "status": "passed",
+      "expectedOutput": "Video: Java"
+    },
+    {
+      "example": "Week11",
+      "status": "passed",
+      "expectedOutput": "Xabar: Topshiriq tayyor"
+    },
+    {
+      "example": "Week12",
+      "status": "passed",
+      "expectedOutput": "{java=2, kod=1}"
+    },
+    {
+      "example": "Week13",
+      "status": "passed",
+      "expectedOutput": "Butun son kiriting\nQabul: 85"
+    },
+    {
+      "example": "Week14",
+      "status": "passed",
+      "expectedOutput": "B1;Java;available"
+    },
+    {
+      "example": "Week15",
+      "status": "passed",
+      "expectedOutput": "true\nfalse\nJava"
+    }
+  ],
+  "questionValidation": "60 passed",
+  "studentArchive": "15 Java sources; no answer key or compiled classes"
+}

@@ -1,0 +1,23 @@
+{
+  "courseId": 5,
+  "subjectId": 3,
+  "syllabusId": 3,
+  "status": "draft",
+  "startDate": "2026-09-14",
+  "modules": 16,
+  "textLessons": 50,
+  "videoLessons": 22,
+  "downloadPackages": 1,
+  "assignments": 15,
+  "questions": 60,
+  "quizzes": 17,
+  "createdThisRun": 0,
+  "contentDifferences": [],
+  "packageSha256": "62df9ae96fe0991a8e84449fed2358bcddaa31b34b6d6c004a8a6b7e7fabc4b5",
+  "compatibilityIssueCodes": [
+    "CONTENT_COURSE_LANGUAGE_MISMATCH",
+    "CONTENT_PROGRAM_LANGUAGE_MISMATCH",
+    "PROGRAM_DISTANCE_DISABLED"
+  ],
+  "teacherUrl": "http://localhost:5174/teacher/courses/5/contents"
+}
