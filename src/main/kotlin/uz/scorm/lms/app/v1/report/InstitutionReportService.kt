@@ -13,6 +13,7 @@ import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.exam.repository.ExamResultRepository
 import uz.scorm.lms.app.v1.scorm.repository.ScormPackageRepository
+import org.springframework.beans.factory.annotation.Autowired
 import uz.scorm.lms.app.v1.student.model.StudentStatus
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
@@ -29,7 +30,7 @@ class InstitutionReportService(
     private val courseRepository: CourseRepository,
     private val enrollmentRepository: CourseEnrollmentRepository,
     private val contentRepository: CourseContentRepository,
-    private val scormRepository: ScormPackageRepository,
+    @Autowired(required = false) private val scormRepository: ScormPackageRepository?,
     private val activityRepository: LearningActivityEventRepository,
     private val examResultRepository: ExamResultRepository,
     private val studentRepository: StudentRepository,
@@ -73,7 +74,7 @@ class InstitutionReportService(
                 averageScore = average(results.map { it.percentage }),
                 attendanceRate = percentage(attendancePresent.toLong(), attendanceTotal.toLong()),
                 contentCount = contentRepository.countByModuleCourseIdAndDeletedFalse(courseId),
-                scormPackageCount = scormRepository.countByCourseIdAndDeletedFalse(courseId),
+                scormPackageCount = scormRepository?.countByCourseIdAndDeletedFalse(courseId) ?: 0,
                 activityEventCount = enrollments.sumOf { enrollment -> activityRepository.countByEnrollmentIdAndOccurredAtBetweenAndDeletedFalse(requireNotNull(enrollment.id), fromInstant, toInstant) },
             )
         }

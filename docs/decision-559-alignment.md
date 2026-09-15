@@ -1,5 +1,7 @@
 # 559-son qarorga moslashtirish matritsasi
 
+> 2026-09-14 tekshiruvi: quyidagi matritsa va imzolangan dalillar kontrakti 2022-yilgi PDFga bog'langan tarixiy katalogdir. [LexUZ amaldagi matni](https://lex.uz/docs/6221502) bo'yicha Nizomning 20-bandi 2025-11-07 dan kuchini yo'qotgan (498-son qaror). Qarorning o'zidagi 2-band "v" kichik bandi 300/30 va istisnolarni saqlaydi; server limitni bekor qilmaydi, joriy compliance havolasini shu asosga yo'naltiradi. Tarixiy 27 bandli katalogdan olingan APPROVED natija amaldagi tahrirning to'liq huquqiy qabuli deb talqin qilinmasin. Yangi normativ tahrir uchun alohida versiyalangan katalog va tashkilot tekshiruvi kerak; mavjud imzo/hashlar qayta yozilmaydi.
+
 Manba: O'zbekiston Respublikasi Vazirlar Mahkamasining 2022-yil 3-oktabrdagi 559-son qarori va unga ilova qilingan "Oliy ta'lim tashkilotlarida masofaviy ta'limni tashkil etish tartibi to'g'risida"gi nizom.
 
 Manba PDF: `559-son qaror.pdf`, 10 sahifa, SHA-256 `A1E6CF0E05640B962550A7B9B95851404F7B50DF590BBA943846E1CEA5FCC2D3`.

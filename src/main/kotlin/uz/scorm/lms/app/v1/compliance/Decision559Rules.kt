@@ -7,6 +7,9 @@ package uz.scorm.lms.app.v1.compliance
 object Decision559Rules {
     const val DECISION_NUMBER = "559"
     const val DECISION_DATE = "2022-10-03"
+    // Nizomning 20-bandi 2025-11-07 dan bekor qilingan. Qarorning
+    // o'zidagi 2-band "v" kichik bandi amaldagi matnda saqlangan.
+    const val ADMISSION_LIMIT_CLAUSE = "Qarorning 2-bandi, v kichik bandi"
     const val MAX_STUDENTS_PER_TEACHER = 50
     const val MAX_BACHELOR_ADMISSION = 300
     const val MAX_MASTER_ADMISSION = 30

@@ -6,15 +6,15 @@ import { apiOptional } from './api-optional';
  * Validates API responses to ensure type safety at runtime
  */
 export const AssignmentSchema = z.object({
-  id: z.string().min(1, 'Assignment ID is required'),
-  title: z.string().min(1, 'Assignment title is required'),
+  id: z.string().min(1, "Topshiriq ID si ko'rsatilishi shart"),
+  title: z.string().min(1, "Topshiriq sarlavhasi ko'rsatilishi shart"),
   description: z.string(),
-  courseId: z.string().min(1, 'Course ID is required'),
-  courseName: z.string().min(1, 'Course name is required'),
+  courseId: z.string().min(1, "Kurs ID si ko'rsatilishi shart"),
+  courseName: z.string().min(1, "Kurs nomi ko'rsatilishi shart"),
   dueDate: z.coerce.date(),
   status: z.enum(['pending', 'submitted', 'graded', 'overdue']),
   priority: z.enum(['low', 'medium', 'high']),
-  maxScore: z.number().min(0, 'Max score must be non-negative'),
+  maxScore: z.number().min(0, "Maksimal ball manfiy bo'lishi mumkin emas"),
   submittedAt: apiOptional(z.coerce.date()),
   grade: apiOptional(z.number().min(0)),
   feedback: apiOptional(z.string()),
@@ -22,15 +22,15 @@ export const AssignmentSchema = z.object({
 
 export const AttachmentFileSchema = z.object({
   id: z.string().min(1),
-  name: z.string().min(1, 'File name is required'),
-  url: z.string().url('Invalid file URL'),
-  size: z.number().min(0, 'File size must be non-negative'),
+  name: z.string().min(1, "Fayl nomi ko'rsatilishi shart"),
+  url: z.string().url("Noto'g'ri fayl URL manzili"),
+  size: z.number().min(0, "Fayl hajmi manfiy bo'lishi mumkin emas"),
   uploadedAt: z.coerce.date(),
 });
 
 export const RubricItemSchema = z.object({
-  criterion: z.string().min(1, 'Criterion is required'),
-  points: z.number().min(0, 'Points must be non-negative'),
+  criterion: z.string().min(1, "Mezon ko'rsatilishi shart"),
+  points: z.number().min(0, "Ballar manfiy bo'lishi mumkin emas"),
   description: z.string(),
 });
 

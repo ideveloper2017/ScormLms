@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useProctoringMonitor } from '../useProctoringMonitor';
+import { startLocalMonitoring } from '@/lib/proctoring-signals';
+vi.mock('@/lib/proctoring-signals', () => ({ startLocalMonitoring: vi.fn() }));
 import { keepaliveProctoringEvents, recordProctoringEvents } from '@/services/proctoring-api';
 
 vi.mock('@/services/proctoring-api', () => ({
@@ -49,6 +51,7 @@ describe('useProctoringMonitor', () => {
     }));
 
     await waitFor(() => expect(result.current.cameraStatus).toBe('active'));
+    expect(startLocalMonitoring).not.toHaveBeenCalled();
     await waitFor(() => expect(allTypes()).toContain('CAMERA_STARTED'));
 
     Object.defineProperty(document, 'hidden', { value: true, configurable: true });
@@ -84,4 +87,15 @@ describe('useProctoringMonitor', () => {
   function allTypes(): string[] {
     return vi.mocked(recordProctoringEvents).mock.calls.flatMap((call) => call[2].map((event) => event.type));
   }
+
+  it('starts local sensors only when opted in and stops them when disabled', async () => {
+    const stopSensors = vi.fn();
+    vi.mocked(startLocalMonitoring).mockReturnValue(stopSensors);
+    const { result, rerender } = renderHook(({ enabled }) => useProctoringMonitor({ enabled, testId: '9', attemptId: '21', localMonitoringEnabled: true }), { initialProps: { enabled: true } });
+    await waitFor(() => expect(result.current.cameraStatus).toBe('active'));
+    expect(startLocalMonitoring).toHaveBeenCalledOnce();
+    rerender({ enabled: false });
+    expect(stopSensors).toHaveBeenCalledOnce();
+    expect(result.current.sensors).toEqual({ audio: 'disabled', visual: 'disabled' });
+  });
 });

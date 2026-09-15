@@ -20,6 +20,14 @@ const SEVERITY_STYLE: Record<string, string> = {
 };
 
 const TYPE_LABEL: Record<string, string> = {
+  microphone_started: 'Mikrofon ishga tushdi',
+  microphone_stopped: 'Mikrofon yoki tovush tahlili to‘xtadi',
+  microphone_permission_denied: 'Mikrofon ruxsati rad etildi',
+  audio_activity: 'Davomli tovush signali (proktor tekshiruvi kerak)',
+  face_not_visible: 'Yuz ko‘rinmadi (proktor tekshiruvi kerak)',
+  multiple_faces: 'Bir nechta yuz signali (proktor tekshiruvi kerak)',
+  head_turned: 'Bosh burilishi signali (proktor tekshiruvi kerak)',
+  visual_analysis_unavailable: 'Yuz tahlili ishlamayapti',
   session_started: 'Sessiya boshlandi',
   session_ended: 'Sessiya yakunlandi',
   camera_started: 'Kamera ishga tushdi',

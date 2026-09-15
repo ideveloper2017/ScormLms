@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { startLocalMonitoring, type SensorStatus } from '@/lib/proctoring-signals';
 import {
   keepaliveProctoringEvents,
   recordProctoringEvents,
@@ -12,6 +13,7 @@ interface Options {
   enabled: boolean;
   testId?: string;
   attemptId?: string;
+  localMonitoringEnabled?: boolean;
 }
 
 const MAX_CLIENT_QUEUE = 5_000;
@@ -28,7 +30,8 @@ function eventId(): string {
   return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`;
 }
 
-export function useProctoringMonitor({ enabled, testId, attemptId }: Options) {
+export function useProctoringMonitor({ enabled, testId, attemptId, localMonitoringEnabled = false }: Options) {
+  const [sensors, setSensors] = useState<{ audio: SensorStatus; visual: SensorStatus }>({ audio: 'disabled', visual: 'disabled' });
   const [cameraStatus, setCameraStatus] = useState<ProctoringCameraStatus>(enabled ? 'initializing' : 'disabled');
   const [queuedEvents, setQueuedEvents] = useState(0);
   const [restartKey, setRestartKey] = useState(0);
@@ -36,6 +39,7 @@ export function useProctoringMonitor({ enabled, testId, attemptId }: Options) {
 
   useEffect(() => {
     if (!enabled || !testId || !attemptId) {
+      setSensors({ audio: 'disabled', visual: 'disabled' });
       setCameraStatus('disabled');
       setQueuedEvents(0);
       return;
@@ -45,6 +49,8 @@ export function useProctoringMonitor({ enabled, testId, attemptId }: Options) {
     let disposed = false;
     let flushing = false;
     let stream: MediaStream | null = null;
+    let stopMonitoring: (() => void) | undefined;
+    setSensors({ audio: 'disabled', visual: 'disabled' });
     let queue: ProctoringClientEvent[] = [];
     try {
       const stored = sessionStorage.getItem(storageKey);
@@ -130,9 +136,14 @@ export function useProctoringMonitor({ enabled, testId, attemptId }: Options) {
           if (disposed) return;
           setCameraStatus('stopped');
           record('CAMERA_STOPPED');
+          stopMonitoring?.();
+          setSensors({ audio: 'unavailable', visual: 'unavailable' });
         }, { once: true });
         setCameraStatus('active');
         record('CAMERA_STARTED');
+        if (localMonitoringEnabled) stopMonitoring = startLocalMonitoring(mediaStream, record, (sensor, state) => {
+          if (!disposed) setSensors(current => ({ ...current, [sensor]: state }));
+        });
       })
       .catch(() => {
         if (disposed) return;
@@ -148,6 +159,7 @@ export function useProctoringMonitor({ enabled, testId, attemptId }: Options) {
     return () => {
       void flush();
       disposed = true;
+      stopMonitoring?.();
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('focus', onFocus);
@@ -158,9 +170,9 @@ export function useProctoringMonitor({ enabled, testId, attemptId }: Options) {
       window.clearInterval(retry);
       stream?.getTracks().forEach((track) => track.stop());
     };
-  }, [enabled, testId, attemptId, restartKey]);
+  }, [enabled, testId, attemptId, restartKey, localMonitoringEnabled]);
 
   const flush = useCallback(() => flushRef.current(), []);
   const restartCamera = useCallback(() => setRestartKey((value) => value + 1), []);
-  return { cameraStatus, queuedEvents, flush, restartCamera };
+  return { cameraStatus, sensors, queuedEvents, flush, restartCamera };
 }

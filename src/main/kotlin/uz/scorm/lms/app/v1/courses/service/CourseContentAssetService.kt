@@ -207,6 +207,8 @@ class CourseContentAssetService(
             "webm" to "video/webm",
             "pdf" to "application/pdf",
             "txt" to "text/plain",
+            "html" to "text/html",
+            "htm" to "text/html",
             "csv" to "text/csv",
             "doc" to "application/msword",
             "docx" to "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

@@ -334,9 +334,9 @@ export function ContingentManagement() {
       enableSorting: false,
       cell: ({ row: { original: s } }) => (
         <div className="flex items-center gap-1 justify-end">
-          <Button variant="ghost" size="icon" onClick={() => setSelectedPerson(s)}><Eye className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon"><Settings className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setSelectedPerson(s)} title="Ko'rish" aria-label="Ko'rish"><Eye className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" title="Tahrirlash" aria-label="Tahrirlash"><Edit className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" title="Sozlamalar" aria-label="Sozlamalar"><Settings className="h-4 w-4" /></Button>
         </div>
       ),
     },
@@ -417,9 +417,9 @@ export function ContingentManagement() {
       enableSorting: false,
       cell: ({ row: { original: t } }) => (
         <div className="flex items-center gap-1 justify-end">
-          <Button variant="ghost" size="icon" onClick={() => setSelectedPerson(t)}><Eye className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon"><Settings className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setSelectedPerson(t)} title="Ko'rish" aria-label="Ko'rish"><Eye className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" title="Tahrirlash" aria-label="Tahrirlash"><Edit className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" title="Sozlamalar" aria-label="Sozlamalar"><Settings className="h-4 w-4" /></Button>
         </div>
       ),
     },

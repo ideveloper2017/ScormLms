@@ -85,6 +85,8 @@ springdoc:
 
 
 app:
+  features:
+    scorm-enabled: ${APP_SCORM_ENABLED:true}
   demo:
     # Faqat aniq yoqilganda bog'langan demo tuzilma, kurs va darslar yaratiladi.
     enabled: ${APP_DEMO_DATA_ENABLED:true}

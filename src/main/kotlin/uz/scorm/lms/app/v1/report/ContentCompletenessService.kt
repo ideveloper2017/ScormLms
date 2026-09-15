@@ -17,6 +17,7 @@ import uz.scorm.lms.app.v1.quiz.model.QuizStatus
 import uz.scorm.lms.app.v1.quiz.repository.CourseQuizRepository
 import uz.scorm.lms.app.v1.scorm.model.ScormPackageStatus
 import uz.scorm.lms.app.v1.scorm.repository.ScormPackageRepository
+import org.springframework.beans.factory.annotation.Autowired
 import uz.scorm.lms.app.v1.session.model.LearningSessionFormat
 import uz.scorm.lms.app.v1.session.model.LearningSessionStatus
 import uz.scorm.lms.app.v1.session.repository.CourseLearningSessionRepository
@@ -34,7 +35,7 @@ class ContentCompletenessService(
     private val assignmentRepository: CourseAssignmentRepository,
     private val quizRepository: CourseQuizRepository,
     private val sessionRepository: CourseLearningSessionRepository,
-    private val scormRepository: ScormPackageRepository,
+    @Autowired(required = false) private val scormRepository: ScormPackageRepository?,
     private val userRepository: UserRepository,
     private val compatibilityService: ContentCompatibilityService,
 ) {
@@ -63,7 +64,7 @@ class ContentCompletenessService(
         val sessions = sessionRepository.findAllByCourseIdInAndStatusInAndDeletedFalseOrderByStartsAtAsc(
             ids, setOf(LearningSessionStatus.PUBLISHED, LearningSessionStatus.COMPLETED),
         ).groupBy { it.course.id }
-        val scorm = scormRepository.findAllByCourseIdInAndStatusAndDeletedFalse(ids, ScormPackageStatus.READY).groupBy { it.course.id }
+        val scorm = scormRepository?.findAllByCourseIdInAndStatusAndDeletedFalse(ids, ScormPackageStatus.READY)?.groupBy { it.course.id } ?: emptyMap()
 
         val rows = courses.map { course ->
             val courseId = requireNotNull(course.id)

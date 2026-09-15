@@ -2,6 +2,7 @@ package uz.scorm.lms.app.v1.scorm.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpHeaders
@@ -34,6 +35,7 @@ import java.time.Duration
 
 @RestController
 @RequestMapping("/api/v1/scorm")
+@ConditionalOnProperty(name = ["app.features.scorm-enabled"], havingValue = "true", matchIfMissing = true)
 class ScormController(
     private val scormService: ScormService,
     private val courseAccessService: CourseAccessService,
@@ -134,6 +136,7 @@ class ScormController(
 
 @RestController
 @RequestMapping("/scorm-content")
+@ConditionalOnProperty(name = ["app.features.scorm-enabled"], havingValue = "true", matchIfMissing = true)
 class ScormContentController(
     private val scormService: ScormService,
     @Value("\${app.cors.allowed-origins}") allowedOriginsValue: String,

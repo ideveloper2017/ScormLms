@@ -21,6 +21,7 @@ import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.exam.model.ExamSessionStatus
 import uz.scorm.lms.app.v1.exam.repository.ExamSessionRepository
 import uz.scorm.lms.app.v1.scorm.repository.ScormPackageRepository
+import org.springframework.beans.factory.annotation.Autowired
 import uz.scorm.lms.app.v1.session.repository.CourseLearningSessionRepository
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
@@ -44,7 +45,7 @@ class DashboardService(
     private val courseRepository: CourseRepository,
     private val enrollmentRepository: CourseEnrollmentRepository,
     private val examSessionRepository: ExamSessionRepository,
-    private val scormPackageRepository: ScormPackageRepository,
+    @Autowired(required = false) private val scormPackageRepository: ScormPackageRepository?,
     private val submissionRepository: AssignmentSubmissionRepository,
     private val learningSessionRepository: CourseLearningSessionRepository,
     private val auditLogRepository: AuditLogRepository,
@@ -76,7 +77,7 @@ class DashboardService(
             activeCourses = courses.count { it.status == CourseStatus.PUBLISHED.name }.toLong(),
             totalExams = exams.size.toLong(),
             activeExams = exams.count { it.status in setOf(ExamSessionStatus.PUBLISHED, ExamSessionStatus.ONGOING) }.toLong(),
-            scormPackages = scormPackageRepository.countByDeletedFalse(),
+            scormPackages = scormPackageRepository?.countByDeletedFalse() ?: 0,
             systemUptime = ManagementFactory.getRuntimeMXBean().uptime / 1_000,
             serverLoad = cpuUsage(),
             contentCompletion = enrollments.map { it.progress.toDouble() }.averageOrZero(),

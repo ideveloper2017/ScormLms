@@ -1,4 +1,4 @@
-import { useEffect, useState, type ElementType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ElementType, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,9 +7,10 @@ import {
   ArrowUp,
   BarChart3,
   BookOpen,
+  CheckCircle2 as CheckCircleIcon,
   ClipboardList,
   ChevronDown,
-  DollarSign,
+  CalendarDays,
   Download,
   Edit,
   FileText,
@@ -61,6 +62,10 @@ import {
 import { CourseEnrollmentPicker } from "@/components/course-enrollment-picker";
 import { useAuth } from "@/contexts/auth-context";
 import { CourseForum } from "@/components/course-forum";
+import { TeacherCourseCreate } from "./course-create";
+import { RichTextContent } from "@/components/editor/rich-text-content";
+import { useSessionDraft, useUnloadWarning } from "@/hooks/use-session-draft";
+import { CoursePreview } from "@/components/course-preview";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -99,6 +104,11 @@ export function TeacherCourseDetail({
   const { toast } = useToast();
   const { user } = useAuth();
   const courseId = id ?? "";
+  const requestedTab = ['lessons', 'modules'].includes(defaultTab) ? 'contents' : defaultTab;
+  const [activeTab, setActiveTab] = useState(requestedTab);
+  const [previewMode, setPreviewMode] = useState<'overview' | 'player' | null>(null);
+  const [previewContentId, setPreviewContentId] = useState<number>();
+  useEffect(() => { setActiveTab(requestedTab); setPreviewMode(null); }, [courseId, requestedTab]);
 
   const [studentIds, setStudentIds] = useState<number[]>([]);
   useEffect(() => { setStudentIds([]); }, [courseId]);
@@ -112,32 +122,55 @@ export function TeacherCourseDetail({
   const [enrollmentCredits, setEnrollmentCredits] = useState("0");
   const [enrollmentRequired, setEnrollmentRequired] = useState("true");
   const [editingCourse, setEditingCourse] = useState(false);
-  const [courseTitle, setCourseTitle] = useState("");
-  const [courseDescription, setCourseDescription] = useState("");
   const [moduleTitle, setModuleTitle] = useState("");
   const [editingModuleId, setEditingModuleId] = useState<number | null>(null);
-  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
-  const [contentTitle, setContentTitle] = useState("");
-  const [contentDescription, setContentDescription] = useState("");
-  const [contentUrl, setContentUrl] = useState("");
-  const [contentBody, setContentBody] = useState("");
+  const lessonDraft = useSessionDraft(`course-lesson:v1:${user?.id ?? "anonymous"}:${courseId}`, {
+    lessonDialogOpen: false,
+    contentTitle: "",
+    contentDescription: "",
+    contentUrl: "",
+    contentBody: "",
+    contentAssetId: null as number | null,
+    contentAssetName: "",
+    contentType: "LINK" as ContentType,
+    contentModuleId: "",
+    contentLanguage: "uz",
+    contentAuthor: "",
+    contentVersion: "1.0",
+    contentSourceName: "",
+    contentSourceUrl: "",
+    contentValidFrom: today(),
+    contentValidUntil: "",
+    contentDuration: "",
+    editingContentId: null as number | null,
+  });
+  const { lessonDialogOpen, contentTitle, contentDescription, contentUrl, contentBody, contentAssetId, contentAssetName, contentType, contentModuleId, contentLanguage, contentAuthor, contentVersion, contentSourceName, contentSourceUrl, contentValidFrom, contentValidUntil, contentDuration, editingContentId } = lessonDraft.value;
+  const setLessonField = <K extends keyof typeof lessonDraft.value>(key: K, value: (typeof lessonDraft.value)[K]) =>
+    lessonDraft.setValue((current) => ({ ...current, [key]: value }));
+  const setLessonDialogOpen = (value: (typeof lessonDraft.value)["lessonDialogOpen"]) => setLessonField("lessonDialogOpen", value);
+  const setContentTitle = (value: (typeof lessonDraft.value)["contentTitle"]) => setLessonField("contentTitle", value);
+  const setContentDescription = (value: (typeof lessonDraft.value)["contentDescription"]) => setLessonField("contentDescription", value);
+  const setContentUrl = (value: (typeof lessonDraft.value)["contentUrl"]) => setLessonField("contentUrl", value);
+  const setContentBody = (value: (typeof lessonDraft.value)["contentBody"]) => setLessonField("contentBody", value);
+  const setContentAssetId = (value: (typeof lessonDraft.value)["contentAssetId"]) => setLessonField("contentAssetId", value);
+  const setContentAssetName = (value: (typeof lessonDraft.value)["contentAssetName"]) => setLessonField("contentAssetName", value);
+  const setContentType = (value: (typeof lessonDraft.value)["contentType"]) => setLessonField("contentType", value);
+  const setContentModuleId = (value: (typeof lessonDraft.value)["contentModuleId"]) => setLessonField("contentModuleId", value);
+  const setContentLanguage = (value: (typeof lessonDraft.value)["contentLanguage"]) => setLessonField("contentLanguage", value);
+  const setContentAuthor = (value: (typeof lessonDraft.value)["contentAuthor"]) => setLessonField("contentAuthor", value);
+  const setContentVersion = (value: (typeof lessonDraft.value)["contentVersion"]) => setLessonField("contentVersion", value);
+  const setContentSourceName = (value: (typeof lessonDraft.value)["contentSourceName"]) => setLessonField("contentSourceName", value);
+  const setContentSourceUrl = (value: (typeof lessonDraft.value)["contentSourceUrl"]) => setLessonField("contentSourceUrl", value);
+  const setContentValidFrom = (value: (typeof lessonDraft.value)["contentValidFrom"]) => setLessonField("contentValidFrom", value);
+  const setContentValidUntil = (value: (typeof lessonDraft.value)["contentValidUntil"]) => setLessonField("contentValidUntil", value);
+  const setContentDuration = (value: (typeof lessonDraft.value)["contentDuration"]) => setLessonField("contentDuration", value);
+  const setEditingContentId = (value: (typeof lessonDraft.value)["editingContentId"]) => setLessonField("editingContentId", value);
+  const lessonSavingRef = useRef(false);
+  useUnloadWarning(lessonDialogOpen);
   const [contentFile, setContentFile] = useState<File | null>(null);
-  const [contentAssetId, setContentAssetId] = useState<number | null>(null);
-  const [contentAssetName, setContentAssetName] = useState("");
   const [downloadingContentId, setDownloadingContentId] = useState<
     number | null
   >(null);
-  const [contentType, setContentType] = useState<ContentType>("LINK");
-  const [contentModuleId, setContentModuleId] = useState("");
-  const [contentLanguage, setContentLanguage] = useState("uz");
-  const [contentAuthor, setContentAuthor] = useState("");
-  const [contentVersion, setContentVersion] = useState("1.0");
-  const [contentSourceName, setContentSourceName] = useState("");
-  const [contentSourceUrl, setContentSourceUrl] = useState("");
-  const [contentValidFrom, setContentValidFrom] = useState(today());
-  const [contentValidUntil, setContentValidUntil] = useState("");
-  const [contentDuration, setContentDuration] = useState("");
-  const [editingContentId, setEditingContentId] = useState<number | null>(null);
   const [historyContent, setHistoryContent] = useState<CourseContent | null>(
     null,
   );
@@ -234,19 +267,6 @@ export function TeacherCourseDetail({
     },
     onError: showError("Kurs holati yangilanmadi"),
   });
-  const updateCourseMutation = useMutation({
-    mutationFn: () =>
-      teacherPortalApi.updateCourse(courseId, {
-        title: courseTitle.trim(),
-        description: courseDescription.trim(),
-      }),
-    onSuccess: async () => {
-      setEditingCourse(false);
-      await refreshCourse();
-      toast({ title: "Kurs yangilandi" });
-    },
-    onError: showError("Kurs yangilanmadi"),
-  });
   const enrollMutation = useMutation({
     mutationFn: (ids: number[]) =>
       teacherPortalApi.enrollStudents(courseId, ids, {
@@ -317,6 +337,11 @@ export function TeacherCourseDetail({
       const uploadedAsset = contentFile
         ? await teacherPortalApi.uploadContentAsset(courseId, contentFile)
         : null;
+      if (uploadedAsset) {
+        setContentAssetId(uploadedAsset.id);
+        setContentAssetName(contentFile?.name || "Yuklangan fayl");
+        setContentFile(null);
+      }
       const assetId = uploadedAsset?.id ?? contentAssetId ?? undefined;
       const payload = {
         title: contentTitle.trim(),
@@ -361,6 +386,7 @@ export function TeacherCourseDetail({
       });
     },
     onError: showError("Dars saqlanmadi"),
+    onSettled: () => { lessonSavingRef.current = false; },
   });
   const attachMaterialMutation = useMutation({
     mutationFn: () =>
@@ -450,6 +476,14 @@ export function TeacherCourseDetail({
     setContentValidUntil("");
     setContentDuration("");
     setEditingContentId(null);
+    lessonDraft.clear();
+  }
+
+  function closeLesson() {
+    if (lessonSavingRef.current) return;
+    if (!window.confirm("Saqlanmagan dars o'zgarishlari bekor qilinsinmi?")) return;
+    setLessonDialogOpen(false);
+    resetContentForm();
   }
 
   function enrollStudents() {
@@ -464,6 +498,7 @@ export function TeacherCourseDetail({
   }
 
   function saveContent() {
+    if (lessonSavingRef.current) return;
     if (
       !contentTitle.trim() ||
       (!editingContentId && !contentModuleId) ||
@@ -517,6 +552,7 @@ export function TeacherCourseDetail({
         });
       }
     }
+    lessonSavingRef.current = true;
     saveContentMutation.mutate();
   }
 
@@ -628,7 +664,6 @@ export function TeacherCourseDetail({
   const activeStudents = enrollments.filter(
     (item) => item.status === "active",
   ).length;
-  const initialTab = defaultTab === "lessons" ? "contents" : defaultTab;
   const statusLabel =
     course.status === "published"
       ? "Faol"
@@ -656,10 +691,13 @@ export function TeacherCourseDetail({
   };
 
   const startCourseEdit = () => {
-    setCourseTitle(course.title);
-    setCourseDescription(course.description ?? "");
+    setPreviewMode(null);
     setEditingCourse(true);
   };
+
+  if (editingCourse) return <TeacherCourseCreate key={course.id} course={course}
+    onSaved={() => { setEditingCourse(false); void refreshCourse(); }}
+    onCancel={() => setEditingCourse(false)} />;
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-6">
@@ -689,18 +727,19 @@ export function TeacherCourseDetail({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={startCourseEdit} className="gap-2">
+          <Button variant="outline" disabled={course.status === "archived"} onClick={startCourseEdit} className="gap-2">
             <Edit className="h-4 w-4" />
             Tahrirlash
           </Button>
           {course.status === "draft" && (
-            <Button onClick={() => courseStatusMutation.mutate("PUBLISHED")}>
+            <Button disabled={courseStatusMutation.isPending} onClick={() => courseStatusMutation.mutate("PUBLISHED")}>
               Nashr qilish
             </Button>
           )}
           {course.status === "published" && (
             <Button
               variant="outline"
+              disabled={courseStatusMutation.isPending}
               onClick={() => courseStatusMutation.mutate("ARCHIVED")}
             >
               Arxivlash
@@ -709,6 +748,7 @@ export function TeacherCourseDetail({
           {course.status === "archived" && (
             <Button
               variant="outline"
+              disabled={courseStatusMutation.isPending}
               onClick={() => courseStatusMutation.mutate("DRAFT")}
             >
               Qoralamaga qaytarish
@@ -752,27 +792,28 @@ export function TeacherCourseDetail({
         ))}
       </div>
 
-      <Tabs defaultValue={initialTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-col">
         <div className="mb-5 flex flex-wrap gap-3 border-y py-4">
-          <Button variant="default">Kurs ko'rinishi</Button>
-          <Button variant="default" onClick={() => navigate(`/teacher/courses/${courseId}/contents`)}>Kurs playeri</Button>
+          <Button variant="default" disabled={modulesQuery.isPending || contentsQuery.isPending || modulesQuery.isError || contentsQuery.isError} onClick={() => setPreviewMode('overview')}>Kurs ko'rinishi</Button>
+          <Button variant="default" disabled={modulesQuery.isPending || contentsQuery.isPending || modulesQuery.isError || contentsQuery.isError} onClick={() => setPreviewMode('player')}>Kurs playeri</Button>
           <Badge variant="secondary" className="px-4 py-2 text-sm">{statusLabel}</Badge>
-          <Button variant="default">Tasdiqlash holati</Button>
+          <Button variant="default" onClick={() => setActiveTab('reviews')}>Tasdiqlash holati</Button>
         </div>
         <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
-          <Card className="lg:sticky lg:top-5">
+          <Card className="py-0 lg:sticky lg:top-5">
             <CardContent className="p-2">
-              <TabsList className="flex h-auto w-full flex-col items-stretch bg-transparent p-0">
-                <SideTab value="contents" icon={BookOpen} label="Curriculum" />
-                <SideTab value="live" icon={Video} label="Live Class" />
-                <SideTab value="assignment" icon={ClipboardList} label="Assignment" />
-                <SideTab value="overview" icon={Settings} label="Basic" />
-                <SideTab value="pricing" icon={DollarSign} label="Pricing" />
-                <SideTab value="info" icon={Info} label="Info" />
-                <SideTab value="media" icon={ImageIcon} label="Media" />
-                <SideTab value="seo" icon={FlaskConical} label="SEO" />
+              <TabsList aria-label="Kurs bo'limlari" className="flex h-auto w-full flex-col items-stretch bg-transparent p-0">
+                <SideTab value="contents" icon={BookOpen} label="Darslar" />
+                <SideTab value="live" icon={Video} label="Dars jadvali" />
+                <SideTab value="assignment" icon={ClipboardList} label="Topshiriqlar" />
+                <SideTab value="overview" icon={Settings} label="Asosiy ma'lumotlar" />
+                <SideTab value="duration" icon={CalendarDays} label="Amal qilish muddati" />
+                <SideTab value="info" icon={Info} label="Akademik ma'lumotlar" />
+                <SideTab value="media" icon={ImageIcon} label="Kurs rasmi" />
+                <SideTab value="seo" icon={FlaskConical} label="Qidiruv ma'lumotlari" />
                 <SideTab value="students" icon={Users} label="Talabalar" />
                 <SideTab value="forum" icon={LinkIcon} label="Forum" />
+                <SideTab value="reviews" icon={CheckCircleIcon} label="Tasdiqlash holati" />
               </TabsList>
             </CardContent>
           </Card>
@@ -787,44 +828,7 @@ export function TeacherCourseDetail({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {editingCourse ? (
-                <div className="space-y-3">
-                  <Input
-                    value={courseTitle}
-                    onChange={(event) => setCourseTitle(event.target.value)}
-                    placeholder="Kurs nomi"
-                  />
-                  <Input
-                    value={courseDescription}
-                    onChange={(event) =>
-                      setCourseDescription(event.target.value)
-                    }
-                    placeholder="Kurs tavsifi"
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setEditingCourse(false)}
-                    >
-                      Bekor qilish
-                    </Button>
-                    <Button
-                      disabled={
-                        !courseTitle.trim() || updateCourseMutation.isPending
-                      }
-                      onClick={() => updateCourseMutation.mutate()}
-                    >
-                      {updateCourseMutation.isPending
-                        ? "Saqlanmoqda..."
-                        : "Saqlash"}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {course.description || "Kurs tavsifi kiritilmagan"}
-                </p>
-              )}
+              <RichTextContent value={course.description || "Kurs tavsifi kiritilmagan"} className="text-sm" />
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span>Kontent tayyorligi</span>
@@ -857,6 +861,10 @@ export function TeacherCourseDetail({
         </TabsContent>
 
         <TabsContent value="contents" className="mt-4 space-y-3">
+          {(modulesQuery.isError || contentsQuery.isError) && <div role="alert" className="rounded-lg border border-destructive p-3">
+            Darslar yoki bo'limlar yuklanmadi.
+            <Button variant="outline" onClick={() => { void modulesQuery.refetch(); void contentsQuery.refetch(); }}>Qayta urinish</Button>
+          </div>}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Fan darslari</CardTitle>
@@ -1034,7 +1042,11 @@ export function TeacherCourseDetail({
                         size="icon"
                         aria-label="Sectionni o'chirish"
                         className="text-destructive"
-                        onClick={() => deleteModuleMutation.mutate(module.id)}
+                        disabled={deleteModuleMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`“${module.title}” bo‘limi va undagi barcha darslar o‘chirilsinmi?`))
+                            deleteModuleMutation.mutate(module.id);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -1170,11 +1182,9 @@ export function TeacherCourseDetail({
                         Yuklab olish
                       </Button>
                     )}
-                    {content.contentUrl && (
-                      <Button variant="ghost" size="sm" asChild>
-                        <a href={content.contentUrl} target="_blank" rel="noreferrer">
-                          Ochish
-                        </a>
+                    {(content.contentUrl || content.asset || content.contentBody) && (
+                      <Button variant="ghost" size="sm" onClick={() => { setPreviewContentId(content.id); setPreviewMode('player'); }}>
+                        Shu yerda ochish
                       </Button>
                     )}
                     <Button
@@ -1245,9 +1255,12 @@ export function TeacherCourseDetail({
                     <Button
                       variant="ghost"
                       size="icon"
-                      disabled={content.reviewStatus === "in_review"}
+                      disabled={content.reviewStatus === "in_review" || deleteContentMutation.isPending}
                       className="text-destructive"
-                      onClick={() => deleteContentMutation.mutate(content.id)}
+                      aria-label="Darsni o'chirish"
+                      onClick={() => {
+                        if (window.confirm(`“${content.title}” darsi o‘chirilsinmi?`)) deleteContentMutation.mutate(content.id);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -1346,37 +1359,30 @@ export function TeacherCourseDetail({
         </TabsContent>
 
         <TabsContent value="live" className="mt-0">
-          <SettingsCard title="Live Class" description="Kurs uchun jonli darslar jadvali va videokonferensiya havolalari shu bo'limda boshqariladi.">
+          <SettingsCard title="Dars jadvali" description="Kurs uchun jonli darslar jadvali va videokonferensiya havolalari shu bo'limda boshqariladi.">
             <p className="text-sm text-muted-foreground">Jonli darsni qo'shish uchun kurs jadvalidagi videokonferensiya modulidan foydalaning.</p>
+            <Button onClick={() => navigate(`/teacher/sessions?courseId=${encodeURIComponent(courseId)}`)}>Dars jadvalini ochish</Button>
           </SettingsCard>
         </TabsContent>
 
         <TabsContent value="assignment" className="mt-0">
-          <SettingsCard title="Assignment" description="Kurs topshiriqlarini yaratish va tekshirish.">
-            <Button onClick={() => navigate("/teacher/assignments/create")}><Plus className="mr-2 h-4 w-4" />Topshiriq yaratish</Button>
+          <SettingsCard title="Topshiriqlar" description="Kurs topshiriqlarini yaratish va tekshirish.">
+            <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigate(`/teacher/assignments?courseId=${encodeURIComponent(courseId)}`)}>Kurs topshiriqlari</Button><Button disabled={course.status === 'archived'} onClick={() => navigate(`/teacher/assignments/create?courseId=${encodeURIComponent(courseId)}`)}><Plus className="mr-2 h-4 w-4" />Topshiriq yaratish</Button></div>
           </SettingsCard>
         </TabsContent>
 
-        <TabsContent value="pricing" className="mt-0">
-          <SettingsCard title="Pricing" description="Kurs narxi va amal qilish muddati.">
+        <TabsContent value="duration" className="mt-0">
+          <SettingsCard title="Amal qilish muddati" description="Kursning boshlanish va tugash sanalari.">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Summary label="Narxlash" value={course.paid ? "Pullik" : "Bepul"} />
-              <Summary
-                label="Narx"
-                value={
-                  course.paid
-                    ? `${course.discountEnabled ? (course.discountedPrice ?? course.price ?? 0) : (course.price ?? 0)} so'm`
-                    : "—"
-                }
-              />
-              <Summary label="Chegirma" value={course.discountEnabled ? "Yoqilgan" : "O'chirilgan"} />
+              <Summary label="Boshlanish sanasi" value={course.startDate || "Belgilanmagan"} />
+              <Summary label="Tugash sanasi" value={course.endDate || "Belgilanmagan"} />
               <Summary label="Amal qilish" value={course.expiryPeriodType === "limited_time" ? "Cheklangan" : "Doimiy"} />
             </div>
           </SettingsCard>
         </TabsContent>
 
         <TabsContent value="info" className="mt-0">
-          <SettingsCard title="Info" description="Kursning akademik va katalog ma'lumotlari.">
+          <SettingsCard title="Akademik ma'lumotlar" description="Kursning akademik va katalog ma'lumotlari.">
             <div className="grid gap-3 sm:grid-cols-2">
               <Summary label="Kategoriya" value={course.categoryName || "—"} />
               <Summary label="Fan" value={course.subjectName || "—"} />
@@ -1391,13 +1397,13 @@ export function TeacherCourseDetail({
         </TabsContent>
 
         <TabsContent value="media" className="mt-0">
-          <SettingsCard title="Media" description="Kurs thumbnail va media holati.">
+          <SettingsCard title="Kurs rasmi" description="Kurs uchun yuklangan rasm.">
             {course.thumbnailAvailable ? <CourseThumbnail courseId={courseId} title={course.title} /> : <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Kurs rasmi yuklanmagan</div>}
           </SettingsCard>
         </TabsContent>
 
         <TabsContent value="seo" className="mt-0">
-          <SettingsCard title="SEO" description="Qidiruv tizimlari uchun kurs metadata ma'lumotlari.">
+          <SettingsCard title="Qidiruv ma'lumotlari" description="Qidiruv tizimlari uchun kurs metadata ma'lumotlari.">
             <div className="space-y-3">
               <Summary label="Kalit so'zlar" value={course.metaKeywords || "Kiritilmagan"} />
               <Summary label="Meta tavsif" value={course.metaDescription || "Kiritilmagan"} />
@@ -1408,14 +1414,25 @@ export function TeacherCourseDetail({
         <TabsContent value="forum" className="mt-4">
           <CourseForum courseId={courseId} />
         </TabsContent>
+        <TabsContent value="reviews" className="mt-0">
+          <SettingsCard title="Kontentni tasdiqlash holati" description="Har bir darsning joriy ekspertiza va nashr holati.">
+            {contentsQuery.isPending && <Loading />}
+            {contentsQuery.isError && <p role="alert">{contentsQuery.error.message}</p>}
+            {!contentsQuery.isPending && !contentsQuery.isError && contents.length === 0 && <p>Tekshirish uchun hali dars qo'shilmagan.</p>}
+            {contents.map(content => <div key={content.id} className="flex flex-wrap items-center justify-between gap-3 border-b py-3 last:border-0">
+              <div><p className="font-medium">{content.title}</p><p className="text-sm text-muted-foreground">{content.moduleTitle} · v{content.contentVersion}</p></div>
+              <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{{ draft: 'Qoralama', in_review: 'Ekspertizada', approved: 'Tasdiqlangan', changes_requested: 'Tuzatish so‘ralgan' }[content.reviewStatus]}</Badge><Badge variant="secondary">{content.status === 'published' ? 'Nashrda' : 'Nashr qilinmagan'}</Badge><Button variant="outline" onClick={() => setHistoryContent(content)}>Ekspertiza tarixi</Button></div>
+            </div>)}
+          </SettingsCard>
+        </TabsContent>
           </div>
         </div>
       </Tabs>
+      {previewMode && <CoursePreview mode={previewMode} initialContentId={previewContentId} course={course} modules={modules} contents={contents} onClose={() => { setPreviewMode(null); setPreviewContentId(undefined); }} onDownload={content => void downloadContent(content)} downloadingId={downloadingContentId} />}
       <Dialog
         open={lessonDialogOpen}
         onOpenChange={(open) => {
-          setLessonDialogOpen(open);
-          if (!open) resetContentForm();
+          if (!open) closeLesson();
         }}
       >
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
@@ -1427,9 +1444,13 @@ export function TeacherCourseDetail({
               Sectionni tanlang, dars turini belgilang va materialni kiriting.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <p role="status" className="text-sm text-muted-foreground">{lessonDraft.storageFailed
+            ? "Qoralamani brauzerda saqlab bo'lmadi. Darsni saqlang."
+            : "Dars matni va sozlamalari shu oynada saqlanadi. Sahifa yangilanganda yuklanmagan faylni qayta tanlang."}</p>
+          <fieldset disabled={saveContentMutation.isPending} className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Dars nomi *">
               <Input
+                maxLength={255}
                 value={contentTitle}
                 onChange={(event) => setContentTitle(event.target.value)}
                 placeholder="Dars mavzusi"
@@ -1470,8 +1491,8 @@ export function TeacherCourseDetail({
                 <SelectContent>
                   <SelectItem value="VIDEO">Video dars</SelectItem>
                   <SelectItem value="TEXT">Matnli dars va formula</SelectItem>
-                  <SelectItem value="DOCUMENT">PDF yoki hujjat</SelectItem>
-                  <SelectItem value="LINK">Tashqi havola</SelectItem>
+                  <SelectItem value="DOCUMENT">PDF, Word yoki prezentatsiya</SelectItem>
+                  <SelectItem value="LINK">Ichki player uchun video manbasi</SelectItem>
                   <SelectItem value="FILE">Boshqa fayl</SelectItem>
                 </SelectContent>
               </Select>
@@ -1479,13 +1500,14 @@ export function TeacherCourseDetail({
             {contentType === "TEXT" ? (
               <Field label="Dars matni *" className="md:col-span-2">
                 <LazyRichTextEditor
+                  disabled={saveContentMutation.isPending}
                   value={contentBody}
                   onChange={setContentBody}
-                  placeholder="Dars mazmunini yozing yoki MathType orqali formula kiriting..."
+                  placeholder="Dars mazmunini yozing, HTML yoki formula kiriting..."
                 />
               </Field>
             ) : contentType === "LINK" ? (
-              <Field label="Dars havolasi *" className="md:col-span-2">
+              <Field label="YouTube, Vimeo yoki MP4 manzili *" className="md:col-span-2">
                 <Input
                   value={contentUrl}
                   onChange={(event) => setContentUrl(event.target.value)}
@@ -1496,12 +1518,13 @@ export function TeacherCourseDetail({
               <div className="space-y-4 md:col-span-2">
                 <Field label={contentType === "VIDEO" ? "Video fayl" : "Fayl"}>
                   <FileDropzone
+                    disabled={saveContentMutation.isPending}
                     accept={
                       contentType === "VIDEO"
                         ? ".mp4,.webm"
                         : contentType === "DOCUMENT"
-                          ? ".pdf,.txt,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
-                          : ".pdf,.txt,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.jpg,.jpeg,.png,.mp4,.webm"
+                          ? ".pdf,.txt,.html,.htm,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                          : ".pdf,.txt,.csv,.html,.htm,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.jpg,.jpeg,.png,.mp4,.webm"
                     }
                     file={contentFile}
                     existingFileName={contentAssetName || undefined}
@@ -1513,7 +1536,7 @@ export function TeacherCourseDetail({
                     onFileChange={selectContentFile}
                   />
                 </Field>
-                <Field label="Yoki tashqi URL">
+                <Field label="Yoki ichki player uchun video manzili">
                   <Input
                     value={contentUrl}
                     disabled={Boolean(contentFile || contentAssetId)}
@@ -1593,14 +1616,12 @@ export function TeacherCourseDetail({
                 onChange={(event) => setContentDescription(event.target.value)}
               />
             </Field>
-          </div>
+          </fieldset>
           <DialogFooter>
             <Button
               variant="ghost"
-              onClick={() => {
-                setLessonDialogOpen(false);
-                resetContentForm();
-              }}
+              disabled={saveContentMutation.isPending}
+              onClick={closeLesson}
             >
               Bekor qilish
             </Button>
@@ -1783,7 +1804,7 @@ function SideTab({
   return (
     <TabsTrigger
       value={value}
-      className="w-full justify-start gap-3 rounded-md border-l-4 border-transparent px-4 py-3 text-left data-[state=active]:border-primary data-[state=active]:bg-muted"
+      className="h-auto w-full flex-none justify-start gap-3 rounded-md border-l-4 border-transparent px-4 py-3 text-left data-[state=active]:border-primary data-[state=active]:bg-muted"
     >
       <Icon className="h-4 w-4" /> {label}
     </TabsTrigger>

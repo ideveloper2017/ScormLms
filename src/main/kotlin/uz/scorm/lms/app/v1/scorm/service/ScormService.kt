@@ -40,6 +40,7 @@ import java.util.zip.ZipInputStream
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.extension
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 
 data class ScormContentResource(
     val resource: InputStreamResource,
@@ -48,6 +49,7 @@ data class ScormContentResource(
 )
 
 @Service
+@ConditionalOnProperty(name = ["app.features.scorm-enabled"], havingValue = "true", matchIfMissing = true)
 class ScormService(
     private val courseRepository: CourseRepository,
     private val packageRepository: ScormPackageRepository,

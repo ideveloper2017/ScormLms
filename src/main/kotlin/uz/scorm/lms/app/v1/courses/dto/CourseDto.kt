@@ -87,6 +87,8 @@ data class CourseUpdateRequest(
     val groupName: String? = null,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
+    val clearStartDate: Boolean = false,
+    val clearEndDate: Boolean = false,
     val language: String? = null,
     val level: String? = null,
     val paid: Boolean? = null,

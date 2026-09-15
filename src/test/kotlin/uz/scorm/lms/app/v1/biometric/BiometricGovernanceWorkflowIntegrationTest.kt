@@ -35,6 +35,18 @@ import java.time.LocalDateTime
 @ActiveProfiles("test")
 @Transactional
 class BiometricGovernanceWorkflowIntegrationTest {
+    @Test
+    fun `local monitoring is opt in and changes consent hash`() {
+        val author = user("local-monitor-author")
+        val request = policyRequest()
+        val draft = service.create(request, requireNotNull(author.id))
+        assertFalse(draft.localMonitoringEnabled)
+        val updated = service.update(draft.id, request.copy(localMonitoringEnabled = true), requireNotNull(author.id))
+        assertTrue(updated.localMonitoringEnabled)
+        assertTrue(draft.statementHash != updated.statementHash)
+        val restored = service.update(draft.id, request, requireNotNull(author.id))
+        assertEquals(draft.statementHash, restored.statementHash)
+    }
     @Autowired private lateinit var service: BiometricGovernanceService
     @Autowired private lateinit var erasureService: BiometricDataErasureService
     @Autowired private lateinit var userRepository: UserRepository

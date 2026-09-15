@@ -1,4 +1,4 @@
-import { useId, useState, type DragEvent } from "react";
+import { useEffect, useId, useRef, useState, type DragEvent } from "react";
 import { FileText, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -23,12 +23,39 @@ export function FileDropzone({
 }: FileDropzoneProps) {
   const inputId = useId();
   const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const selectedName = file?.name ?? existingFileName;
+
+  useEffect(() => {
+    if (!file || !file.type.startsWith("image/")) { setPreview(""); return; }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const selectFile = (selected: File | null) => {
+    if (disabled) return;
+    if (selected && selected.size > maxSizeMb * 1024 * 1024) {
+      setError(`Fayl hajmi ${maxSizeMb} MB dan oshmasligi kerak`);
+      return;
+    }
+    const allowed = accept.split(",").map((item) => item.trim().toLowerCase());
+    if (selected && !allowed.some((item) => item === "" || (item.startsWith(".")
+      ? selected.name.toLowerCase().endsWith(item)
+      : item.endsWith("/*") ? selected.type.startsWith(item.slice(0, -1)) : selected.type === item))) {
+      setError(`Ruxsat etilgan formatlar: ${accept}`);
+      return;
+    }
+    setError("");
+    onFileChange(selected);
+  };
 
   const acceptDrop = (event: DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
     setDragging(false);
-    if (!disabled) onFileChange(event.dataTransfer.files?.[0] ?? null);
+    selectFile(event.dataTransfer.files?.[0] ?? null);
   };
 
   return (
@@ -57,16 +84,22 @@ export function FileDropzone({
           Bitta fayl, maksimum {maxSizeMb} MB
         </span>
         <input
+          ref={inputRef}
           id={inputId}
           type="file"
           accept={accept}
           disabled={disabled}
           className="sr-only"
-          onChange={(event) =>
-            onFileChange(event.target.files?.[0] ?? null)
-          }
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${inputId}-error` : undefined}
+          onChange={(event) => {
+            selectFile(event.target.files?.[0] ?? null);
+            event.target.value = "";
+          }}
         />
       </label>
+      {error && <p id={`${inputId}-error`} role="alert" className="text-sm text-destructive">{error}</p>}
+      {preview && <img src={preview} alt="Tanlangan rasm ko'rinishi" className="max-h-48 rounded-lg object-contain" />}
       {selectedName && (
         <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
           <FileText className="h-4 w-4 shrink-0 text-primary" />
@@ -77,7 +110,11 @@ export function FileDropzone({
             size="icon"
             className="h-7 w-7"
             aria-label="Tanlangan faylni olib tashlash"
-            onClick={() => onFileChange(null)}
+            disabled={disabled}
+            onClick={() => {
+              selectFile(null);
+              if (inputRef.current) inputRef.current.value = "";
+            }}
           >
             <X className="h-4 w-4" />
           </Button>

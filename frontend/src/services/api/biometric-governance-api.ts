@@ -14,6 +14,7 @@ export interface SaveBiometricPolicyInput {
   documentReference: string;
   faceTemplateRetentionDays: number;
   proctoringEvidenceRetentionDays: number;
+  localMonitoringEnabled?: boolean;
 }
 
 export interface BiometricPolicy extends SaveBiometricPolicyInput {

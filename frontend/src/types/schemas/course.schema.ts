@@ -6,28 +6,28 @@ import { apiOptional } from './api-optional';
  * Validates API responses to ensure type safety at runtime
  */
 export const CourseSchema = z.object({
-  id: z.string().min(1, 'Course ID is required'),
-  title: z.string().min(1, 'Course title is required'),
+  id: z.string().min(1, "Kurs ID si ko'rsatilishi shart"),
+  title: z.string().min(1, "Kurs nomi ko'rsatilishi shart"),
   description: z.string(),
-  instructor: z.string().min(1, 'Instructor name is required'),
-  instructorPhoto: apiOptional(z.string().url('Invalid instructor photo URL')),
-  progress: z.number().min(0).max(100, 'Progress must be between 0 and 100'),
+  instructor: z.string().min(1, "O'qituvchi nomi ko'rsatilishi shart"),
+  instructorPhoto: apiOptional(z.string().url("Noto'g'ri o'qituvchi rasmi manzili")),
+  progress: z.number().min(0).max(100, "Jarayon 0 va 100 oralig'ida bo'lishi kerak"),
   grade: apiOptional(z.string()),
   status: z.enum(['active', 'completed', 'draft']),
-  imageUrl: apiOptional(z.string().url('Invalid image URL')),
+  imageUrl: apiOptional(z.string().url("Noto'g'ri rasm manzili")),
   nextLesson: z.object({
     title: z.string().min(1),
     date: z.coerce.date(),
   }).optional(),
   dueDate: apiOptional(z.coerce.date()),
-  credits: z.number().min(0, 'Credits must be non-negative'),
+  credits: z.number().min(0, "Kreditlar manfiy bo'lishi mumkin emas"),
 });
 
 export const CourseMaterialSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   type: z.enum(['video', 'document', 'link']),
-  url: z.string().url('Invalid material URL'),
+  url: z.string().url("Noto'g'ri material manzili"),
   uploadedAt: z.coerce.date(),
 });
 
@@ -72,7 +72,7 @@ export const CourseContentSchema = z.object({
   title: z.string().min(1),
   description: apiOptional(z.string()),
   contentType: z.enum(['video', 'document', 'pdf', 'scorm', 'html', 'quiz']),
-  contentUrl: apiOptional(z.string().url('Invalid content URL')),
+  contentUrl: apiOptional(z.string().url("Noto'g'ri kontent manzili")),
   duration: apiOptional(z.number().min(0)),
   order: z.number().min(0),
   isViewed: z.boolean(),

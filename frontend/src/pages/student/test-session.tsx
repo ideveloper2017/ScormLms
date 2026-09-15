@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useQuery } from '@tanstack/react-query';
+import { biometricGovernanceApi } from '@/services/api/biometric-governance-api';
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Clock, AlertCircle, CheckCircle, Circle, ChevronLeft, ChevronRight,
@@ -27,10 +29,12 @@ import { format, differenceInSeconds } from "date-fns";
 import { uz } from "date-fns/locale";
 import { useProctoringMonitor } from "@/hooks/tests/useProctoringMonitor";
 import { useAnswerAutosave } from "@/hooks/tests/useAnswerAutosave";
+import { useToast } from "@/hooks/use-toast";
 
 export function TestSession() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Fetch test details
   const { data: test, isLoading } = useTest(testId!);
@@ -41,10 +45,12 @@ export function TestSession() {
   const [session, setSession] = useState<TestSessionType>();
   const resumeRequested = useRef(false);
   const submittingRef = useRef(false);
+  const governance = useQuery({ queryKey: ['biometric-governance', 'me'], queryFn: biometricGovernanceApi.myStatus, enabled: Boolean(test?.proctoring && session), refetchInterval: 30_000 });
   const proctoringMonitor = useProctoringMonitor({
-    enabled: Boolean(test?.proctoring && session),
+    enabled: Boolean(test?.proctoring && session && governance.isSuccess && !governance.isError && governance.data.consentGranted),
     testId,
     attemptId: session?.id,
+    localMonitoringEnabled: governance.data?.policy?.localMonitoringEnabled === true,
   });
 
   useEffect(() => {
@@ -141,11 +147,15 @@ export function TestSession() {
       });
     } catch (error) {
       console.error('Failed to submit test:', error);
+      toast({
+        variant: "destructive",
+        title: "Xatolik",
+        description: "Testni topshirishda xatolik yuz berdi. Iltimos qayta urinib ko'ring.",
+      });
       submittingRef.current = false;
     }
   };
   submitLatest.current = handleSubmitTest;
-
   // Format time remaining
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -246,16 +256,25 @@ export function TestSession() {
                   ? 'Proktoring kamerasi faol; fokus va tarmoq holati jurnal qilinmoqda.'
                   : proctoringMonitor.cameraStatus === 'initializing'
                     ? 'Proktoring kamerasi ishga tushirilmoqda…'
-                    : 'Kamera ishlamayapti. Hodisa server jurnaliga yuborildi.'}
+                    : proctoringMonitor.cameraStatus === 'disabled'
+                      ? 'Kamera o‘chiq. Amaldagi siyosat va rozilik tekshirilmoqda; xato bo‘lsa administratorga murojaat qiling.'
+                      : 'Kamera ishlamayapti. Hodisa server jurnaliga yuborildi.'}
               </span>
               <span className="flex items-center gap-2">
                 {proctoringMonitor.queuedEvents > 0 && `${proctoringMonitor.queuedEvents} hodisa yuborishni kutmoqda`}
-                {proctoringMonitor.cameraStatus !== 'active' && proctoringMonitor.cameraStatus !== 'initializing' && (
-                  <Button size="sm" variant="outline" className="h-7" onClick={proctoringMonitor.restartCamera}>
-                    Kamerani qayta yoqish
+                {proctoringMonitor.cameraStatus !== 'initializing' && (proctoringMonitor.cameraStatus !== 'active' || proctoringMonitor.sensors.audio === 'unavailable' || proctoringMonitor.sensors.visual === 'unavailable') && (
+                  <Button size="sm" variant="outline" className="h-7" onClick={() => {
+                    if (proctoringMonitor.cameraStatus === 'disabled') void governance.refetch();
+                    else proctoringMonitor.restartCamera();
+                  }}>
+                    Monitoringni qayta yoqish
                   </Button>
                 )}
               </span>
+              {governance.data?.policy?.localMonitoringEnabled && <p className="w-full">
+                Tovush tahlili: {sensorLabel(proctoringMonitor.sensors.audio)}. Yuz va bosh holati: {sensorLabel(proctoringMonitor.sensors.visual)}.
+                {' '}Xom audio/video saqlanmaydi. Signallar proktor tekshiruvi uchun; avtomatik baho qo'yilmaydi.
+              </p>}
             </div>
           )}
         </div>
@@ -456,4 +475,8 @@ export function TestSession() {
       </AlertDialog>
     </div>
   );
+}
+
+function sensorLabel(status: string): string {
+  return ({ disabled: 'o‘chirilgan', initializing: 'tayyorlanmoqda', active: 'faol', unavailable: 'ishlamayapti' } as Record<string, string>)[status] ?? status;
 }

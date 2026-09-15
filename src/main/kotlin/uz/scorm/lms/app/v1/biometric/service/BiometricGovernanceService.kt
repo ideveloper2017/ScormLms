@@ -50,6 +50,7 @@ class BiometricGovernanceService(
             faceTemplateRetentionDays = request.faceTemplateRetentionDays,
             proctoringEvidenceRetentionDays = request.proctoringEvidenceRetentionDays,
             createdByUser = requireUser(actorId),
+            localMonitoringEnabled = request.localMonitoringEnabled,
         ))
         auditService.logAction("BIOMETRIC_POLICY_CREATED", actorId, "policy=${policy.id}; version=${policy.versionCode}")
         return toDto(policy)
@@ -73,6 +74,7 @@ class BiometricGovernanceService(
         policy.documentReference = request.documentReference.trim()
         policy.faceTemplateRetentionDays = request.faceTemplateRetentionDays
         policy.proctoringEvidenceRetentionDays = request.proctoringEvidenceRetentionDays
+        policy.localMonitoringEnabled = request.localMonitoringEnabled
         policyRepository.save(policy)
         auditService.logAction("BIOMETRIC_POLICY_UPDATED", actorId, "policy=$id; version=${policy.versionCode}")
         return toDto(policy)
@@ -206,7 +208,7 @@ class BiometricGovernanceService(
             policy.versionCode, policy.title, policy.purposeText, policy.legalBasis, policy.consentText,
             policy.privacyNotice, policy.documentNumber, policy.documentDate.toString(), policy.documentReference,
             policy.faceTemplateRetentionDays.toString(), policy.proctoringEvidenceRetentionDays.toString(),
-        ).joinToString("\n")
+        ).joinToString("\n") + if (policy.localMonitoringEnabled) "\nLOCAL_AUDIO_FACE_HEAD_SIGNALS_V1" else ""
         return java.security.MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
     }
@@ -242,6 +244,7 @@ class BiometricGovernanceService(
         status = policy.status, createdByName = policy.createdByUser.fullName ?: policy.createdByUser.username,
         publishedAt = policy.publishedAt, publishedByName = policy.publishedByUser?.fullName ?: policy.publishedByUser?.username,
         approvalNote = policy.approvalNote, archivedAt = policy.archivedAt,
+        localMonitoringEnabled = policy.localMonitoringEnabled,
     )
 }
 

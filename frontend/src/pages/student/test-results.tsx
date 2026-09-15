@@ -20,6 +20,13 @@ import { format } from "date-fns";
 import { uz } from "date-fns/locale";
 
 const PROCTOR_EVENT_LABELS: Record<string, string> = {
+  microphone_stopped: 'Mikrofon yoki tovush tahlili to‘xtadi',
+  microphone_permission_denied: 'Mikrofon ruxsati rad etildi',
+  audio_activity: 'Davomli tovush signali',
+  face_not_visible: 'Yuz ko‘rinmadi',
+  multiple_faces: 'Bir nechta yuz signali',
+  head_turned: 'Bosh burilishi signali',
+  visual_analysis_unavailable: 'Yuz tahlili ishlamayapti',
   camera_stopped: "Kamera to'xtadi",
   camera_permission_denied: "Kamera ruxsati rad etildi",
   tab_hidden: "Test tabi yashirildi",

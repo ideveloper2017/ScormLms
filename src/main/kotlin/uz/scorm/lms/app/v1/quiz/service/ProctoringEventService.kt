@@ -2,6 +2,7 @@ package uz.scorm.lms.app.v1.quiz.service
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import uz.scorm.lms.app.v1.quiz.dto.ProctoringEventBatchRequest
 import uz.scorm.lms.app.v1.quiz.dto.ProctoringEventBatchResponse
 import uz.scorm.lms.app.v1.quiz.model.ProctoringEvent
@@ -19,6 +20,7 @@ import java.util.UUID
 class ProctoringEventService(
     private val sessionRepository: ProctoringSessionRepository,
     private val eventRepository: ProctoringEventRepository,
+    private val biometricGovernanceService: BiometricGovernanceService,
 ) {
     @Transactional
     fun recordClientEvents(
@@ -43,6 +45,11 @@ class ProctoringEventService(
         }
 
         val now = Instant.now()
+        if (request.events.any { it.type in LOCAL_MONITORING_TYPES }) {
+            val binding = biometricGovernanceService.requireActiveConsent(userId)
+            biometricGovernanceService.requireSameBinding(session.biometricPolicy?.id, session.biometricConsentEvent?.id, binding)
+            require(binding.policy.localMonitoringEnabled) { "Lokal audio va yuz monitoringi uchun alohida siyosat va rozilik zarur" }
+        }
         val existingCount = eventRepository.countByAttemptIdAndDeletedFalse(attemptId)
         require(existingCount < MAX_EVENTS_PER_ATTEMPT) { "Proktoring hodisalari limiti tugagan" }
         var accepted = 0
@@ -90,7 +97,13 @@ class ProctoringEventService(
         private const val MAX_BATCH_SIZE = 50
         private const val MAX_EVENTS_PER_ATTEMPT = 5_000
         private const val CLOCK_SKEW_SECONDS = 30L
-        private val CLIENT_EVENT_TYPES = setOf(
+        private val LOCAL_MONITORING_TYPES = setOf(
+            ProctoringEventType.MICROPHONE_STARTED, ProctoringEventType.MICROPHONE_STOPPED,
+            ProctoringEventType.MICROPHONE_PERMISSION_DENIED, ProctoringEventType.AUDIO_ACTIVITY,
+            ProctoringEventType.FACE_NOT_VISIBLE, ProctoringEventType.MULTIPLE_FACES,
+            ProctoringEventType.HEAD_TURNED, ProctoringEventType.VISUAL_ANALYSIS_UNAVAILABLE,
+        )
+        private val CLIENT_EVENT_TYPES = LOCAL_MONITORING_TYPES + setOf(
             ProctoringEventType.CAMERA_STARTED,
             ProctoringEventType.CAMERA_STOPPED,
             ProctoringEventType.CAMERA_PERMISSION_DENIED,
@@ -105,6 +118,14 @@ class ProctoringEventService(
         )
 
         fun severity(type: ProctoringEventType): ProctoringEventSeverity = when (type) {
+            // Local detectors are advisory; only a human reviewer can interpret them.
+            ProctoringEventType.AUDIO_ACTIVITY,
+            ProctoringEventType.HEAD_TURNED -> ProctoringEventSeverity.LOW
+            ProctoringEventType.FACE_NOT_VISIBLE,
+            ProctoringEventType.MULTIPLE_FACES,
+            ProctoringEventType.MICROPHONE_STOPPED,
+            ProctoringEventType.MICROPHONE_PERMISSION_DENIED,
+            ProctoringEventType.VISUAL_ANALYSIS_UNAVAILABLE -> ProctoringEventSeverity.MEDIUM
             ProctoringEventType.CAMERA_PERMISSION_DENIED -> ProctoringEventSeverity.CRITICAL
             ProctoringEventType.CAMERA_STOPPED,
             ProctoringEventType.TAB_HIDDEN,

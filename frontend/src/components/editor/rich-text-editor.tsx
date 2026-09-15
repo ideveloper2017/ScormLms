@@ -17,7 +17,7 @@ import {
   Underline,
 } from "ckeditor5";
 import MathType from "@wiris/mathtype-ckeditor5/dist/index.js";
-import { Textarea } from "@/components/ui/textarea";
+import { LocalTextEditor } from './local-text-editor';
 import "ckeditor5/ckeditor5.css";
 import "@wiris/mathtype-ckeditor5/dist/index.css";
 
@@ -66,20 +66,7 @@ export function RichTextEditor({ value, onChange, placeholder, disabled = false 
   }) : null, [licenseKey, placeholder]);
 
   if (!config) {
-    return <div className="space-y-2">
-      <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-        CKEditor ishlashi uchun <code>VITE_CKEDITOR_LICENSE_KEY</code> qiymatini kiriting
-        (GPL-compatible loyiha uchun <code>GPL</code>, aks holda commercial kalit).
-        Kalit kiritilguncha oddiy matn muharriri ishlaydi.
-      </div>
-      <Textarea
-        className="min-h-48"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-      />
-    </div>;
+    return <LocalTextEditor value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} />;
   }
 
   return <div className="ckeditor-shell">

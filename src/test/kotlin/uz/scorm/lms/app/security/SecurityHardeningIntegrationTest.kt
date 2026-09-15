@@ -46,7 +46,7 @@ class SecurityHardeningIntegrationTest {
             header { string("X-Frame-Options", "DENY") }
             header { string("X-Content-Type-Options", "nosniff") }
             header { string("Referrer-Policy", "no-referrer") }
-            header { string("Permissions-Policy", "camera=(self), microphone=(), geolocation=()") }
+            header { string("Permissions-Policy", "camera=(self), microphone=(self), geolocation=()") }
         }
     }
 

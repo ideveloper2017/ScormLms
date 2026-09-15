@@ -411,6 +411,7 @@ class CourseContentService(
         private val DOCUMENT_MEDIA_TYPES = setOf(
             "application/pdf",
             "text/plain",
+            "text/html",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.ms-powerpoint",

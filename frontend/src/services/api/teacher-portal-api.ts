@@ -576,7 +576,7 @@ export const teacherPortalApi = {
     const item = dataOf(await api.post<ApiResponse<Omit<TeacherCourse, 'id'> & { id: number }>>(`/courses/${courseId}/copy`), 'Kurs nusxalanmadi');
     return { ...item, id: String(item.id) };
   },
-  updateCourse: async (courseId: string, payload: Partial<CourseCreatePayload>): Promise<TeacherCourse> => {
+  updateCourse: async (courseId: string, payload: Partial<CourseCreatePayload> & { clearStartDate?: boolean; clearEndDate?: boolean }): Promise<TeacherCourse> => {
     const item = dataOf(await api.put<ApiResponse<Omit<TeacherCourse, 'id'> & { id: number }>>(`/courses/${courseId}`, payload), 'Kurs yangilanmadi');
     return { ...item, id: String(item.id) };
   },
@@ -671,6 +671,14 @@ export const teacherPortalApi = {
       responseType: 'blob',
       timeout: 180_000,
     });
+    return response.data as Blob;
+  },
+  previewLegacyWord: async (courseId: string, contentId: number): Promise<string> => dataOf(
+    await api.get<ApiResponse<string>>(`/courses/${courseId}/contents/${contentId}/document-text`),
+    'Word hujjati ochilmadi',
+  ),
+  previewPresentation: async (courseId: string, contentId: number): Promise<Blob> => {
+    const response = await api.get(`/courses/${courseId}/contents/${contentId}/presentation`, { responseType: 'blob', timeout: 180_000 });
     return response.data as Blob;
   },
   createContent: async (courseId: string, moduleId: number, payload: CourseContentPayload): Promise<CourseContent> => {

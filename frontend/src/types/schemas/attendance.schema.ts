@@ -6,9 +6,9 @@ import { apiOptional } from './api-optional';
  * Validates API responses to ensure type safety at runtime
  */
 export const AttendanceRecordSchema = z.object({
-  id: z.string().min(1, 'Attendance ID is required'),
-  courseId: z.string().min(1, 'Course ID is required'),
-  courseName: z.string().min(1, 'Course name is required'),
+  id: z.string().min(1, "Davomat ID si ko'rsatilishi shart"),
+  courseId: z.string().min(1, "Kurs ID si ko'rsatilishi shart"),
+  courseName: z.string().min(1, "Kurs nomi ko'rsatilishi shart"),
   date: z.coerce.date(),
   status: z.enum(['present', 'absent', 'late', 'excused']),
   reason: apiOptional(z.string()),

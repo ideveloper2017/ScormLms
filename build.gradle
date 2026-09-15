@@ -102,6 +102,7 @@ dependencies {
     // Apache POI for Excel Processing
     implementation 'org.apache.poi:poi:5.5.1'
     implementation 'org.apache.poi:poi-ooxml:5.5.1'
+    implementation 'org.apache.poi:poi-scratchpad:5.5.1'
     implementation 'org.apache.pdfbox:pdfbox:3.0.8'
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
 }

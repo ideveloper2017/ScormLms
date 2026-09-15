@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, CloudCog, ExternalLink, Plus, Radio, RefreshCw, Trash2, Users, Video, XCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,9 +28,15 @@ function displayDate(value: string) {
 const emptyUrls = { room: "", building: "", liveUrl: "", recordingUrl: "", resourceUrl: "" };
 
 export function TeacherSessions({ managementMode = false }: { managementMode?: boolean }) {
+  const [params] = useSearchParams();
+  const scopedCourseId = params.get('courseId') || '';
+  return <SessionWorkspace key={`${managementMode}:${scopedCourseId}`} managementMode={managementMode} scopedCourseId={scopedCourseId} />;
+}
+
+function SessionWorkspace({ managementMode, scopedCourseId }: { managementMode: boolean; scopedCourseId: string }) {
   const now = new Date();
   const [editing, setEditing] = useState<TeacherLearningSession | null>(null);
-  const [courseId, setCourseId] = useState("");
+  const [courseId, setCourseId] = useState(scopedCourseId);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [format, setFormat] = useState<"SYNCHRONOUS" | "ASYNCHRONOUS">("SYNCHRONOUS");
@@ -62,6 +69,7 @@ export function TeacherSessions({ managementMode = false }: { managementMode?: b
   };
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (!coursesQuery.data?.some(course => course.id === courseId && course.status !== 'archived') || (scopedCourseId && courseId !== scopedCourseId)) throw new Error("Mashg'ulot uchun faol kursni tanlang");
       const payload: TeacherLearningSessionPayload = {
         courseId: Number(courseId), title: title.trim(), description: description.trim(), format, sessionType,
         startsAt: new Date(startsAt).toISOString(), endsAt: new Date(endsAt).toISOString(),
@@ -124,17 +132,19 @@ export function TeacherSessions({ managementMode = false }: { managementMode?: b
     ? Boolean(useProvider || urls.liveUrl || urls.room)
     : Boolean(urls.recordingUrl || urls.resourceUrl);
   const datesValid = Boolean(startsAt && endsAt && Number.isFinite(Date.parse(startsAt)) && Number.isFinite(Date.parse(endsAt)) && Date.parse(endsAt) > Date.parse(startsAt));
-  const canCreate = Boolean(courseId && title.trim() && datesValid && (!publishNow || hasDelivery) && !coursesQuery.isError);
+  const canCreate = Boolean(coursesQuery.data?.some(course => course.id === courseId && course.status !== 'archived') && (!scopedCourseId || courseId === scopedCourseId) && title.trim() && datesValid && (!publishNow || hasDelivery) && !coursesQuery.isError);
 
   if (sessionsQuery.isLoading) return <div className="p-3 sm:p-6 space-y-4"><Skeleton className="h-9 w-64" /><Skeleton className="h-64" /><Skeleton className="h-48" /></div>;
   if (sessionsQuery.error) return <div className="p-3 sm:p-6"><Card className="border-destructive/50"><CardContent className="py-10 text-center space-y-3"><p>{sessionsQuery.error.message}</p><Button variant="outline" onClick={() => sessionsQuery.refetch()}><RefreshCw className="h-4 w-4 mr-2" />Qayta urinish</Button></CardContent></Card></div>;
 
-  const sessions = sessionsQuery.data ?? [];
+  const sessions = (sessionsQuery.data ?? []).filter(session => !scopedCourseId || session.courseId === scopedCourseId);
   const visibleSessions = sessions.filter(session => (!statusFilter || session.status === statusFilter) &&
     `${session.title} ${session.courseTitle}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   return (
     <div className="p-3 sm:p-6 space-y-6">
       <div><h1 className="text-2xl font-bold">{managementMode ? "Dars jadvalini boshqarish" : "Mashg'ulotlar va dars jadvali"}</h1><p className="text-muted-foreground">{managementMode ? "Kursni tanlang, dars vaqti hamda o'tkazish joyini kiriting va talabalar uchun nashr qiling." : "Jonli dars, video yozuv va mustaqil resurslarni kurs jadvaliga nashr qiling."}</p></div>
+      {scopedCourseId && <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm"><span>Kurs: {coursesQuery.data?.find(course => course.id === scopedCourseId)?.title || 'Kurs ma’lumoti mavjud emas'}</span><Link className="text-primary underline" to={`/teacher/courses/${encodeURIComponent(scopedCourseId)}/contents`}>Kursga qaytish</Link><Link className="text-primary underline" to="?">Barcha mashg'ulotlar</Link></div>}
+      {scopedCourseId && coursesQuery.isSuccess && !coursesQuery.data.some(course => course.id === scopedCourseId && course.status !== 'archived') && <p role="alert" className="text-sm text-destructive">Kurs mavjud emas yoki arxivlangan. Yangi mashg'ulot yaratish yopiq.</p>}
       {managementMode && <Alert><CalendarDays className="h-4 w-4" /><AlertDescription>Nashr qilingan dars kurs o'qituvchisi va shu kursga faol biriktirilgan talabalar kabinetida ko'rinadi. Draft yozuv talabaga ko'rinmaydi.</AlertDescription></Alert>}
       <Alert><CloudCog className="h-4 w-4" /><AlertDescription>Jonli dars uchun xona yoki tayyor havola kiriting. Videoaloqa xizmati ulangan bo'lsa, havolani shu xizmat orqali yaratish ham mumkin. Mustaqil mashg'ulot uchun yozuv yoki resurs havolasini kiriting.</AlertDescription></Alert>
 
@@ -144,7 +154,7 @@ export function TeacherSessions({ managementMode = false }: { managementMode?: b
           {coursesQuery.isError && <div role="alert">Kurslarni yuklab bo‘lmadi. <Button variant="outline" onClick={() => void coursesQuery.refetch()}>Kurslarni qayta yuklash</Button></div>}
           {!datesValid && <p role="alert" className="text-sm text-destructive">Tugash vaqti boshlanish vaqtidan keyin bo‘lishi kerak.</p>}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-            <Select disabled={Boolean(editing) || createMutation.isPending} value={courseId} onValueChange={setCourseId}><SelectTrigger><SelectValue placeholder="Kursni tanlang" /></SelectTrigger><SelectContent>{(coursesQuery.data ?? []).filter(course => course.status !== "archived").map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select>
+            <Select disabled={Boolean(editing) || Boolean(scopedCourseId) || createMutation.isPending} value={courseId} onValueChange={setCourseId}><SelectTrigger aria-label="Mashg'ulot kursi"><SelectValue placeholder="Kursni tanlang" /></SelectTrigger><SelectContent>{(coursesQuery.data ?? []).filter(course => course.status !== "archived").map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select>
             <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Mashg'ulot nomi" />
             <Select value={format} onValueChange={value => { setFormat(value as typeof format); if (value === "ASYNCHRONOUS") setUseProvider(false); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SYNCHRONOUS">Sinxron — jonli</SelectItem><SelectItem value="ASYNCHRONOUS">Asinxron — mustaqil</SelectItem></SelectContent></Select>
             <Select value={sessionType} onValueChange={value => setSessionType(value as typeof sessionType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="LECTURE">Ma'ruza</SelectItem><SelectItem value="LAB">Laboratoriya</SelectItem><SelectItem value="SEMINAR">Seminar</SelectItem><SelectItem value="TUTORIAL">Amaliyot</SelectItem></SelectContent></Select>

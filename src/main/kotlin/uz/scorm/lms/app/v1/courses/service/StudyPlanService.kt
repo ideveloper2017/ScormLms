@@ -10,6 +10,7 @@ import uz.scorm.lms.app.v1.courses.model.isEffective
 import uz.scorm.lms.app.v1.courses.repository.CourseContentProgressRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
+import org.springframework.beans.factory.annotation.Autowired
 import uz.scorm.lms.app.v1.scorm.model.ScormAttemptStatus
 import uz.scorm.lms.app.v1.scorm.model.ScormPackageStatus
 import uz.scorm.lms.app.v1.scorm.repository.ScormAttemptRepository
@@ -30,8 +31,8 @@ class StudyPlanService(
     private val enrollmentRepository: CourseEnrollmentRepository,
     private val contentRepository: CourseContentRepository,
     private val contentProgressRepository: CourseContentProgressRepository,
-    private val packageRepository: ScormPackageRepository,
-    private val attemptRepository: ScormAttemptRepository,
+    @Autowired(required = false) private val packageRepository: ScormPackageRepository?,
+    @Autowired(required = false) private val attemptRepository: ScormAttemptRepository?,
     private val studentRepository: StudentRepository,
     private val userRepository: UserRepository,
     private val learningActivityService: LearningActivityService,
@@ -172,10 +173,11 @@ class StudyPlanService(
         val contentProgress = contentProgressRepository
             .findAllByEnrollmentIdAndDeletedFalse(requireNotNull(enrollment.id))
             .associateBy { requireNotNull(it.content.id) }
-        val packages = listOfNotNull(packageRepository
-            .findFirstByCourseIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(courseId, ScormPackageStatus.READY))
-        val attempts = attemptRepository.findAllByScormPackageCourseIdAndUserIdAndDeletedFalse(courseId, userId)
-            .associateBy { requireNotNull(it.scormPackage.id) }
+        val packages = packageRepository?.let {
+            listOfNotNull(it.findFirstByCourseIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(courseId, ScormPackageStatus.READY))
+        } ?: emptyList()
+        val attempts = attemptRepository?.findAllByScormPackageCourseIdAndUserIdAndDeletedFalse(courseId, userId)
+            ?.associateBy { requireNotNull(it.scormPackage.id) } ?: emptyMap()
         val contentPoints = contents.sumOf { contentProgress[it.id]?.progress ?: 0 }
         val scormPoints = packages.sumOf { pack ->
             val attempt = attempts[pack.id]

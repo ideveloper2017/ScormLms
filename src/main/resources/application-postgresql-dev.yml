@@ -13,7 +13,9 @@ management:
 spring:
   devtools:
     restart:
-      enabled: true
+      # Resource copying/rebuilds must not restart the running local LMS.
+      # Opt in explicitly when automatic backend reloading is wanted.
+      enabled: ${SPRING_DEVTOOLS_RESTART_ENABLED:false}
       additional-exclude: static/**
     livereload:
       enabled: false

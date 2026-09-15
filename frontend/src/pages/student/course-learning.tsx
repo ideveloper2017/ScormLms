@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CheckCircle2,
   Download,
-  ExternalLink,
   FileText,
   Loader2,
   PlayCircle,
@@ -29,7 +28,7 @@ import { scormApi } from "@/services/api/scorm-api";
 import { studyPlanApi } from "@/services/api/study-plan-api";
 import { teacherPortalApi, type CourseContentAsset } from "@/services/api/teacher-portal-api";
 import { CourseForum } from "@/components/course-forum";
-import { RichTextContent } from "@/components/editor/rich-text-content";
+import { LessonContentViewer } from "@/components/learning/lesson-content-viewer";
 
 export function StudentCourseLearning() {
   const { id } = useParams<{ id: string }>();
@@ -243,18 +242,7 @@ export function StudentCourseLearning() {
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Manba:</span>{" "}
-                  {content.sourceUrl ? (
-                    <a
-                      className="underline hover:text-foreground"
-                      href={content.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {content.sourceName}
-                    </a>
-                  ) : (
-                    content.sourceName
-                  )}
+                  {content.sourceName}
                 </p>
                 <p>
                   <span className="font-medium text-foreground">
@@ -263,12 +251,7 @@ export function StudentCourseLearning() {
                   {content.validFrom} — {content.validUntil || "cheklanmagan"}
                 </p>
               </details>
-              {content.contentBody && (
-                <RichTextContent
-                  value={content.contentBody}
-                  className="rounded-md border bg-background p-4 text-sm leading-6"
-                />
-              )}
+              <LessonContentViewer courseId={String(courseId)} content={content} />
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                 {content.asset && (
                   <Button
@@ -279,23 +262,6 @@ export function StudentCourseLearning() {
                   >
                     {downloadingId === content.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                     {content.asset.originalFileName}
-                  </Button>
-                )}
-                {content.contentUrl && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setParams({ content: String(content.id) }, { replace: true });
-                      window.open(
-                        content.contentUrl!,
-                        "_blank",
-                        "noopener,noreferrer",
-                      );
-                    }}
-                    className="gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Ochish
                   </Button>
                 )}
                 <Button

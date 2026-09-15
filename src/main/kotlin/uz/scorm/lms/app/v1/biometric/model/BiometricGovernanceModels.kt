@@ -36,6 +36,7 @@ class BiometricPolicy(
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "published_by_user_id") var publishedByUser: User? = null,
     @Column(name = "approval_note", length = 2000) var approvalNote: String? = null,
     @Column(name = "archived_at") var archivedAt: Instant? = null,
+    @Column(name = "local_monitoring_enabled", nullable = false) var localMonitoringEnabled: Boolean = false,
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "archived_by_user_id") var archivedByUser: User? = null,
 ) : BaseEntity()
 

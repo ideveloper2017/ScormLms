@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardList, Plus, Search, Eye, Trash2,
@@ -39,13 +39,19 @@ function fmtDate(s: string) {
 }
 
 export function TeacherAssignments({ openCreate = false }: { openCreate?: boolean }) {
+  const [params] = useSearchParams();
+  const scopedCourseId = params.get('courseId') || '';
+  return <AssignmentWorkspace key={`${scopedCourseId}:${openCreate}`} openCreate={openCreate} scopedCourseId={scopedCourseId} />;
+}
+
+function AssignmentWorkspace({ openCreate, scopedCourseId }: { openCreate: boolean; scopedCourseId: string }) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(openCreate);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    title: "", course: "", dueDate: "", maxScore: "100", description: "",
+    title: "", course: scopedCourseId, dueDate: "", maxScore: "100", description: "",
     priority: "MEDIUM", submissionType: "BOTH",
   });
 
@@ -54,26 +60,35 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
     queryFn: teacherPortalApi.getAssignments,
     staleTime: 60_000,
   });
-  const { data: courses = [] } = useQuery({
+  const coursesQuery = useQuery({
     queryKey: qk.teacher.courses(),
     queryFn: teacherPortalApi.getCourses,
     staleTime: 60_000,
   });
+  const courses = coursesQuery.data ?? [];
+  const selectedCourse = courses.find(course => course.id === form.course);
+  const canChooseCourse = !coursesQuery.isPending && !coursesQuery.isError && (!scopedCourseId || Boolean(selectedCourse && selectedCourse.status !== 'archived'));
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const filtered = assignments.filter((a) => {
+  const scopedAssignments = assignments.filter(a => !scopedCourseId || a.courseId === scopedCourseId);
+  const filtered = scopedAssignments.filter((a) => {
     const t = search.toLowerCase();
     return !t || a.title.toLowerCase().includes(t) || a.courseTitle.toLowerCase().includes(t);
   });
 
   const stats = {
-    total:   assignments.length,
-    pending: assignments.reduce((s, a) => s + a.pendingGrade, 0),
-    graded:  assignments.reduce((s, a) => s + (a.totalSubmissions - a.pendingGrade), 0),
+    total:   scopedAssignments.length,
+    pending: scopedAssignments.reduce((s, a) => s + a.pendingGrade, 0),
+    graded:  scopedAssignments.reduce((s, a) => s + (a.totalSubmissions - a.pendingGrade), 0),
   };
 
   const handleCreate = async () => {
+    if (saving) return;
+    if (!canChooseCourse || !selectedCourse || selectedCourse.status === 'archived' || (scopedCourseId && form.course !== scopedCourseId)) {
+      toast({ variant: 'destructive', title: 'Topshiriq uchun faol kursni tanlang' });
+      return;
+    }
     if (!form.title.trim() || !form.course || !form.dueDate) {
       toast({ variant: "destructive", title: "Nomi, kursi va muddati majburiy" });
       return;
@@ -94,7 +109,7 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
       await refetch();
       toast({ title: "Topshiriq yaratildi", description: form.title });
       setCreateOpen(false);
-      setForm({ title: "", course: "", dueDate: "", maxScore: "100", description: "", priority: "MEDIUM", submissionType: "BOTH" });
+      setForm({ title: "", course: scopedCourseId, dueDate: "", maxScore: "100", description: "", priority: "MEDIUM", submissionType: "BOTH" });
     } catch (e) {
       toast({ variant: "destructive", title: "Topshiriq yaratilmadi", description: (e as Error).message });
     } finally {
@@ -154,10 +169,13 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Topshiriqlar</h1>
           <p className="text-muted-foreground">Kurslar bo'yicha topshiriqlar boshqaruvi</p>
         </div>
-        <Button className="gap-2" onClick={() => setCreateOpen(true)}>
+        <Button className="gap-2" disabled={!canChooseCourse} onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" />Topshiriq yaratish
         </Button>
       </div>
+
+      {scopedCourseId && <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm"><span>Kurs: {courses.find(course => course.id === scopedCourseId)?.title || 'Kurs ma’lumoti mavjud emas'}</span><Link className="text-primary underline" to={`/teacher/courses/${encodeURIComponent(scopedCourseId)}/contents`}>Kursga qaytish</Link><Link className="text-primary underline" to="/teacher/assignments">Barcha topshiriqlar</Link></div>}
+      {coursesQuery.isError && <div role="alert">Kurslarni yuklab bo'lmadi. <Button variant="outline" onClick={() => void coursesQuery.refetch()}>Kurslarni qayta yuklash</Button></div>}
 
       <div className="grid grid-cols-3 gap-3">
         {[
@@ -269,6 +287,7 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
             <DialogDescription>Talabalar uchun topshiriq yarating</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            {!canChooseCourse && <p role="alert" className="text-sm text-destructive">{coursesQuery.isPending ? 'Kurs tekshirilmoqda…' : "Tanlangan kurs mavjud emas, arxivlangan yoki uni yuklab bo'lmadi."}</p>}
             <div className="space-y-1.5">
               <Label>Nomi <span className="text-destructive">*</span></Label>
               <Input placeholder="Topshiriq nomi" value={form.title} onChange={(e) => set("title", e.target.value)} />
@@ -276,21 +295,21 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Kurs</Label>
-                <Select value={form.course} onValueChange={(v) => set("course", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select disabled={Boolean(scopedCourseId) || saving} value={form.course} onValueChange={(v) => set("course", v)}>
+                  <SelectTrigger aria-label="Topshiriq kursi"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {courses.map((course) => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}
+                    {courses.filter(course => course.status !== 'archived').map((course) => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Maksimal ball</Label>
-                <Input type="number" value={form.maxScore} onChange={(e) => set("maxScore", e.target.value)} />
+                <Input aria-label="Maksimal ball" type="number" value={form.maxScore} onChange={(e) => set("maxScore", e.target.value)} />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label>Muddat</Label>
-              <Input type="datetime-local" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
+              <Input aria-label="Topshiriq muddati" type="datetime-local" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -328,7 +347,7 @@ export function TeacherAssignments({ openCreate = false }: { openCreate?: boolea
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Bekor qilish</Button>
-            <Button onClick={handleCreate} disabled={saving}>{saving ? "Yaratilmoqda..." : "Yaratish"}</Button>
+            <Button onClick={handleCreate} disabled={saving || !canChooseCourse}>{saving ? "Yaratilmoqda..." : "Yaratish"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

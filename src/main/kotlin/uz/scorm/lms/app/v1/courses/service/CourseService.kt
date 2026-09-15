@@ -99,8 +99,8 @@ class CourseService(
         val course = accessService.requireManage(courseId, userId, mayManageAll)
         require(course.status != CourseStatus.ARCHIVED.name) { "Arxivlangan kursni avval qoralamaga qaytaring" }
         val title = request.title?.trim()?.also { require(it.isNotBlank()) { "Kurs nomi bo'sh bo'lmaydi" } }
-        val start = request.startDate ?: course.startDate
-        val end = request.endDate ?: course.endDate
+        val start = if (request.clearStartDate) null else request.startDate ?: course.startDate
+        val end = if (request.clearEndDate) null else request.endDate ?: course.endDate
         validate(title ?: course.title.orEmpty(), start, end)
         title?.let { course.title = it; course.slug = slug(it) }
         request.shortDescription?.let { course.shortDescription = it.clean() }
@@ -119,8 +119,8 @@ class CourseService(
             require(course.subjectGroup == null) { "Curriculumga bog'langan kurs guruhini almashtirib bo'lmaydi" }
             course.groupName = it.trim()
         }
-        request.startDate?.let { course.startDate = it }
-        request.endDate?.let { course.endDate = it }
+        course.startDate = start
+        course.endDate = end
         request.language?.let {
             val curriculumLanguage = course.subjectGroup?.curriculumSubject?.curriculumVersion?.program?.educationLanguage
             require(curriculumLanguage == null || it.equals(curriculumLanguage, ignoreCase = true)) {

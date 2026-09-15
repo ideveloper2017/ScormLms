@@ -59,6 +59,7 @@ class CourseController(
     private val thumbnailService: CourseThumbnailService,
     private val copyService: uz.scorm.lms.app.v1.productivity.CourseCopyService,
     private val candidatesService: uz.scorm.lms.app.v1.courses.service.CourseEnrollmentCandidateService,
+    private val legacyWordPreview: uz.scorm.lms.app.v1.courses.service.LegacyWordPreview,
 ) {
     @GetMapping("/{courseId}/enrollment-candidates")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
@@ -341,6 +342,20 @@ class CourseController(
     ): ResponseEntity<ApiResponse<CourseContentDto>> = ResponseEntity.ok(ApiResponse.success(
         contentService.update(courseId, contentId, request, requireNotNull(user.id), mayManageAll(authentication))
     ))
+
+    @GetMapping("/{courseId}/contents/{contentId}/document-text")
+    @PreAuthorize("hasAuthority('COURSE_READ')")
+    fun previewLegacyWord(
+        @PathVariable courseId: Long,
+        @PathVariable contentId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<String>> {
+        // Exactly the same enrollment, publication, approval and asset-scope checks as download.
+        val download = contentAssetService.download(courseId, contentId, requireNotNull(user.id), mayManageAll(authentication))
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+            .body(ApiResponse(success = true, data = legacyWordPreview.extract(download)))
+    }
 
     @GetMapping("/{courseId}/contents/{contentId}/file")
     @PreAuthorize("hasAuthority('COURSE_READ')")

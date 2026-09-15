@@ -16,6 +16,7 @@ data class SaveBiometricPolicyRequest(
     val documentReference: String,
     val faceTemplateRetentionDays: Int,
     val proctoringEvidenceRetentionDays: Int,
+    val localMonitoringEnabled: Boolean = false,
 )
 
 data class PublishBiometricPolicyRequest(val approvalNote: String)
@@ -42,6 +43,7 @@ data class BiometricPolicyDto(
     val publishedByName: String?,
     val approvalNote: String?,
     val archivedAt: Instant?,
+    val localMonitoringEnabled: Boolean = false,
 )
 
 data class MyBiometricStatusDto(

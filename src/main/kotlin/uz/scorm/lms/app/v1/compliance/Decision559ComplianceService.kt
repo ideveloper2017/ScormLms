@@ -13,6 +13,7 @@ import uz.scorm.lms.app.v1.survey.SurveyRepository
 import uz.scorm.lms.app.v1.user.model.UserStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.scorm.repository.ScormPackageRepository
+import org.springframework.beans.factory.annotation.Autowired
 import uz.scorm.lms.app.v1.attendance.repository.LearningActivityEventRepository
 import uz.scorm.lms.app.v1.assignment.repository.CourseAssignmentRepository
 import uz.scorm.lms.app.v1.quiz.repository.CourseQuizRepository
@@ -76,7 +77,7 @@ class Decision559ComplianceService(
     private val programRepository: ProgramRepository,
     private val userRepository: UserRepository,
     private val courseRepository: CourseRepository,
-    private val scormPackageRepository: ScormPackageRepository,
+    @Autowired(required = false) private val scormPackageRepository: ScormPackageRepository?,
     private val learningActivityEventRepository: LearningActivityEventRepository,
     private val assignmentRepository: CourseAssignmentRepository,
     private val quizRepository: CourseQuizRepository,
@@ -193,7 +194,7 @@ class Decision559ComplianceService(
             programs.filter { it.admissionLimit != null && it.localDistanceStudents > it.admissionLimit }.forEach { program ->
                 add(ComplianceViolationDto(
                     code = "PROGRAM_ADMISSION_LIMIT_${program.programId}",
-                    clause = "20-band",
+                    clause = Decision559Rules.ADMISSION_LIMIT_CLAUSE,
                     severity = "CRITICAL",
                     message = "${program.programName}: ${program.localDistanceStudents} talaba, limit ${program.admissionLimit}",
                     recommendation = "Qabul parametrlarini qarordagi limitga moslashtiring",
@@ -393,7 +394,7 @@ class Decision559ComplianceService(
                 fullTimeCounterpartCount, "dastur", "programs.full_time_available / full_time_basis_reference",
                 "/admin/programs", if (fullTimeCounterpartCount == distancePrograms.size.toLong()) ComplianceStatus.COMPLIANT else ComplianceStatus.NON_COMPLIANT,
             ),
-            item("SCORM_PACKAGES", "SCORM paketlari", scormPackageRepository.countByDeletedFalse(), "paket", "scorm_packages", "/courses"),
+            item("SCORM_PACKAGES", "SCORM paketlari", scormPackageRepository?.countByDeletedFalse() ?: 0, "paket", "scorm_packages", "/courses"),
             item("LEARNING_EVENTS", "O'quv faolligi", learningActivityEventRepository.countByDeletedFalse(), "hodisa", "learning_activity_events", "/attendance"),
             item("ASSIGNMENTS", "Topshiriqlar", assignmentRepository.countByDeletedFalse(), "topshiriq", "course_assignments", "/teacher/assignments"),
             item("QUIZZES", "Testlar", quizRepository.countByDeletedFalse(), "test", "course_quizzes", "/teacher/tests"),

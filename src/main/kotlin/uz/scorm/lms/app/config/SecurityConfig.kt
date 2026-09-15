@@ -76,7 +76,7 @@ class SecurityConfig(
             .headers { headers ->
                 headers.frameOptions { it.disable() }
                 headers.referrerPolicy { it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER) }
-                headers.addHeaderWriter(StaticHeadersWriter("Permissions-Policy", "camera=(self), microphone=(), geolocation=()"))
+                headers.addHeaderWriter(StaticHeadersWriter("Permissions-Policy", "camera=(self), microphone=(self), geolocation=()"))
                 headers.addHeaderWriter(DelegatingRequestMatcherHeaderWriter(
                     RequestMatcher { !it.requestURI.startsWith("/scorm-content/") },
                     XFrameOptionsHeaderWriter(),

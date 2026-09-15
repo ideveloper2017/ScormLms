@@ -204,7 +204,7 @@ export function Decision559UatPanel() {
 
   return <Card>
     <CardHeader className="gap-3 lg:flex-row lg:items-start lg:justify-between">
-      <div><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />559 UAT qabul komissiyasi</CardTitle><CardDescription>3 va 8–33-bandlar bo'yicha real dalil, mustaqil review, SHA-256 va imzolangan PDF protokol.</CardDescription></div>
+      <div><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />559 UAT qabul komissiyasi</CardTitle><CardDescription>2022-yilgi PDF katalogining 3 va 8–33-bandlari bo'yicha dalillar. Nizomning 20-bandi 07.11.2025 dan kuchini yo'qotgan; ushbu tarixiy katalog bo'yicha qabul amaldagi tahrirga to'liq moslik xulosasi emas. <a className="underline" href="https://lex.uz/docs/6221502" target="_blank" rel="noopener noreferrer">Amaldagi hujjat</a></CardDescription></div>
       {canWrite && <div className="flex w-full max-w-xl gap-2 lg:w-auto"><Input value={newRunTitle} minLength={5} maxLength={255} onChange={event => setNewRunTitle(event.target.value)} aria-label="Yangi UAT run nomi" /><Button disabled={newRunTitle.trim().length < 5 || createRun.isPending} onClick={() => createRun.mutate()}>{createRun.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Yangi run</Button></div>}
     </CardHeader>
     <CardContent className="space-y-5">
