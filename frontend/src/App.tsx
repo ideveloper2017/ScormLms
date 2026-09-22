@@ -257,19 +257,16 @@ function App() {
         <Route path="/contingent"  element={<P roles={STAFF_ROLES}><ContingentManagement /></P>} />
         <Route path="/attendance"  element={<P roles={TEACHER_ROLES}><AttendanceProgress /></P>} />
         <Route path="/teaching"    element={<P roles={TEACHER_ROLES}><TeachingManagement /></P>} />
-        <Route path="/students-management" element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
 
         {/* ── Akademik tuzilma (Stage 3) ───────────────────────────────────── */}
         <Route path="/academic"            element={<P roles={STAFF_ROLES}><AcademicStructure /></P>} />
         <Route path="/groups"              element={<P roles={STAFF_ROLES}><Groups /></P>} />
         <Route path="/subjects"            element={<P roles={STAFF_ROLES}><Subjects /></P>} />
-        <Route path="/teachers-management" element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
 
         {/* ── Proctor ──────────────────────────────────────────────────────── */}
         <Route path="/exam/:id/proctoring" element={<P roles={[R_STU]}><ProctoringSession /></P>} />
 
         {/* ── Admin / Super Admin ───────────────────────────────────────────── */}
-        <Route path="/management" element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
         <Route path="/statistics" element={<P roles={[...ADMIN_ROLES, R_MON, R_MET]}><Statistics /></P>} />
         <Route path="/settings"   element={<P roles={ADMIN_ROLES}><Settings /></P>} />
 
@@ -322,7 +319,6 @@ function App() {
         <Route path="/users/not-choose-subject-students" element={<P roles={REPORTING_ROLES}><ElectiveChoiceMonitoring /></P>} />
         <Route path="/students/use-syllabus" element={<P roles={REPORTING_ROLES}><LearningParticipationMonitoring /></P>} />
         <Route path="/monitoring/test-results" element={<P roles={REPORTING_ROLES}><AcademicTestResults /></P>} />
-        <Route path="/monitoring/teachers" element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
         <Route path="/check-login-users" element={<P roles={ADMIN_ROLES}><StudentIpMonitoring /></P>} />
         <Route path="/commentary-lessons" element={<P roles={REPORTING_ROLES}><LessonCommentMonitoring /></P>} />
 
@@ -355,12 +351,8 @@ function App() {
         <Route path="/settings/internalization" element={<P roles={ADMIN_ROLES}><AdminTranslationMessages /></P>} />
 
         <Route path="/admin/dashboard"    element={<P roles={STAFF_ROLES}><AdminDashboard /></P>} />
-        <Route path="/admin/users"        element={<P roles={ADMIN_ROLES}><UserManagement /></P>} />
-        <Route path="/admin/students"     element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
         <Route path="/admin/student-movement/reinstatement-subjects" element={<P roles={STAFF_ROLES}><AdminReinstatementSubjectReport /></P>} />
-        <Route path="/admin/teachers"     element={<P roles={STAFF_ROLES}><TeacherManagement /></P>} />
         <Route path="/admin/roles"        element={<P roles={ADMIN_ROLES}><AdminRoles /></P>} />
-        <Route path="/admin/faculties"    element={<P roles={STAFF_ROLES}><AdminFaculties /></P>} />
         <Route path="/admin/departments"  element={<P roles={STAFF_ROLES}><AdminDepartments /></P>} />
         <Route path="/admin/programs"     element={<P roles={STAFF_ROLES}><AdminPrograms /></P>} />
         <Route path="/admin/groups"       element={<P roles={STAFF_ROLES}><AdminGroups /></P>} />
@@ -394,16 +386,6 @@ function App() {
         <Route path="/admin/content-reviews" element={<P roles={STAFF_ROLES}><AdminContentReviews /></P>} />
         <Route path="/admin/settings"          element={<P roles={ADMIN_ROLES}><Settings /></P>} />
         <Route path="/admin/notifications"     element={<P roles={STAFF_ROLES}><StudentNotifications /></P>} />
-
-        {/* ── Wildcard: show role-appropriate dashboard ────────────────────── */}
-        <Route
-          path="/students-management"
-          element={
-            <ProtectedPage allowedRoles={["ROLE_ADMIN", "ROLE_METODIST"]}>
-              <StudentManagement />
-            </ProtectedPage>
-          }
-        />
 
         <Route
           path="*"
@@ -459,22 +441,6 @@ function hasRole(user: ReturnType<typeof useAuth>["user"], roleToMatch: string):
 
 function norm(role: string): string {
   return role.replace(/^ROLE_/i, "").toUpperCase();
-}
-
-function ProtectedPage({
-  allowedRoles,
-  children,
-}: {
-  allowedRoles: string[];
-  children: ReactNode;
-}) {
-  return (
-    <AuthGuard>
-      <DashboardLayout>
-        <RoleGuard allowedRoles={allowedRoles}>{children}</RoleGuard>
-      </DashboardLayout>
-    </AuthGuard>
-  );
 }
 
 export default App;
