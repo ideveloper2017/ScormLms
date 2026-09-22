@@ -351,7 +351,6 @@ function App() {
         <Route path="/settings/internalization" element={<P roles={ADMIN_ROLES}><AdminTranslationMessages /></P>} />
 
         <Route path="/admin/dashboard"    element={<P roles={STAFF_ROLES}><AdminDashboard /></P>} />
-        <Route path="/admin/student-movement/reinstatement-subjects" element={<P roles={STAFF_ROLES}><AdminReinstatementSubjectReport /></P>} />
         <Route path="/admin/roles"        element={<P roles={ADMIN_ROLES}><AdminRoles /></P>} />
         <Route path="/admin/departments"  element={<P roles={STAFF_ROLES}><AdminDepartments /></P>} />
         <Route path="/admin/programs"     element={<P roles={STAFF_ROLES}><AdminPrograms /></P>} />

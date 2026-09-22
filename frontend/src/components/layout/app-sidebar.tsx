@@ -95,7 +95,7 @@ const ITEMS = {
   // ── Admin navigatsiyasi (/admin/*) ──────────────────────────────────────
   aDashboard:    { name: "Dashboard",           href: "/admin/dashboard",    icon: LayoutDashboard },
   aStudents:     { name: "Talabalar",           href: "/students/students",  icon: UserCheck       },
-  aReinstatementSubjects: { name: "Tiklanganlar fanlari", href: "/admin/student-movement/reinstatement-subjects", icon: FileSearch },
+  aReinstatementSubjects: { name: "Tiklanganlar fanlari", href: "/student/recovery-study-subjects-info", icon: FileSearch },
   aTeachers:     { name: "O'qituvchilar",       href: "/teachers/tutors",    icon: UserCog         },
   aRoles:        { name: "Rollar",              href: "/admin/roles",        icon: Shield          },
   aFaculties:    { name: "Fakultetlar",         href: "/structure/faculties", icon: Building2      },
@@ -191,6 +191,18 @@ export function buildNav(role: string): NavGroup[] {
     { label: "Akademik arxiv", icon: BookMarked, collapsible: true, items: [
       referenceItem("Chaqiruv qog'ozi", "/call-to-final-exam-letter", FileText),
       referenceItem("Transkript", "/transcript-students", ScrollText),
+    ] },
+    { label: "559-son qaror", icon: Scale, collapsible: true, items: [
+      ITEMS.aCompliance559,
+      ITEMS.aContentStandard,
+      ITEMS.aReadiness,
+      ITEMS.aRestrictions,
+      ITEMS.aBiometric,
+      ITEMS.aNonStateLicenses,
+      ITEMS.aOrientations,
+      ITEMS.aAccountability,
+      ITEMS.aPublications,
+      ITEMS.aQualityStudies,
     ] },
     { label: "Monitoring", icon: Monitor, collapsible: true, items: [
       referenceItem("Talabalar", "/monitoring/students", Users),
