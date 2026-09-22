@@ -183,10 +183,6 @@ function App() {
           }
         />
 
-        {/* ── Student-only ────────────────────────────────────────────────── */}
-        <Route path="/student-dashboard" element={<P roles={[R_STU]}><StudentDashboard /></P>} />
-        <Route path="/cabinet"           element={<P roles={[R_STU]}><StudentCabinet /></P>} />
-
         {/* ── /teacher/* ───────────────────────────────────────────────────── */}
         <Route path="/teacher/dashboard"              element={<P roles={TEACHER_ROLES}><TeacherDashboard /></P>} />
         <Route path="/teacher/courses"                element={<P roles={TEACHER_ROLES}><TeacherCourses /></P>} />

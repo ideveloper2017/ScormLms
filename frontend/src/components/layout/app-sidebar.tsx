@@ -44,7 +44,6 @@ const ITEMS = {
   resources:  { name: "Axborot resurslari",    href: "/resources",           icon: Library       },
   exams:      { name: "Imtihonlar",            href: "/exams",               icon: GraduationCap },
   comms:      { name: "Kommunikatsiya",        href: "/communication",       icon: MessageCircle },
-  cabinet:    { name: "Shaxsiy kabinet",       href: "/cabinet",             icon: UserCheck     },
   contingent: { name: "Kontingent",            href: "/contingent",          icon: ClipboardList },
   attendance: { name: "Davomat",               href: "/attendance",          icon: Activity      },
   teaching:   { name: "O'qitishni boshqarish", href: "/teaching",            icon: Database      },
@@ -313,6 +312,15 @@ export function AppSidebar() {
     if (isMobile) setOpenMobile(false);
   };
 
+  // Not every role has its own cabinet/settings page yet -- only link to
+  // ones that actually exist, so the footer menu never lands on "Ruxsat yo'q".
+  const personalCabinetHref: Record<string, string> = {
+    STUDENT: "/student/profile",
+    TEACHER: "/teacher/profile",
+  };
+  const cabinetHref = personalCabinetHref[normRole];
+  const showSettings = normRole === "SUPER_ADMIN" || normRole === "ADMIN";
+
   const isActive = (href: string) =>
     location.pathname === href || (href !== "/" && location.pathname.startsWith(href));
 
@@ -488,13 +496,17 @@ export function AppSidebar() {
                     </div>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => go("/cabinet")}>
-                  <Sparkles className="mr-2 size-4" /> Shaxsiy kabinet
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => go("/settings")}>
-                  <Settings className="mr-2 size-4" /> Sozlamalar
-                </DropdownMenuItem>
+                {(cabinetHref || showSettings) && <DropdownMenuSeparator />}
+                {cabinetHref && (
+                  <DropdownMenuItem onClick={() => go(cabinetHref)}>
+                    <Sparkles className="mr-2 size-4" /> Shaxsiy kabinet
+                  </DropdownMenuItem>
+                )}
+                {showSettings && (
+                  <DropdownMenuItem onClick={() => go("/settings")}>
+                    <Settings className="mr-2 size-4" /> Sozlamalar
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={logout}
