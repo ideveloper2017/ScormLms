@@ -56,7 +56,6 @@ import { AdminAcademicPeriods } from "@/pages/admin/academic-periods";
 import { AdminSubjectGroups } from "@/pages/admin/subject-groups";
 import { AdminSubjectCategories } from "@/pages/admin/subject-categories";
 import { AdminSyllabi } from "@/pages/admin/syllabi";
-import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 import { AdminAdmissionPolicies } from "@/pages/admin/admission-policies";
 import { AdminNonStateLicenses } from "@/pages/admin/non-state-licenses";
 import { AdminCalendar } from "@/pages/admin/calendar";
@@ -284,7 +283,6 @@ function App() {
         <Route path="/edu-process/curriculum"        element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
         <Route path="/edu-process/curriculum/new"    element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
         <Route path="/edu-process/curriculum/:id"    element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
-        <Route path="/edu-process/attached-students" element={<P roles={STAFF_ROLES}><AdminCurriculumStudents /></P>} />
         <Route path="/edu-process/syllabus"          element={<P roles={STAFF_ROLES}><AdminSyllabi /></P>} />
         <Route path="/edu-process/academic-years"    element={<P roles={STAFF_ROLES}><AdminAcademicPeriods view="years" /></P>} />
         <Route path="/edu-process/semesters"         element={<P roles={STAFF_ROLES}><AdminAcademicPeriods view="semesters" /></P>} />
@@ -368,14 +366,10 @@ function App() {
         <Route path="/admin/groups"       element={<P roles={STAFF_ROLES}><AdminGroups /></P>} />
         <Route path="/admin/student-classifiers" element={<P roles={STAFF_ROLES}><AdminStudentClassifiers /></P>} />
         <Route path="/admin/subjects"     element={<P roles={STAFF_ROLES}><AdminSubjects /></P>} />
-        <Route path="/admin/study-plans"  element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
-        <Route path="/admin/study-plans/new" element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
-        <Route path="/admin/study-plans/:id" element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
         <Route path="/admin/academic-periods" element={<P roles={STAFF_ROLES}><AdminAcademicPeriods /></P>} />
         <Route path="/admin/subject-groups" element={<P roles={STAFF_ROLES}><AdminSubjectGroups /></P>} />
         <Route path="/admin/subject-categories" element={<P roles={STAFF_ROLES}><AdminSubjectCategories /></P>} />
         <Route path="/admin/syllabi" element={<P roles={STAFF_ROLES}><AdminSyllabi /></P>} />
-        <Route path="/admin/curriculum-students" element={<P roles={STAFF_ROLES}><AdminCurriculumStudents /></P>} />
         <Route path="/admin/admission-policies" element={<P roles={STAFF_ROLES}><AdminAdmissionPolicies /></P>} />
         <Route path="/admin/non-state-licenses" element={<P roles={STAFF_ROLES}><AdminNonStateLicenses /></P>} />
         <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><TeacherCourses title="Kurslarni boshqarish" /></P>} />

@@ -105,8 +105,7 @@ const ITEMS = {
   aGroups:       { name: "Asosiy guruhlar",     href: "/admin/groups",       icon: Layers3         },
   aStudentClassifiers: { name: "Ma'lumotnomalar", href: "/admin/student-classifiers", icon: Globe2 },
   aSubjects:     { name: "Fanlar",              href: "/admin/subjects",     icon: NotebookText    },
-  aStudyPlans:   { name: "O'quv rejalari",      href: "/admin/study-plans",  icon: BookMarked      },
-  aCurriculumStudents: { name: "Rejaga biriktirilganlar", href: "/admin/curriculum-students", icon: UserCheck },
+  aStudyPlans:   { name: "O'quv rejalari",      href: "/edu-process/curriculum",  icon: BookMarked },
   aSyllabi:      { name: "O'quv dasturi",       href: "/admin/syllabi", icon: FileText },
   aAcademicPeriods: { name: "O'quv davrlari",   href: "/admin/academic-periods", icon: Calendar },
   aSubjectCategories: { name: "Fan guruhlari", href: "/admin/subject-categories", icon: FolderTree },
@@ -151,7 +150,6 @@ export function buildNav(role: string): NavGroup[] {
     ] },
     { label: "Ta'lim jarayoni", icon: BookOpen, collapsible: true, items: [
       referenceItem("O'quv reja", "/edu-process/curriculum", BookMarked),
-      referenceItem("O'quv rejaga biriktirilgan talabalar", "/edu-process/attached-students", UserCheck),
       referenceItem("O'quv dasturi", "/edu-process/syllabus", FileText),
       referenceItem("O'quv yillari", "/edu-process/academic-years", Calendar),
       referenceItem("Semestrlar", "/edu-process/semesters", CalendarDays),
@@ -246,7 +244,7 @@ export function buildNav(role: string): NavGroup[] {
     METODIST: [
       { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
       { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.contingent] },
-      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aCurriculumStudents, ITEMS.aSyllabi, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aSchedule, ITEMS.exams] },
+      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aSyllabi, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aSchedule, ITEMS.exams] },
       { label: "Nazorat va hisobot", items: [ITEMS.aContentReviews, ITEMS.aReports, ITEMS.aQualityStudies, ITEMS.aSurveys, ITEMS.stats] },
       { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers] },
       { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.teaching, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },

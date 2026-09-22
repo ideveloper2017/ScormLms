@@ -14,7 +14,13 @@ import { curriculumApi } from "@/services/api/curriculum-api";
 
 const message = (error: unknown) => error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
 
-export function AdminCurriculumStudents() {
+interface AdminCurriculumStudentsProps {
+  /** When set, locks the page to this curriculum (embedded as a tab inside the plan editor) and hides the plan picker. */
+  lockedCurriculumId?: number;
+}
+
+export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumStudentsProps = {}) {
+  const embedded = Number.isInteger(lockedCurriculumId) && (lockedCurriculumId as number) > 0;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
@@ -22,6 +28,7 @@ export function AdminCurriculumStudents() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [curriculumId, setCurriculumId] = useState(() => {
+    if (embedded) return lockedCurriculumId as number;
     const value = Number(searchParams.get("curriculumId"));
     return Number.isInteger(value) && value > 0 ? value : 0;
   });
@@ -33,9 +40,10 @@ export function AdminCurriculumStudents() {
   const [term, setTerm] = useState("");
   const [page, setPage] = useState(0);
   useEffect(() => {
+    if (embedded) return;
     const value = Number(searchParams.get("curriculumId"));
     setCurriculumId(Number.isInteger(value) && value > 0 ? value : 0);
-  }, [searchParams]);
+  }, [searchParams, embedded]);
   useEffect(() => { if (search.trim() === term) return; const timer = setTimeout(() => { setTerm(search.trim()); setPage(0); }, 300); return () => clearTimeout(timer); }, [search, term]);
   useEffect(() => { setSelectedIds([]); setPage(0); }, [curriculumId, semester]);
 
@@ -93,13 +101,13 @@ export function AdminCurriculumStudents() {
     : selected && (startsOn < selected.validFrom || endsOn > selected.validUntil) ? `Sanalar ${selected.validFrom} — ${selected.validUntil} oralig‘ida bo‘lishi kerak.` : null;
   const blocked = !selected ? 'Avval o‘quv rejani tanlang.' : selected.status !== 'APPROVED' ? 'Reja tasdiqlangan bo‘lishi kerak.' : !selected.active ? 'O‘quv reja faol emas.' : !period?.active ? 'Avval tanlangan semestrning faol muddatini saqlang.' : null;
 
-  return <div className="space-y-6 p-3 sm:p-6">
-    <div><h1 className="text-2xl font-bold">O'quv rejaga biriktirilgan talabalar</h1><p className="text-sm text-muted-foreground">ELMS zanjiri: tasdiqlangan o'quv reja → semestr muddati → mos talabalarni biriktirish.</p></div>
-    {curricula.isSuccess && curricula.data.length === 0 && <Card><CardContent className="space-y-3 py-10 text-center"><p className="text-muted-foreground">Talaba biriktirish uchun avval o'quv reja yarating va kamida bitta fan bilan tasdiqlang.</p><Button onClick={() => navigate("/admin/study-plans")}>O'quv rejaga o'tish</Button></CardContent></Card>}
+  return <div className={embedded ? "space-y-6" : "space-y-6 p-3 sm:p-6"}>
+    {!embedded && <div><h1 className="text-2xl font-bold">O'quv rejaga biriktirilgan talabalar</h1><p className="text-sm text-muted-foreground">ELMS zanjiri: tasdiqlangan o'quv reja → semestr muddati → mos talabalarni biriktirish.</p></div>}
+    {!embedded && curricula.isSuccess && curricula.data.length === 0 && <Card><CardContent className="space-y-3 py-10 text-center"><p className="text-muted-foreground">Talaba biriktirish uchun avval o'quv reja yarating va kamida bitta fan bilan tasdiqlang.</p><Button onClick={() => navigate("/edu-process/curriculum")}>O'quv rejaga o'tish</Button></CardContent></Card>}
     {curricula.isPending && <p role="status">O'quv rejalar yuklanmoqda...</p>}
     {curricula.isError && <div role="alert" className="rounded border p-3 text-destructive">Rejalarni yuklab bo'lmadi. <Button variant="outline" onClick={() => void curricula.refetch()}>Qayta urinish</Button></div>}
-    <Card><CardHeader><CardTitle>O'quv reja va semestr</CardTitle><CardDescription>Talabaning yo'nalishi, o'quv yili va semestri rejaga mos bo'lishi shart.</CardDescription></CardHeader><CardContent className="grid gap-4 md:grid-cols-4">
-      <div className="space-y-2 md:col-span-2"><Label>O'quv reja</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" aria-label="O'quv reja" disabled={busy} value={curriculumId} onChange={(event) => chooseCurriculum(Number(event.target.value))}><option value={0}>Rejani tanlang</option>{(curricula.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.programName} · {item.versionCode} · {item.academicYear} ({item.status})</option>)}</select></div>
+    <Card><CardHeader><CardTitle>Semestr muddati</CardTitle><CardDescription>Talabaning yo'nalishi, o'quv yili va semestri rejaga mos bo'lishi shart.</CardDescription></CardHeader><CardContent className={embedded ? "grid gap-4 md:grid-cols-3" : "grid gap-4 md:grid-cols-4"}>
+      {!embedded && <div className="space-y-2 md:col-span-2"><Label>O'quv reja</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" aria-label="O'quv reja" disabled={busy} value={curriculumId} onChange={(event) => chooseCurriculum(Number(event.target.value))}><option value={0}>Rejani tanlang</option>{(curricula.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.programName} · {item.versionCode} · {item.academicYear} ({item.status})</option>)}</select></div>}
       <div className="space-y-2"><Label>Semestr</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" aria-label="Semestr" disabled={!selected || busy} value={semester} onChange={(event) => setSemester(Number(event.target.value))}>{Array.from({ length: selected?.semesterCount ?? 1 }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}-semestr</option>)}</select></div>
       <div className="flex items-end"><Badge variant={selected?.status === "APPROVED" ? "default" : "secondary"}>{selected?.status ?? "Reja tanlanmagan"}</Badge></div>
       <div className="space-y-2"><Label>Boshlanish sanasi</Label><Input aria-label="Boshlanish sanasi" disabled={!canWrite || busy} min={selected?.validFrom} max={selected?.validUntil} type="date" value={startsOn} onChange={(event) => setStartsOn(event.target.value)} /></div>

@@ -14,12 +14,18 @@ import { subjectGroupApi } from "@/services/api/subject-group-api";
 
 const emptyForm = { curriculumSubjectId: 0, code: "", name: "", capacity: 30, active: true };
 
-export function AdminSubjectGroups() {
+interface AdminSubjectGroupsProps {
+  /** When set, locks the page to this curriculum (embedded as a tab inside the plan editor) and hides the plan picker. */
+  lockedCurriculumId?: number;
+}
+
+export function AdminSubjectGroups({ lockedCurriculumId }: AdminSubjectGroupsProps = {}) {
+  const embedded = Number.isInteger(lockedCurriculumId) && (lockedCurriculumId as number) > 0;
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
   const { toast } = useToast();
   const client = useQueryClient();
-  const [curriculumId, setCurriculumId] = useState(0);
+  const [curriculumId, setCurriculumId] = useState(embedded ? (lockedCurriculumId as number) : 0);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [candidateSearch, setCandidateSearch] = useState("");
   const [candidatePage, setCandidatePage] = useState(0);
@@ -91,12 +97,13 @@ export function AdminSubjectGroups() {
 
   const failed = groups.isError || curricula.isError || members.isError || candidates.isError || assignedTeachers.isError || teacherCandidates.isError;
   const busy = create.isPending || assign.isPending || remove.isPending || assignTeacher.isPending || removeTeacher.isPending;
-  return <div className="space-y-6 p-3 sm:p-6">
+  return <div className={embedded ? "space-y-6" : "space-y-6 p-3 sm:p-6"}>
     {failed && <div role="alert" className="rounded border p-3 text-destructive">Fan oqimi ma’lumotlarini yuklab bo‘lmadi. <Button variant="outline" onClick={() => { void refresh(); void curricula.refetch(); }}>Qayta urinish</Button></div>}
     {(groups.isPending || curricula.isPending) && <p role="status">Fan oqimlari yuklanmoqda...</p>}
-    <div><h1 className="text-2xl font-bold">Fan oqimlari</h1><p className="text-sm text-muted-foreground">Fan oqimi — tasdiqlangan o'quv reja fanini o'qitadigan o'qituvchi va talabalar tarkibi. U asosiy talabalar guruhidan alohida yuritiladi.</p></div>
+    {!embedded && <div><h1 className="text-2xl font-bold">Fan oqimlari</h1><p className="text-sm text-muted-foreground">Fan oqimi — tasdiqlangan o'quv reja fanini o'qitadigan o'qituvchi va talabalar tarkibi. U asosiy talabalar guruhidan alohida yuritiladi.</p></div>}
 
-    <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpenCheck className="h-5 w-5" />O'quv rejani tanlash</CardTitle><CardDescription>Faqat tasdiqlangan o'quv rejalari operatsion fan guruhiga asos bo'ladi.</CardDescription></CardHeader><CardContent><select className="h-10 w-full max-w-xl rounded-md border bg-background px-3 text-sm" aria-label="O'quv rejani tanlash" disabled={busy} value={curriculumId} onChange={(event) => { setCurriculumId(Number(event.target.value)); setSelectedGroupId(null); setForm(emptyForm); }}><option value={0}>Barcha tasdiqlangan rejalar</option>{approved.map((item) => <option key={item.id} value={item.id}>{item.programName} · {item.versionCode} · {item.academicYear}</option>)}</select></CardContent></Card>
+    {!embedded && <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpenCheck className="h-5 w-5" />O'quv rejani tanlash</CardTitle><CardDescription>Faqat tasdiqlangan o'quv rejalari operatsion fan guruhiga asos bo'ladi.</CardDescription></CardHeader><CardContent><select className="h-10 w-full max-w-xl rounded-md border bg-background px-3 text-sm" aria-label="O'quv rejani tanlash" disabled={busy} value={curriculumId} onChange={(event) => { setCurriculumId(Number(event.target.value)); setSelectedGroupId(null); setForm(emptyForm); }}><option value={0}>Barcha tasdiqlangan rejalar</option>{approved.map((item) => <option key={item.id} value={item.id}>{item.programName} · {item.versionCode} · {item.academicYear}</option>)}</select></CardContent></Card>}
+    {embedded && !selectedCurriculum && <p role="status" className="rounded bg-muted p-3 text-sm text-muted-foreground">Fan oqimi yaratish uchun reja tasdiqlangan bo'lishi kerak.</p>}
 
     {canWrite && selectedCurriculum && <Card><CardHeader><CardTitle>Yangi fan guruhi</CardTitle><CardDescription>Yil, semestr, dastur va fan tanlangan curriculum bandidan avtomatik olinadi.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
       <div className="space-y-2 md:col-span-2"><Label>O'quv reja fani</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.curriculumSubjectId} onChange={(event) => setForm({ ...form, curriculumSubjectId: Number(event.target.value) })}><option value={0}>Fan tanlang</option>{selectedCurriculum.subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.semester}-semestr · {subject.subjectCode} · {subject.subjectName}</option>)}</select></div>

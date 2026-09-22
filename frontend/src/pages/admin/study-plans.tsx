@@ -154,7 +154,7 @@ export function AdminStudyPlans() {
               title="Biriktirilgan talabalar"
               aria-label="Biriktirilgan talabalar"
               onClick={() =>
-                navigate("/edu-process/attached-students?curriculumId=" + row.original.id)
+                navigate("/edu-process/curriculum/" + row.original.id + "?tab=students")
               }
             >
               <Users className="h-4 w-4" />
@@ -314,7 +314,7 @@ export function AdminStudyPlans() {
                       size="icon"
                       aria-label="Biriktirilgan talabalar"
                       onClick={() =>
-                        navigate("/edu-process/attached-students?curriculumId=" + item.id)
+                        navigate("/edu-process/curriculum/" + item.id + "?tab=students")
                       }
                     >
                       <Users className="h-4 w-4" />
