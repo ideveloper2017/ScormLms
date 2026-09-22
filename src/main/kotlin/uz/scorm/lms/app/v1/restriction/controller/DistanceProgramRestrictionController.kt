@@ -28,21 +28,21 @@ class DistanceProgramRestrictionController(private val service: DistanceProgramR
     fun get(@PathVariable id: Long) = service.get(id)
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun create(@RequestBody request: SaveDistanceProgramRestrictionCatalogRequest, @CurrentUser user: User) =
         ResponseEntity.status(HttpStatus.CREATED).body(service.create(request, requireNotNull(user.id)))
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun update(@PathVariable id: Long, @RequestBody request: SaveDistanceProgramRestrictionCatalogRequest, @CurrentUser user: User) =
         service.update(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/publish")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun publish(@PathVariable id: Long, @RequestBody request: PublishDistanceProgramRestrictionCatalogRequest, @CurrentUser user: User) =
         service.publish(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/archive")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun archive(@PathVariable id: Long, @CurrentUser user: User) = service.archive(id, requireNotNull(user.id))
 }

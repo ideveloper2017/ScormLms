@@ -28,17 +28,17 @@ class QualityMonitoringStudyController(private val service: QualityMonitoringStu
     fun get(@PathVariable id: Long): QualityMonitoringStudyDto = service.get(id)
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun create(@RequestBody request: CreateQualityMonitoringStudyRequest, @CurrentUser user: User): ResponseEntity<QualityMonitoringStudyDto> =
         ResponseEntity.status(HttpStatus.CREATED).body(service.create(request, requireNotNull(user.id)))
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun update(@PathVariable id: Long, @RequestBody request: CreateQualityMonitoringStudyRequest, @CurrentUser user: User) =
         service.update(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/complete")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun complete(
         @PathVariable id: Long,
         @RequestBody request: CompleteQualityMonitoringStudyRequest,
@@ -46,11 +46,11 @@ class QualityMonitoringStudyController(private val service: QualityMonitoringStu
     ) = service.complete(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun approve(@PathVariable id: Long, @CurrentUser user: User) = service.approve(id, requireNotNull(user.id))
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun cancel(@PathVariable id: Long, @CurrentUser user: User) = service.cancel(id, requireNotNull(user.id))
 }
 

@@ -36,8 +36,18 @@ class ComplianceIssueAuthorizationIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "compliance-writer", authorities = ["ACADEMIC_READ", "ACADEMIC_WRITE"])
-    fun `akademik yozish vakolati vazifa yaratadi`() {
+    @WithMockUser(username = "metodist-user", authorities = ["ACADEMIC_READ", "ACADEMIC_WRITE"])
+    fun `faqat akademik yozish vakolati (masalan metodist) vazifa yarata olmaydi`() {
+        userRepository.save(User(username = "metodist-user", password = "test"))
+        mockMvc.post("/api/v1/compliance/559/issues") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"violationCode":"NO_DISTANCE_PROGRAM","ownerId":1,"dueDate":"${LocalDate.now().plusDays(2)}","remediationPlan":"Reja"}"""
+        }.andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    @WithMockUser(username = "compliance-writer", authorities = ["ACADEMIC_READ", "COMPLIANCE_559_WRITE"])
+    fun `muvofiqlik yozish vakolati vazifa yaratadi`() {
         userRepository.save(User(username = "compliance-writer", password = "test"))
         val owner = userRepository.save(User(username = "compliance-owner-api", password = "test", fullName = "API Owner"))
         val violationCode = complianceService.summary().violations.first { it.code != "NO_DISTANCE_PROGRAM" }.code

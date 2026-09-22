@@ -22,6 +22,11 @@ object RolePermissions {
     const val EXAM_TAKE     = "EXAM_TAKE"
     const val ACADEMIC_READ  = "ACADEMIC_READ"   // faculties/departments/programs/groups/subjects
     const val ACADEMIC_WRITE = "ACADEMIC_WRITE"
+    // Decision 559 compliance-officer surface: licensing, disclosure, admission-quota policy,
+    // distance-readiness/restriction, content-standard checklists, quality-monitoring studies.
+    // Split out from ACADEMIC_WRITE so a curriculum coordinator (metodist) isn't also a
+    // compliance officer by default -- see RolePermissions matrix below.
+    const val COMPLIANCE_559_WRITE = "COMPLIANCE_559_WRITE"
     const val TEACHER_READ   = "TEACHER_READ"
     const val TEACHER_WRITE  = "TEACHER_WRITE"
     const val STUDENT_READ   = "STUDENT_READ"
@@ -41,7 +46,7 @@ object RolePermissions {
             ROLE_MANAGE, AUDIT_READ, REPORT_READ,
             EXAM_MANAGE, EXAM_PROCTOR, EXAM_TAKE,
             USER_MONITOR, STAT_READ,
-            ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE,
+            ACADEMIC_READ, ACADEMIC_WRITE, COMPLIANCE_559_WRITE, TEACHER_READ, TEACHER_WRITE,
             SUPPORT_READ, SUPPORT_WRITE, INTEGRATION_READ, INTEGRATION_WRITE,
             UAT_READ, UAT_WRITE, UAT_APPROVE
         ),
@@ -49,7 +54,7 @@ object RolePermissions {
             USER_READ, USER_WRITE, USER_MANAGE,
             COURSE_READ, COURSE_WRITE,
             AUDIT_READ, REPORT_READ, STAT_READ, EXAM_MANAGE,
-            ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE,
+            ACADEMIC_READ, ACADEMIC_WRITE, COMPLIANCE_559_WRITE, TEACHER_READ, TEACHER_WRITE,
             SUPPORT_READ, SUPPORT_WRITE, INTEGRATION_READ, INTEGRATION_WRITE,
             UAT_READ, UAT_WRITE, UAT_APPROVE
         ),
@@ -88,7 +93,7 @@ object RolePermissions {
         COURSE_READ, COURSE_WRITE,
         ROLE_MANAGE, AUDIT_READ, REPORT_READ, STAT_READ,
         EXAM_MANAGE, EXAM_PROCTOR, EXAM_TAKE,
-        ACADEMIC_READ, ACADEMIC_WRITE, TEACHER_READ, TEACHER_WRITE,
+        ACADEMIC_READ, ACADEMIC_WRITE, COMPLIANCE_559_WRITE, TEACHER_READ, TEACHER_WRITE,
         STUDENT_READ, STUDENT_WRITE,
         SUPPORT_READ, SUPPORT_WRITE,
         INTEGRATION_READ, INTEGRATION_WRITE,

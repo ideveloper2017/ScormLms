@@ -28,22 +28,22 @@ class ComplianceAccountabilityController(private val service: ComplianceAccounta
         ResponseEntity.ok(ApiResponse.success(service.get(id)))
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun create(@RequestBody request: SaveAccountabilityReferralRequest, @CurrentUser user: User): ResponseEntity<ApiResponse<AccountabilityReferralDto>> =
         ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(service.create(request, requireNotNull(user.id))))
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun update(@PathVariable id: Long, @RequestBody request: SaveAccountabilityReferralRequest, @CurrentUser user: User): ResponseEntity<ApiResponse<AccountabilityReferralDto>> =
         ResponseEntity.ok(ApiResponse.success(service.update(id, request, requireNotNull(user.id))))
 
     @PostMapping("/{id}/refer")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun refer(@PathVariable id: Long, @RequestBody request: ReferAccountabilityRequest, @CurrentUser user: User): ResponseEntity<ApiResponse<AccountabilityReferralDto>> =
         ResponseEntity.ok(ApiResponse.success(service.refer(id, request, requireNotNull(user.id))))
 
     @PostMapping("/{id}/decision")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun decision(@PathVariable id: Long, @RequestBody request: RecordAccountabilityDecisionRequest, @CurrentUser user: User): ResponseEntity<ApiResponse<AccountabilityReferralDto>> =
         ResponseEntity.ok(ApiResponse.success(service.recordDecision(id, request, requireNotNull(user.id))))
 }
