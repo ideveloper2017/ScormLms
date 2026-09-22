@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarCheck, CheckCircle2, ClipboardCheck, Play, Plus, RefreshCw, Trash2, Users } from 'lucide-react';
+import { AlertTriangle, CalendarCheck, CheckCircle2, ClipboardCheck, Play, Plus, RefreshCw, Trash2, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -79,7 +79,7 @@ export function TeacherExams() {
       <Button disabled={!courseId || !title.trim() || !location.trim() || !examDate || !examTime || create.isPending} onClick={() => create.mutate()}><Plus className="h-4 w-4 mr-2" />Yaratish</Button>
     </CardContent></Card>
     <div className="grid lg:grid-cols-2 gap-4">{(sessions.data ?? []).map(session => <Card key={session.id} className={selectedId === session.id ? 'border-primary' : ''}><CardContent className="p-4 space-y-3">
-      <div className="flex justify-between gap-3"><div><div className="font-semibold">{session.title}</div><div className="text-sm text-muted-foreground">{session.courseTitle} · {session.examDate} {session.examTime} · {session.location}</div></div><Badge>{statusLabel[session.status]}</Badge></div>
+      <div className="flex justify-between gap-3"><div><div className="font-semibold">{session.title}</div><div className="text-sm text-muted-foreground">{session.courseTitle} · {session.examDate} {session.examTime} · {session.location}</div>{!session.curriculumLinked && <div className="flex items-center gap-1 text-xs text-amber-600 mt-1"><AlertTriangle className="h-3 w-3" />Kurs tasdiqlangan o'quv rejaga bog'lanmagan (fan oqimi yo'q)</div>}</div><Badge>{statusLabel[session.status]}</Badge></div>
       <div className="flex gap-3 text-sm"><span><Users className="inline h-4 w-4" /> {session.registeredCount}</span><span className="text-green-600">Kelgan: {session.presentCount}</span><span className="text-red-600">Kelmagan: {session.absentCount}</span></div>
       <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedId(session.id)}><ClipboardCheck className="h-4 w-4 mr-1" />Ro'yxat</Button>{session.status === 'DRAFT' && <><Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'publish' })}><CalendarCheck className="h-4 w-4 mr-1" />E'lon qilish</Button><Button size="icon" variant="ghost" className="text-destructive" onClick={() => action.mutate({ id: session.id, kind: 'remove' })}><Trash2 className="h-4 w-4" /></Button></>}{session.status === 'PUBLISHED' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'start' })}><Play className="h-4 w-4 mr-1" />Boshlash</Button>}{session.status === 'ONGOING' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'complete' })}><CheckCircle2 className="h-4 w-4 mr-1" />Yakunlash</Button>}</div>
     </CardContent></Card>)}</div>

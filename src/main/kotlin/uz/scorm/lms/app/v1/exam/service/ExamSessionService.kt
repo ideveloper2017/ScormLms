@@ -324,6 +324,7 @@ class ExamSessionService(
             heldAt = session.heldAt,
             createdAt = session.createdAt!!,
             updatedAt = session.updatedAt!!,
+            curriculumLinked = session.course.subjectGroup != null,
         )
     }
 
@@ -366,6 +367,7 @@ class ExamSessionService(
             failedCount = failedCount,
             publishedAt = session.publishedAt,
             heldAt = session.heldAt,
+            curriculumLinked = session.course.subjectGroup != null,
         )
     }
 }
