@@ -19,6 +19,7 @@ import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
 import uz.scorm.lms.app.v1.curriculum.service.CurriculumOperationService
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSemesterPeriodRequest
 import uz.scorm.lms.app.v1.curriculum.dto.AssignCurriculumStudentsRequest
+import uz.scorm.lms.app.v1.curriculum.repository.CurriculumStudentAssignmentRepository
 import uz.scorm.lms.app.v1.program.model.Program
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.role.model.Role
@@ -44,6 +45,7 @@ class ProgramCurriculumWorkflowIntegrationTest {
     @Autowired private lateinit var userRepository: UserRepository
     @Autowired private lateinit var roleRepository: RoleRepository
     @Autowired private lateinit var studentRepository: StudentRepository
+    @Autowired private lateinit var assignmentRepository: CurriculumStudentAssignmentRepository
 
     @Test
     fun `19-band curriculum normativ asos fan snapshoti va mustaqil tasdiq bilan yuritiladi`() {
@@ -165,6 +167,27 @@ class ProgramCurriculumWorkflowIntegrationTest {
         assertThrows<IllegalArgumentException> {
             service.students(curriculum.id, null, StudentStatus.REGISTERED, 0, 10)
         }
+    }
+
+    @Test
+    fun `talaba biriktirilganda semestr davriga bevosita havola saqlanadi`() {
+        val author = user("period-link-author")
+        val program = program("period-link-program")
+        val plan = service.create(request(requireNotNull(program.id), versionSuffix = "period-link"), requireNotNull(author.id))
+        val subject = subject(program, "PLNK", "Havola fani", 5)
+        service.addSubject(plan.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 3, CurriculumPlanItemType.REQUIRED), requireNotNull(author.id))
+        service.approve(plan.id, approval(), requireNotNull(user("period-link-approver").id))
+        val savedPeriod = operations.savePeriod(plan.id, CurriculumSemesterPeriodRequest(3, LocalDate.of(2026, 9, 1), LocalDate.of(2027, 1, 15), true))
+        val eligible = student(program, "Havola", StudentStatus.ACTIVE, "2026-2027")
+
+        operations.assign(plan.id, AssignCurriculumStudentsRequest(setOf(requireNotNull(eligible.id)), 3))
+
+        val stored = requireNotNull(
+            assignmentRepository.findByCurriculumVersionIdAndStudentIdAndSemesterNumber(plan.id, requireNotNull(eligible.id), 3)
+        )
+        assertEquals(savedPeriod.id, stored.period?.id)
+        assertEquals(stored.startsOn, stored.period?.startsOn)
+        assertEquals(stored.endsOn, stored.period?.endsOn)
     }
 
     @Test

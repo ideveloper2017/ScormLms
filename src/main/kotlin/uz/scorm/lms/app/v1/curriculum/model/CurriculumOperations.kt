@@ -42,4 +42,11 @@ class CurriculumStudentAssignment(
     var endsOn: LocalDate,
     @Column(nullable = false)
     var active: Boolean = true,
+    // Nullable on purpose: additive migration (V76), not yet backed by a NOT NULL
+    // constraint. academicYear/startsOn/endsOn above still duplicate this row's
+    // data and remain the fields actually read -- this is the single-source-of-truth
+    // reference new code should populate and, eventually, read from instead.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "period_id")
+    var period: CurriculumSemesterPeriod? = null,
 ) : BaseEntity()
