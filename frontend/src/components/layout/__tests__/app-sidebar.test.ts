@@ -10,6 +10,7 @@ const expectedAdminSections = [
   "Talabalar",
   "Talabalar harakati",
   "Akademik arxiv",
+  "559-son qaror",
   "Monitoring",
   "Yangiliklar",
   "Xabarlar",
@@ -21,7 +22,7 @@ const expectedAdminSections = [
 
 describe("superadmin sidebar navigation", () => {
   it.each(["super_admin", "ROLE_SUPER_ADMIN", "admin", "ROLE_ADMIN"])(
-    "%s uchun 15 ta alohida bo'limni to'g'ri tartibda beradi",
+    "%s uchun 16 ta alohida bo'limni to'g'ri tartibda beradi",
     (role) => {
       expect(buildNav(role).map((section) => section.label)).toEqual(expectedAdminSections);
     },
@@ -38,12 +39,13 @@ describe("superadmin sidebar navigation", () => {
   it("har bir ochiladigan bo'limda referensdagi sahifalar sonini saqlaydi", () => {
     const counts: Record<string, number> = {
       "Tuzilishi": 2,
-      "Ta'lim jarayoni": 15,
+      "Ta'lim jarayoni": 14,
       "O'zlashtirish": 7,
       "O'qituvchilar": 2,
       "Talabalar": 5,
       "Talabalar harakati": 3,
       "Akademik arxiv": 2,
+      "559-son qaror": 10,
       "Monitoring": 8,
       "Yangiliklar": 2,
       "Akkauntlar": 2,

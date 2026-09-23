@@ -28,21 +28,21 @@ class DistanceAdmissionPolicyController(private val service: DistanceAdmissionPo
     fun get(@PathVariable id: Long) = service.get(id)
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun create(@RequestBody request: SaveDistanceAdmissionPolicyRequest, @CurrentUser user: User) =
         ResponseEntity.status(HttpStatus.CREATED).body(service.create(request, requireNotNull(user.id)))
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun update(@PathVariable id: Long, @RequestBody request: SaveDistanceAdmissionPolicyRequest, @CurrentUser user: User) =
         service.update(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun approve(@PathVariable id: Long, @RequestBody request: ApproveDistanceAdmissionPolicyRequest, @CurrentUser user: User) =
         service.approve(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/archive")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun archive(@PathVariable id: Long, @CurrentUser user: User) = service.archive(id, requireNotNull(user.id))
 }

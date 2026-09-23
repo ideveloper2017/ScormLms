@@ -33,12 +33,12 @@ class Decision559ComplianceController(
         ResponseEntity.ok(ApiResponse.success(issueService.list()))
 
     @GetMapping("/owners")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun owners(): ResponseEntity<ApiResponse<List<ComplianceOwnerDto>>> =
         ResponseEntity.ok(ApiResponse.success(issueService.owners()))
 
     @PostMapping("/issues")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun createIssue(
         @RequestBody request: CreateComplianceIssueRequest,
         @CurrentUser user: User,
@@ -46,7 +46,7 @@ class Decision559ComplianceController(
         ResponseEntity.ok(ApiResponse.success(issueService.create(request, requireNotNull(user.id))))
 
     @PutMapping("/issues/{id}")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun updateIssue(
         @PathVariable id: Long,
         @RequestBody request: UpdateComplianceIssueRequest,
@@ -55,7 +55,7 @@ class Decision559ComplianceController(
         ResponseEntity.ok(ApiResponse.success(issueService.update(id, request, requireNotNull(user.id))))
 
     @PostMapping("/issues/{id}/status")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun changeIssueStatus(
         @PathVariable id: Long,
         @RequestBody request: ChangeComplianceIssueStatusRequest,

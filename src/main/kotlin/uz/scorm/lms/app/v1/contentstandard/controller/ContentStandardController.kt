@@ -28,21 +28,21 @@ class ContentStandardController(private val service: ContentStandardService) {
     @GetMapping("/revisions") fun revisions() = service.revisionCandidates()
     @GetMapping("/assessments") fun assessments() = service.listAssessments()
 
-    @PostMapping("/checklists") @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PostMapping("/checklists") @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun createChecklist(@RequestBody request: SaveContentStandardChecklistRequest, @CurrentUser user: User) =
         ResponseEntity.status(HttpStatus.CREATED).body(service.createChecklist(request, requireNotNull(user.id)))
-    @PutMapping("/checklists/{id}") @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PutMapping("/checklists/{id}") @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun updateChecklist(@PathVariable id: Long, @RequestBody request: SaveContentStandardChecklistRequest, @CurrentUser user: User) = service.updateChecklist(id, request, requireNotNull(user.id))
-    @PostMapping("/checklists/{id}/publish") @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PostMapping("/checklists/{id}/publish") @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun publishChecklist(@PathVariable id: Long, @RequestBody request: ReviewContentStandardRequest, @CurrentUser user: User) = service.publishChecklist(id, request, requireNotNull(user.id))
-    @PostMapping("/checklists/{id}/reject") @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PostMapping("/checklists/{id}/reject") @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun rejectChecklist(@PathVariable id: Long, @RequestBody request: ReviewContentStandardRequest, @CurrentUser user: User) = service.rejectChecklist(id, request, requireNotNull(user.id))
-    @PostMapping("/checklists/{id}/archive") @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PostMapping("/checklists/{id}/archive") @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun archiveChecklist(@PathVariable id: Long, @CurrentUser user: User) = service.archiveChecklist(id, requireNotNull(user.id))
 
-    @PostMapping("/assessments") @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PostMapping("/assessments") @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun createAssessment(@RequestBody request: SaveContentStandardAssessmentRequest, @CurrentUser user: User) =
         ResponseEntity.status(HttpStatus.CREATED).body(service.createAssessment(request, requireNotNull(user.id)))
-    @PostMapping("/assessments/{id}/review") @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PostMapping("/assessments/{id}/review") @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun reviewAssessment(@PathVariable id: Long, @RequestBody request: ReviewContentStandardAssessmentRequest, @CurrentUser user: User) = service.reviewAssessment(id, request, requireNotNull(user.id))
 }

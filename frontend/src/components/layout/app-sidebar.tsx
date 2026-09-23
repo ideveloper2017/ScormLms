@@ -44,7 +44,6 @@ const ITEMS = {
   resources:  { name: "Axborot resurslari",    href: "/resources",           icon: Library       },
   exams:      { name: "Imtihonlar",            href: "/exams",               icon: GraduationCap },
   comms:      { name: "Kommunikatsiya",        href: "/communication",       icon: MessageCircle },
-  cabinet:    { name: "Shaxsiy kabinet",       href: "/cabinet",             icon: UserCheck     },
   contingent: { name: "Kontingent",            href: "/contingent",          icon: ClipboardList },
   attendance: { name: "Davomat",               href: "/attendance",          icon: Activity      },
   teaching:   { name: "O'qitishni boshqarish", href: "/teaching",            icon: Database      },
@@ -94,19 +93,17 @@ const ITEMS = {
 
   // ── Admin navigatsiyasi (/admin/*) ──────────────────────────────────────
   aDashboard:    { name: "Dashboard",           href: "/admin/dashboard",    icon: LayoutDashboard },
-  aUsers:        { name: "Foydalanuvchilar",    href: "/admin/users",        icon: Users           },
-  aStudents:     { name: "Talabalar",           href: "/admin/students",     icon: UserCheck       },
-  aReinstatementSubjects: { name: "Tiklanganlar fanlari", href: "/admin/student-movement/reinstatement-subjects", icon: FileSearch },
-  aTeachers:     { name: "O'qituvchilar",       href: "/admin/teachers",     icon: UserCog         },
+  aStudents:     { name: "Talabalar",           href: "/students/students",  icon: UserCheck       },
+  aReinstatementSubjects: { name: "Tiklanganlar fanlari", href: "/student/recovery-study-subjects-info", icon: FileSearch },
+  aTeachers:     { name: "O'qituvchilar",       href: "/teachers/tutors",    icon: UserCog         },
   aRoles:        { name: "Rollar",              href: "/admin/roles",        icon: Shield          },
-  aFaculties:    { name: "Fakultetlar",         href: "/admin/faculties",    icon: Building2       },
+  aFaculties:    { name: "Fakultetlar",         href: "/structure/faculties", icon: Building2      },
   aDepartments:  { name: "Kafedralar",          href: "/admin/departments",  icon: Building        },
   aPrograms:     { name: "Yo'nalishlar",        href: "/admin/programs",     icon: FolderTree      },
   aGroups:       { name: "Asosiy guruhlar",     href: "/admin/groups",       icon: Layers3         },
   aStudentClassifiers: { name: "Ma'lumotnomalar", href: "/admin/student-classifiers", icon: Globe2 },
   aSubjects:     { name: "Fanlar",              href: "/admin/subjects",     icon: NotebookText    },
-  aStudyPlans:   { name: "O'quv rejalari",      href: "/admin/study-plans",  icon: BookMarked      },
-  aCurriculumStudents: { name: "Rejaga biriktirilganlar", href: "/admin/curriculum-students", icon: UserCheck },
+  aStudyPlans:   { name: "O'quv rejalari",      href: "/edu-process/curriculum",  icon: BookMarked },
   aSyllabi:      { name: "O'quv dasturi",       href: "/admin/syllabi", icon: FileText },
   aAcademicPeriods: { name: "O'quv davrlari",   href: "/admin/academic-periods", icon: Calendar },
   aSubjectCategories: { name: "Fan guruhlari", href: "/admin/subject-categories", icon: FolderTree },
@@ -151,7 +148,6 @@ export function buildNav(role: string): NavGroup[] {
     ] },
     { label: "Ta'lim jarayoni", icon: BookOpen, collapsible: true, items: [
       referenceItem("O'quv reja", "/edu-process/curriculum", BookMarked),
-      referenceItem("O'quv rejaga biriktirilgan talabalar", "/edu-process/attached-students", UserCheck),
       referenceItem("O'quv dasturi", "/edu-process/syllabus", FileText),
       referenceItem("O'quv yillari", "/edu-process/academic-years", Calendar),
       referenceItem("Semestrlar", "/edu-process/semesters", CalendarDays),
@@ -195,13 +191,25 @@ export function buildNav(role: string): NavGroup[] {
       referenceItem("Chaqiruv qog'ozi", "/call-to-final-exam-letter", FileText),
       referenceItem("Transkript", "/transcript-students", ScrollText),
     ] },
+    { label: "559-son qaror", icon: Scale, collapsible: true, items: [
+      ITEMS.aCompliance559,
+      ITEMS.aContentStandard,
+      ITEMS.aReadiness,
+      ITEMS.aRestrictions,
+      ITEMS.aBiometric,
+      ITEMS.aNonStateLicenses,
+      ITEMS.aOrientations,
+      ITEMS.aAccountability,
+      ITEMS.aPublications,
+      ITEMS.aQualityStudies,
+    ] },
     { label: "Monitoring", icon: Monitor, collapsible: true, items: [
       referenceItem("Talabalar", "/monitoring/students", Users),
       referenceItem("Darsga qatnashmayotganlar", "/monitoring/students-login-date", Activity),
       referenceItem("Tanlov fanlari", "/users/not-choose-subject-students", BookOpen),
       referenceItem("Talabalarning fanlarda ishtiroki", "/students/use-syllabus", UserCheck),
       referenceItem("Test natijalari", "/monitoring/test-results", FileQuestion),
-      referenceItem("O'qituvchilar", "/monitoring/teachers", UserCog),
+      referenceItem("O'qituvchilar", "/teachers/tutors", UserCog),
       referenceItem("Talabalarning IP manzillari", "/check-login-users", Fingerprint),
       referenceItem("Izohlar", "/commentary-lessons", MessageCircle),
     ] },
@@ -246,7 +254,7 @@ export function buildNav(role: string): NavGroup[] {
     METODIST: [
       { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
       { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.contingent] },
-      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aCurriculumStudents, ITEMS.aSyllabi, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aSchedule, ITEMS.exams] },
+      { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aSyllabi, ITEMS.aSubjectGroups, ITEMS.aCourses, ITEMS.aSchedule, ITEMS.exams] },
       { label: "Nazorat va hisobot", items: [ITEMS.aContentReviews, ITEMS.aReports, ITEMS.aQualityStudies, ITEMS.aSurveys, ITEMS.stats] },
       { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers] },
       { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.teaching, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },
@@ -303,6 +311,15 @@ export function AppSidebar() {
     navigate(href);
     if (isMobile) setOpenMobile(false);
   };
+
+  // Not every role has its own cabinet/settings page yet -- only link to
+  // ones that actually exist, so the footer menu never lands on "Ruxsat yo'q".
+  const personalCabinetHref: Record<string, string> = {
+    STUDENT: "/student/profile",
+    TEACHER: "/teacher/profile",
+  };
+  const cabinetHref = personalCabinetHref[normRole];
+  const showSettings = normRole === "SUPER_ADMIN" || normRole === "ADMIN";
 
   const isActive = (href: string) =>
     location.pathname === href || (href !== "/" && location.pathname.startsWith(href));
@@ -479,13 +496,17 @@ export function AppSidebar() {
                     </div>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => go("/cabinet")}>
-                  <Sparkles className="mr-2 size-4" /> Shaxsiy kabinet
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => go("/settings")}>
-                  <Settings className="mr-2 size-4" /> Sozlamalar
-                </DropdownMenuItem>
+                {(cabinetHref || showSettings) && <DropdownMenuSeparator />}
+                {cabinetHref && (
+                  <DropdownMenuItem onClick={() => go(cabinetHref)}>
+                    <Sparkles className="mr-2 size-4" /> Shaxsiy kabinet
+                  </DropdownMenuItem>
+                )}
+                {showSettings && (
+                  <DropdownMenuItem onClick={() => go("/settings")}>
+                    <Settings className="mr-2 size-4" /> Sozlamalar
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={logout}

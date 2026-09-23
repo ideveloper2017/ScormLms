@@ -8,6 +8,9 @@ export interface TeacherExamSession {
   examDate: string; examTime: string; location: string; examType: 'WRITTEN' | 'ORAL' | 'PRACTICAL' | 'HYBRID';
   durationMinutes: number; examinerName: string; status: ExamSessionStatus; maxCapacity?: number;
   registeredCount: number; presentCount: number; absentCount: number; publishedAt?: string; heldAt?: string;
+  /** false when the course isn't linked to an approved curriculum's subject group (fan oqimi) --
+   *  this exam can't be checked against the 559-decision teaching plan. Informational only. */
+  curriculumLinked: boolean;
 }
 
 export interface AttendanceRecord {

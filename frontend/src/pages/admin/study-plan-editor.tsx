@@ -11,9 +11,8 @@ import {
   Save,
   ShieldCheck,
   Trash2,
-  Users,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,8 +75,12 @@ import {
   type CurriculumVersion,
   type SaveCurriculumVersionInput,
 } from "@/services/api/curriculum-api";
+import { AdminSubjectGroups } from "@/pages/admin/subject-groups";
+import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 
 const EMPTY = "__empty__";
+
+const VALID_TABS = ["details", "subjects", "groups", "students", "approval"] as const;
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
@@ -176,6 +179,7 @@ function CurriculumStatusBadge({ status }: { status: CurriculumStatus }) {
 export function AdminStudyPlanEditor() {
   const navigate = useNavigate();
   const params = useParams();
+  const [searchParams] = useSearchParams();
   const id = Number(params.id);
   const creating = !Number.isInteger(id) || id <= 0;
   const { user } = useAuth();
@@ -184,7 +188,10 @@ export function AdminStudyPlanEditor() {
   const queryClient = useQueryClient();
   const initializedId = useRef<number | null>(null);
   const defaultsApplied = useRef(false);
-  const [tab, setTab] = useState("details");
+  const requestedTab = searchParams.get("tab");
+  const [tab, setTab] = useState(
+    (VALID_TABS as readonly string[]).includes(requestedTab ?? "") ? (requestedTab as string) : "details",
+  );
   const [form, setForm] = useState<SaveCurriculumVersionInput>(emptyForm);
   const [facultyId, setFacultyId] = useState(0);
   const [saveAttempted, setSaveAttempted] = useState(false);
@@ -435,25 +442,16 @@ export function AdminStudyPlanEditor() {
           </Button>
           <div className="flex items-center gap-2">
             {item && <CurriculumStatusBadge status={item.status} />}
-            {item && (
-              <Button
-                variant="outline"
-                onClick={() =>
-                  navigate("/edu-process/attached-students?curriculumId=" + item.id)
-                }
-              >
-                <Users className="mr-2 h-4 w-4" />
-                Talabalarni biriktirish
-              </Button>
-            )}
           </div>
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-5">
           {!creating && (
-            <TabsList className="mx-auto grid h-auto w-full max-w-xl grid-cols-3">
-              <TabsTrigger value="details">Reja ma'lumotlari</TabsTrigger>
+            <TabsList className="mx-auto grid h-auto w-full max-w-3xl grid-cols-5">
+              <TabsTrigger value="details">Ma'lumotlar</TabsTrigger>
               <TabsTrigger value="subjects">Fanlar ({item?.subjectCount ?? 0})</TabsTrigger>
+              <TabsTrigger value="groups">Fan oqimlari</TabsTrigger>
+              <TabsTrigger value="students">Talabalar</TabsTrigger>
               <TabsTrigger value="approval">Tasdiqlash</TabsTrigger>
             </TabsList>
           )}
@@ -862,6 +860,18 @@ export function AdminStudyPlanEditor() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+          )}
+
+          {!creating && item && (
+            <TabsContent value="groups">
+              <AdminSubjectGroups lockedCurriculumId={item.id} />
+            </TabsContent>
+          )}
+
+          {!creating && item && (
+            <TabsContent value="students">
+              <AdminCurriculumStudents lockedCurriculumId={item.id} />
             </TabsContent>
           )}
 

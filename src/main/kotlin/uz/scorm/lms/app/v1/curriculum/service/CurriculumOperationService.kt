@@ -72,10 +72,12 @@ class CurriculumOperationService(
             (existingByStudentId[requireNotNull(student.id)] ?: CurriculumStudentAssignment(
                 curriculumVersion = curriculum, student = student, academicYear = curriculum.academicYear,
                 semesterNumber = request.semesterNumber, startsOn = period.startsOn, endsOn = period.endsOn,
+                period = period,
             )).also {
                 it.academicYear = curriculum.academicYear
                 it.startsOn = period.startsOn
                 it.endsOn = period.endsOn
+                it.period = period
                 it.active = true
                 it.deleted = false
             }

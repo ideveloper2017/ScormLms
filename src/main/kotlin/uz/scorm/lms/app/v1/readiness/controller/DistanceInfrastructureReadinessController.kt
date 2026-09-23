@@ -24,27 +24,27 @@ class DistanceInfrastructureReadinessController(private val service: DistanceInf
     @GetMapping("/{id}") fun get(@PathVariable id: Long) = service.get(id)
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun create(@RequestBody request: SaveDistanceInfrastructureReadinessRequest, @CurrentUser user: User) =
         ResponseEntity.status(HttpStatus.CREATED).body(service.create(request, requireNotNull(user.id)))
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun update(@PathVariable id: Long, @RequestBody request: SaveDistanceInfrastructureReadinessRequest, @CurrentUser user: User) =
         service.update(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/verify")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun verify(@PathVariable id: Long, @RequestBody request: ReviewDistanceInfrastructureReadinessRequest, @CurrentUser user: User) =
         service.verify(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun reject(@PathVariable id: Long, @RequestBody request: ReviewDistanceInfrastructureReadinessRequest, @CurrentUser user: User) =
         service.reject(id, request, requireNotNull(user.id))
 
     @PostMapping("/{id}/archive")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_559_WRITE')")
     fun archive(@PathVariable id: Long, @CurrentUser user: User) = service.archive(id, requireNotNull(user.id))
 }
 

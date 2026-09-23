@@ -60,6 +60,10 @@ data class TeacherExamSessionDto(
     val heldAt: Instant?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    /** false when the course isn't linked to an approved curriculum's subject group --
+     *  the exam can't be checked against the 559-decision teaching plan. Warning only,
+     *  does not block creation (legacy, non-curriculum-backed courses still work). */
+    val curriculumLinked: Boolean,
 )
 
 data class StudentExamSessionDto(
@@ -106,4 +110,6 @@ data class ExamSessionDetailDto(
     val failedCount: Int?,
     val publishedAt: Instant?,
     val heldAt: Instant?,
+    /** false when the course isn't linked to an approved curriculum's subject group. */
+    val curriculumLinked: Boolean,
 )

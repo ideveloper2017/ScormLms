@@ -60,6 +60,7 @@ class QualityMonitoringWorkflowIntegrationTest {
         val permissions = RolePermissions.forRole("monitoring")
         assertTrue(RolePermissions.STAT_READ in permissions)
         assertFalse(RolePermissions.ACADEMIC_WRITE in permissions)
+        assertFalse(RolePermissions.COMPLIANCE_559_WRITE in permissions)
     }
 
     private fun request(method: QualityMonitoringMethod) = CreateQualityMonitoringStudyRequest(
