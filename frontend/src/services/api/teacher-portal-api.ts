@@ -366,6 +366,8 @@ export interface TeacherTest {
   avgScore?: number;
   participants?: number;
   totalPoints: number;
+  /** Har talabaga bankdan tushadigan savollar soni; yo'q bo'lsa — barcha savollar. */
+  questionsPerAttempt?: number | null;
   allowedAttempts: number;
   passingPercentage: number;
   proctoring: boolean;
@@ -387,6 +389,47 @@ export interface TeacherQuizPayload {
   proctorIds: number[];
   questionIds: number[];
   status: 'DRAFT' | 'PUBLISHED' | 'CLOSED';
+  /** Har talabaga bankdan nechta savol; null — tanlangan barcha savollar. */
+  questionsPerAttempt?: number | null;
+}
+
+export interface QuizReviewItem {
+  questionId: string;
+  position: number;
+  text: string;
+  type: 'SINGLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+  points: number;
+  options?: string[] | null;
+  answer?: string | null;
+  correctAnswer: string;
+  correct: boolean;
+  awardedPoints: number;
+  manuallyGraded: boolean;
+  graderComment?: string | null;
+  explanation?: string | null;
+}
+
+export interface QuizAttemptReview {
+  attemptId: string;
+  quizId: string;
+  quizTitle: string;
+  studentName: string;
+  attemptNumber: number;
+  status: string;
+  score: number;
+  totalPoints: number;
+  percentage: number;
+  passed: boolean;
+  submittedAt?: string | null;
+  items: QuizReviewItem[];
+}
+
+export interface RegradeResult {
+  questionId: string;
+  answersRegraded: number;
+  manualAnswersKept: number;
+  attemptsRecalculated: number;
+  scoresChanged: number;
 }
 
 export interface QuizProctorCandidate {
@@ -807,6 +850,28 @@ export const teacherPortalApi = {
   },
   getTestAttempts: async (testId: string): Promise<TeacherQuizAttempt[]> => {
     const res = await api.get<TeacherQuizAttempt[]>(`/teachers/me/tests/${testId}/attempts`);
+    return res.data;
+  },
+  /** Urinishni savolma-savol ko'rish (talaba javobi, to'g'ri javob, ball). */
+  getAttemptReview: async (testId: string, attemptId: string): Promise<QuizAttemptReview> => {
+    const res = await api.get<QuizAttemptReview>(`/teachers/me/tests/${testId}/attempts/${attemptId}`);
+    return res.data;
+  },
+  /** Javobga qo'lda ball va izoh — kalit qayta tuzatilganda ham saqlanadi. */
+  gradeAnswer: async (
+    testId: string, attemptId: string, questionId: string, points: number, comment?: string,
+  ): Promise<QuizAttemptReview> => {
+    const res = await api.put<QuizAttemptReview>(
+      `/teachers/me/tests/${testId}/attempts/${attemptId}/answers/${questionId}`,
+      { points, comment: comment?.trim() || null },
+    );
+    return res.data;
+  },
+  /** Nashr qilingan savol kalitini tuzatish — barcha javoblar qayta baholanadi. */
+  correctAnswerKey: async (
+    questionId: string, payload: { correctAnswer: string; points?: number; options?: string[] },
+  ): Promise<RegradeResult> => {
+    const res = await api.put<RegradeResult>(`/teachers/me/questions/${questionId}/answer-key`, payload);
     return res.data;
   },
   getProctorCandidates: async (): Promise<QuizProctorCandidate[]> => {

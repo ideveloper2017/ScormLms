@@ -24,6 +24,11 @@ import uz.scorm.lms.app.v1.quiz.dto.QuizProctorAssignmentRequest
 import uz.scorm.lms.app.v1.quiz.dto.QuizProctorCandidateDto
 import uz.scorm.lms.app.v1.quiz.dto.TeacherQuizAttemptDto
 import uz.scorm.lms.app.v1.quiz.dto.TeacherQuizDto
+import uz.scorm.lms.app.v1.quiz.dto.AnswerKeyRequest
+import uz.scorm.lms.app.v1.quiz.dto.ManualGradeRequest
+import uz.scorm.lms.app.v1.quiz.dto.QuizAttemptReviewDto
+import uz.scorm.lms.app.v1.quiz.dto.RegradeResultDto
+import uz.scorm.lms.app.v1.quiz.service.QuizReviewService
 import uz.scorm.lms.app.v1.quiz.service.QuizService
 import uz.scorm.lms.app.v1.quiz.service.QuizProctorAssignmentService
 import uz.scorm.lms.app.v1.user.model.User
@@ -34,6 +39,7 @@ import uz.scorm.lms.app.v1.user.model.User
 class TeacherQuizController(
     private val quizService: QuizService,
     private val quizProctorAssignmentService: QuizProctorAssignmentService,
+    private val quizReviewService: QuizReviewService,
 ) {
     @GetMapping("/proctors")
     fun proctorCandidates(): List<QuizProctorCandidateDto> = quizProctorAssignmentService.candidates()
@@ -124,6 +130,52 @@ class TeacherQuizController(
         authentication: Authentication,
     ): List<TeacherQuizAttemptDto> = quizService.teacherAttempts(
         quizId,
+        requireNotNull(user.id),
+        mayManageAll(authentication),
+    )
+
+    /** Nashr qilingan savol kalitini tuzatish — shu savolga berilgan barcha javoblar qayta baholanadi. */
+    @PutMapping("/questions/{questionId}/answer-key")
+    fun correctAnswerKey(
+        @PathVariable questionId: Long,
+        @RequestBody request: AnswerKeyRequest,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): RegradeResultDto = quizReviewService.updateAnswerKey(
+        questionId,
+        request,
+        requireNotNull(user.id),
+        mayManageAll(authentication),
+    )
+
+    /** Urinishni savolma-savol ko'rish: talaba javobi, to'g'ri javob, ball. */
+    @GetMapping("/tests/{quizId}/attempts/{attemptId}")
+    fun attemptReview(
+        @PathVariable quizId: Long,
+        @PathVariable attemptId: Long,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): QuizAttemptReviewDto = quizReviewService.teacherAttemptReview(
+        quizId,
+        attemptId,
+        requireNotNull(user.id),
+        mayManageAll(authentication),
+    )
+
+    /** Javobga qo'lda ball va izoh qo'yish (masalan, qisqa javobning boshqacha, lekin to'g'ri yozilishi). */
+    @PutMapping("/tests/{quizId}/attempts/{attemptId}/answers/{questionId}")
+    fun gradeAnswer(
+        @PathVariable quizId: Long,
+        @PathVariable attemptId: Long,
+        @PathVariable questionId: Long,
+        @RequestBody request: ManualGradeRequest,
+        @CurrentUser user: User,
+        authentication: Authentication,
+    ): QuizAttemptReviewDto = quizReviewService.gradeAnswer(
+        quizId,
+        attemptId,
+        questionId,
+        request,
         requireNotNull(user.id),
         mayManageAll(authentication),
     )

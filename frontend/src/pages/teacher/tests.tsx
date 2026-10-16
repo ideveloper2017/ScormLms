@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { qk } from "@/lib/query-keys";
 import { teacherPortalApi, type TeacherQuizAttempt, type TeacherTest } from "@/services/api/teacher-portal-api";
+import { QuizAttemptReviewDialog } from "@/components/learning/quiz-review";
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   active: { label: "Faol", cls: "bg-green-100 text-green-800" },
@@ -37,6 +38,8 @@ const initialForm = {
   proctoring: false,
   proctorIds: [] as string[],
   questionIds: [] as string[],
+  /** Bo'sh — har talabaga barcha tanlangan savollar; son — bankdan shuncha tasodifiy savol. */
+  questionsPerAttempt: "",
 };
 
 export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
@@ -46,6 +49,7 @@ export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [attemptsFor, setAttemptsFor] = useState<TeacherTest | null>(null);
+  const [reviewAttemptId, setReviewAttemptId] = useState<string | null>(null);
   const [proctorsFor, setProctorsFor] = useState<TeacherTest | null>(null);
   const [selectedProctorIds, setSelectedProctorIds] = useState<string[]>([]);
   const [savingProctors, setSavingProctors] = useState(false);
@@ -70,7 +74,7 @@ export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
     queryFn: teacherPortalApi.getProctorCandidates,
     staleTime: 60_000,
   });
-  const { data: attempts = [], isLoading: attemptsLoading } = useQuery({
+  const { data: attempts = [], isLoading: attemptsLoading, refetch: refetchAttempts } = useQuery({
     queryKey: [...qk.teacher.tests(), "attempts", attemptsFor?.id],
     queryFn: () => teacherPortalApi.getTestAttempts(attemptsFor!.id),
     enabled: !!attemptsFor,
@@ -110,6 +114,7 @@ export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
         proctorIds: form.proctorIds.map(Number),
         questionIds: form.questionIds.map(Number),
         status: "PUBLISHED",
+        questionsPerAttempt: form.questionsPerAttempt ? Number(form.questionsPerAttempt) : null,
       });
       await refetch();
       toast({ title: "Test yaratildi", description: form.title });
@@ -181,7 +186,7 @@ export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
             <CardHeader className="pb-2"><div className="flex justify-between gap-3"><div className="flex gap-3"><FileQuestion className="h-5 w-5 mt-1 text-muted-foreground" /><div><CardTitle className="text-base">{test.title}</CardTitle><CardDescription>{test.courseTitle}</CardDescription></div></div><Badge className={status.cls}>{status.label}</Badge></div></CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                <span>{test.questions} savol / {test.totalPoints} ball</span><span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{test.duration} daqiqa</span><span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{test.participants ?? 0} ishtirokchi</span>{test.avgScore != null && <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" />{test.avgScore}%</span>}<span>{new Date(test.date).toLocaleString("uz-Latn")}</span>
+                <span>{test.questionsPerAttempt ? `Bankda ${test.questions} savol, har talabaga ${test.questionsPerAttempt} ta` : `${test.questions} savol / ${test.totalPoints} ball`}</span><span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{test.duration} daqiqa</span><span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{test.participants ?? 0} ishtirokchi</span>{test.avgScore != null && <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" />{test.avgScore}%</span>}<span>{new Date(test.date).toLocaleString("uz-Latn")}</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setAttemptsFor(test)}><Eye className="h-4 w-4 mr-1" />Natijalar</Button>
@@ -202,6 +207,7 @@ export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
             <div><Label>Ko'rsatma</Label><Textarea value={form.instructions} onChange={(e) => set("instructions", e.target.value)} /></div>
             <div className="grid md:grid-cols-2 gap-3"><div><Label>Ochilish vaqti</Label><Input type="datetime-local" value={form.opensAt} onChange={(e) => set("opensAt", e.target.value)} /></div><div><Label>Yopilish vaqti</Label><Input type="datetime-local" value={form.closesAt} onChange={(e) => set("closesAt", e.target.value)} /></div></div>
             <div className="grid grid-cols-3 gap-3"><div><Label>Davomiylik</Label><Input type="number" min={1} value={form.duration} onChange={(e) => set("duration", e.target.value)} /></div><div><Label>Urinishlar</Label><Input type="number" min={1} max={20} value={form.allowedAttempts} onChange={(e) => set("allowedAttempts", e.target.value)} /></div><div><Label>O'tish foizi</Label><Input type="number" min={0} max={100} value={form.passingPercentage} onChange={(e) => set("passingPercentage", e.target.value)} /></div></div>
+            <div><Label>Har talabaga savollar soni</Label><Input type="number" min={1} max={form.questionIds.length || undefined} placeholder={form.questionIds.length ? `Bo'sh — barcha ${form.questionIds.length} ta savol` : "Bo'sh — barcha tanlangan savollar"} value={form.questionsPerAttempt} onChange={(e) => set("questionsPerAttempt", e.target.value)} /><p className="text-xs text-muted-foreground mt-1">Kamroq son kiritilsa har talabaga tanlangan savollardan shuncha tasodifiy savol tushadi (qiyinlik ulushi saqlanadi) — javoblarni bir-biriga uzatish qiyinlashadi.</p></div>
             <div className="space-y-2"><Label>Savollar</Label>{!form.courseId && <p className="text-sm text-muted-foreground">Avval kursni tanlang.</p>}{form.courseId && questions.length === 0 && <p className="text-sm text-muted-foreground">Bu kursda savol yo'q. Savollar bankidan qo'shing.</p>}{questions.map((question) => <label key={question.id} className="flex items-start gap-3 rounded border p-3 cursor-pointer"><Checkbox checked={form.questionIds.includes(question.id)} onCheckedChange={() => toggleQuestion(question.id)} /><span className="text-sm flex-1">{question.text}<span className="block text-xs text-muted-foreground">{question.points} ball · {question.difficulty}</span></span></label>)}</div>
             <div className="grid md:grid-cols-3 gap-3"><label className="flex items-center justify-between border rounded p-3"><Label>Aralashtirish</Label><Switch checked={form.shuffleQuestions} onCheckedChange={(value) => set("shuffleQuestions", value)} /></label><label className="flex items-center justify-between border rounded p-3"><Label>Natijani ko'rsatish</Label><Switch checked={form.showResult} onCheckedChange={(value) => set("showResult", value)} /></label><label className="flex items-center justify-between border rounded p-3"><Label>Proktoring</Label><Switch checked={form.proctoring} onCheckedChange={(value) => setForm((current) => ({ ...current, proctoring: value, proctorIds: value ? current.proctorIds : [] }))} /></label></div>
             {form.proctoring && <div className="space-y-2"><Label>Biriktirilgan proktorlar</Label>{proctorCandidates.length === 0 && <p className="text-sm text-muted-foreground">Faol PROCTOR foydalanuvchisi topilmadi. Kurs egasi testni baribir kuzata oladi.</p>}{proctorCandidates.map((proctor) => <label key={proctor.id} className="flex items-center gap-3 rounded border p-3 cursor-pointer"><Checkbox checked={form.proctorIds.includes(proctor.id)} onCheckedChange={() => set("proctorIds", form.proctorIds.includes(proctor.id) ? form.proctorIds.filter((id) => id !== proctor.id) : [...form.proctorIds, proctor.id])} /><span className="text-sm"><span className="font-medium">{proctor.fullName}</span><span className="block text-xs text-muted-foreground">{proctor.username}</span></span></label>)}</div>}
@@ -211,8 +217,10 @@ export function TeacherTests({ openCreate = false }: { openCreate?: boolean }) {
       </Dialog>
 
       <Dialog open={!!attemptsFor} onOpenChange={(open) => { if (!open) setAttemptsFor(null); }}>
-        <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{attemptsFor?.title} — natijalar</DialogTitle><DialogDescription>Har bir urinish server vaqti va balli bilan audit qilinadi.</DialogDescription></DialogHeader><div className="max-h-[60vh] overflow-y-auto space-y-2">{attemptsLoading && <p>Yuklanmoqda...</p>}{attempts.length === 0 && !attemptsLoading && <p className="text-muted-foreground">Hali urinish yo'q</p>}{attempts.map((attempt: TeacherQuizAttempt) => <Card key={attempt.id}><CardContent className="p-3 flex justify-between gap-3"><div><p className="font-medium">{attempt.studentName} · #{attempt.attemptNumber}</p><p className="text-xs text-muted-foreground">{new Date(attempt.startedAt).toLocaleString("uz-Latn")} · {Math.round(attempt.durationSeconds / 60)} daqiqa</p></div><div className="text-right"><p className="font-semibold">{attempt.score}/{attempt.totalPoints} ({attempt.percentage.toFixed(1)}%)</p><Badge className={attempt.passed ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>{attempt.passed ? "O'tdi" : "O'tmadi"}</Badge></div></CardContent></Card>)}</div></DialogContent>
+        <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{attemptsFor?.title} — natijalar</DialogTitle><DialogDescription>Har bir urinish server vaqti va balli bilan audit qilinadi.</DialogDescription></DialogHeader><div className="max-h-[60vh] overflow-y-auto space-y-2">{attemptsLoading && <p>Yuklanmoqda...</p>}{attempts.length === 0 && !attemptsLoading && <p className="text-muted-foreground">Hali urinish yo'q</p>}{attempts.map((attempt: TeacherQuizAttempt) => <Card key={attempt.id}><CardContent className="p-3 flex justify-between gap-3"><div><p className="font-medium">{attempt.studentName} · #{attempt.attemptNumber}</p><p className="text-xs text-muted-foreground">{new Date(attempt.startedAt).toLocaleString("uz-Latn")} · {Math.round(attempt.durationSeconds / 60)} daqiqa</p></div><div className="text-right space-y-1"><p className="font-semibold">{attempt.score}/{attempt.totalPoints} ({attempt.percentage.toFixed(1)}%)</p><Badge className={attempt.passed ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>{attempt.passed ? "O'tdi" : "O'tmadi"}</Badge>{attempt.status !== "in_progress" && <Button size="sm" variant="outline" className="block ml-auto" onClick={() => setReviewAttemptId(attempt.id)}><Eye className="h-4 w-4 mr-1 inline" />Javoblar</Button>}</div></CardContent></Card>)}</div></DialogContent>
       </Dialog>
+
+      {attemptsFor && <QuizAttemptReviewDialog testId={attemptsFor.id} attemptId={reviewAttemptId} onClose={() => setReviewAttemptId(null)} onChanged={() => { refetchAttempts(); refetch(); }} />}
 
       <Dialog open={!!proctorsFor} onOpenChange={(open) => { if (!open) setProctorsFor(null); }}>
         <DialogContent><DialogHeader><DialogTitle>{proctorsFor?.title} — proktorlar</DialogTitle><DialogDescription>Faqat tanlangan PROCTOR foydalanuvchilari ushbu test sessiyalari va dalillarini ko‘radi. Kurs egasi ham vakolatli.</DialogDescription></DialogHeader><div className="space-y-2 max-h-[50vh] overflow-y-auto">{proctorCandidates.length === 0 && <p className="text-sm text-muted-foreground">Faol proktor topilmadi</p>}{proctorCandidates.map((proctor) => <label key={proctor.id} className="flex items-center gap-3 rounded border p-3 cursor-pointer"><Checkbox checked={selectedProctorIds.includes(proctor.id)} onCheckedChange={() => setSelectedProctorIds((current) => current.includes(proctor.id) ? current.filter((id) => id !== proctor.id) : [...current, proctor.id])} /><span><span className="font-medium text-sm">{proctor.fullName}</span><span className="block text-xs text-muted-foreground">{proctor.username}</span></span></label>)}</div><DialogFooter><Button variant="outline" onClick={() => setProctorsFor(null)}>Bekor qilish</Button><Button onClick={saveProctors} disabled={savingProctors}>{savingProctors ? "Saqlanmoqda..." : "Saqlash"}</Button></DialogFooter></DialogContent>

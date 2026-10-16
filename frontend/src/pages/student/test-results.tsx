@@ -15,6 +15,7 @@ import { useTestResults } from "@/hooks/tests/useTests";
 import { useToast } from "@/hooks/use-toast";
 import { qk } from "@/lib/query-keys";
 import { proctoringAppealApi } from "@/services/api/proctoring-appeal-api";
+import { StudentQuizReviewCard } from "@/components/learning/quiz-review";
 import { TestResult as TestResultType } from "@/types/test.types";
 import { format } from "date-fns";
 import { uz } from "date-fns/locale";
@@ -282,6 +283,8 @@ export function TestResults() {
             </div>
           </CardContent>
         </Card>
+
+        <StudentQuizReviewCard testId={result.testId} attemptId={result.id} />
 
         {result.proctoring && <ProctoringAppealCard quizId={result.testId} attemptId={result.id} />}
 

@@ -139,6 +139,7 @@ class QuizService(
             proctoring = request.proctoring,
             status = request.status,
             publishedAt = if (request.status == QuizStatus.PUBLISHED) Instant.now() else null,
+            questionsPerAttempt = request.questionsPerAttempt?.takeIf { it < questions.size },
         ))
         quizQuestionRepository.saveAll(questions.mapIndexed { index, question ->
             CourseQuizQuestion(quiz, question, index + 1)
@@ -229,7 +230,10 @@ class QuizService(
         require(attempts.size < quiz.allowedAttempts) { "Ruxsat etilgan urinishlar tugagan" }
         val links = quizQuestionRepository.findAllByQuizIdAndDeletedFalseOrderByPositionAsc(quizId)
         require(links.isNotEmpty()) { "Test savollari topilmadi" }
-        val ids = links.map { it.question.id!! }.let { if (quiz.shuffleQuestions) it.shuffled() else it }
+        // Har urinishga bankdan o'z to'plami (questionsPerAttempt), qiyinlik bo'yicha mutanosib.
+        val random = java.security.SecureRandom().let { kotlin.random.Random(it.nextLong()) }
+        val drawn = QuizQuestionDraw.draw(links.map { it.question }, quiz.questionsPerAttempt, random)
+        val ids = drawn.map { it.id!! }.let { if (quiz.shuffleQuestions) it.shuffled(random) else it }
         val expiresAt = minOf(now.plus(Duration.ofMinutes(quiz.durationMinutes.toLong())), quiz.closesAt)
         val attempt = attemptRepository.save(QuizAttempt(
             quiz = quiz,
@@ -238,7 +242,7 @@ class QuizService(
             startedAt = now,
             expiresAt = expiresAt,
             questionOrder = ids.joinToString(","),
-            totalPoints = links.sumOf { it.question.points },
+            totalPoints = drawn.sumOf { it.points },
         ))
         proctoringService.consumeRequiredSession(quiz, enrollment, attempt)
         learningActivityService.recordIfEnrolled(
@@ -362,6 +366,9 @@ class QuizService(
         require(request.allowedAttempts in 1..20) { "Urinishlar soni 1 va 20 oralig'ida bo'lishi kerak" }
         require(request.passingPercentage in 0..100) { "O'tish foizi 0 va 100 oralig'ida bo'lishi kerak" }
         require(request.questionIds.isNotEmpty()) { "Testga kamida bitta savol tanlang" }
+        require(request.questionsPerAttempt == null || request.questionsPerAttempt in 1..request.questionIds.distinct().size) {
+            "Har talabaga tushadigan savollar soni 1 va tanlangan savollar soni oralig'ida bo'lishi kerak"
+        }
         require(request.proctoring || request.proctorIds.isEmpty()) { "Proktorlar faqat proktoring yoqilganda tanlanadi" }
     }
 
@@ -399,11 +406,11 @@ class QuizService(
     }
 
     private fun saveAnswer(attempt: QuizAttempt, questionId: Long, rawAnswer: String) {
-        val links = quizQuestionRepository.findAllByQuizIdAndDeletedFalseOrderByPositionAsc(attempt.quiz.id!!)
-        val question = links.firstOrNull { it.question.id == questionId }?.question
-            ?: throw IllegalArgumentException("Savol ushbu testga tegishli emas")
+        // Faqat shu urinishga tushgan savolga javob qabul qilinadi (bankdan tanlangan to'plam).
+        val question = attemptQuestions(attempt).firstOrNull { it.id == questionId }
+            ?: throw IllegalArgumentException("Savol ushbu test urinishiga tegishli emas")
         val answerText = rawAnswer.trim()
-        val correct = answerText.isNotEmpty() && normalized(answerText) == normalized(question.correctAnswer)
+        val correct = isCorrect(question, answerText)
         val entity = answerRepository.findByAttemptIdAndQuestionIdAndDeletedFalse(attempt.id!!, questionId)
             ?: QuizAnswer(attempt, question, answerText)
         entity.answer = answerText
@@ -425,18 +432,66 @@ class QuizService(
         return closed
     }
 
-    private fun finalizeAttempt(attempt: QuizAttempt, timedOut: Boolean): QuizAttempt {
-        if (attempt.status != QuizAttemptStatus.IN_PROGRESS) return attempt
-        val links = quizQuestionRepository.findAllByQuizIdAndDeletedFalseOrderByPositionAsc(attempt.quiz.id!!)
-        val answers = answerRepository.findAllByAttemptIdAndDeletedFalseOrderByIdAsc(attempt.id!!)
-        val total = links.sumOf { it.question.points }
-        val score = answers.sumOf { it.awardedPoints }.coerceAtMost(total)
+    /**
+     * Urinishga tushgan savollar (questionOrder tartibida). Eski urinishlarda tartib bo'sh bo'lsa —
+     * testning barcha savollari (bank tanlovi joriy qilinishidan oldingi xatti-harakat).
+     */
+    /**
+     * Javob to'g'rimi — avtomatik baholashning yagona qoidasi (saqlash va qayta baholashda).
+     * Qisqa javobda o'qituvchi `|` bilan bir nechta to'g'ri variant beradi: "6 N|6N|6 nyuton".
+     */
+    internal fun isCorrect(question: QuizQuestion, answer: String): Boolean {
+        val given = answer.trim()
+        if (given.isEmpty()) return false
+        val accepted = if (question.type == QuizQuestionType.SHORT_ANSWER) question.correctAnswer.split('|')
+            else listOf(question.correctAnswer)
+        return accepted.map(::normalized).filter { it.isNotEmpty() }.any { it == normalized(given) }
+    }
+
+    internal fun questionsOf(attempt: QuizAttempt): List<QuizQuestion> = attemptQuestions(attempt)
+
+    internal fun optionsOf(question: QuizQuestion): List<String> = options(question)
+
+    /** Javoblar o'zgargach (qayta/qo'lda baholash) urinish ballini qayta yig'ib saqlaydi. */
+    internal fun recalculateAndSave(attempt: QuizAttempt): QuizAttempt {
+        recalculate(attempt)
+        return attemptRepository.save(attempt)
+    }
+
+    /** Kalit tuzatishda ham savol yaratishdagi tekshiruvlar qo'llanadi. */
+    internal fun validateKey(request: QuizQuestionRequest) = validateQuestion(request)
+
+    internal fun optionsJsonFor(request: QuizQuestionRequest): String? = optionsJson(request)
+
+    private fun attemptQuestions(attempt: QuizAttempt): List<QuizQuestion> {
+        val linked = quizQuestionRepository.findAllByQuizIdAndDeletedFalseOrderByPositionAsc(attempt.quiz.id!!)
+            .associate { it.question.id!! to it.question }
+        val ids = attempt.questionOrder.split(',').mapNotNull { it.trim().toLongOrNull() }
+        return if (ids.isEmpty()) linked.values.toList() else ids.mapNotNull { linked[it] }
+    }
+
+    /**
+     * Urinish ballini javoblardan qayta yig'adi — yakunlashda, kalit tuzatilganda va qo'lda baholashda
+     * bir xil qoida. Faqat urinishga tushgan savollar hisobga olinadi.
+     */
+    private fun recalculate(attempt: QuizAttempt) {
+        val questions = attemptQuestions(attempt)
+        val ids = questions.mapNotNull { it.id }.toSet()
+        val total = questions.sumOf { it.points }
+        val score = answerRepository.findAllByAttemptIdAndDeletedFalseOrderByIdAsc(attempt.id!!)
+            .filter { it.question.id in ids }
+            .sumOf { it.awardedPoints }.coerceIn(0, total)
         val percentage = if (total == 0) 0.0 else score * 100.0 / total
-        val now = Instant.now()
         attempt.score = score
         attempt.totalPoints = total
         attempt.percentage = percentage
         attempt.passed = percentage + 1e-9 >= attempt.quiz.passingPercentage
+    }
+
+    private fun finalizeAttempt(attempt: QuizAttempt, timedOut: Boolean): QuizAttempt {
+        if (attempt.status != QuizAttemptStatus.IN_PROGRESS) return attempt
+        recalculate(attempt)
+        val now = Instant.now()
         attempt.submittedAt = now
         attempt.durationSeconds = Duration.between(attempt.startedAt, minOf(now, attempt.expiresAt))
             .seconds.coerceAtLeast(0).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
@@ -483,6 +538,7 @@ class QuizService(
             duration = quiz.durationMinutes,
             questions = links.size,
             totalPoints = links.sumOf { it.question.points },
+            questionsPerAttempt = quiz.questionsPerAttempt,
             allowedAttempts = quiz.allowedAttempts,
             passingPercentage = quiz.passingPercentage,
             proctoring = quiz.proctoring,
@@ -506,6 +562,10 @@ class QuizService(
         val latest = attempts.firstOrNull()
         val finishedAttempts = attempts.count { it.status != QuizAttemptStatus.IN_PROGRESS }
         val links = quizQuestionRepository.findAllByQuizIdAndDeletedFalseOrderByPositionAsc(quiz.id!!)
+        // Bankdan tanlov bo'lsa talabaga tushadigan savollar soni; ball — o'rtacha savol balli bo'yicha.
+        val perAttempt = quiz.questionsPerAttempt?.coerceAtMost(links.size) ?: links.size
+        val expectedPoints = if (links.isEmpty()) 0
+            else (links.sumOf { it.question.points }.toDouble() * perAttempt / links.size).roundToInt()
         val local = quiz.opensAt.atZone(ZoneId.systemDefault())
         val endLocal = quiz.closesAt.atZone(ZoneId.systemDefault())
         val now = Instant.now()
@@ -518,8 +578,8 @@ class QuizService(
             startTime = local.toLocalTime().withSecond(0).withNano(0).toString(),
             endTime = endLocal.toLocalTime().withSecond(0).withNano(0).toString(),
             duration = quiz.durationMinutes,
-            questionCount = links.size,
-            totalPoints = links.sumOf { it.question.points },
+            questionCount = perAttempt,
+            totalPoints = expectedPoints,
             proctoring = quiz.proctoring,
             status = when {
                 latest?.status == QuizAttemptStatus.IN_PROGRESS && now.isBefore(latest.expiresAt) -> "in-progress"

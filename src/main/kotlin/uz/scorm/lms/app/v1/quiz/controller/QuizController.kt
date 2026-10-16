@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile
 import uz.scorm.lms.app.common.ApiResponse
 import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.quiz.dto.QuizAnswerRequest
+import uz.scorm.lms.app.v1.quiz.dto.QuizAttemptReviewDto
 import uz.scorm.lms.app.v1.quiz.dto.QuizResultDto
 import uz.scorm.lms.app.v1.quiz.dto.ProctoringChallengeDto
 import uz.scorm.lms.app.v1.quiz.dto.ProctoringVerificationDto
@@ -30,6 +31,7 @@ class QuizController(
     private val quizService: QuizService,
     private val proctoringService: ProctoringService,
     private val proctoringEventService: ProctoringEventService,
+    private val quizReviewService: uz.scorm.lms.app.v1.quiz.service.QuizReviewService,
 ) {
     @GetMapping("/{quizId}")
     fun details(@PathVariable quizId: Long, @CurrentUser user: User): ApiResponse<StudentQuizDetailsDto> =
@@ -108,6 +110,15 @@ class QuizController(
     @GetMapping("/{quizId}/results")
     fun result(@PathVariable quizId: Long, @CurrentUser user: User): ApiResponse<QuizResultDto> =
         ApiResponse.success(quizService.result(quizId, requireNotNull(user.id)))
+
+    /** Test tugagach: savollar, o'z javobi, to'g'ri javob, izoh va o'qituvchi sharhi. */
+    @GetMapping("/{quizId}/review")
+    fun review(
+        @PathVariable quizId: Long,
+        @RequestParam(required = false) attemptId: Long?,
+        @CurrentUser user: User,
+    ): ApiResponse<QuizAttemptReviewDto> =
+        ApiResponse.success(quizReviewService.studentReview(quizId, requireNotNull(user.id), attemptId))
 
     private fun requireImage(file: MultipartFile, field: String) {
         require(!file.isEmpty) { "$field bo'sh" }
