@@ -166,6 +166,25 @@ ensure_tomcat_environment() {
     fail "$TOMCAT_SERVICE does not load $APP_ENV_FILE. Add EnvironmentFile=$APP_ENV_FILE to its systemd service override"
 }
 
+# Yuz tanish modellari (SFaceRecognizer) bo'lmasa proktoring fail-closed ishlamay qoladi — buni deploydan
+# keyin emas, oldin aniqlaymiz. Skript tarmoqdan hech narsa yuklamaydi: o'rnatish
+# ops/face-models/install-face-models.sh orqali alohida bajariladi.
+ensure_face_models() {
+  local model_dir
+  model_dir="$(read_app_env FACE_MODEL_DIR)" || \
+    fail "FACE_MODEL_DIR is not set in $APP_ENV_FILE. Install face models: FACE_MODEL_DIR=/var/lib/scorm-lms/face-models ops/face-models/install-face-models.sh, then add FACE_MODEL_DIR to $APP_ENV_FILE"
+  local entry name sha
+  for entry in \
+    "face_detection_yunet_2023mar.onnx:8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4" \
+    "face_recognition_sface_2021dec.onnx:0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"; do
+    name="${entry%%:*}"
+    sha="${entry#*:}"
+    [[ -f "$model_dir/$name" ]] || fail "Face model $model_dir/$name is missing. Run ops/face-models/install-face-models.sh"
+    echo "$sha  $model_dir/$name" | sha256sum -c --status || fail "Face model $model_dir/$name has wrong SHA-256. Re-run ops/face-models/install-face-models.sh"
+  done
+  log "Face models verified in $model_dir"
+}
+
 readonly RELEASE_ID="$1"
 [[ "$RELEASE_ID" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]] || fail "Invalid release id"
 
@@ -195,6 +214,7 @@ sha256sum -c checksums.sha256
 
 ensure_application_database
 ensure_tomcat_environment
+ensure_face_models
 
 install -d -m 755 "$RELEASES_DIR"
 install -d -m 700 "$BACKUP_DIR"

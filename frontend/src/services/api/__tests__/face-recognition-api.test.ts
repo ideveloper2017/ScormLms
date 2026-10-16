@@ -221,14 +221,15 @@ describe('faceRecognitionApi', () => {
   });
 
   describe('verifyFaceMatch', () => {
-    const mockDescriptor = new Array(128).fill(0).map((_, i) => i / 128);
+    // Yuz shabloni serverda (SFace) hisoblanadi — brauzer faqat kamera kadrini yuboradi.
+    const mockPhoto = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==';
 
-    it('should verify face match successfully', async () => {
+    it('should send the camera frame for server-side verification', async () => {
       const mockResponse: FaceVerificationResponse = {
         isMatch: true,
         similarity: 0.85,
-        threshold: 0.6,
-        message: 'Face verified successfully',
+        threshold: 0.363,
+        message: 'Yuz tasdiqlandi',
       };
 
       vi.mocked(api.post).mockResolvedValue({
@@ -236,12 +237,12 @@ describe('faceRecognitionApi', () => {
       });
 
       const payload: VerifyFaceMatchPayload = {
-        faceDescriptor: mockDescriptor,
+        photo: mockPhoto,
       };
       const result = await faceRecognitionApi.verifyFaceMatch(payload);
 
       expect(api.post).toHaveBeenCalledWith('/users/face/verify', {
-        faceDescriptor: mockDescriptor,
+        photo: mockPhoto,
       });
       expect(result.isMatch).toBe(true);
       expect(result.similarity).toBe(0.85);
@@ -250,8 +251,8 @@ describe('faceRecognitionApi', () => {
     it('should verify face match with userId parameter', async () => {
       const mockResponse: FaceVerificationResponse = {
         isMatch: false,
-        similarity: 0.45,
-        threshold: 0.6,
+        similarity: 0.21,
+        threshold: 0.363,
       };
 
       vi.mocked(api.post).mockResolvedValue({
@@ -259,46 +260,33 @@ describe('faceRecognitionApi', () => {
       });
 
       const payload: VerifyFaceMatchPayload = {
-        faceDescriptor: mockDescriptor,
+        photo: mockPhoto,
         userId: 'user123',
       };
       await faceRecognitionApi.verifyFaceMatch(payload);
 
       expect(api.post).toHaveBeenCalledWith('/users/face/verify', {
-        faceDescriptor: mockDescriptor,
+        photo: mockPhoto,
         userId: 'user123',
       });
     });
 
-    it('should throw error for invalid descriptor array (wrong length)', async () => {
-      const invalidDescriptor = new Array(64).fill(0); // Wrong length
-
-      const payload: VerifyFaceMatchPayload = {
-        faceDescriptor: invalidDescriptor,
-      };
+    it('should not call the server without a camera frame', async () => {
+      const payload = { photo: '' } as VerifyFaceMatchPayload;
 
       await expect(faceRecognitionApi.verifyFaceMatch(payload)).rejects.toThrow(
-        'Invalid face descriptor: must be array of 128 numbers'
+        'Yuzni tekshirish uchun kamera kadri kerak'
       );
-    });
-
-    it('should throw error for non-array descriptor', async () => {
-      const payload = {
-        faceDescriptor: 'not-an-array' as any,
-      };
-
-      await expect(faceRecognitionApi.verifyFaceMatch(payload)).rejects.toThrow(
-        'Invalid face descriptor: must be array of 128 numbers'
-      );
+      expect(api.post).not.toHaveBeenCalled();
     });
 
     it('should handle API errors', async () => {
       const error = new Error('Verification failed');
-      
+
       vi.mocked(api.post).mockRejectedValue(error);
 
       const payload: VerifyFaceMatchPayload = {
-        faceDescriptor: mockDescriptor,
+        photo: mockPhoto,
       };
       
       await expect(faceRecognitionApi.verifyFaceMatch(payload)).rejects.toThrow();

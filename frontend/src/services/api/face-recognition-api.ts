@@ -22,11 +22,11 @@ export interface FacePhotoResponse {
 }
 
 /**
- * Face verification payload
- * Contains face descriptor array for comparison
+ * Yuzni tekshirish so'rovi: kamera kadri (data URL yoki base64). Yuz shabloni SERVERDA hisoblanadi —
+ * brauzer hisoblagan deskriptor qabul qilinmaydi (uni soxtalashtirish oson edi).
  */
 export interface VerifyFaceMatchPayload {
-  faceDescriptor: number[]; // 128-dimensional face descriptor array
+  photo: string; // `data:image/jpeg;base64,...`
   userId?: string; // Optional - defaults to current user
 }
 
@@ -185,46 +185,28 @@ export const faceRecognitionApi = {
   },
 
   /**
-   * Verify face match by sending face descriptor to backend
+   * Yuzni serverda tekshirish: kamera kadri yuboriladi, server uni SFace modeli bilan saqlangan
+   * shablonga solishtiradi.
    * POST /api/v1/users/face/verify
-   * 
-   * Sends 128-dimensional face descriptor array to backend for comparison
-   * with stored face descriptor in PostgreSQL database
-   * 
-   * @param payload - Face descriptor and optional user ID
-   * @returns Promise<FaceVerificationResponse> - Verification result with similarity score
-   * 
+   *
    * @example
    * ```typescript
-   * // After face detection with face-api.js
-   * const detection = await faceapi
-   *   .detectSingleFace(videoElement)
-   *   .withFaceLandmarks()
-   *   .withFaceDescriptor();
-   * 
-   * if (detection) {
-   *   const descriptor = Array.from(detection.descriptor);
-   *   const result = await faceRecognitionApi.verifyFaceMatch({ 
-   *     faceDescriptor: descriptor 
-   *   });
-   *   
-   *   if (result.isMatch) {
-   *     console.log(`Match found! Similarity: ${result.similarity}`);
-   *   }
-   * }
+   * const canvas = document.createElement('canvas');
+   * canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+   * canvas.getContext('2d')!.drawImage(video, 0, 0);
+   * const result = await faceRecognitionApi.verifyFaceMatch({ photo: canvas.toDataURL('image/jpeg', 0.9) });
    * ```
    */
   verifyFaceMatch: async (payload: VerifyFaceMatchPayload): Promise<FaceVerificationResponse> => {
     try {
-      // Validate descriptor array
-      if (!Array.isArray(payload.faceDescriptor) || payload.faceDescriptor.length !== 128) {
-        throw new Error('Invalid face descriptor: must be array of 128 numbers');
+      if (!payload.photo) {
+        throw new Error('Yuzni tekshirish uchun kamera kadri kerak');
       }
 
       const response = await api.post<ApiResponse<FaceVerificationResponse>>(
         '/users/face/verify',
         {
-          faceDescriptor: payload.faceDescriptor,
+          photo: payload.photo,
           ...(payload.userId && { userId: payload.userId }),
         }
       );

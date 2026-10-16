@@ -15,6 +15,7 @@ import uz.scorm.lms.app.v1.biometric.model.BiometricPolicy
 import uz.scorm.lms.app.v1.biometric.model.BiometricPolicyStatus
 import uz.scorm.lms.app.v1.biometric.repository.BiometricConsentEventRepository
 import uz.scorm.lms.app.v1.biometric.repository.BiometricPolicyRepository
+import uz.scorm.lms.app.v1.face.service.FaceTemplate
 import uz.scorm.lms.app.v1.user.model.User
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.security.MessageDigest
@@ -120,7 +121,8 @@ class BiometricGovernanceService(
         val policy = currentPolicy()
         val latest = policy?.let { latestConsent(userId, requireNotNull(it.id)) }
         val granted = latest?.action == BiometricConsentAction.GRANTED
-        val faceValid = granted && user.faceDescriptor?.isNotBlank() == true && user.facePhotoUrl?.isNotBlank() == true &&
+        // Eski (piksel) shablon yaroqli hisoblanmaydi — mavjud "yuzni ro'yxatdan o'tkazing" oqimi ishga tushadi.
+        val faceValid = granted && FaceTemplate.isCurrent(user.faceDescriptor) && user.facePhotoUrl?.isNotBlank() == true &&
             user.facePolicy?.id == policy?.id && user.faceConsentEvent?.id == latest?.id &&
             user.faceExpiresAt?.isAfter(Instant.now()) == true
         return MyBiometricStatusDto(
@@ -131,6 +133,7 @@ class BiometricGovernanceService(
             faceRegistered = faceValid,
             faceUploadedAt = user.faceUploadedAt,
             faceExpiresAt = user.faceExpiresAt,
+            faceReEnrollmentRequired = FaceTemplate.isOutdated(user.faceDescriptor),
         )
     }
 
@@ -191,6 +194,7 @@ class BiometricGovernanceService(
 
     fun requireActiveFaceTemplate(user: User, binding: BiometricConsentBinding) {
         require(!user.faceDescriptor.isNullOrBlank() && !user.facePhotoUrl.isNullOrBlank()) { "Testdan oldin yuz shablonini ro'yxatdan o'tkazing" }
+        require(FaceTemplate.isCurrent(user.faceDescriptor)) { FaceTemplate.RE_ENROLL_MESSAGE }
         require(user.facePolicy?.id == binding.policy.id && user.faceConsentEvent?.id == binding.consent.id) {
             "Yuz shabloni amaldagi rozilik versiyasiga bog'lanmagan; uni qayta ro'yxatdan o'tkazing"
         }

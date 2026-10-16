@@ -7,6 +7,7 @@ import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.face.service.FaceService
+import uz.scorm.lms.app.v1.face.service.FaceTemplate
 import uz.scorm.lms.app.v1.quiz.dto.ProctoringChallengeDto
 import uz.scorm.lms.app.v1.quiz.dto.ProctoringVerificationDto
 import uz.scorm.lms.app.v1.quiz.model.CourseQuiz
@@ -131,10 +132,12 @@ class ProctoringService(
         if (center.centerX !in CENTER_MIN..CENTER_MAX) fail(session, "Birinchi kadrda yuzni markazga joylashtiring")
 
         val storedTemplate = session.enrollment.student.user.faceDescriptor.orEmpty()
+        // Eski (piksel) shablon shaxsni ajratmaydi — u bilan solishtirilmaydi, qayta ro'yxatdan o'tish talab qilinadi.
+        if (!FaceTemplate.isCurrent(storedTemplate)) fail(session, FaceTemplate.RE_ENROLL_MESSAGE)
         val centerSimilarity = faceService.templateSimilarity(storedTemplate, center.template)
         val movedSimilarity = faceService.templateSimilarity(storedTemplate, moved.template)
         val identitySimilarity = minOf(centerSimilarity, movedSimilarity)
-        if (identitySimilarity < IDENTITY_THRESHOLD) fail(session, "Yuz ro'yxatdan o'tgan foydalanuvchiga mos kelmadi")
+        if (identitySimilarity < faceService.matchThreshold) fail(session, "Yuz ro'yxatdan o'tgan foydalanuvchiga mos kelmadi")
 
         val delta = moved.centerX - center.centerX
         val movementAccepted = when (session.challengeDirection) {
@@ -245,6 +248,5 @@ class ProctoringService(
         private const val CENTER_MIN = 0.30
         private const val CENTER_MAX = 0.70
         private const val MOVEMENT_THRESHOLD = 0.08
-        private const val IDENTITY_THRESHOLD = 0.85
     }
 }

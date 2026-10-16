@@ -91,6 +91,11 @@ Backend uchun majburiy qiymatlar:
 - `CORS_ALLOWED_ORIGINS` — aniq HTTPS originlar, wildcard emas
 - `FILE_UPLOAD_DIR`, `SCORM_STORAGE_DIR`, `ASSIGNMENT_STORAGE_DIR`, `COURSE_CONTENT_STORAGE_DIR` va `UAT_PRIVATE_STORAGE_DIR` — backup qilinadigan persistent kataloglar; kurs kontenti va UAT kataloglari public static route orqali berilmaydi
 - `SCORM_SECURE_COOKIE=true`
+- `FACE_MODEL_DIR` — yuz tanish modellari (YuNet + SFace, ~39 MB) katalogi. Har serverda bir marta
+  `FACE_MODEL_DIR=/var/lib/scorm-lms/face-models ./ops/face-models/install-face-models.sh` (Windows:
+  `.\ops\face-models\install-face-models.ps1`) — fayllar SHA-256 bilan tekshiriladi. Model bo'lmasa yuzni
+  ro'yxatdan o'tkazish va proktoring tekshiruvi ishlamaydi (fail-closed). Avvalgi (piksel) formatda saqlangan
+  yuzlar yaroqsiz deb belgilanadi: talaba proktorli testdan oldin yuzini bir marta qayta ro'yxatdan o'tkazadi.
 
 `postgresql-prod` profilida schema `db/migration` ichidagi Flyway
 migratsiyalari orqali yaratiladi va versiyalanadi; Hibernate esa entity-schema

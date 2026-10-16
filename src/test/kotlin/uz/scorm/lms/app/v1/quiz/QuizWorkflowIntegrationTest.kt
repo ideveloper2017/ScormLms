@@ -231,7 +231,7 @@ class QuizWorkflowIntegrationTest {
         val teacher = user("proctor-teacher")
         val policyApprover = user("proctor-policy-approver")
         val student = student("30000000000004", "ST-QZ-004", "proctor-student")
-        student.user.faceDescriptor = "server-template"
+        student.user.faceDescriptor = uz.scorm.lms.app.v1.face.service.FaceTemplate.encode(FloatArray(128) { 1f })
         val biometricBinding = bindBiometrics(student.user, teacher, policyApprover)
         val course = publishedCourse(teacher, "Proktorli kurs")
         enrollmentService.enroll(

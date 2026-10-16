@@ -34,6 +34,8 @@ out/
 !.env.example
 .backups/
 private-uploads/
+# Yuz tanish ONNX modellari (~39 MB) — ops/face-models/install-face-models.* o'rnatadi
+/private/face-models/
 ops/backup/drill-work/
 ops/backup/drill-reports/
 /tmp/v64-soato-analysis/

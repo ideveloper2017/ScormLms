@@ -54,6 +54,8 @@ data class MyBiometricStatusDto(
     val faceRegistered: Boolean,
     val faceUploadedAt: java.time.LocalDateTime?,
     val faceExpiresAt: Instant?,
+    /** Yuz eski (piksel) formatda saqlangan — yangi yuz tekshiruvi uchun qayta ro'yxatdan o'tkazish kerak. */
+    val faceReEnrollmentRequired: Boolean = false,
 )
 
 data class BiometricRetentionRunDto(val faceTemplatesPurged: Int, val proctoringEvidencePurged: Int, val executedAt: Instant)
