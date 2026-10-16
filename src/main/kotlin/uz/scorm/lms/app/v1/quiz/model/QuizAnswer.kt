@@ -37,4 +37,17 @@ class QuizAnswer(
 
     @Column(name = "answered_at", nullable = false)
     var answeredAt: Instant = Instant.now(),
+
+    /** O'qituvchi ballni qo'lda qo'ygan — kalit tuzatilib qayta baholanganda bu ball o'zgarmaydi. */
+    @Column(name = "manually_graded", nullable = false)
+    var manuallyGraded: Boolean = false,
+
+    @Column(name = "grader_comment", columnDefinition = "TEXT")
+    var graderComment: String? = null,
+
+    @Column(name = "graded_by_id")
+    var gradedById: Long? = null,
+
+    @Column(name = "graded_at")
+    var gradedAt: Instant? = null,
 ) : BaseEntity()

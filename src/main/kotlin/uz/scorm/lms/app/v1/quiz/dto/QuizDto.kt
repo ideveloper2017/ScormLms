@@ -44,6 +44,8 @@ data class QuizRequest(
     val proctorIds: Set<Long> = emptySet(),
     val questionIds: List<Long>,
     val status: QuizStatus = QuizStatus.PUBLISHED,
+    /** Har talabaga bankdan nechta savol tushadi; null — tanlangan barcha savollar. */
+    val questionsPerAttempt: Int? = null,
 )
 
 data class QuizStatusRequest(val status: QuizStatus)
@@ -57,6 +59,7 @@ data class TeacherQuizDto(
     val duration: Int,
     val questions: Int,
     val totalPoints: Int,
+    val questionsPerAttempt: Int? = null,
     val allowedAttempts: Int,
     val passingPercentage: Int,
     val proctoring: Boolean,

@@ -16,6 +16,7 @@ import {
   TestHistoryItemSchema,
 } from '@/types/schemas/test.schema';
 import { validateArrayPartial, validateDataOrThrow } from '@/utils/validation';
+import type { QuizAttemptReview } from '@/services/api/teacher-portal-api';
 
 /**
  * Filter options for fetching tests
@@ -279,6 +280,22 @@ export const fetchTestResults = async (testId: string): Promise<TestResult> => {
     });
     throw error;
   }
+};
+
+/**
+ * Javoblar tahlili: savollar, o'z javobi, to'g'ri javob, izoh va o'qituvchi sharhi.
+ * GET /tests/{id}/review — faqat test yopilgach; ungacha server tushunarli xabar bilan rad etadi
+ * (kutilgan holat, shuning uchun bu yerda toast ko'rsatilmaydi).
+ */
+export const fetchTestReview = async (testId: string, attemptId?: string): Promise<QuizAttemptReview> => {
+  const response = await api.get<{ success: boolean; data: QuizAttemptReview; message?: string }>(
+    `/tests/${testId}/review`,
+    { params: attemptId ? { attemptId } : undefined },
+  );
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.message || "Javoblar tahlili topilmadi");
+  }
+  return response.data.data;
 };
 
 /**

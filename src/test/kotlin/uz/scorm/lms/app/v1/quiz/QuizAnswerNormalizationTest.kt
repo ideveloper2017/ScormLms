@@ -2,7 +2,9 @@ package uz.scorm.lms.app.v1.quiz
 
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.quiz.model.CourseQuiz
@@ -27,6 +29,19 @@ class QuizAnswerNormalizationTest {
         }
         assertEquals(service.normalized("g'alaba qozondi"), service.normalized("gʻalaba   qozondi"))
         assertNotEquals(key, service.normalized("ozbekiston"))
+    }
+
+    @Test
+    fun `qisqa javobda o'qituvchi bergan har qanday variant to'g'ri, boshqa turda | oddiy belgi`() {
+        val course = Course(title = "Fizika").apply { id = 1 }
+        val short = QuizQuestion(course = course, text = "F = ?", type = QuizQuestionType.SHORT_ANSWER, correctAnswer = "6 N|6N| 6 nyuton ")
+        listOf("6 N", "6n", "6 Nyuton").forEach { assertTrue(service.isCorrect(short, it), it) }
+        assertFalse(service.isCorrect(short, "7 N"))
+        assertFalse(service.isCorrect(short, "   "))
+
+        val choice = QuizQuestion(course = course, text = "?", type = QuizQuestionType.SINGLE_CHOICE, correctAnswer = "A|B")
+        assertTrue(service.isCorrect(choice, "A|B"))
+        assertFalse(service.isCorrect(choice, "A"))
     }
 
     @Test

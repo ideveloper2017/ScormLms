@@ -47,6 +47,10 @@ interface CourseQuizQuestionRepository : JpaRepository<CourseQuizQuestion, Long>
     fun findAllByQuizIdAndDeletedFalseOrderByPositionAsc(quizId: Long): List<CourseQuizQuestion>
 
     fun existsByQuestionIdAndQuizStatusInAndDeletedFalse(questionId: Long, statuses: Collection<QuizStatus>): Boolean
+
+    /** Savol qaysi testlarda ishlatilgan — kalit tuzatilganda o'sha testlar urinishlari qayta hisoblanadi. */
+    @EntityGraph(attributePaths = ["quiz"])
+    fun findAllByQuestionIdAndDeletedFalse(questionId: Long): List<CourseQuizQuestion>
 }
 
 interface QuizAttemptRepository : JpaRepository<QuizAttempt, Long> {
@@ -83,4 +87,8 @@ interface QuizAnswerRepository : JpaRepository<QuizAnswer, Long> {
     fun findAllByAttemptIdAndDeletedFalseOrderByIdAsc(attemptId: Long): List<QuizAnswer>
 
     fun findByAttemptIdAndQuestionIdAndDeletedFalse(attemptId: Long, questionId: Long): QuizAnswer?
+
+    /** Kalit tuzatilganda shu savolga berilgan barcha javoblar qayta baholanadi. */
+    @EntityGraph(attributePaths = ["attempt", "attempt.quiz", "question"])
+    fun findAllByQuestionIdAndDeletedFalse(questionId: Long): List<QuizAnswer>
 }

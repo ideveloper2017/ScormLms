@@ -59,6 +59,13 @@ class CourseQuiz(
 
     @Column(name = "published_at")
     var publishedAt: Instant? = null,
+
+    /**
+     * Har urinishga savol bankidan nechta savol tushadi. null — testga biriktirilgan barcha savollar;
+     * N — har talabaga qiyinlik bo'yicha mutanosib N ta tasodifiy savol ([uz.scorm.lms.app.v1.quiz.service.QuizQuestionDraw]).
+     */
+    @Column(name = "questions_per_attempt")
+    var questionsPerAttempt: Int? = null,
 ) : BaseEntity()
 
 enum class QuizStatus { DRAFT, PUBLISHED, CLOSED }
