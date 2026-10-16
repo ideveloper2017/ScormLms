@@ -2,6 +2,7 @@ package uz.scorm.lms.app.v1.exam.service
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import uz.scorm.lms.app.v1.academicresult.service.GradeCalculation
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
@@ -40,7 +41,7 @@ class ExamResultService(
             (attendance.attendanceStatus in setOf(AttendanceStatus.PRESENT, AttendanceStatus.LATE) && attendance.verificationTime != null)) {
             "Faqat tasdiqlangan qatnashuvchiga baho qo'yiladi"
         }
-        val calculated = calculate(request.score, request.totalScore)
+        val calculated = calculate(request.score, request.totalScore, passingPolicy.threshold(enrollment))
         val grader = userRepository.findById(userId).orElseThrow()
         val result = resultRepository.findByExamSessionIdAndEnrollmentIdAndDeletedFalse(sessionId, enrollmentId)
             ?: ExamResult(session, enrollment, gradedBy = grader, gradingDate = Instant.now())
@@ -48,7 +49,7 @@ class ExamResultService(
         result.totalScore = request.totalScore
         result.percentage = calculated.first
         result.passed = passingPolicy.passed(enrollment, calculated.first)
-        result.grade = if (!result.passed) "F" else calculated.second.takeUnless { it == "F" } ?: "D"
+        result.grade = calculated.second
         result.gradedBy = grader
         result.gradingDate = Instant.now()
         result.comments = request.comments?.trim()?.takeIf(String::isNotBlank)
@@ -91,7 +92,7 @@ class ExamResultService(
         require(result.enrollment.student.user.id == userId) { "Boshqa talabaning natijasiga apellyatsiya berilmaydi" }
         require(result.examSession.status == ExamSessionStatus.COMPLETED) { "Natija hali e'lon qilinmagan" }
         require(request.reason.trim().length in 10..2000) { "Apellyatsiya sababi 10 dan 2000 belgigacha bo'lishi kerak" }
-        require(result.gradingDate.plus(10, ChronoUnit.DAYS).isAfter(Instant.now())) { "Apellyatsiya muddati tugagan" }
+        require(appealDeadline(result).isAfter(Instant.now())) { "Apellyatsiya muddati tugagan" }
         require(!appealRepository.existsByExamResultIdAndStatusAndDeletedFalse(result.id!!, AppealStatus.PENDING)) { "Ushbu natija bo'yicha ochiq apellyatsiya mavjud" }
         val student = userRepository.findById(userId).orElseThrow()
         val saved = appealRepository.save(ExamAppeal(result, student, Instant.now(), request.reason.trim()))
@@ -112,16 +113,20 @@ class ExamResultService(
     fun reviewAppeal(appealId: Long, request: ReviewExamAppealRequest, userId: Long, mayManageAll: Boolean): ExamAppealResponseDto {
         val appeal = appealRepository.findByIdAndDeletedFalse(appealId) ?: throw IllegalArgumentException("Apellyatsiya topilmadi")
         managedSession(appeal.examResult.examSession.id!!, userId, mayManageAll)
+        // Manfaatlar to'qnashuvi: bahoni qo'ygan xodim o'z bahosi ustidan berilgan apellyatsiyani hal qilmaydi.
+        require(appeal.examResult.gradedBy.id != userId) {
+            "Bahoni qo'ygan xodim o'z bahosiga berilgan apellyatsiyani ko'rib chiqa olmaydi — boshqa vakolatli xodim ko'rib chiqadi"
+        }
         require(appeal.status == AppealStatus.PENDING) { "Apellyatsiya allaqachon ko'rib chiqilgan" }
         require(request.status in setOf(AppealStatus.APPROVED, AppealStatus.PARTIAL, AppealStatus.REJECTED)) { "Yakuniy qaror holati noto'g'ri" }
         require(request.decision.trim().length in 5..2000) { "Qaror izohi 5 dan 2000 belgigacha bo'lishi kerak" }
         if (request.status in setOf(AppealStatus.APPROVED, AppealStatus.PARTIAL)) {
             val newScore = request.newScore ?: throw IllegalArgumentException("Yangi ball majburiy")
-            val calculated = calculate(newScore, appeal.examResult.totalScore)
+            val calculated = calculate(newScore, appeal.examResult.totalScore, passingPolicy.threshold(appeal.examResult.enrollment))
             appeal.examResult.score = newScore
             appeal.examResult.percentage = calculated.first
             appeal.examResult.passed = passingPolicy.passed(appeal.examResult.enrollment, calculated.first)
-            appeal.examResult.grade = if (!appeal.examResult.passed) "F" else calculated.second.takeUnless { it == "F" } ?: "D"
+            appeal.examResult.grade = calculated.second
             resultRepository.save(appeal.examResult)
             appeal.newScore = newScore
         } else require(request.newScore == null) { "Rad etilgan apellyatsiyada yangi ball bo'lmaydi" }
@@ -138,15 +143,30 @@ class ExamResultService(
         sessionRepository.findByIdAndDeletedFalse(sessionId)?.also { courseAccessService.requireManage(it.course.id, userId, mayManageAll) }
             ?: throw IllegalArgumentException("Imtihon sessiyasi topilmadi")
 
-    private fun calculate(score: BigDecimal, total: BigDecimal): Pair<Double, String> {
+    /** Foiz va harfli baho — butun tizimdagi yagona shkala (GradeCalculation) va kursning o'tish chegarasi. */
+    private fun calculate(score: BigDecimal, total: BigDecimal, passingThreshold: Double): Pair<Double, String> {
         require(total > BigDecimal.ZERO && score >= BigDecimal.ZERO && score <= total) { "Ball 0 va maksimal ball oralig'ida bo'lishi kerak" }
         val percentage = score.multiply(BigDecimal("100")).divide(total, 2, RoundingMode.HALF_UP).toDouble()
-        val grade = when { percentage >= 90 -> "A"; percentage >= 80 -> "B"; percentage >= 70 -> "C"; percentage >= 60 -> "D"; else -> "F" }
-        return percentage to grade
+        return percentage to GradeCalculation.letterGrade(percentage, passingThreshold)
     }
 
+    /**
+     * Ko'rsatiladigan baho foizdan qayta hisoblanadi — eski yozuvlardagi (boshqa shkala bilan saqlangan)
+     * `grade` ham talaba sahifasi, transkript va jurnal bilan bir xil chiqadi.
+     */
     private fun effectiveGrade(result: ExamResult): String =
-        if (!passingPolicy.passed(result.enrollment, result.percentage)) "F" else result.grade?.takeUnless { it == "F" } ?: "D"
+        GradeCalculation.letterGrade(result.percentage, passingPolicy.threshold(result.enrollment))
+
+    /**
+     * Apellyatsiya muddati natija E'LON qilingan paytdan (sessiya yakunlangan — heldAt) sanaladi. Avval ball
+     * kiritilgan paytdan sanalardi: sessiya kech yopilsa, talaba natijani ko'rganda muddat tugab bo'lardi.
+     */
+    private fun appealDeadline(result: ExamResult): Instant =
+        listOfNotNull(result.examSession.heldAt, result.gradingDate).max().plus(APPEAL_DAYS, ChronoUnit.DAYS)
+
+    private companion object {
+        const val APPEAL_DAYS = 10L
+    }
 
     private fun toTeacherDto(result: ExamResult): TeacherExamResultDto {
         val student = result.enrollment.student

@@ -98,12 +98,16 @@ class AcademicAnalyticsService(
 
     @Transactional(readOnly = true)
     fun studentResults(): List<StudentAcademicResultDto> {
+        // CourseScorePolicy: imtihon — faqat yakunlangan sessiya; testlar — har test uchun eng yaxshi
+        // urinish, tugagan va topshirilmagan test 0 (talaba va o'qituvchi sahifalari bilan bir xil).
         val resultByEnrollment = examResults.findAllByDeletedFalseOrderByGradingDateDesc()
             .groupBy { requireNotNull(it.enrollment.id) }
-            .mapValues { (_, rows) -> rows.maxByOrNull { it.gradingDate } }
-        val attemptsByEnrollment = quizAttempts.findAllByDeletedFalseOrderByStartedAtDesc()
-            .filter { it.status != QuizAttemptStatus.IN_PROGRESS }
+            .mapValues { (_, rows) -> CourseScorePolicy.finalExam(rows) }
+        val attemptsByEnrollment = CourseScorePolicy.bestAttempts(quizAttempts.findAllByDeletedFalseOrderByStartedAtDesc())
             .groupBy { requireNotNull(it.enrollment.id) }
+        val quizzesByCourse = quizzes.findAllByDeletedFalseOrderByOpensAtDesc()
+            .groupBy { requireNotNull(it.course.id) }
+        val now = Instant.now()
         val programNames = programs.findAll().filter { !it.deleted }.associate { requireNotNull(it.id) to it.name }
         val groupNames = groups.findAll().filter { !it.deleted }.associate { requireNotNull(it.id) to it.name }
 
@@ -111,7 +115,13 @@ class AcademicAnalyticsService(
             val enrollmentId = requireNotNull(enrollment.id)
             val exam = resultByEnrollment[enrollmentId]
             val attempts = attemptsByEnrollment[enrollmentId].orEmpty()
-            val interim = attempts.map { it.percentage }.averageOrNull()?.let(::twoDecimals)
+            val missed = CourseScorePolicy.missedQuizzes(
+                enrollment,
+                quizzesByCourse[requireNotNull(enrollment.course.id)].orEmpty(),
+                attempts.mapNotNull { it.quiz.id }.toSet(),
+                now,
+            )
+            val interim = CourseScorePolicy.interim(attempts.map { it.percentage }, missed.size)
             val final = exam?.percentage?.let(::twoDecimals)
             val total = GradeCalculation.total(interim, final)
             val assessed = total != null

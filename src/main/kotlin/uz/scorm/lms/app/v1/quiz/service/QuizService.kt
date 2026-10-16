@@ -413,6 +413,18 @@ class QuizService(
         answerRepository.save(entity)
     }
 
+    /**
+     * Muddati o'tib tashlab ketilgan urinishni yopadi ([QuizAttemptExpiryWorker] chaqiradi). Saqlangan
+     * javoblar hisoblanadi, qolgan savollar 0 — talaba sahifaga qaytmasa ham natija vedomostga tushadi.
+     */
+    @Transactional
+    fun closeExpiredAttempt(attempt: QuizAttempt): QuizAttempt {
+        if (attempt.status != QuizAttemptStatus.IN_PROGRESS) return attempt
+        val closed = finalizeAttempt(attempt, timedOut = true)
+        proctoringService.completeAttempt(closed)
+        return closed
+    }
+
     private fun finalizeAttempt(attempt: QuizAttempt, timedOut: Boolean): QuizAttempt {
         if (attempt.status != QuizAttemptStatus.IN_PROGRESS) return attempt
         val links = quizQuestionRepository.findAllByQuizIdAndDeletedFalseOrderByPositionAsc(attempt.quiz.id!!)
@@ -557,13 +569,13 @@ class QuizService(
             testId = attempt.quiz.id.toString(),
             startedAt = attempt.startedAt,
             expiresAt = attempt.expiresAt,
-            questions = ids.mapNotNull { links[it]?.question }.map(::studentQuestionDto),
+            questions = ids.mapNotNull { links[it]?.question }.map { studentQuestionDto(it, attempt) },
             answers = answerRepository.findAllByAttemptIdAndDeletedFalseOrderByIdAsc(requireNotNull(attempt.id))
                 .associate { it.question.id.toString() to it.answer },
         )
     }
 
-    private fun studentQuestionDto(question: QuizQuestion) = StudentQuizQuestionDto(
+    private fun studentQuestionDto(question: QuizQuestion, attempt: QuizAttempt) = StudentQuizQuestionDto(
         id = question.id.toString(),
         type = when (question.type) {
             QuizQuestionType.SINGLE_CHOICE -> "multiple-choice"
@@ -572,8 +584,18 @@ class QuizService(
         },
         text = question.text,
         points = question.points,
-        options = options(question).takeIf { it.isNotEmpty() },
+        options = options(question)
+            .let { if (attempt.quiz.shuffleQuestions && question.type == QuizQuestionType.SINGLE_CHOICE) optionOrder(it, attempt, question) else it }
+            .takeIf { it.isNotEmpty() },
     )
+
+    /**
+     * Javob variantlari har urinish uchun o'z tartibida — "to'g'ri javob — C" deb uzatib bo'lmasin.
+     * Tartib urinish va savol ID'sidan hosil qilinadi: sahifa yangilansa ham o'zgarmaydi, bazaga yozilmaydi.
+     * Baholash javob MATNI bo'yicha, shuning uchun tartib natijaga ta'sir qilmaydi.
+     */
+    internal fun optionOrder(options: List<String>, attempt: QuizAttempt, question: QuizQuestion): List<String> =
+        options.shuffled(java.util.Random(requireNotNull(attempt.id) * 1_000_003L + requireNotNull(question.id)))
 
     private fun resultDto(attempt: QuizAttempt): QuizResultDto {
         val hidden = !attempt.quiz.showResult && Instant.now().isBefore(attempt.quiz.closesAt)
@@ -606,5 +628,17 @@ class QuizService(
         durationSeconds = attempt.durationSeconds,
     )
 
-    private fun normalized(value: String): String = value.trim().lowercase().replace(Regex("\\s+"), " ")
+    /**
+     * Javobni solishtirish uchun shakl: katta-kichik harf, ortiqcha bo'shliq va o'zbek lotin alifbosidagi
+     * apostrof variantlari (o' / o‘ / oʻ / o’, g' / g‘ / gʻ) farq qilmaydi — klaviaturaga qarab har xil
+     * yoziladi va to'g'ri javob noto'g'ri deb baholanardi.
+     */
+    internal fun normalized(value: String): String = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFC)
+        .trim().lowercase()
+        .replace(APOSTROPHES, "'")
+        .replace(Regex("\\s+"), " ")
+
+    private companion object {
+        val APOSTROPHES = Regex("[ʻʼ‘’`´ʹ′]")
+    }
 }

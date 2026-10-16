@@ -76,7 +76,8 @@ class ExamWorkflowIntegrationTest {
         val result = results.record(session.id.toLong(), enrollment.id!!,
             RecordExamResultRequest(enrollment.id!!, BigDecimal("75"), grade = "A"), teacher.id!!, false)
         assertEquals(75.0, result.percentage)
-        assertEquals("C", result.grade)
+        // Yagona shkala (GradeCalculation): 75 → C+, talaba sahifasi va transkript bilan bir xil.
+        assertEquals("C+", result.grade)
         assertTrue(result.passed)
         assertTrue(statements.detail(session.id.toLong()).completionProblems.isEmpty())
         val closed = statements.complete(session.id.toLong(), teacher.id!!)
@@ -90,11 +91,17 @@ class ExamWorkflowIntegrationTest {
         assertEquals(1, studentResults.size)
         val appeal = results.appeal(ExamAppealRequestDto(result.id.toLong(), "Natijamni qayta tekshirishingizni so'rayman"), student.user.id!!)
         assertEquals("PENDING", appeal.status)
+        // Bahoni qo'ygan o'qituvchi o'z bahosiga berilgan apellyatsiyani hal qila olmaydi.
+        assertThrows(IllegalArgumentException::class.java) {
+            results.reviewAppeal(appeal.id.toLong(),
+                ReviewExamAppealRequest(AppealStatus.APPROVED, "Yozma ish qayta tekshirildi", BigDecimal("85")), teacher.id!!, false)
+        }
+        val reviewer = user("exam-appeal-reviewer")
         val reviewed = results.reviewAppeal(appeal.id.toLong(),
-            ReviewExamAppealRequest(AppealStatus.APPROVED, "Yozma ish qayta tekshirildi", BigDecimal("85")), teacher.id!!, false)
+            ReviewExamAppealRequest(AppealStatus.APPROVED, "Yozma ish qayta tekshirildi", BigDecimal("85")), reviewer.id!!, true)
         assertEquals("APPROVED", reviewed.status)
         assertEquals(85.0, reviewed.newScore)
-        assertEquals("B", results.teacherResults(session.id.toLong(), teacher.id!!, false).single().grade)
+        assertEquals("B+", results.teacherResults(session.id.toLong(), teacher.id!!, false).single().grade)
     }
 
     @Test
