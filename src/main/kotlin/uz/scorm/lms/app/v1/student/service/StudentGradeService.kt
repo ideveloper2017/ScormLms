@@ -3,15 +3,15 @@ package uz.scorm.lms.app.v1.student.service
 import jakarta.persistence.EntityManager
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import uz.scorm.lms.app.v1.academicresult.service.CourseScorePolicy
 import uz.scorm.lms.app.v1.academicresult.service.GradeCalculation
 import uz.scorm.lms.app.v1.assignment.model.AssignmentSubmission
 import uz.scorm.lms.app.v1.assignment.model.SubmissionStatus
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollment
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.exam.model.ExamResult
-import uz.scorm.lms.app.v1.exam.model.ExamSessionStatus
+import uz.scorm.lms.app.v1.quiz.model.CourseQuiz
 import uz.scorm.lms.app.v1.quiz.model.QuizAttempt
-import uz.scorm.lms.app.v1.quiz.model.QuizAttemptStatus
 import uz.scorm.lms.app.v1.student.dto.*
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.user.model.User
@@ -41,17 +41,39 @@ class StudentGradeService(private val em: EntityManager, private val passingPoli
             .map { row -> mark(row.enrollment, "assignment-${row.id}", "assignment", row.assignment.title,
                 row.assignment.id.toString(), row.score!!.toDouble(), row.assignment.maxScore.toDouble(),
                 row.gradedAt ?: row.submittedAt, row.feedback) }
-        val tests = rows(QuizAttempt::class.java, "and r.quiz.deleted = false")
-            .filter { it.status != QuizAttemptStatus.IN_PROGRESS }
-            .map { row -> mark(row.enrollment, "test-${row.id}", "test", row.quiz.title,
+        // Testlar va imtihon CourseScorePolicy bo'yicha: har test uchun eng yaxshi urinish, tugagan va
+        // topshirilmagan test — 0, imtihon — faqat yakunlangan sessiyaning oxirgi natijasi.
+        val attempts = CourseScorePolicy.bestAttempts(rows(QuizAttempt::class.java, "and r.quiz.deleted = false"))
+        val tests = attempts.map { row -> mark(row.enrollment, "test-${row.id}", "test", row.quiz.title,
                 row.quiz.id.toString(), row.score.toDouble(), row.totalPoints.toDouble(),
                 row.submittedAt ?: row.startedAt, null) }
+        val missed = missedTests(userId, attempts)
         val exams = rows(ExamResult::class.java, "and r.examSession.deleted = false")
-            .filter { it.examSession.status == ExamSessionStatus.COMPLETED }
+            .groupBy { it.enrollment.id }.values.mapNotNull(CourseScorePolicy::finalExam)
             .map { row -> mark(row.enrollment, "exam-${row.id}", "exam", row.examSession.title,
                 row.examSession.id.toString(), row.score.toDouble(), row.totalScore.toDouble(),
                 row.gradingDate, row.comments) }
-        return (assignments + tests + exams).sortedByDescending { it.dto.date }
+        return (assignments + tests + missed + exams).sortedByDescending { it.dto.date }
+    }
+
+    /** Tugagan, lekin talaba topshirmagan testlar — 0 ball bilan (baholar ro'yxatida sababi bilan ko'rinadi). */
+    private fun missedTests(userId: Long, attempts: List<QuizAttempt>): List<Mark> {
+        val enrollments = enrollments(userId)
+        if (enrollments.isEmpty()) return emptyList()
+        val now = Instant.now()
+        val quizzes = em.createQuery(
+            "select q from CourseQuiz q where q.course.id in :courseIds and q.deleted = false and q.status in :statuses",
+            CourseQuiz::class.java,
+        ).setParameter("courseIds", enrollments.mapNotNull { it.course.id }.toSet())
+            .setParameter("statuses", CourseScorePolicy.COUNTED_QUIZ_STATUSES)
+            .resultList
+        val attemptedByEnrollment = attempts.groupBy { it.enrollment.id }
+            .mapValues { (_, rows) -> rows.mapNotNull { it.quiz.id }.toSet() }
+        return enrollments.flatMap { enrollment ->
+            CourseScorePolicy.missedQuizzes(enrollment, quizzes, attemptedByEnrollment[enrollment.id].orEmpty(), now)
+                .map { quiz -> mark(enrollment, "test-missed-${quiz.id}-${enrollment.id}", "test", quiz.title,
+                    quiz.id.toString(), 0.0, 100.0, quiz.closesAt, "Test topshirilmagan — 0 ball") }
+        }
     }
 
     private fun mark(enrollment: CourseEnrollment, id: String, kind: String, title: String, sourceId: String,
@@ -88,9 +110,10 @@ class StudentGradeService(private val em: EntityManager, private val passingPoli
 
     private data class CourseResult(val enrollment: CourseEnrollment, val score: Double)
     private fun courseResults(userId: Long) = marks(userId).groupBy { it.enrollment.id }.values.mapNotNull { rows ->
+        // marks() har test uchun bitta qator (eng yaxshi urinish yoki 0) va bitta imtihon beradi.
         val tests = rows.filter { it.kind == "test" }.map { it.dto.scorePercentage }
         val exam = rows.firstOrNull { it.kind == "exam" }?.dto?.scorePercentage
-        GradeCalculation.total(tests.takeIf { it.isNotEmpty() }?.average(), exam)
+        GradeCalculation.total(CourseScorePolicy.interim(tests, missedCount = 0), exam)
             ?.let { CourseResult(rows.first().enrollment, it) }
     }
     private fun credits(row: CourseResult) = row.enrollment.credits.coerceAtLeast(row.enrollment.course.subject?.credits ?: 0)

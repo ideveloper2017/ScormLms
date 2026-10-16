@@ -6,7 +6,6 @@ import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.academicresult.service.GradeCalculation
 import uz.scorm.lms.app.v1.attendance.service.AttendanceService
 import uz.scorm.lms.app.v1.quiz.repository.QuizAttemptRepository
-import uz.scorm.lms.app.v1.quiz.model.QuizAttemptStatus
 import uz.scorm.lms.app.v1.exam.repository.ExamResultRepository
 import uz.scorm.lms.app.v1.assignment.model.SubmissionStatus
 import uz.scorm.lms.app.v1.assignment.repository.AssignmentSubmissionRepository
@@ -52,6 +51,8 @@ class DashboardService(
     private val quizAttemptRepository: QuizAttemptRepository,
     private val examResultRepository: ExamResultRepository,
     private val attendanceService: AttendanceService,
+    private val quizRepository: uz.scorm.lms.app.v1.quiz.repository.CourseQuizRepository,
+    private val passingPolicy: uz.scorm.lms.app.v1.academicresult.service.AcademicPassingPolicy,
 ) {
     private val zone: ZoneId = ZoneId.systemDefault()
 
@@ -256,9 +257,10 @@ class DashboardService(
             totalStudents = stats.totalStudents,
             pendingSubmissions = stats.pendingAssignments,
             todayLessons = stats.todayLessons,
-            avgTestScore = quizAttemptRepository.findAllByQuizCourseUserIdAndDeletedFalseOrderByStartedAtDesc(requireNotNull(user.id))
-                .filter { it.status != QuizAttemptStatus.IN_PROGRESS && !it.quiz.deleted }
-                .map { it.percentage }.averageOrZero(),
+            // Har talaba-test uchun hisobga olinadigan (eng yaxshi) urinish — qayta urinishlar o'rtachani buzmasin.
+            avgTestScore = uz.scorm.lms.app.v1.academicresult.service.CourseScorePolicy.bestAttempts(
+                quizAttemptRepository.findAllByQuizCourseUserIdAndDeletedFalseOrderByStartedAtDesc(requireNotNull(user.id))
+            ).map { it.percentage }.averageOrZero(),
             newSubmissions = stats.newSubmissions,
             unreadMessages = stats.unreadMessages,
         )
@@ -301,20 +303,30 @@ class DashboardService(
         val submissions = submissionRepository.findAllByAssignmentCourseUserIdAndDeletedFalseOrderBySubmittedAtDesc(requireNotNull(user.id))
             .filter { it.assignment.course.id == courseId && !it.assignment.deleted && it.status == SubmissionStatus.GRADED }
             .groupBy { it.enrollment.id }
-        val attempts = quizAttemptRepository.findAllByQuizCourseUserIdAndDeletedFalseOrderByStartedAtDesc(requireNotNull(user.id))
-            .filter { it.quiz.course.id == courseId && !it.quiz.deleted && it.status != QuizAttemptStatus.IN_PROGRESS }
-            .groupBy { it.enrollment.id }
+        // CourseScorePolicy — talaba sahifasi va akademik reyestr bilan bir xil hisob.
+        val attempts = uz.scorm.lms.app.v1.academicresult.service.CourseScorePolicy.bestAttempts(
+            quizAttemptRepository.findAllByQuizCourseUserIdAndDeletedFalseOrderByStartedAtDesc(requireNotNull(user.id))
+                .filter { it.quiz.course.id == courseId }
+        ).groupBy { it.enrollment.id }
+        val courseQuizzes = quizRepository.findAllByCourseIdInAndStatusInAndDeletedFalseOrderByOpensAtAsc(
+            setOf(courseId), uz.scorm.lms.app.v1.academicresult.service.CourseScorePolicy.COUNTED_QUIZ_STATUSES,
+        )
+        val now = Instant.now()
         val exams = examResultRepository.findAllByEnrollmentCourseIdAndDeletedFalseOrderByGradingDateDesc(courseId)
             .groupBy { it.enrollment.id }
+            .mapValues { (_, rows) -> uz.scorm.lms.app.v1.academicresult.service.CourseScorePolicy.finalExam(rows) }
         return courseEnrollments(course).map { enrollment ->
             val assignmentScores = submissions[enrollment.id].orEmpty()
                 .distinctBy { it.assignment.id }.mapNotNull { submission ->
                     submission.score?.takeIf { submission.assignment.maxScore > 0 }
                         ?.let { it * 100.0 / submission.assignment.maxScore }
                 }
-            val testScores = attempts[enrollment.id].orEmpty().map { it.percentage }
-            val testScore = testScores.takeIf { it.isNotEmpty() }?.average()?.let { round(it * 100) / 100 }
-            val finalGrade = GradeCalculation.total(testScore, exams[enrollment.id]?.firstOrNull()?.percentage)
+            val best = attempts[enrollment.id].orEmpty()
+            val missed = uz.scorm.lms.app.v1.academicresult.service.CourseScorePolicy.missedQuizzes(
+                enrollment, courseQuizzes, best.mapNotNull { it.quiz.id }.toSet(), now,
+            )
+            val testScore = uz.scorm.lms.app.v1.academicresult.service.CourseScorePolicy.interim(best.map { it.percentage }, missed.size)
+            val finalGrade = GradeCalculation.total(testScore, exams[enrollment.id]?.percentage)
             val attendance = attendanceService.studentStats(requireNotNull(enrollment.student.user.id), courseId)
             TeacherGradebookEntryDto(
                 studentId = requireNotNull(enrollment.student.id).toString(),
@@ -324,14 +336,8 @@ class DashboardService(
                 tests = testScore,
                 attendance = attendance.attendancePercentage.takeIf { attendance.totalClasses > 0 },
                 finalGrade = finalGrade,
-                letterGrade = when {
-                    finalGrade == null -> null
-                    finalGrade >= 90 -> "A"
-                    finalGrade >= 80 -> "B"
-                    finalGrade >= 70 -> "C"
-                    finalGrade >= 60 -> "D"
-                    else -> "F"
-                },
+                // Yagona shkala va kursning o'tish chegarasi (avval jurnal o'z A/B/C/D/F jadvalini ishlatardi).
+                letterGrade = finalGrade?.let { GradeCalculation.letterGrade(it, passingPolicy.threshold(enrollment)) },
             )
         }
     }
