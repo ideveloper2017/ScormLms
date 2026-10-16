@@ -75,7 +75,7 @@ class ProctorDashboardIntegrationTest {
         val assigned = user("dashboard-proctor", "proctor")
         val stranger = user("dashboard-other-proctor", "proctor")
         val student = student("30000000000006", "ST-QZ-006", "dashboard-student")
-        student.user.faceDescriptor = "server-template"
+        student.user.faceDescriptor = uz.scorm.lms.app.v1.face.service.FaceTemplate.encode(FloatArray(128) { 1f })
         val biometricBinding = bindBiometrics(student.user, teacher, assigned)
         val course = courseService.create(
             CourseCreateRequest(title = "Monitoring kursi"),

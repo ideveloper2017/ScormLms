@@ -114,10 +114,14 @@ export default function FaceRecognition({ onSuccess, onSkip }: Props) {
                     const localSimilarity = 1 - distance;
                     setSimilarity(localSimilarity);
 
-                    // Send descriptor to backend for server-side verification
+                    // Kadrning o'zi yuboriladi — tekshiruv serverda (brauzer deskriptoriga ishonilmaydi).
                     try {
+                        const frameCanvas = document.createElement("canvas");
+                        frameCanvas.width = videoRef.current.videoWidth;
+                        frameCanvas.height = videoRef.current.videoHeight;
+                        frameCanvas.getContext("2d")?.drawImage(videoRef.current, 0, 0);
                         const verificationResult = await faceRecognitionApi.verifyFaceMatch({
-                            faceDescriptor: Array.from(detection.descriptor),
+                            photo: frameCanvas.toDataURL("image/jpeg", 0.9),
                         });
 
                         if (verificationResult.isMatch) {

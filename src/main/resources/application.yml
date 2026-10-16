@@ -105,6 +105,10 @@ app:
 
   upload:
     dir: ${FILE_UPLOAD_DIR:./uploads}
+  face:
+    # YuNet (aniqlash) + SFace (tanish) ONNX modellari; ops/face-models/install-face-models.* o'rnatadi.
+    # Model bo'lmasa yuz ro'yxatdan o'tkazish va proktoring tekshiruvi fail-closed.
+    model-dir: ${FACE_MODEL_DIR:./private/face-models}
   scorm:
     storage-dir: ${SCORM_STORAGE_DIR:./private/scorm}
     max-package-bytes: ${SCORM_MAX_PACKAGE_BYTES:209715200}

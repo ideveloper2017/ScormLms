@@ -13,6 +13,7 @@ import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.face.service.FaceFrameAnalysis
 import uz.scorm.lms.app.v1.face.service.FaceService
+import uz.scorm.lms.app.v1.face.service.FaceTemplate
 import uz.scorm.lms.app.v1.quiz.model.CourseQuiz
 import uz.scorm.lms.app.v1.quiz.model.ProctoringChallengeDirection
 import uz.scorm.lms.app.v1.quiz.model.ProctoringSession
@@ -38,6 +39,7 @@ class ProctoringServiceTest {
     @BeforeEach
     fun setUp() {
         service = ProctoringService(quizRepository, enrollmentRepository, sessionRepository, faceService, eventRepository, biometricGovernanceService)
+        every { faceService.matchThreshold } returns 0.363
     }
 
     @Test
@@ -49,7 +51,7 @@ class ProctoringServiceTest {
             FaceFrameAnalysis("center-template", 0.50),
             FaceFrameAnalysis("moved-template", 0.62),
         )
-        every { faceService.templateSimilarity("registered-template", any()) } returns 0.91
+        every { faceService.templateSimilarity(REGISTERED, any()) } returns 0.91
 
         val result = service.verify(7, 11, 99, NONCE, centerFrame(), movementFrame())
 
@@ -70,7 +72,7 @@ class ProctoringServiceTest {
             FaceFrameAnalysis("center-template", 0.50),
             FaceFrameAnalysis("moved-template", 0.62),
         )
-        every { faceService.templateSimilarity("registered-template", any()) } returns 0.93
+        every { faceService.templateSimilarity(REGISTERED, any()) } returns 0.93
 
         assertThrows(IllegalArgumentException::class.java) {
             service.verify(7, 11, 99, NONCE, centerFrame(), movementFrame())
@@ -80,12 +82,50 @@ class ProctoringServiceTest {
         assertTrue(fixture.failureReason!!.contains("yo'nalish"))
     }
 
-    private fun fixture(direction: ProctoringChallengeDirection): ProctoringSession {
+    @Test
+    fun `boshqa odamning yuzi SFace chegarasidan past bo'lsa challenge muvaffaqiyatsiz`() {
+        val fixture = fixture(ProctoringChallengeDirection.RIGHT)
+        every { sessionRepository.findByIdAndDeletedFalse(11) } returns fixture
+        every { sessionRepository.save(any()) } answers { firstArg() }
+        every { faceService.analyzeFrame(any()) } returnsMany listOf(
+            FaceFrameAnalysis("center-template", 0.50),
+            FaceFrameAnalysis("moved-template", 0.62),
+        )
+        every { faceService.templateSimilarity(REGISTERED, any()) } returns 0.21
+
+        assertThrows(IllegalArgumentException::class.java) {
+            service.verify(7, 11, 99, NONCE, centerFrame(), movementFrame())
+        }
+
+        assertEquals(ProctoringSessionStatus.FAILED, fixture.status)
+        assertTrue(fixture.failureReason!!.contains("mos kelmadi"))
+    }
+
+    @Test
+    fun `eski piksel shablonli talaba solishtirilmaydi - qayta ro'yxatdan o'tish so'raladi`() {
+        val fixture = fixture(ProctoringChallengeDirection.RIGHT, descriptor = "bGVnYWN5LXBpeGVsLXRlbXBsYXRl")
+        every { sessionRepository.findByIdAndDeletedFalse(11) } returns fixture
+        every { sessionRepository.save(any()) } answers { firstArg() }
+        every { faceService.analyzeFrame(any()) } returnsMany listOf(
+            FaceFrameAnalysis("center-template", 0.50),
+            FaceFrameAnalysis("moved-template", 0.62),
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            service.verify(7, 11, 99, NONCE, centerFrame(), movementFrame())
+        }
+
+        assertEquals(ProctoringSessionStatus.FAILED, fixture.status)
+        assertEquals(FaceTemplate.RE_ENROLL_MESSAGE, fixture.failureReason)
+        verify(exactly = 0) { faceService.templateSimilarity(any(), any()) }
+    }
+
+    private fun fixture(direction: ProctoringChallengeDirection, descriptor: String = REGISTERED): ProctoringSession {
         val quiz = mockk<CourseQuiz>()
         every { quiz.id } returns 7
         val user = mockk<User>()
         every { user.id } returns 99
-        every { user.faceDescriptor } returns "registered-template"
+        every { user.faceDescriptor } returns descriptor
         val student = mockk<StudentProfile>()
         every { student.user } returns user
         val enrollment = mockk<CourseEnrollment>()
@@ -106,5 +146,6 @@ class ProctoringServiceTest {
 
     companion object {
         private const val NONCE = "server-issued-one-time-nonce"
+        private val REGISTERED = FaceTemplate.encode(FloatArray(FaceTemplate.DIMENSIONS) { (it % 7 - 3).toFloat() })
     }
 }

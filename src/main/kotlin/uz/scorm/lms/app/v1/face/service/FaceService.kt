@@ -1,22 +1,18 @@
 package uz.scorm.lms.app.v1.face.service
 
 import org.bytedeco.javacpp.BytePointer
-import org.springframework.core.io.ClassPathResource
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
-import org.bytedeco.opencv.global.opencv_core.*
-import org.bytedeco.opencv.global.opencv_imgcodecs.*
-import org.bytedeco.opencv.global.opencv_imgproc.*
-import org.bytedeco.opencv.opencv_core.*
-import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier
+import org.bytedeco.opencv.global.opencv_core.CV_8UC1
+import org.bytedeco.opencv.global.opencv_imgcodecs.IMREAD_COLOR
+import org.bytedeco.opencv.global.opencv_imgcodecs.imdecode
+import org.bytedeco.opencv.opencv_core.Mat
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import uz.scorm.lms.app.v1.face.dto.*
 import uz.scorm.lms.app.v1.biometric.service.BiometricDataErasureService
 import uz.scorm.lms.app.v1.biometric.service.BiometricGovernanceService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.transaction.annotation.Transactional
-import java.io.File
-import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDateTime
@@ -27,123 +23,35 @@ class FaceService(
     private val userRepository: UserRepository,
     private val biometricGovernanceService: BiometricGovernanceService,
     private val biometricDataErasureService: BiometricDataErasureService,
+    private val recognizer: SFaceRecognizer,
     @Value("\${file.upload-dir:./uploads}") private val uploadDir: String
 ) {
 
-    // OpenCV native kutubxonasi konstruktorda emas, birinchi ishlatishda yuklanadi.
-    // Shunda native yuklanmasa ham ilova ko'tariladi (faqat face funksiyasi ishlamaydi),
-    // bean yaratilishida "Constructor threw exception" bilan yiqilmaydi.
-    private val targetSize by lazy { Size(160, 160) }
-    private val cascade: CascadeClassifier? by lazy { loadCascade() }
-
-    private fun loadCascade(): CascadeClassifier? {
-        return try {
-            val res = ClassPathResource("/model/haarcascade_frontalface_default.xml")
-            if (!res.exists()) return null
-            val tmp = File.createTempFile("haarcascade_frontalface_default", ".xml")
-            res.inputStream.use { input ->
-                FileOutputStream(tmp).use { out -> input.copyTo(out) }
-            }
-            CascadeClassifier(tmp.absolutePath)
-        } catch (e: Exception) {
-            null
-        }
-    }
+    /** Bir shaxs deb hisoblash chegarasi (SFace kosinus o'xshashligi). */
+    val matchThreshold: Double get() = SFaceRecognizer.MATCH_THRESHOLD
 
     fun generateTemplate(imageBytes: ByteArray): String {
         return analyzeFrame(imageBytes).template
     }
 
-    fun matches(storedTemplate: String, imageBytes: ByteArray, cosineThreshold: Double = 0.85): Boolean {
-        if (storedTemplate.isBlank()) return false
-        return templateSimilarity(storedTemplate, analyzeFrame(imageBytes).template) >= cosineThreshold
-    }
-
     /**
-     * Decodes the image and requires exactly one server-detected face. The raw
-     * frame is never persisted by this method.
+     * Rasmni serverda tahlil qiladi: aynan bitta yuz (YuNet) va uning SFace shabloni. Xom kadr
+     * hech qayerga yozilmaydi. Model o'rnatilmagan bo'lsa IllegalStateException (fail-closed).
      */
     fun analyzeFrame(imageBytes: ByteArray): FaceFrameAnalysis {
         require(imageBytes.isNotEmpty()) { "Yuz kadri bo'sh" }
         val decoded = decodeImage(imageBytes)
-        val gray = Mat()
-        cvtColor(decoded, gray, COLOR_BGR2GRAY)
-        equalizeHist(gray, gray)
-
-        val classifier = cascade ?: throw IllegalStateException("Yuz aniqlash modeli yuklanmagan")
-        val faces = RectVector()
-        classifier.detectMultiScale(gray, faces)
-        require(faces.size() == 1L) { "Kadrda aynan bitta yuz ko'rinishi kerak" }
-
-        val rect = faces[0]
-        require(rect.width() > 0 && rect.height() > 0) { "Aniqlangan yuz o'lchami yaroqsiz" }
-        val face = Mat(gray, rect)
-        val resized = Mat()
-        resize(face, resized, targetSize)
-        val vector = toNormalizedVector(resized)
-        require(vector.isNotEmpty()) { "Yuz shablonini yaratib bo'lmadi" }
-        return FaceFrameAnalysis(
-            template = encodeTemplate(vector),
-            centerX = (rect.x() + rect.width() / 2.0) / decoded.cols().toDouble(),
-        )
-    }
-
-    fun templateSimilarity(firstTemplate: String, secondTemplate: String): Double {
-        val first = decodeTemplate(firstTemplate)
-        val second = decodeTemplate(secondTemplate)
-        if (first.isEmpty() || second.isEmpty() || first.size != second.size) return 0.0
-        return cosineSimilarity(first, second)
-    }
-
-    private fun encodeTemplate(values: FloatArray): String {
-        val buffer = java.nio.ByteBuffer.allocate(values.size * 4)
-        values.forEach(buffer::putFloat)
-        return Base64.getEncoder().encodeToString(buffer.array())
-    }
-
-    private fun toNormalizedVector(mat: Mat): FloatArray {
-        val fmat = Mat()
-        mat.convertTo(fmat, CV_32F)
-        val total = fmat.arraySize().toInt()
-        val arr = FloatArray(total)
-        (fmat.createBuffer() as java.nio.FloatBuffer).get(arr)
-        var norm = 0.0
-        for (f in arr) norm += (f * f)
-        norm = Math.sqrt(norm)
-        if (norm > 0) {
-            for (i in arr.indices) arr[i] = (arr[i] / norm).toFloat()
-        }
-        return arr
-    }
-
-    private fun decodeTemplate(b64: String): FloatArray {
-        return try {
-            val bytes = Base64.getDecoder().decode(b64)
-            val fb = java.nio.ByteBuffer.wrap(bytes).asFloatBuffer()
-            val arr = FloatArray(fb.remaining())
-            fb.get(arr)
-            arr
-        } catch (_: Exception) {
-            FloatArray(0)
+        try {
+            val detection = recognizer.analyze(decoded)
+            return FaceFrameAnalysis(template = FaceTemplate.encode(detection.features), centerX = detection.centerX)
+        } finally {
+            decoded.close()
         }
     }
 
-    private fun cosineSimilarity(a: FloatArray, b: FloatArray): Double {
-        if (a.size != b.size) return 0.0
-        val n = a.size
-        var dot = 0.0
-        var na = 0.0
-        var nb = 0.0
-        var i = 0
-        while (i < n) {
-            dot += (a[i] * b[i])
-            na += (a[i] * a[i])
-            nb += (b[i] * b[i])
-            i++
-        }
-        if (na == 0.0 || nb == 0.0) return 0.0
-        return dot / (Math.sqrt(na) * Math.sqrt(nb))
-    }
+    /** Ikki shablon o'xshashligi; eski (piksel) formatdagi shablon hech qachon mos kelmaydi. */
+    fun templateSimilarity(firstTemplate: String, secondTemplate: String): Double =
+        FaceTemplate.similarity(firstTemplate, secondTemplate)
 
     private fun decodeImage(imageBytes: ByteArray): Mat {
         val pointer = BytePointer(*imageBytes)
@@ -209,10 +117,10 @@ class FaceService(
     }
 
     /**
-     * Verify face match using descriptor comparison
-     * 
-     * Note: This accepts face descriptor from frontend (face-api.js)
-     * which is already a 128-dimensional normalized vector
+     * Yuzni SERVERDA tekshiradi: brauzer kamera kadrini (base64) yuboradi, shablon shu yerda hisoblanadi.
+     *
+     * Avval brauzer o'zi hisoblagan deskriptor qabul qilinardi — uni soxtalashtirish oson edi (va saqlangan
+     * piksel shablon bilan o'lchami ham mos kelmasdi). Endi faqat kadr qabul qilinadi.
      */
     fun verifyFaceMatch(request: FaceVerificationRequest, userId: Long): FaceVerificationResponse {
         val user = userRepository.findById(userId)
@@ -220,44 +128,22 @@ class FaceService(
         val binding = biometricGovernanceService.requireActiveConsent(userId)
         biometricGovernanceService.requireActiveFaceTemplate(user, binding)
 
-        if (user.faceDescriptor.isNullOrBlank()) {
-            return FaceVerificationResponse(
-                isMatch = false,
-                similarity = 0.0,
-                threshold = 0.6,
-                message = "No face template stored for user"
-            )
+        val photo = request.photo?.takeIf { it.isNotBlank() }
+            ?: throw IllegalArgumentException("Yuzni tekshirish uchun kamera kadrini yuboring; brauzer hisoblagan deskriptor qabul qilinmaydi")
+        val imageBytes = try {
+            Base64.getDecoder().decode(photo.substringAfter("base64,", photo))
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException("Kadr base64 formati yaroqsiz")
         }
+        require(imageBytes.size in 1..MAX_STORED_FACE_BYTES.toInt()) { "Kadr 5 MB dan oshmasligi kerak" }
 
-        // Validate descriptor size (face-api.js produces 128-dimensional descriptors)
-        if (request.faceDescriptor.size != 128) {
-            throw IllegalArgumentException("Invalid face descriptor: expected 128 dimensions, got ${request.faceDescriptor.size}")
-        }
-
-        // Convert stored descriptor (base64 string) to float array
-        val storedDescriptor = decodeTemplate(user.faceDescriptor!!)
-        
-        if (storedDescriptor.isEmpty()) {
-            return FaceVerificationResponse(
-                isMatch = false,
-                similarity = 0.0,
-                threshold = 0.6,
-                message = "Invalid stored face template"
-            )
-        }
-
-        // Convert request descriptor to float array
-        val providedDescriptor = request.faceDescriptor.map { it.toFloat() }.toFloatArray()
-
-        // Calculate cosine similarity
-        val similarity = cosineSimilarity(storedDescriptor, providedDescriptor)
-        val threshold = 0.6 // Standard threshold for face-api.js descriptors
-
+        val similarity = templateSimilarity(user.faceDescriptor.orEmpty(), analyzeFrame(imageBytes).template)
+        val matched = similarity >= matchThreshold
         return FaceVerificationResponse(
-            isMatch = similarity >= threshold,
+            isMatch = matched,
             similarity = similarity,
-            threshold = threshold,
-            message = if (similarity >= threshold) "Face matched successfully" else "Face did not match"
+            threshold = matchThreshold,
+            message = if (matched) "Yuz tasdiqlandi" else "Yuz ro'yxatdan o'tgan foydalanuvchiga mos kelmadi",
         )
     }
 

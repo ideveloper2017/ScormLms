@@ -36,6 +36,8 @@ export interface MyBiometricStatus {
   faceRegistered: boolean;
   faceUploadedAt?: string | null;
   faceExpiresAt?: string | null;
+  /** Yuz eski formatda saqlangan — yangi yuz tekshiruvi uchun qayta ro'yxatdan o'tkazish kerak. */
+  faceReEnrollmentRequired?: boolean;
 }
 
 export interface BiometricRetentionRun {

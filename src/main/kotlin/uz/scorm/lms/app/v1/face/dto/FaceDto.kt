@@ -24,11 +24,13 @@ data class FacePhotoUploadRequest(
 )
 
 /**
- * Face verification request DTO
- * Contains 128-dimensional face descriptor array
+ * Yuzni tekshirish so'rovi: kamera kadri (base64, `data:image/jpeg;base64,...` ham bo'ladi).
+ * Shablon serverda hisoblanadi; [faceDescriptor] eski mijozlar uchun qoldirilgan va QABUL QILINMAYDI.
  */
 data class FaceVerificationRequest(
-    val faceDescriptor: List<Double>, // 128-dimensional face descriptor
+    val photo: String? = null,
+    @Deprecated("Brauzer hisoblagan deskriptorga ishonilmaydi — photo yuboring")
+    val faceDescriptor: List<Double>? = null,
     val userId: Long? = null
 )
 
