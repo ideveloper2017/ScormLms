@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { startLocalMonitoring, type SensorStatus } from '@/lib/proctoring-signals';
+import { startIdentityChecks } from '@/lib/identity-check';
 import {
   keepaliveProctoringEvents,
   recordProctoringEvents,
+  sendIdentityCheck,
   type ProctoringClientEvent,
   type ProctoringEventType,
 } from '@/services/proctoring-api';
@@ -35,6 +37,8 @@ export function useProctoringMonitor({ enabled, testId, attemptId, localMonitori
   const [cameraStatus, setCameraStatus] = useState<ProctoringCameraStatus>(enabled ? 'initializing' : 'disabled');
   const [queuedEvents, setQueuedEvents] = useState(0);
   const [restartKey, setRestartKey] = useState(0);
+  /** Davriy shaxs tekshiruvidan talabaga maslahat (yuz ko'rinmadi va h.k.). */
+  const [identityHint, setIdentityHint] = useState<string | null>(null);
   const flushRef = useRef<() => Promise<void>>(async () => undefined);
 
   useEffect(() => {
@@ -50,6 +54,7 @@ export function useProctoringMonitor({ enabled, testId, attemptId, localMonitori
     let flushing = false;
     let stream: MediaStream | null = null;
     let stopMonitoring: (() => void) | undefined;
+    let stopIdentityChecks: (() => void) | undefined;
     setSensors({ audio: 'disabled', visual: 'disabled' });
     let queue: ProctoringClientEvent[] = [];
     try {
@@ -137,10 +142,17 @@ export function useProctoringMonitor({ enabled, testId, attemptId, localMonitori
           setCameraStatus('stopped');
           record('CAMERA_STOPPED');
           stopMonitoring?.();
+          stopIdentityChecks?.();
           setSensors({ audio: 'unavailable', visual: 'unavailable' });
         }, { once: true });
         setCameraStatus('active');
         record('CAMERA_STARTED');
+        // Imtihon davomida serverda davriy shaxs tekshiruvi (kadr saqlanmaydi).
+        stopIdentityChecks = startIdentityChecks(
+          mediaStream,
+          (frame) => sendIdentityCheck(testId, attemptId, frame),
+          (hint) => { if (!disposed) setIdentityHint(hint); },
+        );
         if (localMonitoringEnabled) stopMonitoring = startLocalMonitoring(mediaStream, record, (sensor, state) => {
           if (!disposed) setSensors(current => ({ ...current, [sensor]: state }));
         });
@@ -160,6 +172,7 @@ export function useProctoringMonitor({ enabled, testId, attemptId, localMonitori
       void flush();
       disposed = true;
       stopMonitoring?.();
+      stopIdentityChecks?.();
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('focus', onFocus);
@@ -174,5 +187,5 @@ export function useProctoringMonitor({ enabled, testId, attemptId, localMonitori
 
   const flush = useCallback(() => flushRef.current(), []);
   const restartCamera = useCallback(() => setRestartKey((value) => value + 1), []);
-  return { cameraStatus, sensors, queuedEvents, flush, restartCamera };
+  return { cameraStatus, sensors, queuedEvents, flush, restartCamera, identityHint };
 }

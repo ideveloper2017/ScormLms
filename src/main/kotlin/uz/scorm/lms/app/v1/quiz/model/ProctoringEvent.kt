@@ -75,6 +75,14 @@ enum class ProctoringEventType {
     MULTIPLE_FACES,
     HEAD_TURNED,
     VISUAL_ANALYSIS_UNAVAILABLE,
+
+    // Imtihon davomida SERVERDA davriy shaxs tekshiruvi (SFace) — faqat server yozadi, mijoz yubora olmaydi.
+    IDENTITY_VERIFIED,
+    IDENTITY_MISMATCH,
+    IDENTITY_FACE_NOT_FOUND,
+    IDENTITY_MULTIPLE_FACES,
+    /** Urinish davomida birorta ham shaxs tekshiruvi kelmagan (kamera o'chirilgan/bloklangan). */
+    IDENTITY_CHECKS_MISSING,
 }
 
 enum class ProctoringEventSeverity { INFO, LOW, MEDIUM, HIGH, CRITICAL }

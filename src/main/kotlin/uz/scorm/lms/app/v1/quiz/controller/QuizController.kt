@@ -20,6 +20,8 @@ import uz.scorm.lms.app.v1.quiz.dto.ProctoringEventBatchResponse
 import uz.scorm.lms.app.v1.quiz.dto.StartQuizResponse
 import uz.scorm.lms.app.v1.quiz.dto.StudentQuizDetailsDto
 import uz.scorm.lms.app.v1.quiz.dto.SubmitQuizRequest
+import uz.scorm.lms.app.v1.quiz.service.IdentityCheckResultDto
+import uz.scorm.lms.app.v1.quiz.service.ProctoringIdentityCheckService
 import uz.scorm.lms.app.v1.quiz.service.QuizService
 import uz.scorm.lms.app.v1.quiz.service.ProctoringService
 import uz.scorm.lms.app.v1.quiz.service.ProctoringEventService
@@ -32,6 +34,7 @@ class QuizController(
     private val proctoringService: ProctoringService,
     private val proctoringEventService: ProctoringEventService,
     private val quizReviewService: uz.scorm.lms.app.v1.quiz.service.QuizReviewService,
+    private val identityCheckService: ProctoringIdentityCheckService,
 ) {
     @GetMapping("/{quizId}")
     fun details(@PathVariable quizId: Long, @CurrentUser user: User): ApiResponse<StudentQuizDetailsDto> =
@@ -69,6 +72,20 @@ class QuizController(
                 centerFrame = centerFrame.bytes,
                 challengeFrame = challengeFrame.bytes,
             )
+        )
+    }
+
+    /** Imtihon davomida davriy shaxs tekshiruvi: kadr serverda SFace bilan solishtiriladi, saqlanmaydi. */
+    @PostMapping("/{quizId}/attempts/{attemptId}/proctoring/identity-check", consumes = ["multipart/form-data"])
+    fun identityCheck(
+        @PathVariable quizId: Long,
+        @PathVariable attemptId: Long,
+        @RequestParam frame: MultipartFile,
+        @CurrentUser user: User,
+    ): ApiResponse<IdentityCheckResultDto> {
+        requireImage(frame, "frame")
+        return ApiResponse.success(
+            identityCheckService.check(quizId, attemptId, requireNotNull(user.id), frame.bytes)
         )
     }
 

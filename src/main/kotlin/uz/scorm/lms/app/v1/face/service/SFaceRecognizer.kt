@@ -15,6 +15,14 @@ import java.nio.file.Paths
 import java.security.MessageDigest
 
 /**
+ * Kadrda yuz yo'q yoki bir nechta — sababi aniq (proktoring jurnali turli signal yozadi). Avvalgi
+ * chaqiruvchilar uchun IllegalArgumentException bo'lib qoladi.
+ */
+class FaceDetectionException(val reason: Reason, message: String) : IllegalArgumentException(message) {
+    enum class Reason { NO_FACE, MULTIPLE_FACES }
+}
+
+/**
  * Serverda yuz tanish: YuNet yuzni topadi, SFace tekislangan yuzdan 128 o'lchamli belgilar hosil qiladi.
  * Ikkalasi OpenCV Zoo'ning ochiq modellari (ONNX), mavjud OpenCV 4.9 kutubxonasi orqali ishlaydi.
  *
@@ -70,8 +78,10 @@ class SFaceRecognizer(
             detector.setInputSize(Size(frame.cols(), frame.rows()))
             detector.detect(frame, faces)
             val count = if (faces.empty()) 0 else faces.rows()
-            require(count > 0) { "Kadrda yuz topilmadi — yuzingiz to'liq va yorug' ko'rinsin" }
-            require(count == 1) { "Kadrda aynan bitta yuz ko'rinishi kerak" }
+            if (count == 0) throw FaceDetectionException(FaceDetectionException.Reason.NO_FACE,
+                "Kadrda yuz topilmadi — yuzingiz to'liq va yorug' ko'rinsin")
+            if (count > 1) throw FaceDetectionException(FaceDetectionException.Reason.MULTIPLE_FACES,
+                "Kadrda aynan bitta yuz ko'rinishi kerak")
 
             val box = faces.createIndexer<FloatIndexer>().use { idx -> FloatArray(4) { idx.get(0L, it.toLong()) } }
             require(box[2] > 0 && box[3] > 0) { "Aniqlangan yuz o'lchami yaroqsiz" }
