@@ -17,6 +17,14 @@ interface ProctoringEventRepository : JpaRepository<ProctoringEvent, Long> {
 
     fun existsByAttemptIdAndTypeAndDeletedFalse(attemptId: Long, type: ProctoringEventType): Boolean
 
+    fun existsByAttemptIdAndTypeInAndDeletedFalse(attemptId: Long, types: Collection<ProctoringEventType>): Boolean
+
+    /** Oxirgi davriy shaxs tekshiruvi — tezlik cheklovi uchun. */
+    fun findFirstByAttemptIdAndTypeInAndDeletedFalseOrderByOccurredAtDesc(
+        attemptId: Long,
+        types: Collection<ProctoringEventType>,
+    ): ProctoringEvent?
+
     @EntityGraph(attributePaths = ["session", "attempt", "attempt.quiz", "attempt.enrollment", "attempt.enrollment.student", "attempt.enrollment.student.user"])
     fun findAllByAttemptIdAndDeletedFalseOrderByOccurredAtAsc(attemptId: Long): List<ProctoringEvent>
 

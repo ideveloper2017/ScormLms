@@ -16,6 +16,8 @@ import uz.scorm.lms.app.v1.face.service.FaceService
 import uz.scorm.lms.app.v1.face.service.FaceTemplate
 import uz.scorm.lms.app.v1.quiz.model.CourseQuiz
 import uz.scorm.lms.app.v1.quiz.model.ProctoringChallengeDirection
+import uz.scorm.lms.app.v1.quiz.model.ProctoringEventSource
+import uz.scorm.lms.app.v1.quiz.model.ProctoringEventType
 import uz.scorm.lms.app.v1.quiz.model.ProctoringSession
 import uz.scorm.lms.app.v1.quiz.model.ProctoringSessionStatus
 import uz.scorm.lms.app.v1.quiz.repository.CourseQuizRepository
@@ -118,6 +120,32 @@ class ProctoringServiceTest {
         assertEquals(ProctoringSessionStatus.FAILED, fixture.status)
         assertEquals(FaceTemplate.RE_ENROLL_MESSAGE, fixture.failureReason)
         verify(exactly = 0) { faceService.templateSimilarity(any(), any()) }
+    }
+
+    @Test
+    fun `uzoq urinishda birorta shaxs tekshiruvi kelmasa yakunda signal yoziladi, qisqasida yozilmaydi`() {
+        fun attempt(minutes: Long): uz.scorm.lms.app.v1.quiz.model.QuizAttempt {
+            val quiz = mockk<CourseQuiz>()
+            every { quiz.proctoring } returns true
+            val attempt = mockk<uz.scorm.lms.app.v1.quiz.model.QuizAttempt>()
+            every { attempt.quiz } returns quiz
+            every { attempt.id } returns 21
+            every { attempt.startedAt } returns Instant.now().minusSeconds(minutes * 60)
+            every { attempt.submittedAt } returns Instant.now()
+            return attempt
+        }
+        val session = fixture(ProctoringChallengeDirection.LEFT)
+        every { sessionRepository.findFirstByAttemptIdAndDeletedFalse(21) } returns session
+        every { sessionRepository.save(any()) } answers { firstArg() }
+        every { eventRepository.save(any()) } answers { firstArg() }
+
+        service.completeAttempt(attempt(minutes = 30))
+        verify(exactly = 1) {
+            eventRepository.save(match { it.type == ProctoringEventType.IDENTITY_CHECKS_MISSING && it.source == ProctoringEventSource.SERVER })
+        }
+
+        service.completeAttempt(attempt(minutes = 2))
+        verify(exactly = 1) { eventRepository.save(match { it.type == ProctoringEventType.IDENTITY_CHECKS_MISSING }) }
     }
 
     private fun fixture(direction: ProctoringChallengeDirection, descriptor: String = REGISTERED): ProctoringSession {

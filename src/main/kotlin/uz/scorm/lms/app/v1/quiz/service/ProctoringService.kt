@@ -213,6 +213,23 @@ class ProctoringService(
                 )
             )
         }
+        // Uzoq urinishda birorta ham davriy shaxs tekshiruvi kelmagan bo'lsa (kamera bloklangan/o'chirilgan) —
+        // bu ham proktor uchun signal: tekshiruvni chetlab o'tishning o'zi shubhali.
+        val endedAt = attempt.submittedAt ?: Instant.now()
+        if (Duration.between(attempt.startedAt, endedAt) >= IDENTITY_CHECK_EXPECTED_AFTER &&
+            !eventRepository.existsByAttemptIdAndTypeInAndDeletedFalse(attemptId, ProctoringIdentityCheckService.IDENTITY_EVENT_TYPES + ProctoringEventType.IDENTITY_CHECKS_MISSING)) {
+            eventRepository.save(
+                ProctoringEvent(
+                    session = session,
+                    attempt = attempt,
+                    type = ProctoringEventType.IDENTITY_CHECKS_MISSING,
+                    severity = ProctoringEventService.severity(ProctoringEventType.IDENTITY_CHECKS_MISSING),
+                    source = ProctoringEventSource.SERVER,
+                    eventKey = "server:identity-missing:$attemptId",
+                    occurredAt = endedAt,
+                )
+            )
+        }
         session.status = ProctoringSessionStatus.COMPLETED
         sessionRepository.save(session)
     }
@@ -248,5 +265,7 @@ class ProctoringService(
         private const val CENTER_MIN = 0.30
         private const val CENTER_MAX = 0.70
         private const val MOVEMENT_THRESHOLD = 0.08
+        /** Shundan uzoq urinishda kamida bitta davriy shaxs tekshiruvi bo'lishi kutiladi. */
+        private val IDENTITY_CHECK_EXPECTED_AFTER: Duration = Duration.ofMinutes(5)
     }
 }

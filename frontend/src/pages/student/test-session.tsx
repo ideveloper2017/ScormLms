@@ -275,6 +275,12 @@ export function TestSession() {
                 Tovush tahlili: {sensorLabel(proctoringMonitor.sensors.audio)}. Yuz va bosh holati: {sensorLabel(proctoringMonitor.sensors.visual)}.
                 {' '}Xom audio/video saqlanmaydi. Signallar proktor tekshiruvi uchun; avtomatik baho qo'yilmaydi.
               </p>}
+              {proctoringMonitor.cameraStatus === 'active' && <p className="w-full">
+                Imtihon davomida shaxsingiz vaqti-vaqti bilan serverda tekshiriladi; kadr saqlanmaydi.
+              </p>}
+              {proctoringMonitor.identityHint && <p className="w-full font-medium text-amber-700 dark:text-amber-300" role="status">
+                {proctoringMonitor.identityHint}
+              </p>}
             </div>
           )}
         </div>

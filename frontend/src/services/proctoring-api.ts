@@ -71,6 +71,24 @@ export async function verifyProctoringChallenge(
   return { ...verification, verifiedAt: new Date(verification.verifiedAt) };
 }
 
+export interface IdentityCheckResult {
+  recorded: boolean;
+  /** Yuz ko'rinmasa/bir nechta yuz — talabaga ko'rsatiladigan maslahat. */
+  hint?: string | null;
+  nextCheckInSeconds: number;
+}
+
+/** Imtihon davomida davriy shaxs tekshiruvi: kadr serverda solishtiriladi va saqlanmaydi. */
+export async function sendIdentityCheck(testId: string, attemptId: string, frame: Blob): Promise<IdentityCheckResult> {
+  const form = new FormData();
+  form.append('frame', frame, 'identity-frame.jpg');
+  const response = await api.post<ApiResponse<IdentityCheckResult>>(
+    `/tests/${testId}/attempts/${attemptId}/proctoring/identity-check`,
+    form,
+  );
+  return unwrap(response.data, 'Shaxs tekshiruvi yuborilmadi');
+}
+
 export async function recordProctoringEvents(
   testId: string,
   attemptId: string,

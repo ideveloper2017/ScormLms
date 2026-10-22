@@ -132,6 +132,11 @@ class ProctoringEventService(
             ProctoringEventType.PAGE_EXIT -> ProctoringEventSeverity.HIGH
             ProctoringEventType.WINDOW_BLURRED,
             ProctoringEventType.NETWORK_OFFLINE -> ProctoringEventSeverity.MEDIUM
+            // Server tomondagi shaxs tekshiruvi — proktor ko'rib chiqadi, bahoga avtomatik ta'sir qilmaydi.
+            ProctoringEventType.IDENTITY_MISMATCH,
+            ProctoringEventType.IDENTITY_MULTIPLE_FACES,
+            ProctoringEventType.IDENTITY_CHECKS_MISSING -> ProctoringEventSeverity.HIGH
+            ProctoringEventType.IDENTITY_FACE_NOT_FOUND -> ProctoringEventSeverity.MEDIUM
             else -> ProctoringEventSeverity.INFO
         }
     }
