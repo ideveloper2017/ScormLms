@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { StudentNotifications } from '../notifications';
 import * as notificationHooks from '@/hooks/notifications/useNotifications';
 import type { Notification } from '@/types/notification.types';
@@ -21,7 +22,7 @@ vi.mock('sonner', () => ({
   },
 }));
 
-// Helper to create a wrapper with QueryClient
+// Helper to create a wrapper with QueryClient and Router (component uses useNavigate)
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -35,7 +36,9 @@ const createWrapper = () => {
   });
 
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </MemoryRouter>
   );
 };
 

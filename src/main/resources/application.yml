@@ -89,12 +89,13 @@ app:
     scorm-enabled: ${APP_SCORM_ENABLED:true}
   demo:
     # Faqat aniq yoqilganda bog'langan demo tuzilma, kurs va darslar yaratiladi.
-    enabled: ${APP_DEMO_DATA_ENABLED:true}
+    enabled: ${APP_DEMO_DATA_ENABLED:false}
   seed:
+    # Default parol yo'q: bo'sh qiymat foydalanuvchi yaratilmasligini bildiradi.
     admin-password: ${APP_SEED_ADMIN_PASSWORD:}
-    teacher-password: ${APP_SEED_TEACHER_PASSWORD:admin123}
-    student-password: ${APP_SEED_STUDENT_PASSWORD:admin123}
-    demo-staff-password: ${APP_SEED_DEMO_STAFF_PASSWORD:admin123}
+    teacher-password: ${APP_SEED_TEACHER_PASSWORD:}
+    student-password: ${APP_SEED_STUDENT_PASSWORD:}
+    demo-staff-password: ${APP_SEED_DEMO_STAFF_PASSWORD:}
   jwt:
     # HS512 uchun kamida 64 baytlik secret talab qilinadi.
     expiration: 86400000 # 24 hours in milliseconds
@@ -174,7 +175,7 @@ hemis:
   api-base-path: ${HEMIS_API_BASE_PATH:/rest/v1}
   request-timeout-seconds: ${HEMIS_REQUEST_TIMEOUT_SECONDS:15}
   # Muassasa API tokeni faqat backendda saqlanadi.
-  api-token: ${HEMIS_API_TOKEN:JOJAogatlmzbKk9YVhrof0E3bAwSCTiZxj3uTMBD}
+  api-token: ${HEMIS_API_TOKEN:}
 
 
 # File Storage Configuration
