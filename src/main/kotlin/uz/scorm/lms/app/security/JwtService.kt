@@ -27,7 +27,17 @@ class JwtService(
     @Value("\${app.jwt.refresh-expiration:2592000000}") // 30 days default
     private val refreshTokenExpirationInMs: Long
 ) {
-    private val key: Key = Keys.hmacShaKeyFor(secret.toByteArray())
+    init {
+        // HS512 kamida 64 bayt talab qiladi; aks holda jjwt "Unexpected exception during
+        // bean creation" (WeakKeyException) bilan yiqiladi yoki login paytida xato beradi.
+        val secretBytes = secret.toByteArray(StandardCharsets.UTF_8).size
+        require(secretBytes >= 64) {
+            "JWT_SECRET (app.jwt.secret) kamida 64 bayt bo'lishi kerak, hozir $secretBytes bayt. " +
+                "Yangi qiymat: openssl rand -base64 96 | tr -d '\\n'"
+        }
+    }
+
+    private val key: Key = Keys.hmacShaKeyFor(secret.toByteArray(StandardCharsets.UTF_8))
     private fun getSigningKey(): Key {
         val keyBytes = secret.toByteArray(StandardCharsets.UTF_8)
         return Keys.hmacShaKeyFor(keyBytes)
