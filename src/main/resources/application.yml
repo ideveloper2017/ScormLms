@@ -96,8 +96,12 @@ app:
     teacher-password: ${APP_SEED_TEACHER_PASSWORD:}
     student-password: ${APP_SEED_STUDENT_PASSWORD:}
     demo-staff-password: ${APP_SEED_DEMO_STAFF_PASSWORD:}
+  survey:
+    anonymization-secret: ${SURVEY_ANONYMIZATION_SECRET:${JWT_SECRET}}
   jwt:
-    # HS512 uchun kamida 64 baytlik secret talab qilinadi.
+    # HS512 uchun kamida 64 baytlik secret talab qilinadi. Profil nomi xato bo'lsa
+    # ham (masalan env fayldagi CRLF) xato "JWT_SECRET" nomini aniq ko'rsatadi.
+    secret: ${JWT_SECRET}
     expiration: 86400000 # 24 hours in milliseconds
     refresh-expiration: 2592000000 # 30 days in milliseconds
     header: Authorization

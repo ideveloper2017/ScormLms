@@ -160,6 +160,10 @@ ensure_application_database() {
 # (ProductionSecretsGuard), shuning uchun buni downtime'siz shu yerda aniqlaymiz.
 ensure_required_app_secrets() {
   local key value
+  # systemd EnvironmentFile CRLF'dagi \r ni qiymatga qo'shib qo'yadi: profil
+  # "postgresql-prod\r" bo'lib, prod sozlamalari (app.jwt.secret ...) yuklanmaydi.
+  ! grep -q $'\r' "$APP_ENV_FILE" || \
+    fail "$APP_ENV_FILE has Windows (CRLF) line endings; fix with: sed -i 's/\\r\$//' $APP_ENV_FILE"
   for key in JWT_SECRET CORS_ALLOWED_ORIGINS; do
     value="$(read_app_env "$key")" || fail "$key is missing in $APP_ENV_FILE"
     [[ -n "$value" ]] || fail "$key must not be empty in $APP_ENV_FILE"
