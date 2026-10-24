@@ -18,7 +18,8 @@ jobs:
   backend:
     name: Backend test and WAR
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Testcontainers integratsiya testlari ~28 daqiqa ishlaydi; 30 daqiqa chegarada edi.
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -33,6 +34,43 @@ jobs:
 
       - name: Test and build ROOT.war
         run: ./gradlew test bootWar --no-daemon
+
+      # Job loglari faqat login bilan ochiladi; annotation va job summary esa run
+      # sahifasida hamma uchun ko'rinadi, shuning uchun yiqilgan testlarni shu yerga chiqaramiz.
+      - name: Report failed tests
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          failed = []
+          for path in sorted(glob.glob("build/test-results/test/TEST-*.xml")):
+              for case in ET.parse(path).getroot().iter("testcase"):
+                  for problem in list(case.findall("failure")) + list(case.findall("error")):
+                      detail = (problem.text or problem.get("message") or "").strip()
+                      failed.append((case.get("classname"), case.get("name"), detail))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write(f"## Failed backend tests: {len(failed)}\n\n")
+              for classname, name, detail in failed:
+                  summary.write(f"### {classname} > {name}\n```\n{detail[:3000]}\n```\n")
+          def escape_data(value):
+              return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          def escape_property(value):
+              return escape_data(value).replace(":", "%3A").replace(",", "%2C")
+          for classname, name, detail in failed[:10]:
+              first_line = detail.splitlines()[0] if detail else ""
+              title = escape_property(f"{classname.split('.')[-1]} > {name}")
+              print(f"::error title={title}::{escape_data(first_line[:900])}")
+          if not failed:
+              print("::error title=Backend build::No failed test reports found; compilation or bootWar failed")
+          PY
+
+      - name: Upload backend test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-reports-${{ github.sha }}
+          path: build/reports/tests/test
+          retention-days: 7
 
       - name: Upload backend artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
