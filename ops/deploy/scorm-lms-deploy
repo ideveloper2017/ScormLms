@@ -54,7 +54,7 @@ ensure_application_database() {
   active_profiles="$(read_app_env SPRING_PROFILES_ACTIVE)" || \
     fail "SPRING_PROFILES_ACTIVE is missing in $APP_ENV_FILE"
   case ",$active_profiles," in
-    *,postgresql-prod,*) ;;
+    *,postgresql-prod,*|*,postgres,*) ;;  # postgres — postgresql-prod taxallusi
     *) fail "SPRING_PROFILES_ACTIVE must include postgresql-prod" ;;
   esac
 

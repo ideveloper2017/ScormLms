@@ -12,16 +12,29 @@ class ActiveProfileGuardTest {
         requireKnownProfiles(listOf("postgresql-prod", "hemis-oauth"))
         requireKnownProfiles(listOf("postgresql-dev"))
         requireKnownProfiles(listOf("test"))
+        // spring.profiles.group: "postgres" postgresql-prod ni ham yoqadi
+        requireKnownProfiles(listOf("postgres", "postgresql-prod"))
     }
 
     @Test
     fun `unknown profile is rejected with a hint`() {
         val error = assertFailsWith<IllegalArgumentException> {
-            requireKnownProfiles(listOf("postgres"))
+            requireKnownProfiles(listOf("prod"))
         }
 
-        assertTrue(error.message.orEmpty().contains("\"postgres\""))
+        assertTrue(error.message.orEmpty().contains("\"prod\""))
         assertTrue(error.message.orEmpty().contains("SPRING_PROFILES_ACTIVE=postgresql-prod"))
+    }
+
+    @Test
+    fun `production settings must all be provided`() {
+        requireProductionSettings { "value" }
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            requireProductionSettings { key -> if (key == "app.jwt.secret") "value" else null }
+        }
+
+        assertTrue(error.message.orEmpty().contains("DB_PASSWORD, CORS_ALLOWED_ORIGINS"))
     }
 
     @Test

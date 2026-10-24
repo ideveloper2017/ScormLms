@@ -13,6 +13,9 @@ spring:
     name: SCORM-LMS
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:postgresql-dev}
+    # Mavjud serverlarda "postgres" profili berilgan; u postgresql-prod taxallusi.
+    group:
+      postgres: postgresql-prod
   main:
     allow-bean-definition-overriding: false
     lazy-initialization: true
