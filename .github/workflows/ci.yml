@@ -32,6 +32,12 @@ jobs:
           java-version: "21"
           cache: gradle
 
+      # bytedeco libopencv_highgui (yuz tanish uchun yuklanadi) GTK2 ga bog'langan; runner'da yo'q.
+      - name: Install OpenCV system libraries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libgtk2.0-0t64 || sudo apt-get install -y -qq libgtk2.0-0
+
       - name: Test and build ROOT.war
         run: ./gradlew test bootWar --no-daemon
 

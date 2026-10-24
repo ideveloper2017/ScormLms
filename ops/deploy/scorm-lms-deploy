@@ -211,6 +211,11 @@ ensure_face_models() {
     echo "$sha  $model_dir/$name" | sha256sum -c --status || fail "Face model $model_dir/$name has wrong SHA-256. Re-run ops/face-models/install-face-models.sh"
   done
   log "Face models verified in $model_dir"
+
+  # bytedeco libopencv_highgui.so GTK2 ga bog'langan; bo'lmasa yuz tanish native'lari yuklanmaydi
+  # ("no jniopencv_highgui in java.library.path").
+  ldconfig -p | grep -q 'libgtk-x11-2.0.so.0' || \
+    fail "GTK2 runtime (libgtk-x11-2.0.so.0) is missing; OpenCV face recognition cannot load. Install: apt-get install -y libgtk2.0-0t64 (older Ubuntu/Debian: libgtk2.0-0)"
 }
 
 readonly RELEASE_ID="$1"

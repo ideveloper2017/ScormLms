@@ -29,7 +29,7 @@ class PostgresFlywayMigrationTest {
             .load()
 
         val result = flyway.migrate()
-        assertEquals("71", result.targetSchemaVersion)
+        assertEquals(latestMigrationVersion, result.targetSchemaVersion)
         flyway.validate()
 
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
@@ -191,7 +191,7 @@ class PostgresFlywayMigrationTest {
             .baselineOnMigrate(false)
             .load()
 
-        assertEquals("71", afterUpgrade.migrate().targetSchemaVersion)
+        assertEquals(latestMigrationVersion, afterUpgrade.migrate().targetSchemaVersion)
         afterUpgrade.validate()
         assertTrue(courseColumns(schema).containsAll(setOf("expiry_period_type", "drip_content")))
     }

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import uz.scorm.lms.app.migration.latestMigrationVersion
 import javax.sql.DataSource
 
 @SpringBootTest
@@ -21,7 +22,7 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("71", flyway.info().current()?.version?.toString())
+        assertEquals(latestMigrationVersion, flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->
