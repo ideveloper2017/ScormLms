@@ -22,6 +22,21 @@ repositories {
     mavenCentral()
 }
 
+ext {
+    opencvVersion = '4.9.0-1.5.10'
+    openblasVersion = '0.3.26-1.5.10'
+    javacppVersion = '1.5.10'
+    // Production server platformasi; boshqa server uchun: -PopencvDeployPlatform=linux-arm64
+    opencvDeployPlatform = findProperty('opencvDeployPlatform') ?: 'linux-x86_64'
+    javacppHostPlatform = {
+        def os = System.getProperty('os.name').toLowerCase()
+        def arch = System.getProperty('os.arch').toLowerCase()
+        def osPart = os.contains('win') ? 'windows' : (os.contains('mac') ? 'macosx' : 'linux')
+        def archPart = arch in ['aarch64', 'arm64'] ? 'arm64' : 'x86_64'
+        "$osPart-$archPart"
+    }()
+}
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
@@ -71,8 +86,20 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.19.0'
     implementation 'org.apache.commons:commons-compress:1.28.0'
 
-    // Computer Vision (OpenCV - bytedeco with native binaries)
-    implementation 'org.bytedeco:opencv-platform:4.9.0-1.5.10'
+    // Computer Vision (OpenCV - bytedeco). opencv-platform barcha OS natives'ini
+    // (~450 MB) WAR'ga qo'shardi; WAR'ga faqat production server platformasi kiradi,
+    // lokal test va bootRun uchun esa joriy kompyuter natives'i alohida qo'shiladi.
+    implementation "org.bytedeco:opencv:$opencvVersion"
+    [opencvDeployPlatform, javacppHostPlatform].unique().eachWithIndex { platform, index ->
+        def configurationName = index == 0 ? 'runtimeOnly' : 'testRuntimeOnly'
+        def nativeLibraries = [
+            "org.bytedeco:opencv:$opencvVersion:$platform",
+            "org.bytedeco:openblas:$openblasVersion:$platform",
+            "org.bytedeco:javacpp:$javacppVersion:$platform",
+        ]
+        nativeLibraries.each { add(configurationName, it) }
+        if (index > 0) nativeLibraries.each { add('developmentOnly', it) }
+    }
     
     // Documentation
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'

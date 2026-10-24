@@ -1,3 +1,5 @@
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+# Hash bilan tekshiriladigan klassifikator datasetlari har qanday OS da bir xil baytlarda bo'lishi kerak
+src/main/resources/classifiers/** -text

@@ -156,6 +156,30 @@ ensure_application_database() {
   fi
 }
 
+# Tomcat to'xtatilishidan oldin: bo'sh yoki namuna secret bilan ilova ishga tushmaydi
+# (ProductionSecretsGuard), shuning uchun buni downtime'siz shu yerda aniqlaymiz.
+ensure_required_app_secrets() {
+  local key value
+  for key in JWT_SECRET CORS_ALLOWED_ORIGINS; do
+    value="$(read_app_env "$key")" || fail "$key is missing in $APP_ENV_FILE"
+    [[ -n "$value" ]] || fail "$key must not be empty in $APP_ENV_FILE"
+  done
+  # SURVEY_ANONYMIZATION_SECRET berilmasa ilova JWT_SECRET'dan foydalanadi.
+  for key in JWT_SECRET SURVEY_ANONYMIZATION_SECRET; do
+    value="$(read_app_env "$key")" || continue
+    [[ "${value,,}" != *change_me* && "${value,,}" != *dev-only* ]] || \
+      fail "$key in $APP_ENV_FILE still contains a placeholder value"
+    (( ${#value} >= 64 )) || fail "$key must be at least 64 bytes (openssl rand -base64 96)"
+  done
+  value="$(read_app_env DB_PASSWORD)"
+  [[ "${value,,}" != *change_me* ]] || fail "DB_PASSWORD in $APP_ENV_FILE still contains a placeholder value"
+  (( ${#value} >= 12 )) || fail "DB_PASSWORD must be at least 12 characters"
+  [[ "$(read_app_env CORS_ALLOWED_ORIGINS)" != *'*'* ]] || \
+    fail "CORS_ALLOWED_ORIGINS must list explicit origins, not a wildcard"
+  [[ "$(read_app_env APP_DEMO_DATA_ENABLED || printf 'false')" != "true" ]] || \
+    log "WARNING: APP_DEMO_DATA_ENABLED=true; demo users will be created in production"
+}
+
 ensure_tomcat_environment() {
   command -v systemctl >/dev/null || fail "systemctl is required to control $TOMCAT_SERVICE"
 
@@ -213,6 +237,7 @@ cd "$INCOMING_DIR"
 sha256sum -c checksums.sha256
 
 ensure_application_database
+ensure_required_app_secrets
 ensure_tomcat_environment
 ensure_face_models
 

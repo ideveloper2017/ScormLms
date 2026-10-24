@@ -49,7 +49,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/scorm_lms}
     username: ${DB_USERNAME:scorm_lms}
-    password: ${DB_PASSWORD:cbnAhdN3dkBiA8Z8}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       poolName: Hikari
@@ -110,12 +110,12 @@ management:
     java:
       enabled: true
 
-# Prod server'da o'chirish uchun: SWAGGER_ENABLED=false env variable qo'yilsin
+# Prodda Swagger default o'chiq; vaqtincha kerak bo'lsa SWAGGER_ENABLED=true qo'yilsin
 springdoc:
   api-docs:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
   swagger-ui:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
 
 app:
   cors:
