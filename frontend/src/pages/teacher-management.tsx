@@ -27,6 +27,8 @@ interface TeacherForm {
   departmentId: number | null;
   subjectIds: number[];
   active: boolean;
+  hemisEmployeeId: string;
+  hemisLogin: string;
   username: string;
   password: string;
 }
@@ -58,7 +60,7 @@ export function TeacherManagement() {
         canWrite={canWrite}
         getId={(t) => t.id}
         getName={(t) => t.fullName}
-        search={(t) => `${t.fullName} ${t.departmentName ?? ""} ${t.username ?? ""} ${t.position ?? ""}`}
+        search={(t) => `${t.fullName} ${t.departmentName ?? ""} ${t.username ?? ""} ${t.position ?? ""} ${t.hemisLogin ?? ""} ${t.hemisEmployeeId ?? ""}`}
         columns={[
           { header: "F.I.O", cell: (t) => <span className="font-medium">{t.fullName}</span> },
           {
@@ -81,6 +83,12 @@ export function TeacherManagement() {
               ? <span className="inline-flex items-center gap-1 text-sm"><KeyRound className="h-3 w-3" />{t.username}</span>
               : <span className="text-muted-foreground">—</span>,
           },
+          {
+            header: "HEMIS",
+            cell: (t) => t.hemisEmployeeId || t.hemisLogin
+              ? <Badge variant="outline" className="font-normal">{t.hemisLogin ?? `ID ${t.hemisEmployeeId}`}</Badge>
+              : <span className="text-muted-foreground">—</span>,
+          },
           { header: "Fanlar", cell: (t) => (t.subjects ?? []).length },
           {
             header: "Holat",
@@ -89,7 +97,7 @@ export function TeacherManagement() {
         ]}
         blankForm={() => ({
           fullName: "", phone: "", email: "", academicDegree: "", academicRank: "",
-          position: "", departmentId: null, subjectIds: [], active: true, username: "", password: "",
+          position: "", departmentId: null, subjectIds: [], active: true, hemisEmployeeId: "", hemisLogin: "", username: "", password: "",
         })}
         toForm={(t) => ({
           fullName: t.fullName,
@@ -101,6 +109,8 @@ export function TeacherManagement() {
           departmentId: t.departmentId ?? null,
           subjectIds: (t.subjects ?? []).map((s) => s.id),
           active: t.active,
+          hemisEmployeeId: t.hemisEmployeeId ?? "",
+          hemisLogin: t.hemisLogin ?? "",
           username: "",
           password: "",
         })}
@@ -121,6 +131,8 @@ export function TeacherManagement() {
           departmentId: f.departmentId,
           subjectIds: f.subjectIds,
           active: f.active,
+          hemisEmployeeId: f.hemisEmployeeId.trim() || null,
+          hemisLogin: f.hemisLogin.trim() || null,
           username: f.username.trim() || null,
           password: f.password.trim() || null,
         }).then(() => undefined)}
@@ -134,6 +146,8 @@ export function TeacherManagement() {
           departmentId: f.departmentId,
           subjectIds: f.subjectIds,
           active: f.active,
+          hemisEmployeeId: f.hemisEmployeeId.trim(),
+          hemisLogin: f.hemisLogin.trim(),
         }).then(() => undefined)}
         onDelete={(id) => deleteTeacher(id)}
         renderForm={(form, set, { isEdit }) => (
@@ -197,6 +211,23 @@ export function TeacherManagement() {
                   </div>
                 </ScrollArea>
               )}
+            </div>
+
+            <div className="rounded-md border border-dashed p-3">
+              <p className="mb-2 text-xs text-muted-foreground">
+                HEMIS orqali kirish — o'qituvchi HEMIS xodim logini bilan kiradi. HEMIS ID yoki loginidan
+                kamida bittasini kiriting; LMS logini bo'lmasa, birinchi kirishda avtomatik yaratiladi.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>HEMIS ID</Label>
+                  <Input value={form.hemisEmployeeId} onChange={(e) => set({ hemisEmployeeId: e.target.value })} placeholder="employee_id_number" autoComplete="off" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>HEMIS login</Label>
+                  <Input value={form.hemisLogin} onChange={(e) => set({ hemisLogin: e.target.value })} autoComplete="off" />
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">

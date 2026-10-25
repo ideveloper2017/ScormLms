@@ -8,7 +8,7 @@ import { Field, FieldGroup, FieldLabel, FieldSeparator } from '@/components/ui/f
 import { Eye, EyeOff, CheckCircle, Loader2, Droplets, GraduationCap, Mail, Lock, BookOpen, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { getHemisOAuthStartUrl } from '@/lib/api';
+import { HemisLoginPanel } from '@/components/auth/HemisLoginPanel';
 import { cn } from "@/lib/utils"
 
 interface LoginFormProps {
@@ -21,6 +21,8 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
     const [showPassword, setShowPassword] = useState(false);
     const [loginStep, setLoginStep] = useState<'credentials' | 'success'>('credentials');
+    // local — tizim logini, hemis — HEMIS login (talaba / o'qituvchi)
+    const [mode, setMode] = useState<'local' | 'hemis'>('local');
 
     const { login: authLogin, isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { toast } = useToast();
@@ -35,10 +37,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     const handleLoginSuccess = () => {
         setLoginStep('success');
         setTimeout(() => onSuccess(), 1500);
-    };
-
-    const handleHemisLogin = () => {
-        window.location.assign(getHemisOAuthStartUrl());
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -123,10 +121,32 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                 {/* ── O'ng panel: Login form ───────────────────────────── */}
                 <div className="flex items-center justify-center p-5 sm:p-8 lg:p-12">
                     <div className="w-full max-w-sm">
+                        <div className="flex justify-center pb-4">
+                            <img src="/logo.png" alt="LMS Logo" className="h-24 w-auto object-contain" />
+                        </div>
+
+                        <div role="tablist" aria-label="Kirish usuli" className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+                            {([['local', 'Tizim logini'], ['hemis', 'HEMIS']] as const).map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={mode === value}
+                                    onClick={() => setMode(value)}
+                                    className={cn(
+                                        'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                                        mode === value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {mode === 'hemis' ? (
+                            <HemisLoginPanel disabled={isAuthLoading} />
+                        ) : (
                         <form onSubmit={handleSubmit} className={cn("flex flex-col gap-5")}>
-                            <div className="flex justify-center pb-2">
-                                <img src="/logo.png" alt="LMS Logo" className="h-24 w-auto object-contain" />
-                            </div>
 
                             {errors.general && <div className="p-3 text-sm text-red-700 bg-red-100 rounded-md border border-red-200">{errors.general}</div>}
 
@@ -230,7 +250,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                                 type="button"
                                 variant="outline"
                                 className="w-full gap-2"
-                                onClick={handleHemisLogin}
+                                onClick={() => setMode('hemis')}
                                 disabled={isSubmitting || isAuthLoading}
                             >
                                 <GraduationCap className="h-4 w-4 text-blue-600" />
@@ -238,6 +258,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
                             </Button>
 
                         </form>
+                        )}
                     </div>
                 </div>
             </div>

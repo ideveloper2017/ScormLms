@@ -19,6 +19,8 @@ class TeacherMapper {
         active = teacher.active,
         departmentId = teacher.department?.id,
         departmentName = teacher.department?.name,
+        hemisEmployeeId = teacher.hemisEmployeeId,
+        hemisLogin = teacher.hemisLogin,
         userId = teacher.user?.id,
         username = teacher.user?.username,
         subjects = teacher.subjects.map { SubjectRef(id = it.id!!, name = it.name) },

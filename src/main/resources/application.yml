@@ -149,6 +149,13 @@ app:
       id-attribute: ${HEMIS_OAUTH_ID_ATTRIBUTE:id}
       username-attribute: ${HEMIS_OAUTH_USERNAME_ATTRIBUTE:login}
       login-code-ttl-seconds: ${HEMIS_OAUTH_LOGIN_CODE_TTL_SECONDS:60}
+    # O'qituvchilar: hemis-employee-oauth profili. Atributlar O'qituvchi kartasidagi HEMIS ID / login bilan solishtiriladi
+    employee-oauth:
+      id-attribute: ${HEMIS_EMPLOYEE_OAUTH_ID_ATTRIBUTE:employee_id_number}
+      login-attribute: ${HEMIS_EMPLOYEE_OAUTH_LOGIN_ATTRIBUTE:login}
+    # Talaba HEMIS login/paroli bilan login sahifasida kiradi (hemis.host + /auth/login)
+    password-login:
+      enabled: ${HEMIS_PASSWORD_LOGIN_ENABLED:true}
     sync:
       enabled: ${HEMIS_SYNC_ENABLED:false}
       async-enabled: ${HEMIS_SYNC_ASYNC_ENABLED:true}

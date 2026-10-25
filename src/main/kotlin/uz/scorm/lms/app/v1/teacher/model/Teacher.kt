@@ -42,6 +42,14 @@ class Teacher(
     @Column(nullable = false)
     var active: Boolean = true,
 
+    // HEMIS xodim identifikatori (OAuth javobidagi employee_id_number) — HEMIS orqali kirish uchun
+    @Column(name = "hemis_employee_id", length = 64)
+    var hemisEmployeeId: String? = null,
+
+    // HEMIS logini — identifikator bo'lmasa, shu bo'yicha bog'lanadi
+    @Column(name = "hemis_login", length = 150)
+    var hemisLogin: String? = null,
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "department_id")
     var department: Department? = null,

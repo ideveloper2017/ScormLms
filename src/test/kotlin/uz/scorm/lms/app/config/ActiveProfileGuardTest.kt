@@ -10,6 +10,7 @@ class ActiveProfileGuardTest {
     fun `supported profile combinations are accepted`() {
         requireKnownProfiles(listOf("postgresql-prod"))
         requireKnownProfiles(listOf("postgresql-prod", "hemis-oauth"))
+        requireKnownProfiles(listOf("postgresql-prod", "hemis-oauth", "hemis-employee-oauth"))
         requireKnownProfiles(listOf("postgresql-dev"))
         requireKnownProfiles(listOf("test"))
     }

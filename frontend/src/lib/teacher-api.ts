@@ -17,6 +17,9 @@ export interface TeacherRecord {
   active: boolean;
   departmentId?: number | null;
   departmentName?: string | null;
+  /** HEMIS xodim ID (employee_id_number) va login — HEMIS orqali kirish uchun */
+  hemisEmployeeId?: string | null;
+  hemisLogin?: string | null;
   userId?: number | null;
   username?: string | null;
   subjects: SubjectRef[];
@@ -43,6 +46,8 @@ export interface TeacherCreateRequest {
   active?: boolean;
   departmentId?: number | null;
   subjectIds?: number[];
+  hemisEmployeeId?: string | null;
+  hemisLogin?: string | null;
   // Ixtiyoriy login akkaunti
   username?: string | null;
   password?: string | null;
@@ -58,6 +63,9 @@ export interface TeacherUpdateRequest {
   active?: boolean;
   departmentId?: number | null;
   subjectIds?: number[];
+  // Bo'sh satr — HEMIS bog'lanishini olib tashlaydi
+  hemisEmployeeId?: string | null;
+  hemisLogin?: string | null;
 }
 
 export async function listTeachers(departmentId?: number): Promise<TeacherRecord[]> {

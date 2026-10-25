@@ -16,13 +16,18 @@ class HemisOAuthAccountService(
     @Value("\${app.hemis.oauth.username-attribute:login}") private val usernameAttribute: String,
 ) {
     @Transactional(readOnly = true)
-    fun resolveActiveUser(principal: OAuth2User): User {
-        val hemisId = principal.attributes[idAttribute]?.toString()?.trim()?.toLongOrNull()
-        val studentNumber = principal.attributes[usernameAttribute]?.toString()?.trim()
-            ?.takeIf(String::isNotBlank)
+    fun resolveActiveUser(principal: OAuth2User): User = resolveStudent(
+        hemisId = principal.attributes[idAttribute]?.toString()?.trim()?.toLongOrNull(),
+        studentNumber = principal.attributes[usernameAttribute]?.toString(),
+    )
+
+    /** HEMIS talaba identifikatori (id) va talaba raqami (student_id_number / login) bo'yicha LMS akkaunti. */
+    @Transactional(readOnly = true)
+    fun resolveStudent(hemisId: Long?, studentNumber: String?): User {
+        val number = studentNumber?.trim()?.takeIf(String::isNotBlank)
 
         val byHemisId = hemisId?.let(studentRepository::findByHemisId)
-        val byStudentNumber = studentNumber?.let(studentRepository::findByStudentNumber)
+        val byStudentNumber = number?.let(studentRepository::findByStudentNumber)
 
         if (byHemisId != null && byStudentNumber != null && byHemisId.id != byStudentNumber.id) {
             throw IllegalStateException("HEMIS_ACCOUNT_CONFLICT")

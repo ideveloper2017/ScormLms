@@ -1,0 +1,22 @@
+# HEMIS xodimlar (o'qituvchilar) OAuth2 kirishi: SPRING_PROFILES_ACTIVE=...,hemis-employee-oauth
+# Odatda universitet HEMIS admin paneli: https://hemis.<univ>.uz/oauth/authorize, /oauth/access-token, /oauth/api/user
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          hemis-employee:
+            provider: hemis-employee
+            client-id: ${HEMIS_EMPLOYEE_OAUTH_CLIENT_ID}
+            client-secret: ${HEMIS_EMPLOYEE_OAUTH_CLIENT_SECRET}
+            client-authentication-method: ${HEMIS_EMPLOYEE_OAUTH_CLIENT_AUTH_METHOD:client_secret_post}
+            authorization-grant-type: authorization_code
+            redirect-uri: ${HEMIS_EMPLOYEE_OAUTH_REDIRECT_URI}
+            scope: ${HEMIS_EMPLOYEE_OAUTH_SCOPES:profile}
+            client-name: HEMIS (xodimlar)
+        provider:
+          hemis-employee:
+            authorization-uri: ${HEMIS_EMPLOYEE_OAUTH_AUTHORIZATION_URI}
+            token-uri: ${HEMIS_EMPLOYEE_OAUTH_TOKEN_URI}
+            user-info-uri: ${HEMIS_EMPLOYEE_OAUTH_USER_INFO_URI}
+            user-name-attribute: ${HEMIS_EMPLOYEE_OAUTH_NAME_ATTRIBUTE:id}

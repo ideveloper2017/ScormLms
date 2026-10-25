@@ -109,6 +109,8 @@ class SecurityConfig(
                     "/api/v1/auth/refresh-token",
                     "/api/v1/auth/logout",
                     "/api/v1/auth/hemis/exchange",
+                    "/api/v1/auth/hemis/login",
+                    "/api/v1/auth/hemis/options",
                     "/auth/email/**",
                     "/ws/**"       // WebSocket handshake — JWT STOMP da tekshiriladi
                 ).permitAll()
