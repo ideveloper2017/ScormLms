@@ -66,7 +66,8 @@ class TeacherService(
         request.academicRank?.let { teacher.academicRank = it }
         request.position?.let { teacher.position = it }
         request.active?.let { teacher.active = it }
-        request.departmentId?.let { teacher.department = departmentService.getEntity(it) }
+        // O'qituvchi istalgan kafedraga (shu jumladan umumiy kafedraga) bog'lanadi; null — bog'lanishni olib tashlaydi
+        teacher.department = request.departmentId?.let { departmentService.getEntity(it) }
         request.subjectIds?.let { ids ->
             teacher.subjects = ids.map { subjectService.getEntity(it) }.toMutableSet()
         }

@@ -7,13 +7,12 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { CrudSection, useCrudData } from "@/components/admin/crud-section";
+import { DepartmentSelect } from "@/components/admin/department-select";
+import { COMMON_DEPARTMENT_LABEL } from "@/lib/departments";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
-import { DepartmentRecord, SubjectRecord, listDepartments, listSubjects } from "@/lib/academic-api";
+import { listDepartments, listSubjects } from "@/lib/academic-api";
 import {
   TeacherRecord, createTeacher, deleteTeacher, listTeachers, updateTeacher,
 } from "@/lib/teacher-api";
@@ -39,6 +38,8 @@ export function TeacherManagement() {
   const { data: departments = [] } = useQuery({ queryKey: qk.departments(), queryFn: () => listDepartments(), staleTime: 60_000 });
   const { data: subjects = [] } = useQuery({ queryKey: qk.subjects(), queryFn: () => listSubjects(), staleTime: 60_000 });
 
+  const departmentFaculty = new Map(departments.map((d) => [d.id, d.facultyName ?? COMMON_DEPARTMENT_LABEL]));
+
   const toggleSubject = (form: TeacherForm, id: number): number[] =>
     form.subjectIds.includes(id)
       ? form.subjectIds.filter((s) => s !== id)
@@ -60,7 +61,19 @@ export function TeacherManagement() {
         search={(t) => `${t.fullName} ${t.departmentName ?? ""} ${t.username ?? ""} ${t.position ?? ""}`}
         columns={[
           { header: "F.I.O", cell: (t) => <span className="font-medium">{t.fullName}</span> },
-          { header: "Kafedra", cell: (t) => t.departmentName ?? "—" },
+          {
+            header: "Kafedra",
+            cell: (t) => t.departmentName
+              ? (
+                <div>
+                  <div>{t.departmentName}</div>
+                  {t.departmentId != null && departmentFaculty.has(t.departmentId) && (
+                    <div className="text-xs text-muted-foreground">{departmentFaculty.get(t.departmentId)}</div>
+                  )}
+                </div>
+              )
+              : "—",
+          },
           { header: "Lavozim", cell: (t) => t.position ?? "—" },
           {
             header: "Login",
@@ -156,18 +169,12 @@ export function TeacherManagement() {
               </div>
               <div className="space-y-1.5">
                 <Label>Kafedra</Label>
-                <Select
-                  value={form.departmentId != null ? String(form.departmentId) : "none"}
-                  onValueChange={(v) => set({ departmentId: v === "none" ? null : Number(v) })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Tanlang" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Tanlanmagan —</SelectItem>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DepartmentSelect
+                  departments={departments}
+                  value={form.departmentId}
+                  onChange={(departmentId) => set({ departmentId })}
+                />
+                <p className="text-xs text-muted-foreground">Istalgan fakultet yoki umumiy kafedrani tanlash mumkin</p>
               </div>
             </div>
 

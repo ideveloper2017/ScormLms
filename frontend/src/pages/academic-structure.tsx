@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CrudSection, useCrudData } from "@/components/admin/crud-section";
+import { DepartmentFacultyCell, DepartmentSelect } from "@/components/admin/department-select";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
 import {
@@ -106,11 +107,11 @@ export function AcademicStructure({ defaultTab = "faculties" }: { defaultTab?: s
             canWrite={canWrite}
             getId={(d) => d.id}
             getName={(d) => d.name}
-            search={(d) => `${d.name} ${d.code ?? ""} ${d.facultyName ?? ""}`}
+            search={(d) => `${d.name} ${d.code ?? ""} ${d.facultyName ?? "umumiy"}`}
             columns={[
               { header: "Nomi", cell: (d) => <span className="font-medium">{d.name}</span> },
               { header: "Kodi", cell: (d) => d.code ?? "—" },
-              { header: "Fakultet", cell: (d) => d.facultyName ?? "—" },
+              { header: "Fakultet", cell: (d) => <DepartmentFacultyCell department={d} /> },
               { header: "Holat", cell: (d) => <ActiveBadge active={d.active} /> },
             ]}
             blankForm={() => ({ name: "", code: "", facultyId: null, active: true })}
@@ -137,7 +138,7 @@ export function AcademicStructure({ defaultTab = "faculties" }: { defaultTab?: s
                   >
                     <SelectTrigger><SelectValue placeholder="Tanlang" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">— Tanlanmagan —</SelectItem>
+                      <SelectItem value="none">— Umumiy kafedra (fakultetga bog'lanmagan) —</SelectItem>
                       {faculties.items.map((f) => (
                         <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
                       ))}
@@ -204,18 +205,11 @@ export function AcademicStructure({ defaultTab = "faculties" }: { defaultTab?: s
                 </div>
                 <div className="space-y-1.5">
                   <Label>Kafedra</Label>
-                  <Select
-                    value={form.departmentId != null ? String(form.departmentId) : "none"}
-                    onValueChange={(v) => set({ departmentId: v === "none" ? null : Number(v) })}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Tanlang" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— Tanlanmagan —</SelectItem>
-                      {departments.items.map((d) => (
-                        <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <DepartmentSelect
+                    departments={departments.items}
+                    value={form.departmentId}
+                    onChange={(departmentId) => set({ departmentId })}
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch checked={form.active} onCheckedChange={(v) => set({ active: v })} />
