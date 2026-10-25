@@ -48,6 +48,8 @@ export interface CrudSectionProps<T, FormT> {
   allowDelete?: boolean;
   canEditItem?: (item: T) => boolean;
   canDeleteItem?: (item: T) => boolean;
+  /** Forma dialogi uchun qo'shimcha klass (masalan, kengroq dialog: "max-w-4xl"). */
+  dialogClassName?: string;
 }
 
 export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
@@ -56,7 +58,7 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
     getId, getName, blankForm, toForm, validate, renderForm,
     onCreate, onUpdate, onDelete, canWrite, searchPlaceholder,
     allowCreate = true, allowDelete = true,
-    canEditItem = () => true, canDeleteItem = () => true,
+    canEditItem = () => true, canDeleteItem = () => true, dialogClassName,
   } = props;
 
   const { toast } = useToast();
@@ -216,7 +218,7 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
 
       {/* Create / Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className={dialogClassName ?? "max-w-lg"}>
           <DialogHeader>
             <DialogTitle>
               {editTarget ? `${getName(editTarget)} — tahrirlash` : `Yangi ${title.toLowerCase()}`}

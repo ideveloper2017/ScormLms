@@ -5,7 +5,11 @@ import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.subject.service.SubjectService
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusDto
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusRequest
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicDto
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
+import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
+import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType
 import uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRepository
 
 @Service
@@ -27,11 +31,13 @@ class SubjectSyllabusService(
         require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(request.subjectId, request.language, normalized.name)) {
             "Ushbu fan, til va nom uchun o'quv dasturi mavjud"
         }
-        return dto(syllabi.save(SubjectSyllabus(
+        val value = SubjectSyllabus(
             subject = subjects.getEntity(request.subjectId), name = normalized.name, language = request.language,
             shortDescription = normalized.shortDescription, requirements = normalized.requirements,
             fullDescription = normalized.fullDescription, active = request.active,
-        )))
+        )
+        request.topics?.let { replaceTopics(value, it) }
+        return dto(syllabi.save(value))
     }
 
     @Transactional
@@ -52,7 +58,8 @@ class SubjectSyllabusService(
         value.requirements = normalized.requirements
         value.fullDescription = normalized.fullDescription
         value.active = request.active
-        return dto(syllabi.save(value))
+        request.topics?.let { replaceTopics(value, it) }
+        return dto(syllabi.saveAndFlush(value))
     }
 
     @Transactional
@@ -102,6 +109,23 @@ class SubjectSyllabusService(
         return dto(syllabi.save(value))
     }
 
+    private fun replaceTopics(value: SubjectSyllabus, requests: List<SyllabusTopicRequest>) {
+        require(requests.size <= MAX_TOPICS) { "Mavzular soni $MAX_TOPICS tadan oshmasligi kerak" }
+        val topics = requests.groupBy { it.type }.flatMap { (type, items) ->
+            items.mapIndexed { index, item ->
+                val title = item.title.trim()
+                require(title.length in 2..500) { "Mavzu nomi 2-500 belgi bo'lishi kerak" }
+                require(item.hours in 1..MAX_TOPIC_HOURS) { "\"$title\" mavzusi soati 1-$MAX_TOPIC_HOURS oralig'ida bo'lishi kerak" }
+                SubjectSyllabusTopic(
+                    syllabus = value, type = type, sortOrder = index + 1, title = title,
+                    description = item.description?.trim()?.takeIf(String::isNotEmpty), hours = item.hours,
+                )
+            }
+        }
+        value.topics.clear()
+        value.topics.addAll(topics)
+    }
+
     private fun lock(id: Long) = syllabi.lockById(id) ?: throw NoSuchElementException("O'quv dasturi topilmadi: $id")
 
     private fun requireEntity(id: Long) = syllabi.findByIdAndDeletedFalse(id)
@@ -114,12 +138,25 @@ class SubjectSyllabusService(
         fullDescription = value.fullDescription.trim().also { require(it.length >= 3) { "To'liq ta'rif majburiy" } },
     )
 
-    private fun dto(value: SubjectSyllabus) = SubjectSyllabusDto(
-        id = requireNotNull(value.id), subjectId = requireNotNull(value.subject.id), subjectCode = value.subject.code,
-        subjectName = value.subject.name, name = value.name, language = value.language,
-        shortDescription = value.shortDescription, requirements = value.requirements,
-        fullDescription = value.fullDescription, active = value.active,
-        createdAt = value.createdAt, updatedAt = value.updatedAt,
-        status = value.status, revisionNumber = value.revisionNumber,
-    )
+    private fun dto(value: SubjectSyllabus): SubjectSyllabusDto {
+        val topics = value.topics.sortedWith(compareBy({ it.type }, { it.sortOrder })).map {
+            SyllabusTopicDto(it.id, it.type, it.sortOrder, it.title, it.description, it.hours)
+        }
+        return SubjectSyllabusDto(
+            id = requireNotNull(value.id), subjectId = requireNotNull(value.subject.id), subjectCode = value.subject.code,
+            subjectName = value.subject.name, name = value.name, language = value.language,
+            shortDescription = value.shortDescription, requirements = value.requirements,
+            fullDescription = value.fullDescription, active = value.active,
+            createdAt = value.createdAt, updatedAt = value.updatedAt,
+            status = value.status, revisionNumber = value.revisionNumber,
+            topics = topics,
+            theoreticalHours = topics.filter { it.type == SyllabusTopicType.THEORETICAL }.sumOf { it.hours },
+            practicalHours = topics.filter { it.type == SyllabusTopicType.PRACTICAL }.sumOf { it.hours },
+        )
+    }
+
+    private companion object {
+        const val MAX_TOPICS = 300
+        const val MAX_TOPIC_HOURS = 200
+    }
 }

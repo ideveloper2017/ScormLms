@@ -1,16 +1,23 @@
 import api from "@/lib/api";
 
 export type SyllabusLanguage = "UZ" | "EN" | "RU" | "KAA" | "UZ_CYRILLIC";
+/** THEORETICAL — nazariy (ma'ruza), PRACTICAL — amaliy mashg'ulot. */
+export type SyllabusTopicType = "THEORETICAL" | "PRACTICAL";
+export const syllabusTopicTypes: Record<SyllabusTopicType, string> = { THEORETICAL: "Nazariy mashg'ulotlar", PRACTICAL: "Amaliy mashg'ulotlar" };
+export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours: number }
+export interface SyllabusTopicInput { type: SyllabusTopicType; title: string; description?: string | null; hours: number }
 export interface SubjectSyllabus {
   id: number; subjectId: number; subjectCode?: string | null; subjectName: string;
   name: string; language: SyllabusLanguage; shortDescription: string;
   requirements?: string | null; fullDescription: string; active: boolean;
   status: "DRAFT" | "IN_REVIEW" | "APPROVED"; revisionNumber: number;
+  topics?: SyllabusTopic[]; theoreticalHours?: number; practicalHours?: number;
 }
 export interface SyllabusRevision { revisionNumber: number; content: SubjectSyllabus; approvedByName: string; approvedAt: string }
 export interface SubjectSyllabusInput {
   subjectId: number; name: string; language: SyllabusLanguage;
   shortDescription: string; requirements?: string | null; fullDescription: string; active: boolean;
+  topics?: SyllabusTopicInput[];
 }
 export const syllabusApi = {
   history: async (id: number) => (await api.get<SyllabusRevision[]>(`/syllabi/${id}/history`)).data,

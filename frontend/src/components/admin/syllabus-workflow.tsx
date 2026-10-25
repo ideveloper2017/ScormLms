@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { syllabusApi, type SubjectSyllabus } from "@/services/api/syllabus-api";
 import { extractApiError } from "@/lib/academic-api";
+import { SyllabusTopicsView } from "@/components/admin/syllabus-topics";
 
 export const syllabusStatuses = { DRAFT: "Qoralama", IN_REVIEW: "Tekshiruvda", APPROVED: "Tasdiqlangan" };
 function Content({ item }: { item: SubjectSyllabus }) {
-  return <div className="space-y-3 text-sm"><p>{item.subjectName} · {item.language}</p><p className="whitespace-pre-wrap">{item.shortDescription}</p>{item.requirements && <div><b>Talablar</b><p className="whitespace-pre-wrap">{item.requirements}</p></div>}<div><b>To‘liq mazmun</b><p className="whitespace-pre-wrap">{item.fullDescription}</p></div></div>;
+  return <div className="space-y-3 text-sm"><p>{item.subjectName} · {item.language}</p><p className="whitespace-pre-wrap">{item.shortDescription}</p>{item.requirements && <div><b>Talablar</b><p className="whitespace-pre-wrap">{item.requirements}</p></div>}<div><b>To‘liq mazmun</b><p className="whitespace-pre-wrap">{item.fullDescription}</p></div><div className="space-y-2"><b>Mavzular</b><SyllabusTopicsView topics={item.topics} /></div></div>;
 }
 export function SyllabusWorkflow({ item, canWrite, reload, close }: { item: SubjectSyllabus; canWrite: boolean; reload: () => void; close: () => void }) {
   const history = useQuery({ queryKey: ["syllabus-history", item.id], queryFn: () => syllabusApi.history(item.id) });
