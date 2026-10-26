@@ -75,12 +75,12 @@ import {
   type CurriculumVersion,
   type SaveCurriculumVersionInput,
 } from "@/services/api/curriculum-api";
-import { AdminSubjectGroups } from "@/pages/admin/subject-groups";
 import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 
 const EMPTY = "__empty__";
 
-const VALID_TABS = ["details", "subjects", "groups", "students", "approval"] as const;
+// Fan oqimlari o'quv reja sahifasidan olib tashlangan — ular alohida "Fan oqimlari" sahifasida boshqariladi
+const VALID_TABS = ["details", "subjects", "students", "approval"] as const;
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
@@ -449,10 +449,9 @@ export function AdminStudyPlanEditor() {
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-5">
           {!creating && (
-            <TabsList className="mx-auto grid h-auto w-full max-w-3xl grid-cols-5">
+            <TabsList className="mx-auto grid h-auto w-full max-w-2xl grid-cols-4">
               <TabsTrigger value="details">Ma'lumotlar</TabsTrigger>
               <TabsTrigger value="subjects">Fanlar ({item?.subjectCount ?? 0})</TabsTrigger>
-              <TabsTrigger value="groups">Fan oqimlari</TabsTrigger>
               <TabsTrigger value="students">Talabalar</TabsTrigger>
               <TabsTrigger value="approval">Tasdiqlash</TabsTrigger>
             </TabsList>
@@ -862,12 +861,6 @@ export function AdminStudyPlanEditor() {
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          )}
-
-          {!creating && item && (
-            <TabsContent value="groups">
-              <AdminSubjectGroups lockedCurriculumId={item.id} />
             </TabsContent>
           )}
 

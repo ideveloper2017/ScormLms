@@ -42,7 +42,16 @@ class CourseService(
         toDto(accessService.requireRead(courseId, userId, mayManageAll))
 
     @Transactional
-    fun create(request: CourseCreateRequest, ownerUserId: Long, enforceTeachingScope: Boolean = false): CourseDto {
+    /**
+     * allowDraftSyllabus — faqat "Fan dasturi va kurs" oynasi uchun: dastur va kurs birga yaratilganda
+     * kurs hali tasdiqlanmagan (qoralama) dasturga bog'lanadi.
+     */
+    fun create(
+        request: CourseCreateRequest,
+        ownerUserId: Long,
+        enforceTeachingScope: Boolean = false,
+        allowDraftSyllabus: Boolean = false,
+    ): CourseDto {
         validate(request.title, request.startDate, request.endDate)
         val teacher = teacherRepository.findByUserId(ownerUserId)
         require(!enforceTeachingScope || teacher != null) {
@@ -66,7 +75,7 @@ class CourseService(
                 "O'qituvchiga ushbu fan biriktirilmagan"
             }
         }
-        val syllabus = request.syllabusId?.let { requireSyllabusFor(it, subject?.id) }
+        val syllabus = request.syllabusId?.let { requireSyllabusFor(it, subject?.id, allowDraftSyllabus) }
         val curriculum = curriculumItem?.curriculumVersion
         val shortDescription = request.shortDescription.clean() ?: request.description.clean() ?: syllabus?.shortDescription.clean()
         val course = Course(
@@ -106,10 +115,10 @@ class CourseService(
     }
 
     /** Kurs faqat shu fanning tasdiqlangan va faol dasturi asosida yaratiladi. */
-    private fun requireSyllabusFor(syllabusId: Long, subjectId: Long?): SubjectSyllabus {
+    private fun requireSyllabusFor(syllabusId: Long, subjectId: Long?, allowDraft: Boolean): SubjectSyllabus {
         val syllabus = syllabusRepository.findByIdAndDeletedFalse(syllabusId)
             ?: throw NoSuchElementException("O'quv dasturi topilmadi: $syllabusId")
-        require(syllabus.status == "APPROVED" && syllabus.active) {
+        require((syllabus.status == "APPROVED" || allowDraft) && syllabus.active) {
             "Kurs faqat tasdiqlangan va faol o'quv dasturi asosida yaratiladi"
         }
         require(subjectId != null && syllabus.subject.id == subjectId) { "Tanlangan o'quv dasturi kurs faniga mos emas" }

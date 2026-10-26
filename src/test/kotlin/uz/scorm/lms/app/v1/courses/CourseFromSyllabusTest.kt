@@ -75,6 +75,10 @@ class CourseFromSyllabusTest {
         assertThrows<IllegalArgumentException> {
             service.create(CourseCreateRequest(title = "Kurs", subjectId = 8, syllabusId = 31), ownerUserId = 1)
         }
+        // "Fan dasturi va kurs" oynasi: qoralama dasturga faqat aniq ruxsat bilan bog'lanadi
+        assertEquals(31, service.create(CourseCreateRequest(title = "Kurs", subjectId = 8, syllabusId = 31), ownerUserId = 1,
+            allowDraftSyllabus = true).syllabusId)
+        io.mockk.clearMocks(courses, answers = false)
 
         val other = Subject(name = "Fizika", code = "FIZ").apply { id = 9 }
         every { subjects.findById(9) } returns Optional.of(other)

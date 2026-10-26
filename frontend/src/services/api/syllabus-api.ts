@@ -21,6 +21,11 @@ export interface SubjectSyllabusInput {
   shortDescription: string; requirements?: string | null; fullDescription: string; active: boolean;
   topics?: SyllabusTopicInput[];
 }
+export interface SyllabusWithCourseInput {
+  syllabus: SubjectSyllabusInput;
+  /** null — faqat dastur yaratiladi */
+  course: { title: string; shortDescription?: string | null; level?: string; language?: string } | null;
+}
 export const syllabusApi = {
   history: async (id: number) => (await api.get<SyllabusRevision[]>(`/syllabi/${id}/history`)).data,
   workflow: async (id: number, action: "SUBMIT" | "RETURN" | "APPROVE" | "NEW_VERSION") => (await api.post<SubjectSyllabus>(`/syllabi/${id}/workflow`, { action })).data,
@@ -28,6 +33,9 @@ export const syllabusApi = {
   create: async (input: SubjectSyllabusInput) => (await api.post<SubjectSyllabus>("/syllabi", input)).data,
   update: async (id: number, input: SubjectSyllabusInput) => (await api.put<SubjectSyllabus>(`/syllabi/${id}`, input)).data,
   delete: async (id: number) => { await api.delete(`/syllabi/${id}`); },
+  /** "Fan dasturi va kurs": dastur, mavzular va (ixtiyoriy) shu dastur asosidagi kurs birga yaratiladi */
+  createWithCourse: async (input: SyllabusWithCourseInput) =>
+    (await api.post<{ success: boolean; data: { syllabus: SubjectSyllabus; course?: { id: number | string; title: string } | null } }>("/syllabus-courses", input)).data.data,
   /** Mavzular dastur yaratilgandan keyin alohida saqlanadi (ro'yxat to'liq almashtiriladi, faqat qoralamada). */
   updateTopics: async (id: number, topics: SyllabusTopicInput[]) => (await api.put<SubjectSyllabus>(`/syllabi/${id}/topics`, topics)).data,
 };

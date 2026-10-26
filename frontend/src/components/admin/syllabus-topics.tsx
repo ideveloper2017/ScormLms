@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { extractApiError } from "@/lib/academic-api";
+import { validateTopics } from "@/lib/syllabus";
 import {
   syllabusApi, syllabusTopicTypes,
   type SubjectSyllabus, type SyllabusTopic, type SyllabusTopicInput, type SyllabusTopicType,
@@ -16,12 +17,6 @@ import {
 
 const TYPES: SyllabusTopicType[] = ["THEORETICAL", "PRACTICAL"];
 
-const validateTopics = (topics: SyllabusTopicInput[]) => {
-  const empty = topics.find((t) => t.title.trim().length < 2);
-  if (empty) return `${empty.type === "THEORETICAL" ? "Nazariy" : "Amaliy"} mavzu nomi kiritilmagan`;
-  const bad = topics.find((t) => !Number.isInteger(Number(t.hours)) || Number(t.hours) < 1 || Number(t.hours) > 200);
-  return bad ? `"${bad.title.trim()}" mavzusi soati 1–200 oralig'ida bo'lishi kerak` : null;
-};
 
 /**
  * O'quv dasturi mavzularini alohida boshqarish (dastur yaratilgandan keyin).
