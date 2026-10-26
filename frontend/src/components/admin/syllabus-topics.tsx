@@ -1,14 +1,84 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp, ListPlus, Plus, Trash2 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { ArrowDown, ArrowUp, ListPlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { syllabusTopicTypes, type SyllabusTopic, type SyllabusTopicInput, type SyllabusTopicType } from "@/services/api/syllabus-api";
+import { extractApiError } from "@/lib/academic-api";
+import {
+  syllabusApi, syllabusTopicTypes,
+  type SubjectSyllabus, type SyllabusTopic, type SyllabusTopicInput, type SyllabusTopicType,
+} from "@/services/api/syllabus-api";
 
 const TYPES: SyllabusTopicType[] = ["THEORETICAL", "PRACTICAL"];
+
+const validateTopics = (topics: SyllabusTopicInput[]) => {
+  const empty = topics.find((t) => t.title.trim().length < 2);
+  if (empty) return `${empty.type === "THEORETICAL" ? "Nazariy" : "Amaliy"} mavzu nomi kiritilmagan`;
+  const bad = topics.find((t) => !Number.isInteger(Number(t.hours)) || Number(t.hours) < 1 || Number(t.hours) > 200);
+  return bad ? `"${bad.title.trim()}" mavzusi soati 1–200 oralig'ida bo'lishi kerak` : null;
+};
+
+/**
+ * O'quv dasturi mavzularini alohida boshqarish (dastur yaratilgandan keyin).
+ * Faqat qoralama dasturda tahrirlanadi; aks holda ko'rish rejimida ochiladi.
+ */
+export function SyllabusTopicsDialog({ item, canWrite, onClose, onSaved }: {
+  item: SubjectSyllabus;
+  canWrite: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const editable = canWrite && item.status === "DRAFT";
+  const [topics, setTopics] = useState<SyllabusTopicInput[]>(
+    (item.topics ?? []).map((t) => ({ type: t.type, title: t.title, description: t.description ?? "", hours: t.hours })),
+  );
+  const [error, setError] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: () => syllabusApi.updateTopics(item.id, topics.map((t) => ({
+      type: t.type, title: t.title.trim(), description: t.description?.trim() || null, hours: Number(t.hours),
+    }))),
+    onSuccess: () => { onSaved(); onClose(); },
+    onError: (e) => setError(extractApiError(e, "Mavzular saqlanmadi").message),
+  });
+  const submit = () => {
+    const problem = validateTopics(topics);
+    setError(problem);
+    if (!problem) save.mutate();
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open && !save.isPending) onClose(); }}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Mavzular — {item.name}</DialogTitle>
+          <DialogDescription>
+            {item.subjectCode ? `${item.subjectCode} · ` : ""}{item.subjectName}.{" "}
+            {editable
+              ? "Nazariy va amaliy mashg'ulot mavzulari hamda soatlarini kiriting. Mavzular mazmuni (darslar, materiallar) kurs modulida to'ldiriladi."
+              : "Mavzular faqat qoralama dasturda tahrirlanadi — tahrirlash uchun yangi versiya oching."}
+          </DialogDescription>
+        </DialogHeader>
+        {editable
+          ? <SyllabusTopicsEditor value={topics} onChange={(value) => { setTopics(value); setError(null); }} />
+          : <SyllabusTopicsView topics={item.topics} />}
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={save.isPending}>{editable ? "Bekor qilish" : "Yopish"}</Button>
+          {editable && (
+            <Button onClick={submit} disabled={save.isPending}>
+              {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Mavzularni saqlash
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const sumHours = (topics: Pick<SyllabusTopicInput, "hours">[]) => topics.reduce((total, t) => total + (Number(t.hours) || 0), 0);
 

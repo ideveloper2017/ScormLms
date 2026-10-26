@@ -66,6 +66,26 @@ class SubjectSyllabusServiceTest {
     }
 
     @Test
+    fun `mavzular dastur yaratilgandan keyin alohida saqlanadi va faqat qoralamada`() {
+        val subject = Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }
+        val syllabus = SubjectSyllabus(subject, "Fan dasturi", SyllabusLanguage.UZ, "Qisqa", null, "To'liq").apply { id = 40 }
+        every { repository.lockById(40) } returns syllabus
+        every { repository.saveAndFlush(any<SubjectSyllabus>()) } answers { firstArg() }
+
+        val result = service.updateTopics(40, listOf(
+            SyllabusTopicRequest(PRACTICAL, "Laboratoriya", hours = 4),
+            SyllabusTopicRequest(THEORETICAL, "Kirish", hours = 2),
+        ))
+
+        assertEquals(listOf("Kirish", "Laboratoriya"), result.topics.map { it.title })
+        assertEquals(2, result.theoreticalHours)
+        assertEquals(4, result.practicalHours)
+
+        syllabus.status = "APPROVED"
+        assertThrows<IllegalArgumentException> { service.updateTopics(40, emptyList()) }
+    }
+
+    @Test
     fun `soati notogri mavzu rad etiladi`() {
         val subject = Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }
         every { repository.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(8, SyllabusLanguage.UZ, "Fan dasturi") } returns false
