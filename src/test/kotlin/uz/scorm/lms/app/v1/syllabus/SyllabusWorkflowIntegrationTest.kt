@@ -9,6 +9,8 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.syllabus.service.SubjectSyllabusService
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusRequest
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
+import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
@@ -38,13 +40,20 @@ class SyllabusWorkflowIntegrationTest {
         assertThrows<IllegalArgumentException> { service.update(created.id, input) }
         assertThrows<IllegalArgumentException> { service.delete(created.id) }
         assertEquals(2, service.transition(created.id, "NEW_VERSION", actor).revisionNumber)
-        service.update(created.id, input.copy(fullDescription = "Ikkinchi to‘liq mazmun"))
+        val revised = service.update(created.id, input.copy(fullDescription = "Ikkinchi to‘liq mazmun", topics = listOf(
+            SyllabusTopicRequest(SyllabusTopicType.THEORETICAL, "Kirish ma'ruzasi", hours = 2),
+            SyllabusTopicRequest(SyllabusTopicType.PRACTICAL, "Laboratoriya ishi", hours = 4),
+        )))
+        assertEquals(2, revised.theoreticalHours)
+        assertEquals(4, revised.practicalHours)
         val first = service.history(created.id).single()
         assertEquals("Birinchi to‘liq mazmun", first.content.fullDescription)
+        assertTrue(first.content.topics.isEmpty())
         assertEquals("Metodist", first.approvedByName)
         service.transition(created.id, "SUBMIT", actor)
         service.transition(created.id, "APPROVE", actor)
         assertEquals(listOf(2, 1), service.history(created.id).map { it.revisionNumber })
         assertEquals("Ikkinchi to‘liq mazmun", service.history(created.id).first().content.fullDescription)
+        assertEquals(listOf("Kirish ma'ruzasi", "Laboratoriya ishi"), service.history(created.id).first().content.topics.map { it.title })
     }
 }

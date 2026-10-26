@@ -18,6 +18,8 @@ data class TeacherDto(
     val active: Boolean = true,
     val departmentId: Long? = null,
     val departmentName: String? = null,
+    val hemisEmployeeId: String? = null,
+    val hemisLogin: String? = null,
     val userId: Long? = null,
     val username: String? = null,
     val subjects: List<SubjectRef> = emptyList(),
@@ -35,6 +37,8 @@ data class TeacherCreateRequest(
     val active: Boolean = true,
     val departmentId: Long? = null,
     val subjectIds: List<Long> = emptyList(),
+    val hemisEmployeeId: String? = null,
+    val hemisLogin: String? = null,
     // Ixtiyoriy: agar ikkalasi ham berilsa, role=teacher login yaratiladi
     val username: String? = null,
     val password: String? = null
@@ -49,5 +53,8 @@ data class TeacherUpdateRequest(
     val position: String? = null,
     val active: Boolean? = null,
     val departmentId: Long? = null,
-    val subjectIds: List<Long>? = null
+    val subjectIds: List<Long>? = null,
+    // null — o'zgartirilmaydi, bo'sh satr — bog'lanish olib tashlanadi
+    val hemisEmployeeId: String? = null,
+    val hemisLogin: String? = null
 )

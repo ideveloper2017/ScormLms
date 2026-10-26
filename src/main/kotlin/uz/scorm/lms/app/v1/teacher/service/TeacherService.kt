@@ -49,6 +49,7 @@ class TeacherService(
             department = request.departmentId?.let { departmentService.getEntity(it) },
             subjects = request.subjectIds.map { subjectService.getEntity(it) }.toMutableSet()
         )
+        applyHemisLink(teacher, request.hemisEmployeeId, request.hemisLogin)
         // Ixtiyoriy login akkaunti
         if (!request.username.isNullOrBlank() && !request.password.isNullOrBlank()) {
             teacher.user = userService.register(request.username, request.password, "teacher")
@@ -66,11 +67,33 @@ class TeacherService(
         request.academicRank?.let { teacher.academicRank = it }
         request.position?.let { teacher.position = it }
         request.active?.let { teacher.active = it }
-        request.departmentId?.let { teacher.department = departmentService.getEntity(it) }
+        // O'qituvchi istalgan kafedraga (shu jumladan umumiy kafedraga) bog'lanadi; null — bog'lanishni olib tashlaydi
+        teacher.department = request.departmentId?.let { departmentService.getEntity(it) }
         request.subjectIds?.let { ids ->
             teacher.subjects = ids.map { subjectService.getEntity(it) }.toMutableSet()
         }
+        applyHemisLink(teacher, request.hemisEmployeeId, request.hemisLogin)
         return teacherMapper.toDto(teacherRepository.save(teacher))
+    }
+
+    /** null — o'zgartirilmaydi, bo'sh satr — olib tashlanadi; boshqa o'qituvchiga bog'langan qiymat rad etiladi. */
+    private fun applyHemisLink(teacher: Teacher, employeeId: String?, login: String?) {
+        employeeId?.let { raw ->
+            val value = raw.trim().ifBlank { null }
+            require(value == null || value.length <= 64) { "HEMIS ID 64 belgidan oshmasligi kerak" }
+            value?.let { teacherRepository.findByHemisEmployeeId(it) }?.let { other ->
+                require(other.id == teacher.id) { "Bu HEMIS ID boshqa o'qituvchiga bog'langan: ${other.fullName}" }
+            }
+            teacher.hemisEmployeeId = value
+        }
+        login?.let { raw ->
+            val value = raw.trim().ifBlank { null }
+            require(value == null || value.length <= 150) { "HEMIS login 150 belgidan oshmasligi kerak" }
+            value?.let { teacherRepository.findByHemisLoginIgnoreCase(it) }?.let { other ->
+                require(other.id == teacher.id) { "Bu HEMIS login boshqa o'qituvchiga bog'langan: ${other.fullName}" }
+            }
+            teacher.hemisLogin = value
+        }
     }
 
     @Transactional

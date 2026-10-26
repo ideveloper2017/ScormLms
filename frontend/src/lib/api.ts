@@ -114,9 +114,42 @@ export async function login(credentials: LoginRequest): Promise<AxiosResponse<Au
   }
 }
 
-export function getHemisOAuthStartUrl(): string {
+/** student — talabalar HEMIS OAuth, employee — o'qituvchilar (xodimlar) HEMIS OAuth. */
+export function getHemisOAuthStartUrl(kind: "student" | "employee" = "student"): string {
   const backendBase = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-  return `${backendBase}/oauth2/authorization/hemis`;
+  return `${backendBase}/oauth2/authorization/${kind === "employee" ? "hemis-employee" : "hemis"}`;
+}
+
+export interface HemisLoginOptions {
+  studentPasswordLogin: boolean;
+  studentOAuth: boolean;
+  employeeOAuth: boolean;
+}
+
+export async function getHemisLoginOptions(): Promise<HemisLoginOptions> {
+  const response = await api.get<{ success: boolean; data: HemisLoginOptions }>("/auth/hemis/options");
+  return response.data.data;
+}
+
+/** Talaba HEMIS login va paroli bilan kirish. */
+export async function hemisPasswordLogin(login: string, password: string): Promise<AuthResponse["data"]> {
+  try {
+    const response = await api.post<AuthResponse>("/auth/hemis/login", { login, password });
+    const payload = response.data.data;
+    if (!response.data.success || !payload?.accessToken) {
+      throw new Error(response.data.message || "HEMIS orqali kirish yakunlanmadi");
+    }
+    storeAuthData(payload);
+    localStorage.setItem("user", JSON.stringify(payload.user));
+    api.defaults.headers.common.Authorization = `Bearer ${payload.accessToken}`;
+    return payload;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (!error.response) throw new Error("Serverga ulanib bo'lmadi. Internet aloqasini tekshiring.");
+      throw new Error(error.response.data?.message || "HEMIS login yoki parol noto'g'ri");
+    }
+    throw error instanceof Error ? error : new Error("HEMIS orqali kirishda xatolik");
+  }
 }
 
 export async function exchangeHemisOAuthCode(code: string): Promise<AuthResponse["data"]> {

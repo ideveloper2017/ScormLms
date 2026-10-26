@@ -237,8 +237,10 @@ export function AdminStudyPlanEditor() {
       (programs.data ?? []).filter((program) => {
         if (!program.active && program.id !== form.programId) return false;
         if (!facultyId) return true;
-        return Boolean(program.departmentId) &&
-          departmentFaculty.get(program.departmentId as number) === facultyId;
+        if (!program.departmentId) return false;
+        const programFaculty = departmentFaculty.get(program.departmentId);
+        // 0 — umumiy kafedra (fakultetga bog'lanmagan): har qanday fakultetda ko'rinadi
+        return programFaculty === facultyId || programFaculty === 0;
       }),
     [departmentFaculty, facultyId, form.programId, programs.data],
   );

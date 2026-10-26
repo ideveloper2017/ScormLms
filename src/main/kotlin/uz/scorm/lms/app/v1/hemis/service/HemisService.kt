@@ -2,6 +2,7 @@ package uz.scorm.lms.app.v1.hemis.service
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -95,6 +96,50 @@ class HemisService(
         .block()
         ?.data
         ?: error("HEMIS /account/me bo'sh qaytdi")
+
+    /** Talaba HEMIS paroli bilan kirish uchun server manzili to'g'ri sozlanganmi. */
+    fun studentLoginConfigured(): Boolean = "HEMIS_HOST" !in connectionStatus().missingFields &&
+        "HEMIS_API_BASE_PATH" !in connectionStatus().missingFields
+
+    /**
+     * Talaba HEMIS login/paroli bilan `POST /auth/login`. Muvaffaqiyatli bo'lsa HEMIS tokeni,
+     * login yoki parol noto'g'ri bo'lsa null qaytaradi. Tarmoq/server xatolari exception sifatida chiqadi.
+     */
+    fun studentLogin(login: String, password: String): String? {
+        val response = try {
+            webClient.post()
+                .uri("$baseUrl/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(mapOf("login" to login, "password" to password))
+                .retrieve()
+                .bodyToMono(JsonNode::class.java)
+                .timeout(timeout)
+                .block()
+        } catch (error: WebClientResponseException) {
+            if (error.statusCode.value() in setOf(400, 401, 403, 422)) return null
+            throw error
+        } ?: return null
+        val success = response.path("success").let { it.isBoolean && it.booleanValue() }
+        val token = response.path("data").path("token")
+        return if (success && token.isString && token.asText().isNotBlank()) token.asText() else null
+    }
+
+    /** `GET /account/me` — talabaning HEMIS id va talaba raqami (student_id_number). */
+    fun fetchStudentIdentity(token: String): HemisStudentIdentity {
+        val data = webClient.get()
+            .uri("$baseUrl/account/me")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+            .retrieve()
+            .bodyToMono(JsonNode::class.java)
+            .timeout(timeout)
+            .block()
+            ?.path("data")
+            ?: error("HEMIS_RESPONSE_INVALID")
+        val id = data.path("id").takeIf { it.canConvertToLong() }?.asLong()
+        val number = data.path("student_id_number").takeIf { it.isString || it.isNumber }?.asText()?.trim()?.takeIf(String::isNotBlank)
+        check(id != null || number != null) { "HEMIS_RESPONSE_INVALID" }
+        return HemisStudentIdentity(id, number)
+    }
 
     private fun adminToken(): String {
         require(connectionStatus().missingFields.isEmpty()) {
@@ -271,3 +316,5 @@ class HemisService(
         private val TASHKENT = ZoneId.of("Asia/Tashkent")
     }
 }
+
+data class HemisStudentIdentity(val hemisId: Long?, val studentNumber: String?)

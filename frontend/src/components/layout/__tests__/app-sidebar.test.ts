@@ -39,7 +39,7 @@ describe("superadmin sidebar navigation", () => {
   it("har bir ochiladigan bo'limda referensdagi sahifalar sonini saqlaydi", () => {
     const counts: Record<string, number> = {
       "Tuzilishi": 2,
-      "Ta'lim jarayoni": 14,
+      "Ta'lim jarayoni": 13, // Fanlar va O'quv dasturi bitta bandga birlashtirilgan
       "O'zlashtirish": 7,
       "O'qituvchilar": 2,
       "Talabalar": 5,

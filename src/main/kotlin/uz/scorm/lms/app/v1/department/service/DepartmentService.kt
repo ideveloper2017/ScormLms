@@ -16,9 +16,10 @@ class DepartmentService(
     private val departmentMapper: DepartmentMapper,
     private val facultyService: FacultyService
 ) {
+    /** facultyId berilsa: shu fakultet kafedralari + fakultetga bog'lanmagan umumiy kafedralar. */
     fun list(facultyId: Long? = null): List<DepartmentDto> {
         val items = if (facultyId != null) {
-            departmentRepository.findAllByFacultyId(facultyId)
+            departmentRepository.findAllByFacultyIdOrFacultyIsNull(facultyId)
         } else {
             departmentRepository.findAll()
         }
@@ -55,7 +56,8 @@ class DepartmentService(
         request.name?.let { department.name = it }
         request.code?.let { department.code = it }
         request.active?.let { department.active = it }
-        request.facultyId?.let { department.faculty = facultyService.getEntity(it) }
+        // facultyId=null kafedrani umumiy (universitet miqyosidagi) kafedraga aylantiradi
+        department.faculty = request.facultyId?.let { facultyService.getEntity(it) }
         return departmentMapper.toDto(departmentRepository.save(department))
     }
 

@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { NotebookText } from "lucide-react";
+import { FileText, NotebookText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CrudSection, useCrudData } from "@/components/admin/crud-section";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
@@ -36,7 +37,17 @@ const parseCredits = (s: string): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-export function AdminSubjects() {
+export interface SyllabusSummary { total: number; approved: number }
+
+interface AdminSubjectsProps {
+  /** Boshqa sahifa ichida (tab sifatida) ko'rsatilganda sarlavha yashiriladi. */
+  embedded?: boolean;
+  /** Fan bo'yicha o'quv dasturlari soni; berilsa "Fan dasturi" ustuni ko'rsatiladi. */
+  syllabusSummaries?: Map<number, SyllabusSummary>;
+  onOpenSyllabi?: (subjectId: number) => void;
+}
+
+export function AdminSubjects({ embedded = false, syllabusSummaries, onOpenSyllabi }: AdminSubjectsProps = {}) {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
   const subjects = useCrudData<SubjectRecord>(qk.subjects(), listSubjects);
@@ -56,19 +67,21 @@ export function AdminSubjects() {
   const totalCredits   = subjects.items.reduce((sum, s) => sum + (s.credits ?? 0), 0);
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+    <div className={embedded ? "space-y-4" : "p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6"}>
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-1.5 mb-1 text-muted-foreground">
-            <NotebookText className="h-3.5 w-3.5" />
-            <span className="text-xs">Akademik tuzilma</span>
+        {!embedded && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-1 text-muted-foreground">
+              <NotebookText className="h-3.5 w-3.5" />
+              <span className="text-xs">Akademik tuzilma</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Fanlar</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+              O'quv fanlarini va kredit soatlarini boshqaring
+            </p>
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Fanlar</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            O'quv fanlarini va kredit soatlarini boshqaring
-          </p>
-        </div>
+        )}
 
         {!subjects.loading && subjects.items.length > 0 && (
           <div className="flex flex-wrap gap-2 items-center">
@@ -123,6 +136,18 @@ export function AdminSubjects() {
           },
           { header: "Yo'nalish", cell: (s) => s.programName ?? "—" },
           { header: "Fan guruhi", cell: (s) => s.subjectCategoryName ?? "—" },
+          ...(syllabusSummaries && onOpenSyllabi ? [{
+            header: "Fan dasturi",
+            cell: (s: SubjectRecord) => {
+              const summary = syllabusSummaries.get(s.id);
+              return (
+                <Button size="sm" variant="outline" className="h-7" onClick={() => onOpenSyllabi(s.id)}>
+                  <FileText className="mr-1 h-3 w-3" />
+                  {summary ? `${summary.total} ta${summary.approved ? ` · ${summary.approved} tasdiqlangan` : ""}` : "Qo'shish"}
+                </Button>
+              );
+            },
+          }] : []),
           {
             header: "Holat",
             cell: (s) => (

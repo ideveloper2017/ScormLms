@@ -22,7 +22,7 @@ class ActiveProfileGuard : ApplicationListener<ApplicationEnvironmentPreparedEve
 }
 
 internal val baseProfiles = setOf("postgresql-dev", "postgresql-prod", "test")
-internal val optionalProfiles = setOf("hemis-oauth")
+internal val optionalProfiles = setOf("hemis-oauth", "hemis-employee-oauth")
 
 internal fun requireKnownProfiles(activeProfiles: List<String>) {
     val unknown = activeProfiles.filterNot { it in baseProfiles || it in optionalProfiles }

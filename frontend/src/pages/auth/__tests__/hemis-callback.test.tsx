@@ -18,7 +18,7 @@ describe("HEMIS OAuth callback", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Talaba yoki LMS akkaunti faol emas.")).toBeInTheDocument();
+    expect(screen.getByText("Talaba/o‘qituvchi yoki LMS akkaunti faol emas.")).toBeInTheDocument();
     expect(exchangeHemisOAuthCode).not.toHaveBeenCalled();
   });
 

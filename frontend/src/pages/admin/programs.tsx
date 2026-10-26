@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/select";
 import { FolderTree } from "lucide-react";
 import { CrudSection, useCrudData } from "@/components/admin/crud-section";
+import { DepartmentSelect } from "@/components/admin/department-select";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
 import {
@@ -227,22 +228,11 @@ export function AdminPrograms() {
             </div>
             <div className="space-y-1.5">
               <Label>Kafedra</Label>
-              <Select
-                value={form.departmentId != null ? String(form.departmentId) : "none"}
-                onValueChange={(v) => set({ departmentId: v === "none" ? null : Number(v) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Tanlanmagan —</SelectItem>
-                  {departments.items.map((d) => (
-                    <SelectItem key={d.id} value={String(d.id)}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DepartmentSelect
+                departments={departments.items}
+                value={form.departmentId}
+                onChange={(departmentId) => set({ departmentId })}
+              />
             </div>
             <div className="rounded-lg border p-3 space-y-3">
               <div className="flex items-center justify-between gap-3">

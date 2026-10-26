@@ -5,8 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { useState } from "react";
 import { Building } from "lucide-react";
 import { CrudSection, useCrudData } from "@/components/admin/crud-section";
+import { DepartmentFacultyCell } from "@/components/admin/department-select";
+import { isCommonDepartment } from "@/lib/departments";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
 import {
@@ -36,6 +39,12 @@ export function AdminDepartments() {
   const departments = useCrudData<DepartmentRecord>(["departments"], listDepartments);
   const faculties   = useCrudData<FacultyRecord>(["faculties"], listFaculties);
 
+  // "all" | "common" | fakultet id
+  const [scope, setScope] = useState<string>("all");
+  const commonCount = departments.items.filter(isCommonDepartment).length;
+  const visible = departments.items.filter((d) =>
+    scope === "all" ? true : scope === "common" ? isCommonDepartment(d) : d.facultyId === Number(scope));
+
   const activeCount   = departments.items.filter((d) => d.active).length;
   const inactiveCount = departments.items.length - activeCount;
 
@@ -50,7 +59,7 @@ export function AdminDepartments() {
           </div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Kafedralar</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Fakultetlar tarkibidagi kafedralarni boshqaring
+            Fakultet kafedralari va fakultetga bog'lanmagan umumiy kafedralarni boshqaring
           </p>
         </div>
 
@@ -58,6 +67,9 @@ export function AdminDepartments() {
           <div className="flex flex-wrap gap-2 items-center">
             <Badge variant="secondary" className="text-xs">
               Jami: {departments.items.length}
+            </Badge>
+            <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300">
+              Umumiy: {commonCount}
             </Badge>
             {activeCount > 0 && (
               <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs">
@@ -73,26 +85,44 @@ export function AdminDepartments() {
         )}
       </div>
 
+      {/* Filter: barcha / umumiy / fakultet bo'yicha */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Ko'rsatish:</span>
+        <Select value={scope} onValueChange={setScope}>
+          <SelectTrigger className="h-8 w-[260px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Barcha kafedralar</SelectItem>
+            <SelectItem value="common">Faqat umumiy kafedralar ({commonCount})</SelectItem>
+            {faculties.items.map((f) => (
+              <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* CRUD table */}
       <CrudSection<DepartmentRecord, DepartmentForm>
         title="Kafedralar"
         description="Kafedra qo'shish, tahrirlash va o'chirish"
-        items={departments.items}
+        items={visible}
         loading={departments.loading}
         error={departments.error}
         onReload={departments.reload}
         canWrite={canWrite}
         getId={(d) => d.id}
         getName={(d) => d.name}
-        search={(d) => `${d.name} ${d.code ?? ""} ${d.facultyName ?? ""}`}
+        search={(d) => `${d.name} ${d.code ?? ""} ${d.facultyName ?? "umumiy"}`}
         searchPlaceholder="Kafedra nomi, kodi yoki fakultet..."
         columns={[
           { header: "Nomi",     cell: (d) => <span className="font-medium">{d.name}</span> },
           { header: "Kodi",     cell: (d) => d.code ?? "—" },
-          { header: "Fakultet", cell: (d) => d.facultyName ?? "—" },
+          { header: "Fakultet", cell: (d) => <DepartmentFacultyCell department={d} /> },
           { header: "Holat",    cell: (d) => <ActiveBadge active={d.active} /> },
         ]}
-        blankForm={() => ({ name: "", code: "", facultyId: null, active: true })}
+        blankForm={() => ({
+          name: "", code: "", active: true,
+          facultyId: scope !== "all" && scope !== "common" ? Number(scope) : null,
+        })}
         toForm={(d) => ({
           name: d.name, code: d.code ?? "",
           facultyId: d.facultyId ?? null, active: d.active,
@@ -141,7 +171,7 @@ export function AdminDepartments() {
                   <SelectValue placeholder="Tanlang" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">— Tanlanmagan —</SelectItem>
+                  <SelectItem value="none">— Umumiy kafedra (fakultetga bog'lanmagan) —</SelectItem>
                   {faculties.items.map((f) => (
                     <SelectItem key={f.id} value={String(f.id)}>
                       {f.name}
@@ -149,6 +179,9 @@ export function AdminDepartments() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Fakultet tanlanmasa, kafedra barcha fakultetlar uchun umumiy hisoblanadi
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.active} onCheckedChange={(v) => set({ active: v })} />

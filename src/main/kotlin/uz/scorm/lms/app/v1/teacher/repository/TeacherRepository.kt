@@ -8,4 +8,6 @@ interface TeacherRepository : JpaRepository<Teacher, Long> {
     fun findByUserId(userId: Long): Teacher?
     fun findAllByActiveTrueOrderByFullNameAsc(): List<Teacher>
     fun countByActiveTrue(): Long
+    fun findByHemisEmployeeId(hemisEmployeeId: String): Teacher?
+    fun findByHemisLoginIgnoreCase(hemisLogin: String): Teacher?
 }

@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 type CallbackState = "loading" | "success" | "error";
 
 const errorMessages: Record<string, string> = {
-  account_not_linked: "HEMIS akkauntingiz LMSdagi talaba bilan bog‘lanmagan. Administratorga murojaat qiling.",
-  account_inactive: "Talaba yoki LMS akkaunti faol emas.",
+  account_not_linked: "HEMIS akkauntingiz LMSdagi talaba yoki o‘qituvchi bilan bog‘lanmagan. Administratorga murojaat qiling.",
+  account_inactive: "Talaba/o‘qituvchi yoki LMS akkaunti faol emas.",
   account_conflict: "HEMIS identifikatori boshqa LMS akkaunti bilan zid keldi. Administrator tekshiruvi kerak.",
   provider_rejected: "HEMIS autentifikatsiyani bekor qildi yoki ruxsat berilmadi.",
   invalid_principal: "HEMIS foydalanuvchi ma’lumotini qaytarmadi.",

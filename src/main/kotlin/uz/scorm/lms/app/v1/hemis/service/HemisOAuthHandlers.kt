@@ -6,6 +6,7 @@ import mu.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
@@ -16,9 +17,13 @@ import java.net.URI
 
 private val logger = KotlinLogging.logger {}
 
+/** HEMIS xodimlar (o'qituvchilar) OAuth registratsiyasi; "hemis" — talabalar. */
+const val HEMIS_EMPLOYEE_REGISTRATION_ID = "hemis-employee"
+
 @Component
 class HemisOAuthSuccessHandler(
     private val accountService: HemisOAuthAccountService,
+    private val employeeAccountService: HemisEmployeeAccountService,
     private val loginCodeService: HemisOAuthLoginCodeService,
     @Value("\${app.hemis.oauth.frontend-callback-url:http://localhost:5173/auth/hemis/callback}")
     private val frontendCallbackUrl: String,
@@ -39,7 +44,12 @@ class HemisOAuthSuccessHandler(
         }
 
         try {
-            val user = accountService.resolveActiveUser(principal)
+            val registrationId = (authentication as? OAuth2AuthenticationToken)?.authorizedClientRegistrationId
+            val user = if (registrationId == HEMIS_EMPLOYEE_REGISTRATION_ID) {
+                employeeAccountService.resolveActiveUser(principal)
+            } else {
+                accountService.resolveActiveUser(principal)
+            }
             val code = loginCodeService.issue(user)
             request.getSession(false)?.invalidate()
             response.setHeader("Cache-Control", "no-store")

@@ -8,8 +8,11 @@ import org.junit.jupiter.api.assertThrows
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.service.SubjectService
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusRequest
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
+import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.PRACTICAL
+import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.THEORETICAL
 import uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRepository
 import uz.scorm.lms.app.v1.syllabus.service.SubjectSyllabusService
 
@@ -39,6 +42,38 @@ class SubjectSyllabusServiceTest {
 
         assertThrows<IllegalArgumentException> {
             service.create(SubjectSyllabusRequest(8, "Fan dasturi", SyllabusLanguage.UZ, "Qisqa", null, "To'liq"))
+        }
+    }
+
+    @Test
+    fun `mavzular nazariy va amaliyga bolinib tartiblanadi va soatlari hisoblanadi`() {
+        val subject = Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }
+        every { repository.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(8, SyllabusLanguage.UZ, "Fan dasturi") } returns false
+        every { subjects.getEntity(8) } returns subject
+        every { repository.save(any()) } answers { firstArg<SubjectSyllabus>().apply { id = 22 } }
+
+        val result = service.create(SubjectSyllabusRequest(8, "Fan dasturi", SyllabusLanguage.UZ, "Qisqa", null, "To'liq", topics = listOf(
+            SyllabusTopicRequest(PRACTICAL, " Saralash algoritmlari ", hours = 4),
+            SyllabusTopicRequest(THEORETICAL, "Kirish", hours = 2),
+            SyllabusTopicRequest(PRACTICAL, "Graflar", "BFS va DFS", 6),
+            SyllabusTopicRequest(THEORETICAL, "Murakkablik", hours = 2),
+        )))
+
+        assertEquals(listOf("Kirish", "Murakkablik", "Saralash algoritmlari", "Graflar"), result.topics.map { it.title })
+        assertEquals(listOf(1, 2, 1, 2), result.topics.map { it.sortOrder })
+        assertEquals(4, result.theoreticalHours)
+        assertEquals(10, result.practicalHours)
+    }
+
+    @Test
+    fun `soati notogri mavzu rad etiladi`() {
+        val subject = Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }
+        every { repository.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(8, SyllabusLanguage.UZ, "Fan dasturi") } returns false
+        every { subjects.getEntity(8) } returns subject
+
+        assertThrows<IllegalArgumentException> {
+            service.create(SubjectSyllabusRequest(8, "Fan dasturi", SyllabusLanguage.UZ, "Qisqa", null, "To'liq",
+                topics = listOf(SyllabusTopicRequest(THEORETICAL, "Kirish", hours = 0))))
         }
     }
 }
