@@ -35,7 +35,7 @@ describe("SyllabusTopicsDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mavzularni saqlash" }));
 
     await waitFor(() => expect(syllabusApi.updateTopics).toHaveBeenCalledWith(40, [
-      { type: "THEORETICAL", title: "Kirish", description: null, hours: 2 },
+      { id: null, type: "THEORETICAL", title: "Kirish", description: null, hours: 2 },
     ]));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(onSaved).toHaveBeenCalled();

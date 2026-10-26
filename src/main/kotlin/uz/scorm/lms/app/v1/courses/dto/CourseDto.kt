@@ -150,7 +150,34 @@ data class CourseModuleDto(
     val publishedAt: Instant?,
     val topicType: String? = null,
     val plannedHours: Int? = null,
+    val syllabusTopicId: Long? = null,
 )
+
+/** Kurs bog'langan o'quv dasturi mavzusi va uning kursdagi bo'limi (bo'lsa). */
+data class CourseSyllabusTopicDto(
+    val topicId: Long,
+    val type: String,
+    val sortOrder: Int,
+    val title: String,
+    val hours: Int,
+    val moduleId: Long?,
+    val moduleTitle: String?,
+    /** Bo'lim bor, lekin nomi/turi/soati dasturdagidan farq qiladi */
+    val outdated: Boolean,
+)
+
+data class CourseSyllabusStatusDto(
+    val syllabusId: Long,
+    val syllabusName: String,
+    val syllabusStatus: String,
+    val syllabusRevision: Int,
+    val courseSyllabusRevision: Int?,
+    val topics: List<CourseSyllabusTopicDto>,
+    /** Qo'shilmagan yoki o'zgargan mavzular soni — sinxronlash kerakligini bildiradi */
+    val pendingCount: Int,
+)
+
+data class CourseSyllabusSyncResult(val added: Int, val updated: Int, val status: CourseSyllabusStatusDto)
 
 data class CourseModuleRequest(
     val title: String,
@@ -159,6 +186,8 @@ data class CourseModuleRequest(
     // null — o'zgartirilmaydi
     val topicType: String? = null,
     val plannedHours: Int? = null,
+    // Berilsa bo'lim kurs dasturining shu mavzusidan yaratiladi (tur va soat mavzudan olinadi)
+    val syllabusTopicId: Long? = null,
 )
 
 data class CourseContentDto(

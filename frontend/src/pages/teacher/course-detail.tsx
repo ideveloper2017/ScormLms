@@ -66,6 +66,7 @@ import { TeacherCourseCreate } from "./course-create";
 import { RichTextContent } from "@/components/editor/rich-text-content";
 import { useSessionDraft, useUnloadWarning } from "@/hooks/use-session-draft";
 import { CoursePreview } from "@/components/course-preview";
+import { CourseSyllabusPanel } from "@/components/course-syllabus-panel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -872,6 +873,7 @@ export function TeacherCourseDetail({
             Darslar yoki bo'limlar yuklanmadi.
             <Button variant="outline" onClick={() => { void modulesQuery.refetch(); void contentsQuery.refetch(); }}>Qayta urinish</Button>
           </div>}
+          {course?.syllabusId && <CourseSyllabusPanel courseId={courseId} onChanged={refreshLearningItems} />}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Fan darslari</CardTitle>

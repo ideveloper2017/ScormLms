@@ -7,6 +7,7 @@ import uz.scorm.lms.app.v1.courses.model.CourseModule
 interface CourseModuleRepository : JpaRepository<CourseModule, Long> {
     @EntityGraph(attributePaths = ["course"])
     fun findAllByCourseIdAndDeletedFalseOrderByPositionAsc(courseId: Long): List<CourseModule>
+    fun existsByCourseIdAndSyllabusTopicIdAndDeletedFalse(courseId: Long, syllabusTopicId: Long): Boolean
     @EntityGraph(attributePaths = ["course"])
     fun findAllByCourseIdInAndDeletedFalseOrderByCourseIdAscPositionAsc(courseIds: Collection<Long>): List<CourseModule>
     fun findFirstByCourseIdAndDeletedFalseOrderByPositionDesc(courseId: Long): CourseModule?

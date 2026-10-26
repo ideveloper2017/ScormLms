@@ -41,6 +41,10 @@ class CourseModule(
 
     @Column(name = "planned_hours")
     var plannedHours: Int? = null,
+
+    // Bo'lim yaratilgan o'quv dasturi mavzusi (sinxronlash uchun); mavzu o'chirilsa null bo'ladi
+    @Column(name = "syllabus_topic_id")
+    var syllabusTopicId: Long? = null,
 ) : BaseEntity()
 
 enum class LearningItemStatus {

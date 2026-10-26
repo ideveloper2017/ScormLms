@@ -53,4 +53,6 @@ data class SyllabusTopicRequest(
     val title: String,
     val description: String? = null,
     val hours: Int,
+    // Mavjud mavzu id'si — berilsa mavzu joyida yangilanadi (kurs bo'limlari bilan bog'lanish saqlanadi)
+    val id: Long? = null,
 )

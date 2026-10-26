@@ -129,6 +129,30 @@ export interface CourseModule {
   /** O'quv dasturi mavzusidan yaratilgan modul: nazariy / amaliy va rejadagi soat */
   topicType?: 'THEORETICAL' | 'PRACTICAL' | null;
   plannedHours?: number | null;
+  /** Bo'lim yaratilgan o'quv dasturi mavzusi */
+  syllabusTopicId?: number | null;
+}
+
+export interface CourseSyllabusTopic {
+  topicId: number;
+  type: 'THEORETICAL' | 'PRACTICAL';
+  sortOrder: number;
+  title: string;
+  hours: number;
+  moduleId?: number | null;
+  moduleTitle?: string | null;
+  /** Bo'lim bor, lekin nomi/turi/soati dasturdagidan farq qiladi */
+  outdated: boolean;
+}
+
+export interface CourseSyllabusStatus {
+  syllabusId: number;
+  syllabusName: string;
+  syllabusStatus: 'DRAFT' | 'IN_REVIEW' | 'APPROVED';
+  syllabusRevision: number;
+  courseSyllabusRevision?: number | null;
+  topics: CourseSyllabusTopic[];
+  pendingCount: number;
 }
 
 export interface CourseContent {
@@ -666,8 +690,16 @@ export const teacherPortalApi = {
   getModules: async (courseId: string): Promise<CourseModule[]> => {
     return dataOf(await api.get<ApiResponse<CourseModule[]>>(`/courses/${courseId}/modules`), 'Modullar yuklanmadi');
   },
-  createModule: async (courseId: string, payload: { title: string; description?: string }): Promise<CourseModule> => {
+  createModule: async (courseId: string, payload: { title: string; description?: string; syllabusTopicId?: number }): Promise<CourseModule> => {
     return dataOf(await api.post<ApiResponse<CourseModule>>(`/courses/${courseId}/modules`, payload), 'Modul yaratilmadi');
+  },
+  /** Kurs o'quv dasturi mavzulari va ularning kursdagi bo'limlari */
+  getCourseSyllabus: async (courseId: string): Promise<CourseSyllabusStatus> => {
+    return dataOf(await api.get<ApiResponse<CourseSyllabusStatus>>(`/courses/${courseId}/syllabus`), 'Dastur mavzulari yuklanmadi');
+  },
+  /** Qo'shilmagan mavzularni bo'lim sifatida qo'shadi, o'zgarganlarini yangilaydi */
+  syncCourseSyllabus: async (courseId: string): Promise<{ added: number; updated: number; status: CourseSyllabusStatus }> => {
+    return dataOf(await api.post<ApiResponse<{ added: number; updated: number; status: CourseSyllabusStatus }>>(`/courses/${courseId}/syllabus/sync`), 'Dastur bilan sinxronlanmadi');
   },
   updateModule: async (courseId: string, moduleId: number, payload: { title: string; description?: string }): Promise<CourseModule> => {
     return dataOf(await api.put<ApiResponse<CourseModule>>(`/courses/${courseId}/modules/${moduleId}`, payload), 'Modul yangilanmadi');
