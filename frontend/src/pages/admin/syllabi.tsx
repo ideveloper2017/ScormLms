@@ -46,7 +46,8 @@ export function AdminSyllabi({ subjectId, onClearSubject, embedded = false }: Pr
     {subjects.isLoading && <p>Fanlar yuklanmoqda...</p>}
     {subjects.isError && <div role="alert">Fanlar yuklanmadi. <Button variant="outline" onClick={() => subjects.refetch()}>Fanlarni qayta yuklash</Button></div>}
     {selected && <SyllabusWorkflow item={selected} canWrite={canWrite} reload={data.reload} close={() => setSelectedId(null)} />}
-    {topicsItem && <SyllabusTopicsDialog key={topicsItem.id} item={topicsItem} canWrite={canWrite} onSaved={() => { void data.reload(); }} onClose={() => setTopicsItem(null)} />}
+    {topicsItem && <SyllabusTopicsDialog key={topicsItem.id} item={topicsItem} canWrite={canWrite}
+      credits={(subjects.data ?? []).find(s => s.id === topicsItem.subjectId)?.credits} onSaved={() => { void data.reload(); }} onClose={() => setTopicsItem(null)} />}
     {wizardOpen && subjects.data && <SyllabusCourseWizard subjects={subjects.data} defaultSubjectId={subjectId}
       onCreated={() => { void data.reload(); }} onClose={() => setWizardOpen(false)} />}
     <div className="flex flex-wrap items-start justify-between gap-3">

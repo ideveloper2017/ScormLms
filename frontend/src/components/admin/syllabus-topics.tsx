@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, ListPlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { extractApiError } from "@/lib/academic-api";
-import { validateTopics } from "@/lib/syllabus";
+import { creditWorkload, validateTopics } from "@/lib/syllabus";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import {
   syllabusApi, syllabusTopicTypes,
   type SubjectSyllabus, type SyllabusTopic, type SyllabusTopicInput, type SyllabusTopicType,
@@ -22,22 +24,39 @@ const TYPES: SyllabusTopicType[] = ["THEORETICAL", "PRACTICAL"];
  * O'quv dasturi mavzularini alohida boshqarish (dastur yaratilgandan keyin).
  * Faqat qoralama dasturda tahrirlanadi; aks holda ko'rish rejimida ochiladi.
  */
-export function SyllabusTopicsDialog({ item, canWrite, onClose, onSaved }: {
+export function SyllabusTopicsDialog({ item, canWrite, credits, onClose, onSaved }: {
   item: SubjectSyllabus;
   canWrite: boolean;
+  /** Fan krediti — yuklama hisobi uchun */
+  credits?: number | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { toast } = useToast();
   const editable = canWrite && item.status === "DRAFT";
   const [topics, setTopics] = useState<SyllabusTopicInput[]>(
     (item.topics ?? []).map((t) => ({ id: t.id, type: t.type, title: t.title, description: t.description ?? "", hours: t.hours })),
   );
   const [error, setError] = useState<string | null>(null);
+  const courses = useQuery({
+    queryKey: ["syllabus-courses", item.id],
+    queryFn: () => syllabusApi.linkedCourses(item.id),
+  });
   const save = useMutation({
-    mutationFn: () => syllabusApi.updateTopics(item.id, topics.map((t) => ({
+    mutationFn: () => syllabusApi.updateTopicsWithCourses(item.id, topics.map((t) => ({
       id: t.id ?? null, type: t.type, title: t.title.trim(), description: t.description?.trim() || null, hours: Number(t.hours),
     }))),
-    onSuccess: () => { onSaved(); onClose(); },
+    onSuccess: (result) => {
+      const changed = result.courses.filter((c) => c.added + c.updated > 0);
+      toast({
+        title: "Mavzular saqlandi",
+        description: changed.length
+          ? changed.map((c) => `«${c.title}»: ${c.added} ta bo'lim qo'shildi, ${c.updated} ta yangilandi`).join("; ")
+          : undefined,
+      });
+      onSaved();
+      onClose();
+    },
     onError: (e) => setError(extractApiError(e, "Mavzular saqlanmadi").message),
   });
   const submit = () => {
@@ -61,6 +80,22 @@ export function SyllabusTopicsDialog({ item, canWrite, onClose, onSaved }: {
         {editable
           ? <SyllabusTopicsEditor value={topics} onChange={(value) => { setTopics(value); setError(null); }} />
           : <SyllabusTopicsView topics={item.topics} />}
+        <CreditWorkload credits={credits} topics={editable ? topics : item.topics ?? []} />
+        {(courses.data?.length ?? 0) > 0 && (
+          <div className="space-y-1 rounded-md border p-2 text-xs">
+            <p className="font-medium">Bu dastur asosidagi kurslar</p>
+            <ul className="space-y-0.5">
+              {courses.data!.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center gap-2">
+                  <span>«{c.title}»</span>
+                  {c.autoSync
+                    ? <Badge variant="secondary">qoralama — bo'limlari avtomatik yangilanadi</Badge>
+                    : <Badge variant="outline">nashr qilingan — dastur tasdiqlangach kurs sahifasida sinxronlanadi</Badge>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={save.isPending}>{editable ? "Bekor qilish" : "Yopish"}</Button>
@@ -76,6 +111,44 @@ export function SyllabusTopicsDialog({ item, canWrite, onClose, onSaved }: {
 }
 
 const sumHours = (topics: Pick<SyllabusTopicInput, "hours">[]) => topics.reduce((total, t) => total + (Number(t.hours) || 0), 0);
+
+/** Kredit-modul tizimidagi yuklama: auditoriya (nazariy + amaliy) va mustaqil ta'lim soatlari. */
+export function CreditWorkload({ credits, topics }: { credits?: number | null; topics: Pick<SyllabusTopicInput, "hours">[] }) {
+  const auditory = sumHours(topics);
+  if (!credits) {
+    return <p className="text-xs text-muted-foreground">Auditoriya soatlari: {auditory}. Fan krediti ko'rsatilmagan — mustaqil ta'lim hisoblanmadi.</p>;
+  }
+  const load = creditWorkload(credits, auditory);
+  return (
+    <p role={load.exceeded ? "alert" : "status"} className={cn("rounded-md border p-2 text-xs",
+      load.exceeded ? "border-destructive text-destructive" : "bg-muted/40")}>
+      Fan krediti: {credits} → umumiy yuklama {load.total} soat. Auditoriya (nazariy + amaliy): {load.auditory} soat ·
+      mustaqil ta'lim: {Math.max(load.selfStudy, 0)} soat
+      {load.exceeded && " — auditoriya soatlari kredit hajmidan oshib ketdi"}
+    </p>
+  );
+}
+
+/** Kurs tuzilmasi: mavzular kursda qaysi tartibda bo'lim bo'lishi (avval nazariy, keyin amaliy). */
+export function CoursePlanPreview({ topics }: { topics: SyllabusTopicInput[] }) {
+  const ordered = TYPES.flatMap((type) => topics.filter((t) => t.type === type));
+  if (ordered.length === 0) return <p className="text-xs text-muted-foreground">Mavzu qo'shilgach, kurs bo'limlari shu yerda ko'rinadi.</p>;
+  return (
+    <ol className="max-h-64 divide-y overflow-y-auto rounded-md border text-xs" aria-label="Kurs bo'limlari">
+      {ordered.map((t, index) => (
+        <li key={`${t.type}-${index}`} className="flex items-center gap-2 px-2 py-1.5">
+          <span className="w-5 shrink-0 text-muted-foreground">{index + 1}.</span>
+          <span className="min-w-0 flex-1 truncate">{t.title.trim() || <i className="text-muted-foreground">nomsiz mavzu</i>}</span>
+          <Badge variant="outline" className={cn("shrink-0", t.type === "THEORETICAL"
+            ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300"
+            : "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300")}>
+            {t.type === "THEORETICAL" ? "Nazariy" : "Amaliy"} · {Number(t.hours) || 0} s
+          </Badge>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 interface EditorProps {
   value: SyllabusTopicInput[];

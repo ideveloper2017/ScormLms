@@ -7,10 +7,22 @@ import uz.scorm.lms.app.v1.courses.dto.CourseSyllabusSyncResult
 import uz.scorm.lms.app.v1.courses.dto.CourseSyllabusTopicDto
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.courses.model.CourseModule
+import uz.scorm.lms.app.v1.courses.model.CourseStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
+
+/** Dasturga bog'langan kurs va mavzular bilan moslash natijasi. */
+data class SyllabusLinkedCourseDto(
+    val id: Long,
+    val title: String,
+    val status: String,
+    /** Qoralama kurs mavzular o'zgarganda avtomatik yangilanadi; nashr qilingani — kurs sahifasida sinxronlanadi */
+    val autoSync: Boolean,
+    val added: Int = 0,
+    val updated: Int = 0,
+)
 
 /**
  * Kurs bo'limlarini u asos qilingan o'quv dasturi mavzulari bilan moslash:
@@ -39,7 +51,30 @@ class CourseSyllabusService(
         require(syllabus.status == "APPROVED") {
             "O'quv dasturining yangi versiyasi hali tasdiqlanmagan — tasdiqlangandan keyin sinxronlang"
         }
-        val modules = moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(courseId)
+        val (added, updated) = applySync(course, syllabus)
+        return CourseSyllabusSyncResult(added, updated, status(course, syllabus))
+    }
+
+    /** Dasturga bog'langan kurslar (dastur mavzulari oynasida ko'rsatiladi). */
+    @Transactional(readOnly = true)
+    fun linkedCourses(syllabusId: Long): List<SyllabusLinkedCourseDto> =
+        courseRepository.findAllBySyllabusIdAndDeletedFalseOrderByCreatedAtDesc(syllabusId).map { linked(it) }
+
+    /**
+     * Mavzular o'zgargandan keyin: hali nashr qilinmagan (qoralama) kurslar bo'limlari avtomatik moslanadi.
+     * Nashr qilingan kurslarda talabalar o'qiyotgani uchun ularga jimgina tegilmaydi.
+     */
+    @Transactional
+    fun syncDraftCourses(syllabusId: Long): List<SyllabusLinkedCourseDto> =
+        courseRepository.findAllBySyllabusIdAndDeletedFalseOrderByCreatedAtDesc(syllabusId).map { course ->
+            if (course.status == CourseStatus.DRAFT.name) {
+                val (added, updated) = applySync(course, requireSyllabus(course))
+                linked(course, added, updated)
+            } else linked(course)
+        }
+
+    private fun applySync(course: Course, syllabus: SubjectSyllabus): Pair<Int, Int> {
+        val modules = moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(requireNotNull(course.id))
         val linked = modules.filter { it.syllabusTopicId != null }.associateBy { it.syllabusTopicId }
         var position = modules.maxOfOrNull { it.position } ?: 0
         var added = 0
@@ -62,8 +97,13 @@ class CourseSyllabusService(
         }
         course.syllabusRevision = syllabus.revisionNumber
         courseRepository.save(course)
-        return CourseSyllabusSyncResult(added, updated, status(course, syllabus))
+        return added to updated
     }
+
+    private fun linked(course: Course, added: Int = 0, updated: Int = 0) = SyllabusLinkedCourseDto(
+        id = requireNotNull(course.id), title = course.title.orEmpty(), status = course.status.orEmpty().lowercase(),
+        autoSync = course.status == CourseStatus.DRAFT.name, added = added, updated = updated,
+    )
 
     private fun status(course: Course, syllabus: SubjectSyllabus): CourseSyllabusStatusDto {
         val modules = moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(requireNotNull(course.id))

@@ -2,6 +2,7 @@ package uz.scorm.lms.app.v1.courses
 
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -73,6 +74,22 @@ class CourseSyllabusSyncTest {
         assertEquals(3L, added.syllabusTopicId)
         assertEquals(3, course.syllabusRevision)
         assertTrue(existing.none { it.deleted })
+    }
+
+    @Test
+    fun `mavzular ozgarganda faqat qoralama kurslar avtomatik moslanadi`() {
+        syllabus.status = "DRAFT"
+        val published = Course(title = "Fizika 2025", userId = 1, syllabus = syllabus, status = "PUBLISHED").apply { id = 10 }
+        course.status = "DRAFT"
+        every { courses.findAllBySyllabusIdAndDeletedFalseOrderByCreatedAtDesc(31) } returns listOf(course, published)
+
+        val result = service.syncDraftCourses(31)
+
+        assertEquals(listOf(true, false), result.map { it.autoSync })
+        assertEquals(1, result[0].added)
+        assertEquals(1, result[0].updated)
+        assertEquals(0, result[1].added)
+        verify(exactly = 0) { modules.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(10) }
     }
 
     @Test

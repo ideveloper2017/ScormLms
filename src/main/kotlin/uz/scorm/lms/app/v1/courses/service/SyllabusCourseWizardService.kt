@@ -6,6 +6,7 @@ import uz.scorm.lms.app.v1.courses.dto.CourseCreateRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseDto
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusDto
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusRequest
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
 import uz.scorm.lms.app.v1.syllabus.service.SubjectSyllabusService
 
@@ -24,14 +25,19 @@ data class SyllabusWithCourseRequest(
 
 data class SyllabusWithCourseDto(val syllabus: SubjectSyllabusDto, val course: CourseDto?)
 
+/** Mavzular saqlangandan keyingi holat: dastur va unga bog'langan kurslar (qoralamalari yangilangan). */
+data class SyllabusTopicsWithCoursesDto(val syllabus: SubjectSyllabusDto, val courses: List<SyllabusLinkedCourseDto>)
+
 /**
- * Fan dasturi, uning nazariy/amaliy mavzulari va shu dastur asosidagi kursni bitta qadamda yaratadi.
+ * Fan dasturi (reja) va undan qurilgan kurs bitta birlik sifatida: dastur, mavzular va kurs birga yaratiladi,
+ * mavzular o'zgarganda qoralama kurslar bo'limlari ham yangilanadi.
  * Hammasi bitta tranzaksiyada: biror qism xato bersa, hech narsa saqlanmaydi.
  */
 @Service
 class SyllabusCourseWizardService(
     private val syllabusService: SubjectSyllabusService,
     private val courseService: CourseService,
+    private val courseSyllabusService: CourseSyllabusService,
 ) {
     @Transactional
     fun create(request: SyllabusWithCourseRequest, ownerUserId: Long): SyllabusWithCourseDto {
@@ -51,6 +57,16 @@ class SyllabusCourseWizardService(
             )
         }
         return SyllabusWithCourseDto(syllabus, course)
+    }
+
+    @Transactional(readOnly = true)
+    fun linkedCourses(syllabusId: Long): List<SyllabusLinkedCourseDto> = courseSyllabusService.linkedCourses(syllabusId)
+
+    /** Mavzularni saqlaydi va shu dasturga bog'langan qoralama kurslarning bo'limlarini moslaydi. */
+    @Transactional
+    fun updateTopics(syllabusId: Long, topics: List<SyllabusTopicRequest>): SyllabusTopicsWithCoursesDto {
+        val syllabus = syllabusService.updateTopics(syllabusId, topics)
+        return SyllabusTopicsWithCoursesDto(syllabus, courseSyllabusService.syncDraftCourses(syllabusId))
     }
 
     private fun courseLanguage(language: SyllabusLanguage) = when (language) {

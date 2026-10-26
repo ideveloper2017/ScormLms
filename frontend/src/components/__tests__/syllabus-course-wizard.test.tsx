@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,7 +11,7 @@ vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   syllabusApi: { createWithCourse: vi.fn() },
 }));
 
-const subjects = [{ id: 5, name: "Matematika", code: "MA01", active: true }] as SubjectRecord[];
+const subjects = [{ id: 5, name: "Matematika", code: "MA01", credits: 4, active: true }] as SubjectRecord[];
 const mount = (onCreated = vi.fn()) => render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
     <MemoryRouter><SyllabusCourseWizard subjects={subjects} onClose={vi.fn()} onCreated={onCreated} /></MemoryRouter>
@@ -28,7 +28,7 @@ const fillStepOne = () => {
 describe("SyllabusCourseWizard", () => {
   beforeEach(() => vi.resetAllMocks());
 
-  it("dastur, mavzular va kursni bitta so'rovda yaratadi", async () => {
+  it("mavzular va kurs bitta qadamda: mavzular kurs bo'limlari bo'lib ko'rinadi va birga yaratiladi", async () => {
     const syllabus = { id: 41, name: "Matematika", topics: [{}], theoreticalHours: 2, practicalHours: 0 } as SubjectSyllabus;
     vi.mocked(syllabusApi.createWithCourse).mockResolvedValue({ syllabus, course: { id: 77, title: "Matematika" } });
     const onCreated = vi.fn();
@@ -38,15 +38,15 @@ describe("SyllabusCourseWizard", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Fan tanlang");
     fillStepOne();
 
-    fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
-    fireEvent.change(screen.getByLabelText("1-mavzu nomi"), { target: { value: "Kirish" } });
-    fireEvent.click(screen.getByRole("button", { name: "Keyingi" }));
-
-    // Kurs qadami dastur ma'lumotlari bilan to'ldirilgan
+    // 2-qadam: mavzular va kurs bir ekranda, kurs ma'lumotlari dasturdan to'ldirilgan
     expect(screen.getByLabelText("Kurs nomi *")).toHaveValue("Matematika");
     expect(screen.getByLabelText("Kurs tili")).toHaveValue("ru");
-    fireEvent.click(screen.getByRole("button", { name: "Dastur va kursni yaratish" }));
+    fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
+    fireEvent.change(screen.getByLabelText("1-mavzu nomi"), { target: { value: "Kirish" } });
+    expect(within(screen.getByRole("list", { name: "Kurs bo'limlari" })).getByText("Kirish")).toBeInTheDocument();
+    expect(screen.getByText(/umumiy yuklama 120 soat/)).toHaveTextContent("mustaqil ta'lim: 118 soat");
 
+    fireEvent.click(screen.getByRole("button", { name: "Dastur va kursni yaratish" }));
     await waitFor(() => expect(syllabusApi.createWithCourse).toHaveBeenCalledWith({
       syllabus: { subjectId: 5, language: "RU", active: true, shortDescription: "Qisqa mazmun", requirements: null,
         fullDescription: "To'liq mazmun", topics: [{ type: "THEORETICAL", title: "Kirish", description: null, hours: 2 }] },
@@ -60,7 +60,6 @@ describe("SyllabusCourseWizard", () => {
     vi.mocked(syllabusApi.createWithCourse).mockResolvedValue({ syllabus: { id: 41, name: "Matematika" } as SubjectSyllabus, course: null });
     mount();
     fillStepOne();
-    fireEvent.click(screen.getByRole("button", { name: "Keyingi" }));
     fireEvent.click(screen.getByRole("switch", { name: "Kurs ham yaratilsin" }));
     fireEvent.click(screen.getByRole("button", { name: "Dasturni yaratish" }));
 
