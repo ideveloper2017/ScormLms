@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, Plus, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { TopicTypeBadge } from "@/components/topic-type-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -89,11 +90,7 @@ export function CourseSyllabusPanel({ courseId, onChanged }: { courseId: string;
         <ul className="divide-y rounded-md border">
           {status.topics.map((topic) => (
             <li key={topic.topicId} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-              <Badge variant="outline" className={topic.type === "THEORETICAL"
-                ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300"
-                : "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300"}>
-                {topic.type === "THEORETICAL" ? "Nazariy" : "Amaliy"} · {topic.hours} soat
-              </Badge>
+              <TopicTypeBadge type={topic.type} hours={topic.hours} />
               <span className="min-w-0 flex-1">{topic.sortOrder}. {topic.title}</span>
               {topic.moduleId == null ? (
                 <Button size="sm" variant="outline" className="h-7 gap-1" disabled={busy}

@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { CoursePlanPreview, CreditWorkload, SyllabusTopicsEditor } from "@/components/admin/syllabus-topics";
 import { extractApiError, type SubjectRecord } from "@/lib/academic-api";
-import { courseLanguageOf, syllabusLanguages, validateTopics } from "@/lib/syllabus";
+import { courseLanguageOf, formatTypeHours, syllabusLanguages, syllabusTypeHours, validateTopics } from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
 import { syllabusApi, type SyllabusLanguage, type SyllabusTopicInput } from "@/services/api/syllabus-api";
 
@@ -109,7 +109,7 @@ export function SyllabusCourseWizard({ subjects, defaultSubjectId, onClose, onCr
             </p>
             <p className="text-sm">
               Fan dasturi «{result.syllabus.name}» qoralama sifatida yaratildi: {result.syllabus.topics?.length ?? 0} ta mavzu
-              (nazariy {result.syllabus.theoreticalHours ?? 0}, amaliy {result.syllabus.practicalHours ?? 0} soat).
+              ({formatTypeHours(syllabusTypeHours(result.syllabus))} soat).
             </p>
             {result.course && (
               <p className="text-sm">
@@ -169,7 +169,7 @@ export function SyllabusCourseWizard({ subjects, defaultSubjectId, onClose, onCr
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
                 <div className="min-w-0 space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    {subject ? `${subject.code ?? ""} · ${subject.name}. ` : ""}Nazariy va amaliy mavzular hamda soatlarini kiriting —
+                    {subject ? `${subject.code ?? ""} · ${subject.name}. ` : ""}Nazariy, amaliy, laboratoriya va seminar mavzulari hamda soatlarini kiriting —
                     har bir mavzu kursda bo'lim bo'ladi, darslar shu bo'limlarga qo'shiladi.
                   </p>
                   <SyllabusTopicsEditor value={topics} onChange={(value) => { setTopics(value); setError(null); }} />

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ListOrdered, Plus, X } from "lucide-react";
 import { SyllabusCourseWizard } from "@/components/admin/syllabus-course-wizard";
+import { formatTypeHours, syllabusTypeHours } from "@/lib/syllabus";
 import { Button } from "@/components/ui/button";
 import { SyllabusWorkflow, syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { SyllabusTopicsDialog } from "@/components/admin/syllabus-topics";
@@ -51,7 +52,7 @@ export function AdminSyllabi({ subjectId, onClearSubject, embedded = false }: Pr
     {wizardOpen && subjects.data && <SyllabusCourseWizard subjects={subjects.data} defaultSubjectId={subjectId}
       onCreated={() => { void data.reload(); }} onClose={() => setWizardOpen(false)} />}
     <div className="flex flex-wrap items-start justify-between gap-3">
-      {!embedded ? <div><h1 className="text-2xl font-bold">O'quv dasturi</h1><p className="text-sm text-muted-foreground">Fan dasturi, uning nazariy/amaliy mavzulari va shu dastur asosidagi kurs bitta oynada yaratiladi.</p></div> : <span />}
+      {!embedded ? <div><h1 className="text-2xl font-bold">O'quv dasturi</h1><p className="text-sm text-muted-foreground">Fan dasturi, uning mavzulari (nazariy, amaliy, laboratoriya, seminar) va shu dastur asosidagi kurs bitta oynada yaratiladi.</p></div> : <span />}
       {canWrite && <Button onClick={() => setWizardOpen(true)} disabled={!subjects.isSuccess}>
         <Plus className="mr-1 h-4 w-4" />Yangi fan dasturi va kurs
       </Button>}
@@ -61,7 +62,7 @@ export function AdminSyllabi({ subjectId, onClearSubject, embedded = false }: Pr
       {onClearSubject && <Button size="sm" variant="ghost" className="h-7" onClick={onClearSubject}><X className="mr-1 h-3 w-3" />Barcha fanlar</Button>}
     </div>}
     <CrudSection<SubjectSyllabus, Form>
-      title="O'quv dasturlari" description="Fan dasturlari: mavzular nazariy va amaliy mashg'ulotlarga bo'lingan" searchPlaceholder="Nomi, fan yoki til..."
+      title="O'quv dasturlari" description="Fan dasturlari: mavzular mashg'ulot turlari (nazariy, amaliy, laboratoriya, seminar) bo'yicha" searchPlaceholder="Nomi, fan yoki til..."
       items={items} loading={data.loading} error={data.error} onReload={data.reload} canWrite={canWrite}
       // Yaratish "Fan dasturi va kurs" oynasi orqali; bu forma faqat tahrirlash uchun
       allowCreate={false}
@@ -80,7 +81,7 @@ export function AdminSyllabi({ subjectId, onClearSubject, embedded = false }: Pr
           const count = x.topics?.length ?? 0;
           return <Button size="sm" variant={count ? "outline" : "secondary"} className="h-8" onClick={() => setTopicsItem(x)}>
             <ListOrdered className="mr-1 h-3 w-3" />
-            {count ? `${count} ta · N ${x.theoreticalHours ?? 0} / A ${x.practicalHours ?? 0} soat` : x.status === "DRAFT" && canWrite ? "Mavzu qo'shish" : "Mavzular yo'q"}
+            {count ? `${count} ta · ${formatTypeHours(syllabusTypeHours(x))} soat` : x.status === "DRAFT" && canWrite ? "Mavzu qo'shish" : "Mavzular yo'q"}
           </Button>;
         } },
         { header: "Fan tili", cell: (x) => x.language },

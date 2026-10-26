@@ -22,6 +22,8 @@ data class SubjectSyllabusDto(
     val topics: List<SyllabusTopicDto> = emptyList(),
     val theoreticalHours: Int = 0,
     val practicalHours: Int = 0,
+    val laboratoryHours: Int = 0,
+    val seminarHours: Int = 0,
 )
 
 data class SyllabusTopicDto(

@@ -104,13 +104,13 @@ class CourseModuleService(
     )
 
     private fun validTopicType(value: String?): String? = value?.trim()?.uppercase()?.ifBlank { null }?.also {
-        require(it in TOPIC_TYPES) { "Mashg'ulot turi THEORETICAL yoki PRACTICAL bo'lishi kerak" }
+        require(it in TOPIC_TYPES) { "Mashg'ulot turi: ${TOPIC_TYPES.joinToString()}" }
     }
 
     private fun validHours(value: Int?): Int? = value?.also { require(it in 1..200) { "Modul soati 1-200 oralig'ida bo'lishi kerak" } }
 
     private companion object {
-        val TOPIC_TYPES = setOf("THEORETICAL", "PRACTICAL")
+        val TOPIC_TYPES = uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.entries.map { it.name }.toSet()
     }
 
     private fun validTitle(value: String): String = value.trim().also {

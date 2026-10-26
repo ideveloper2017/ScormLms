@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { extractApiError } from "@/lib/academic-api";
-import { creditWorkload, validateTopics } from "@/lib/syllabus";
+import { TOPIC_TYPES as TYPES, creditWorkload, formatTypeHours, topicTypeMeta, validateTopics } from "@/lib/syllabus";
+import { TopicTypeBadge } from "@/components/topic-type-badge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -17,7 +18,6 @@ import {
   type SubjectSyllabus, type SyllabusTopic, type SyllabusTopicInput, type SyllabusTopicType,
 } from "@/services/api/syllabus-api";
 
-const TYPES: SyllabusTopicType[] = ["THEORETICAL", "PRACTICAL"];
 
 
 /**
@@ -73,7 +73,7 @@ export function SyllabusTopicsDialog({ item, canWrite, credits, onClose, onSaved
           <DialogDescription>
             {item.subjectCode ? `${item.subjectCode} · ` : ""}{item.subjectName}.{" "}
             {editable
-              ? "Nazariy va amaliy mashg'ulot mavzulari hamda soatlarini kiriting. Mavzular mazmuni (darslar, materiallar) kurs modulida to'ldiriladi."
+              ? "Nazariy, amaliy, laboratoriya va seminar mashg'ulotlari mavzulari hamda soatlarini kiriting. Mavzular mazmuni (darslar, materiallar) kurs modulida to'ldiriladi."
               : "Mavzular faqat qoralama dasturda tahrirlanadi — tahrirlash uchun yangi versiya oching."}
           </DialogDescription>
         </DialogHeader>
@@ -112,7 +112,7 @@ export function SyllabusTopicsDialog({ item, canWrite, credits, onClose, onSaved
 
 const sumHours = (topics: Pick<SyllabusTopicInput, "hours">[]) => topics.reduce((total, t) => total + (Number(t.hours) || 0), 0);
 
-/** Kredit-modul tizimidagi yuklama: auditoriya (nazariy + amaliy) va mustaqil ta'lim soatlari. */
+/** Kredit-modul tizimidagi yuklama: auditoriya (barcha mashg'ulot turlari) va mustaqil ta'lim soatlari. */
 export function CreditWorkload({ credits, topics }: { credits?: number | null; topics: Pick<SyllabusTopicInput, "hours">[] }) {
   const auditory = sumHours(topics);
   if (!credits) {
@@ -122,14 +122,14 @@ export function CreditWorkload({ credits, topics }: { credits?: number | null; t
   return (
     <p role={load.exceeded ? "alert" : "status"} className={cn("rounded-md border p-2 text-xs",
       load.exceeded ? "border-destructive text-destructive" : "bg-muted/40")}>
-      Fan krediti: {credits} → umumiy yuklama {load.total} soat. Auditoriya (nazariy + amaliy): {load.auditory} soat ·
+      Fan krediti: {credits} → umumiy yuklama {load.total} soat. Auditoriya (barcha mashg'ulotlar): {load.auditory} soat ·
       mustaqil ta'lim: {Math.max(load.selfStudy, 0)} soat
       {load.exceeded && " — auditoriya soatlari kredit hajmidan oshib ketdi"}
     </p>
   );
 }
 
-/** Kurs tuzilmasi: mavzular kursda qaysi tartibda bo'lim bo'lishi (avval nazariy, keyin amaliy). */
+/** Kurs tuzilmasi: mavzular kursda qaysi tartibda bo'lim bo'lishi (nazariy, amaliy, laboratoriya, seminar). */
 export function CoursePlanPreview({ topics }: { topics: SyllabusTopicInput[] }) {
   const ordered = TYPES.flatMap((type) => topics.filter((t) => t.type === type));
   if (ordered.length === 0) return <p className="text-xs text-muted-foreground">Mavzu qo'shilgach, kurs bo'limlari shu yerda ko'rinadi.</p>;
@@ -139,11 +139,7 @@ export function CoursePlanPreview({ topics }: { topics: SyllabusTopicInput[] }) 
         <li key={`${t.type}-${index}`} className="flex items-center gap-2 px-2 py-1.5">
           <span className="w-5 shrink-0 text-muted-foreground">{index + 1}.</span>
           <span className="min-w-0 flex-1 truncate">{t.title.trim() || <i className="text-muted-foreground">nomsiz mavzu</i>}</span>
-          <Badge variant="outline" className={cn("shrink-0", t.type === "THEORETICAL"
-            ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300"
-            : "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300")}>
-            {t.type === "THEORETICAL" ? "Nazariy" : "Amaliy"} · {Number(t.hours) || 0} s
-          </Badge>
+          <TopicTypeBadge type={t.type} hours={Number(t.hours) || 0} suffix="s" />
         </li>
       ))}
     </ol>
@@ -155,12 +151,12 @@ interface EditorProps {
   onChange: (value: SyllabusTopicInput[]) => void;
 }
 
-/** Fan dasturi mavzularini kiritish: nazariy va amaliy mashg'ulotlar alohida ro'yxatda. */
+/** Fan dasturi mavzularini kiritish: har bir mashg'ulot turi (nazariy, amaliy, laboratoriya, seminar) alohida ro'yxatda. */
 export function SyllabusTopicsEditor({ value, onChange }: EditorProps) {
   const [tab, setTab] = useState<SyllabusTopicType>("THEORETICAL");
   const [bulk, setBulk] = useState<string | null>(null);
 
-  // Har bir tur ichida tartib saqlanadi; qayta yig'ishda avval nazariy, keyin amaliy
+  // Har bir tur ichida tartib saqlanadi; qayta yig'ishda turlar TYPES tartibida
   const byType = (type: SyllabusTopicType) => value.filter((t) => t.type === type);
   const replaceType = (type: SyllabusTopicType, items: SyllabusTopicInput[]) =>
     onChange(TYPES.flatMap((t) => (t === type ? items : byType(t))));
@@ -189,15 +185,15 @@ export function SyllabusTopicsEditor({ value, onChange }: EditorProps) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Label>Mavzular</Label>
         <span className="text-xs text-muted-foreground">
-          Jami: {sumHours(value)} soat (nazariy {sumHours(byType("THEORETICAL"))}, amaliy {sumHours(byType("PRACTICAL"))})
+          Jami: {sumHours(value)} soat ({formatTypeHours(Object.fromEntries(TYPES.map((t) => [t, sumHours(byType(t))])))})
         </span>
       </div>
       <Tabs value={tab} onValueChange={(v) => { setTab(v as SyllabusTopicType); setBulk(null); }}>
-        <TabsList className="grid h-auto w-full grid-cols-2">
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
           {TYPES.map((type) => (
-            <TabsTrigger key={type} value={type} className="gap-2">
-              {type === "THEORETICAL" ? "Nazariy" : "Amaliy"}
-              <Badge variant="secondary" className="shrink-0">{byType(type).length} ta · {sumHours(byType(type))} soat</Badge>
+            <TabsTrigger key={type} value={type} className="flex-col gap-0.5 py-1.5">
+              <span>{topicTypeMeta[type].short}</span>
+              <span className="text-[11px] font-normal text-muted-foreground">{byType(type).length} ta · {sumHours(byType(type))} soat</span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -205,7 +201,7 @@ export function SyllabusTopicsEditor({ value, onChange }: EditorProps) {
           <TabsContent key={type} value={type} className="space-y-2">
             {byType(type).length === 0 && (
               <p className="rounded-md border border-dashed p-3 text-center text-sm text-muted-foreground">
-                {type === "THEORETICAL" ? "Nazariy (ma'ruza) mavzulari" : "Amaliy mashg'ulot mavzulari"} hali kiritilmagan
+                {topicTypeMeta[type].empty} hali kiritilmagan
               </p>
             )}
             {byType(type).map((topic, index) => (
@@ -282,7 +278,7 @@ export function SyllabusTopicsView({ topics }: { topics?: SyllabusTopic[] | null
   if (!topics?.length) return <p className="text-sm text-muted-foreground">Mavzular kiritilmagan.</p>;
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {TYPES.map((type) => {
+      {TYPES.filter((type) => topics.some((t) => t.type === type)).map((type) => {
         const items = topics.filter((t) => t.type === type).sort((a, b) => a.sortOrder - b.sortOrder);
         return (
           <div key={type} className="rounded-md border">

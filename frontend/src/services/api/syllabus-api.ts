@@ -1,9 +1,12 @@
 import api from "@/lib/api";
 
 export type SyllabusLanguage = "UZ" | "EN" | "RU" | "KAA" | "UZ_CYRILLIC";
-/** THEORETICAL — nazariy (ma'ruza), PRACTICAL — amaliy mashg'ulot. */
-export type SyllabusTopicType = "THEORETICAL" | "PRACTICAL";
-export const syllabusTopicTypes: Record<SyllabusTopicType, string> = { THEORETICAL: "Nazariy mashg'ulotlar", PRACTICAL: "Amaliy mashg'ulotlar" };
+/** THEORETICAL — nazariy (ma'ruza), PRACTICAL — amaliy, LABORATORY — laboratoriya, SEMINAR — seminar mashg'ulot. */
+export type SyllabusTopicType = "THEORETICAL" | "PRACTICAL" | "LABORATORY" | "SEMINAR";
+export const syllabusTopicTypes: Record<SyllabusTopicType, string> = {
+  THEORETICAL: "Nazariy mashg'ulotlar (ma'ruza)", PRACTICAL: "Amaliy mashg'ulotlar",
+  LABORATORY: "Laboratoriya mashg'ulotlari", SEMINAR: "Seminar mashg'ulotlari",
+};
 export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours: number }
 /** id — mavjud mavzu (joyida yangilanadi, kurs bo'limlari bilan bog'lanish saqlanadi) */
 export interface SyllabusTopicInput { id?: number | null; type: SyllabusTopicType; title: string; description?: string | null; hours: number }
@@ -12,7 +15,7 @@ export interface SubjectSyllabus {
   name: string; language: SyllabusLanguage; shortDescription: string;
   requirements?: string | null; fullDescription: string; active: boolean;
   status: "DRAFT" | "IN_REVIEW" | "APPROVED"; revisionNumber: number;
-  topics?: SyllabusTopic[]; theoreticalHours?: number; practicalHours?: number;
+  topics?: SyllabusTopic[]; theoreticalHours?: number; practicalHours?: number; laboratoryHours?: number; seminarHours?: number;
 }
 export interface SyllabusRevision { revisionNumber: number; content: SubjectSyllabus; approvedByName: string; approvedAt: string }
 export interface SubjectSyllabusInput {

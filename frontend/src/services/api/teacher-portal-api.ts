@@ -1,4 +1,5 @@
 import api, { type ApiResponse } from '@/lib/api';
+import type { SyllabusTopicType } from '@/services/api/syllabus-api';
 
 export interface TeacherProfile {
   id: string;
@@ -126,8 +127,8 @@ export interface CourseModule {
   status: 'draft' | 'published';
   contentCount: number;
   publishedAt?: string | null;
-  /** O'quv dasturi mavzusidan yaratilgan modul: nazariy / amaliy va rejadagi soat */
-  topicType?: 'THEORETICAL' | 'PRACTICAL' | null;
+  /** O'quv dasturi mavzusidan yaratilgan modul: mashg'ulot turi va rejadagi soat */
+  topicType?: SyllabusTopicType | null;
   plannedHours?: number | null;
   /** Bo'lim yaratilgan o'quv dasturi mavzusi */
   syllabusTopicId?: number | null;
@@ -135,7 +136,7 @@ export interface CourseModule {
 
 export interface CourseSyllabusTopic {
   topicId: number;
-  type: 'THEORETICAL' | 'PRACTICAL';
+  type: SyllabusTopicType;
   sortOrder: number;
   title: string;
   hours: number;

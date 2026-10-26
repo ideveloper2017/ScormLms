@@ -77,7 +77,7 @@ describe("SyllabusTopicsEditor", () => {
 
     const last = spy.mock.calls.at(-1)?.[0] as SyllabusTopicInput[];
     expect(last.map((t) => [t.type, t.title])).toEqual([["THEORETICAL", "Kirish"], ["PRACTICAL", "Laboratoriya"]]);
-    expect(screen.getByText(/Jami: 6 soat \(nazariy 2, amaliy 4\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Jami: 6 soat \(Nazariy 2 · Amaliy 4\)/)).toBeInTheDocument();
   });
 
   it("ro'yxatdan bir nechta mavzuni bir yo'la qo'shadi", () => {
@@ -94,13 +94,44 @@ describe("SyllabusTopicsEditor", () => {
   });
 });
 
+describe("Laboratoriya va seminar", () => {
+  it("laboratoriya va seminar mavzulari alohida tablarda kiritiladi va tartibda turadi", () => {
+    const spy = vi.fn();
+    render(<Harness initial={[{ type: "THEORETICAL", title: "Kirish", hours: 2 }]} spy={spy} />);
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Seminar/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Seminar/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
+    fireEvent.change(screen.getByLabelText("1-mavzu nomi"), { target: { value: "Munozara" } });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Laboratoriya/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Laboratoriya/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
+    fireEvent.change(screen.getByLabelText("1-mavzu nomi"), { target: { value: "Mayatnik" } });
+    fireEvent.change(screen.getByLabelText("1-mavzu soati"), { target: { value: "4" } });
+
+    const last = spy.mock.calls.at(-1)?.[0] as SyllabusTopicInput[];
+    expect(last.map((t) => [t.type, t.title])).toEqual([["THEORETICAL", "Kirish"], ["LABORATORY", "Mayatnik"], ["SEMINAR", "Munozara"]]);
+    expect(screen.getByText(/Jami: 8 soat \(Nazariy 2 · Laboratoriya 4 · Seminar 2\)/)).toBeInTheDocument();
+  });
+
+  it("ko'rinishda faqat mavzusi bor turlar chiqadi", () => {
+    render(<SyllabusTopicsView topics={[
+      { type: "LABORATORY", sortOrder: 1, title: "Mayatnik", hours: 4 },
+      { type: "THEORETICAL", sortOrder: 1, title: "Kinematika", hours: 2 },
+    ]} />);
+    expect(screen.getByText("Laboratoriya mashg'ulotlari")).toBeInTheDocument();
+    expect(screen.queryByText("Seminar mashg'ulotlari")).not.toBeInTheDocument();
+    expect(screen.queryByText("Amaliy mashg'ulotlar")).not.toBeInTheDocument();
+  });
+});
+
 describe("SyllabusTopicsView", () => {
   it("nazariy va amaliy mavzularni alohida ko'rsatadi", () => {
     render(<SyllabusTopicsView topics={[
       { type: "PRACTICAL", sortOrder: 1, title: "Amaliy ish", hours: 4 },
       { type: "THEORETICAL", sortOrder: 1, title: "Ma'ruza", hours: 2 },
     ]} />);
-    const theory = screen.getByText("Nazariy mashg'ulotlar").closest("div.rounded-md") as HTMLElement;
+    const theory = screen.getByText("Nazariy mashg'ulotlar (ma'ruza)").closest("div.rounded-md") as HTMLElement;
     expect(within(theory).getByText("Ma'ruza")).toBeInTheDocument();
     expect(within(theory).queryByText("Amaliy ish")).not.toBeInTheDocument();
   });

@@ -34,5 +34,8 @@ class SubjectSyllabusTopic(
     var hours: Int,
 ) : BaseEntity()
 
-/** THEORETICAL — nazariy (ma'ruza) mashg'ulot, PRACTICAL — amaliy mashg'ulot. */
-enum class SyllabusTopicType { THEORETICAL, PRACTICAL }
+/**
+ * Mashg'ulot turlari (tartibi kursdagi bo'limlar tartibini ham belgilaydi):
+ * THEORETICAL — nazariy (ma'ruza), PRACTICAL — amaliy, LABORATORY — laboratoriya, SEMINAR — seminar.
+ */
+enum class SyllabusTopicType { THEORETICAL, PRACTICAL, LABORATORY, SEMINAR }

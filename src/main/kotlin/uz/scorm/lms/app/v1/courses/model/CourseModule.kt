@@ -35,7 +35,7 @@ class CourseModule(
     @Column(name = "published_at")
     var publishedAt: Instant? = null,
 
-    // Fan dasturi mavzusidan yaratilgan modul: THEORETICAL (nazariy) / PRACTICAL (amaliy) va rejadagi soat
+    // Fan dasturi mavzusidan yaratilgan modul: mashg'ulot turi (SyllabusTopicType nomi) va rejadagi soat
     @Column(name = "topic_type", length = 20)
     var topicType: String? = null,
 
