@@ -1,82 +1,209 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, ListOrdered, Loader2, Plus } from "lucide-react";
+import { ListOrdered, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { SyllabusTopicsDialog } from "@/components/admin/syllabus-topics";
-import { syllabusStatuses } from "@/components/admin/syllabus-workflow";
-import { useToast } from "@/hooks/use-toast";
+import { SyllabusWorkflow, syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { extractApiError } from "@/lib/academic-api";
-import { syllabusLanguages, type PlanPart } from "@/lib/syllabus";
-import { curriculumApi, type CurriculumSubject } from "@/services/api/curriculum-api";
-import { syllabusApi } from "@/services/api/syllabus-api";
+import { curriculumLabel, groupBySubject, planOf, syllabusLanguageOf } from "@/lib/curriculum-subjects";
+import { languageLabel, syllabusLanguages, type PlanPart } from "@/lib/syllabus";
+import { curriculumApi, type CurriculumSubject, type CurriculumVersion } from "@/services/api/curriculum-api";
+import { syllabusApi, type SyllabusLanguage } from "@/services/api/syllabus-api";
 
-/** Fanning rejadagi semestr qatorlari -> mavzular uchun reja limitlari (1-qism — birinchi semestr). */
-const planOf = (rows: CurriculumSubject[]): PlanPart[] => [...rows].sort((a, b) => a.semester - b.semester).map((r, i) => ({
-  part: i + 1, semester: r.semester, lecture: r.lectureHours ?? 0, practical: r.practicalHours ?? 0,
-  laboratory: r.laboratoryHours ?? 0, seminar: r.seminarHours ?? 0, auditory: r.auditoryHours ?? 0,
-}));
+const selectClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 
-/**
- * "Mavzular" katagi: bitta tugma. Dastur bo'lmasa "+ Mavzular" — dastur avtomatik topiladi/yaratiladi va mavzular
- * oynasi ochiladi; bo'lsa "N mavzu" (✓ — soatlar rejaga mos, ⚠ — hali mos emas).
- */
-export function CurriculumSyllabusCell({ curriculumId, subject, rows, canLink, onChanged }: {
-  curriculumId: number;
-  /** Fanning birinchi semestr qatori */
-  subject: CurriculumSubject;
-  /** Shu fanning rejadagi barcha semestr qatorlari */
-  rows: CurriculumSubject[];
-  canLink: boolean;
-  onChanged: () => unknown;
-}) {
-  const { toast } = useToast();
-  const [topicsId, setTopicsId] = useState<number | null>(null);
-  const syllabi = useQuery({
+const PLAN_LABELS = [["lecture", "Ma'ruza"], ["practical", "Amaliy"], ["laboratory", "Laboratoriya"], ["seminar", "Seminar"]] as const;
+
+/** Reja soatlari to'liq yozuvda: "Ma'ruza 30 · Amaliy 45 · Mustaqil ta'lim 180". */
+const planText = (rows: CurriculumSubject[]) => {
+  const plan = planOf(rows);
+  const sum = (key: keyof PlanPart) => plan.reduce((acc, p) => acc + p[key], 0);
+  const typed = PLAN_LABELS.filter(([key]) => sum(key) > 0).map(([key, label]) => `${label} ${sum(key)}`);
+  const selfStudy = rows.reduce((acc, r) => acc + (r.selfStudyHours ?? 0), 0);
+  return [...(typed.length ? typed : [`Auditoriya ${sum("auditory")}`]), `Mustaqil ta'lim ${selfStudy}`].join(" · ");
+};
+
+/** Fanning dasturi (fan bo'yicha ro'yxatdan). */
+function useSubjectSyllabus(subject: CurriculumSubject) {
+  const query = useQuery({
     queryKey: ["syllabi", "subject", subject.subjectId],
     queryFn: () => syllabusApi.list(subject.subjectId ?? undefined),
-    enabled: topicsId !== null,
+    enabled: Boolean(subject.subjectId && subject.syllabusId),
   });
-  const ensure = useMutation({
-    mutationFn: () => curriculumApi.ensureSyllabus(curriculumId, subject.id),
-    onSuccess: async (syllabusId) => {
-      await onChanged();
-      await syllabi.refetch();
-      setTopicsId(syllabusId);
+  return { ...query, item: query.data?.find((s) => s.id === subject.syllabusId) };
+}
+
+/**
+ * "Yangi o'quv dasturi": avval o'quv reja, keyin undagi fan tanlanadi (soatlar rejadan olinadi).
+ * Fanning boshqa rejada tuzilgan dasturi bo'lsa, uni biriktirish mumkin; aks holda yangi dastur yaratiladi.
+ */
+export function CreateSyllabusDialog({ curricula, curriculumId: initialCurriculumId, itemId, onClose, onCreated }: {
+  curricula: CurriculumVersion[];
+  curriculumId: number;
+  /** Jadvaldagi fan qatoridan ochilganda — shu fan tanlangan bo'ladi */
+  itemId?: number | null;
+  onClose: () => void;
+  /** Dastur yaratildi yoki biriktirildi: reja va fan qatori (mavzular oynasini ochish uchun) */
+  onCreated: (curriculumId: number, itemId: number) => unknown;
+}) {
+  const [curriculumId, setCurriculumId] = useState(initialCurriculumId);
+  const [chosenItemId, setChosenItemId] = useState<number | null>(itemId ?? null);
+  const [choice, setChoice] = useState<number | "new" | null>(null);
+  const [language, setLanguage] = useState<SyllabusLanguage | null>(null);
+  const [goal, setGoal] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const curriculum = useQuery({ queryKey: ["curricula", curriculumId], queryFn: () => curriculumApi.get(curriculumId) });
+  const groups = groupBySubject(curriculum.data?.subjects ?? []).filter((rows) => rows[0].subjectId != null);
+  const rows = groups.find((g) => g.some((r) => r.id === chosenItemId)) ?? groups.find((g) => !g[0].syllabusId);
+  const first = rows?.[0];
+  const existing = useQuery({
+    queryKey: ["syllabi", "subject", first?.subjectId],
+    queryFn: () => syllabusApi.list(first?.subjectId ?? undefined),
+    enabled: Boolean(first?.subjectId),
+  });
+  const planLanguage = syllabusLanguageOf(curriculum.data?.educationLanguage);
+  // Reja tilidagi mavjud dastur bo'lsa, u oldindan tanlanadi (bir dastur bir necha rejada ishlatiladi)
+  const selected = choice ?? existing.data?.find((s) => s.language === planLanguage)?.id ?? "new";
+  const lang = language ?? planLanguage;
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!first) return;
+      if (selected === "new") {
+        const text = goal.trim() || `${first.subjectName} fanining o'quv dasturi`;
+        await curriculumApi.createSyllabus(curriculumId, first.id, { language: lang, shortDescription: text, fullDescription: text });
+      } else {
+        await curriculumApi.attachSyllabus(curriculumId, first.id, selected);
+      }
     },
-    onError: (e) => toast({ variant: "destructive", title: "Dastur ochilmadi", description: extractApiError(e, "Xatolik").message }),
+    onSuccess: () => { if (first) void onCreated(curriculumId, first.id); },
+    onError: (e) => setError(extractApiError(e, "Saqlanmadi").message),
   });
-  const topicsItem = syllabi.data?.find((s) => s.id === topicsId);
-  if (!subject.subjectId) return <span className="text-xs text-muted-foreground">—</span>;
-  const opening = ensure.isPending || (topicsId !== null && syllabi.isLoading);
+  const busy = save.isPending;
+  const pickSubject = (id: number) => { setChosenItemId(id); setChoice(null); setError(null); };
 
   return (
-    <>
-      {topicsId !== null && topicsItem && (
-        <SyllabusTopicsDialog key={topicsItem.id} item={topicsItem} canWrite={canLink} plan={planOf(rows)}
-          title={`${subject.subjectName} — mavzular`}
-          onSaved={() => { void syllabi.refetch(); void onChanged(); }} onClose={() => setTopicsId(null)} />
-      )}
-      {subject.syllabusId ? (
-        <Button size="sm" variant="outline" className="h-8" disabled={opening} onClick={() => setTopicsId(subject.syllabusId!)}
-          title={subject.syllabusHoursMatch ? "Mavzu soatlari rejaga mos" : "Mavzu soatlari reja soatlariga hali mos emas"}>
-          {opening ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-            : subject.syllabusHoursMatch ? <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-green-600" />
-            : <AlertTriangle className="mr-1 h-3.5 w-3.5 text-amber-600" />}
-          {subject.syllabusTopicCount ?? 0} mavzu
-        </Button>
-      ) : canLink ? (
-        <Button size="sm" variant="secondary" className="h-8" disabled={opening} onClick={() => ensure.mutate()}>
-          {opening ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}Mavzular
-        </Button>
-      ) : (
-        <span className="text-xs text-muted-foreground">—</span>
-      )}
-    </>
+    <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Yangi o'quv dasturi</DialogTitle>
+          <DialogDescription>O'quv reja va undagi fanni tanlang. Kredit va soatlar rejadan olinadi, mavzular keyingi oynada kiritiladi.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="new-syllabus-curriculum">O'quv reja *</Label>
+          <select id="new-syllabus-curriculum" className={selectClass} value={curriculumId} disabled={busy}
+            onChange={(e) => { setCurriculumId(Number(e.target.value)); setChosenItemId(null); setChoice(null); setLanguage(null); setError(null); }}>
+            {curricula.map((c) => <option key={c.id} value={c.id}>{curriculumLabel(c)}</option>)}
+          </select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="new-syllabus-subject">Fan *</Label>
+          <select id="new-syllabus-subject" className={selectClass} value={first?.id ?? ""} disabled={busy || !groups.length}
+            onChange={(e) => pickSubject(Number(e.target.value))}>
+            {!groups.length && <option value="">{curriculum.isLoading ? "Yuklanmoqda..." : "Rejada fan yo'q"}</option>}
+            {groups.map((g) => (
+              <option key={g[0].id} value={g[0].id} disabled={Boolean(g[0].syllabusId)}>
+                {g[0].planRowNumber ? `${g[0].planRowNumber} ` : ""}{g[0].subjectName}{g[0].syllabusId ? " — dastur bor" : ""}
+              </option>
+            ))}
+          </select>
+          {rows && (
+            <p className="text-xs text-muted-foreground" aria-label="Rejadagi soatlar">
+              Rejada: {rows.map((r) => r.semester).join(", ")}-semestr · {rows.map((r) => r.credits).join("+")} kredit · {planText(rows)}
+            </p>
+          )}
+        </div>
+
+        {first && (existing.data?.length ?? 0) > 0 && (
+          <div role="radiogroup" aria-label="O'quv dasturi" className="space-y-1.5">
+            <p className="text-sm font-medium">Bu fan uchun o'quv dasturi allaqachon bor — shuni ishlatish mumkin</p>
+            {existing.data!.map((s) => (
+              <label key={s.id} className="flex cursor-pointer items-start gap-2 rounded-md border p-2 text-sm has-[:checked]:border-primary">
+                <input type="radio" name="new-syllabus-choice" className="mt-1" checked={selected === s.id} onChange={() => setChoice(s.id)} />
+                <span className="flex-1">
+                  <span className="font-medium">{s.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {languageLabel(s.language)} · {syllabusStatuses[s.status]} · <ListOrdered className="inline h-3 w-3" /> {s.topics?.length ?? 0} mavzu
+                  </span>
+                </span>
+              </label>
+            ))}
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm has-[:checked]:border-primary">
+              <input type="radio" name="new-syllabus-choice" checked={selected === "new"} onChange={() => setChoice("new")} />
+              <span className="font-medium">Yangi o'quv dasturi yaratish</span>
+            </label>
+          </div>
+        )}
+
+        {first && selected === "new" && (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-syllabus-language">Dastur tili</Label>
+              <select id="new-syllabus-language" className={selectClass} value={lang} disabled={busy}
+                onChange={(e) => setLanguage(e.target.value as SyllabusLanguage)}>
+                {syllabusLanguages.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-syllabus-goal">Fanning maqsadi va vazifalari</Label>
+              <Textarea id="new-syllabus-goal" rows={3} value={goal} disabled={busy} placeholder="Ixtiyoriy — keyin ham to'ldirish mumkin"
+                onChange={(e) => setGoal(e.target.value)} />
+            </div>
+          </>
+        )}
+
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Bekor qilish</Button>
+          <Button onClick={() => save.mutate()} disabled={busy || !first || Boolean(first.syllabusId)}>
+            {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {selected === "new" ? "Yaratish va mavzularni kiritish" : "Biriktirish va mavzularni ochish"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-/** "⋯ → Boshqa o'quv dasturini tanlash": shu fanning boshqa dasturini biriktirish yoki ajratish. */
+/** Rejadagi fan dasturining mavzulari: har bir tur alohida ro'yxat, soatlar reja soatlari bilan solishtiriladi. */
+export function CurriculumTopicsDialog({ rows, canWrite, onClose, onSaved }: {
+  /** Fanning rejadagi barcha semestr qatorlari */
+  rows: CurriculumSubject[];
+  canWrite: boolean;
+  onClose: () => void;
+  onSaved: () => unknown;
+}) {
+  const syllabus = useSubjectSyllabus(rows[0]);
+  if (!syllabus.item) return null;
+  return (
+    <SyllabusTopicsDialog key={syllabus.item.id} item={syllabus.item} canWrite={canWrite} plan={planOf(rows)}
+      title={`${rows[0].subjectName} — mavzular`}
+      onSaved={() => { void syllabus.refetch(); void onSaved(); }} onClose={onClose} />
+  );
+}
+
+/** Dastur holati (tekshiruvga yuborish, tasdiqlash) va tasdiqlangan versiyalar tarixi. */
+export function CurriculumSyllabusWorkflow({ subject, canWrite, onClose, onChanged }: {
+  subject: CurriculumSubject;
+  canWrite: boolean;
+  onClose: () => void;
+  onChanged: () => unknown;
+}) {
+  const syllabus = useSubjectSyllabus(subject);
+  if (!syllabus.item) return null;
+  return (
+    <SyllabusWorkflow item={syllabus.item} canWrite={canWrite} close={onClose}
+      reload={() => { void syllabus.refetch(); void onChanged(); }} />
+  );
+}
+
+/** "⋯ → Boshqa dasturni tanlash": shu fanning boshqa dasturini biriktirish yoki rejadan ajratish. */
 export function LinkSyllabusDialog({ curriculumId, subject, onClose, onLinked }: {
   curriculumId: number;
   subject: CurriculumSubject;
@@ -121,7 +248,7 @@ export function LinkSyllabusDialog({ curriculumId, subject, onClose, onLinked }:
               <span className="flex-1">
                 <span className="font-medium">{s.name}</span>
                 <span className="block text-xs text-muted-foreground">
-                  {syllabusLanguages.find((l) => l.value === s.language)?.label ?? s.language} · {syllabusStatuses[s.status]} ·{" "}
+                  {languageLabel(s.language)} · {syllabusStatuses[s.status]} ·{" "}
                   <ListOrdered className="inline h-3 w-3" /> {s.topics?.length ?? 0} mavzu
                 </span>
               </span>
@@ -131,7 +258,7 @@ export function LinkSyllabusDialog({ curriculumId, subject, onClose, onLinked }:
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <DialogFooter className="gap-2 sm:justify-between">
           {subject.syllabusId
-            ? <Button variant="ghost" className="text-destructive" disabled={busy} onClick={() => detach.mutate()}>Ajratish</Button>
+            ? <Button variant="ghost" className="text-destructive" disabled={busy} onClick={() => detach.mutate()}>Rejadan ajratish</Button>
             : <span />}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} disabled={busy}>Bekor qilish</Button>

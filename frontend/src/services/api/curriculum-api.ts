@@ -293,9 +293,6 @@ export const curriculumApi = {
   /** Fan nomi bilan yangi o'quv dasturi yaratib biriktirish */
   createSyllabus: async (id: number, itemId: number, input: CreateCurriculumSyllabusInput) =>
     (await api.post<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/syllabus`, input)).data,
-  /** "+ Mavzular": reja tilidagi mavjud dastur biriktiriladi yoki yangisi yaratiladi; dastur id'si qaytadi */
-  ensureSyllabus: async (id: number, itemId: number) =>
-    (await api.post<{ syllabusId: number }>(`/curricula/${id}/subjects/${itemId}/syllabus/auto`)).data.syllabusId,
   detachSyllabus: async (id: number, itemId: number) =>
     (await api.delete<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/syllabus`)).data,
   updateSubject: async (id: number, itemId: number, input: UpdateCurriculumSubjectInput) =>

@@ -4,13 +4,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AcademicStatements } from '../admin/academic-results';
 import { TeacherSessions } from '../teacher/sessions';
-import { AdminSyllabi } from '../admin/syllabi';
 import { StatementDetails } from '@/components/admin/statement-detail';
 import { SyllabusWorkflow } from '@/components/admin/syllabus-workflow';
 import * as results from '@/services/api/academic-results-api';
 import { teacherPortalApi, type TeacherLearningSession } from '@/services/api/teacher-portal-api';
 import { syllabusApi, type SubjectSyllabus } from '@/services/api/syllabus-api';
-import { listSubjects } from '@/lib/academic-api';
 import { downloadCsv } from '@/utils/csv-export';
 import { curriculumApprovalReason, type CurriculumVersion } from '@/services/api/curriculum-api';
 import type { User } from '@/types/auth.types';
@@ -18,9 +16,7 @@ import type { User } from '@/types/auth.types';
 vi.mock('@/services/api/academic-results-api');
 vi.mock('@/services/api/teacher-portal-api');
 vi.mock('@/services/api/syllabus-api');
-vi.mock('@/services/api/model-program-api', () => ({ modelProgramApi: { list: vi.fn(async () => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() } }));
 vi.mock('@/utils/csv-export');
-vi.mock('@/lib/academic-api', async importOriginal => ({ ...await importOriginal<object>(), listSubjects: vi.fn() }));
 vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { id: 1, role: { name: 'admin' }, roles: [], permissions: ['ACADEMIC_WRITE', 'REPORT_READ'] } }) }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 function mount(ui: React.ReactNode) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>); }
@@ -74,15 +70,6 @@ it('edits the existing session instead of creating a duplicate and preserves loc
   fireEvent.click(screen.getByRole('button', { name: 'O‘zgarishlarni saqlash' }));
   await waitFor(() => expect(teacherPortalApi.updateLearningSession).toHaveBeenCalledWith('9', expect.objectContaining({ title: 'Yangi dars', room: '202', startsAt: session.startsAt.replace('Z', '.000Z'), status: 'PUBLISHED' })));
   expect(teacherPortalApi.createLearningSession).not.toHaveBeenCalled();
-});
-
-it('explains missing syllabus subjects and provides retry', async () => {
-  vi.mocked(syllabusApi.list).mockResolvedValue([]);
-  vi.mocked(listSubjects).mockRejectedValue(new Error('offline'));
-  mount(<AdminSyllabi />);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Fanlar yuklanmadi');
-  fireEvent.click(screen.getByRole('button', { name: 'Fanlarni qayta yuklash' }));
-  await waitFor(() => expect(listSubjects).toHaveBeenCalledTimes(2));
 });
 
 it('shows approved history and opens a new draft through the workflow', async () => {

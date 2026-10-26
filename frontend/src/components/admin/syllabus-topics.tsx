@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { extractApiError } from "@/lib/academic-api";
 import { TOPIC_TYPES as TYPES, creditWorkload, formatTypeHours, planHours, topicTypeMeta, validateTopics, type PlanPart } from "@/lib/syllabus";
-import { TopicTypeBadge } from "@/components/topic-type-badge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -197,23 +196,6 @@ export function PlanHoursCheck({ topics, plan, compact = false }: {
         </ul>
       ))}
     </div>
-  );
-}
-
-/** Kurs tuzilmasi: mavzular kursda qaysi tartibda bo'lim bo'lishi (nazariy, amaliy, laboratoriya, seminar). */
-export function CoursePlanPreview({ topics }: { topics: SyllabusTopicInput[] }) {
-  const ordered = TYPES.flatMap((type) => topics.filter((t) => t.type === type));
-  if (ordered.length === 0) return <p className="text-xs text-muted-foreground">Mavzu qo'shilgach, kurs bo'limlari shu yerda ko'rinadi.</p>;
-  return (
-    <ol className="max-h-64 divide-y overflow-y-auto rounded-md border text-xs" aria-label="Kurs bo'limlari">
-      {ordered.map((t, index) => (
-        <li key={`${t.type}-${index}`} className="flex items-center gap-2 px-2 py-1.5">
-          <span className="w-5 shrink-0 text-muted-foreground">{index + 1}.</span>
-          <span className="min-w-0 flex-1 truncate">{t.title.trim() || <i className="text-muted-foreground">nomsiz mavzu</i>}</span>
-          <TopicTypeBadge type={t.type} hours={Number(t.hours) || 0} suffix="s" />
-        </li>
-      ))}
-    </ol>
   );
 }
 

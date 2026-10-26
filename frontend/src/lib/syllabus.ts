@@ -91,3 +91,5 @@ export const syllabusLanguages: { value: SyllabusLanguage; label: string }[] = [
   { value: "KAA", label: "Qaraqalpaqsha" },
   { value: "UZ_CYRILLIC", label: "Ўзбекча" },
 ];
+
+export const languageLabel = (language?: string | null) => syllabusLanguages.find((l) => l.value === language)?.label ?? language ?? "";

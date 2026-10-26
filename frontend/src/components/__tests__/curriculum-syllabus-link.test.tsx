@@ -1,14 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CurriculumSyllabusCell, LinkSyllabusDialog } from "@/components/admin/curriculum-syllabus-link";
+import { CurriculumTopicsDialog, LinkSyllabusDialog } from "@/components/admin/curriculum-syllabus-link";
 import { PlanHoursCheck } from "@/components/admin/syllabus-topics";
 import { curriculumApi, type CurriculumSubject, type CurriculumVersion } from "@/services/api/curriculum-api";
 import { syllabusApi, type SubjectSyllabus } from "@/services/api/syllabus-api";
 
 vi.mock("@/services/api/curriculum-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  curriculumApi: { ensureSyllabus: vi.fn(), attachSyllabus: vi.fn(), detachSyllabus: vi.fn() },
+  curriculumApi: { attachSyllabus: vi.fn(), detachSyllabus: vi.fn() },
 }));
 vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
@@ -27,27 +27,19 @@ const syllabus = (patch: Partial<SubjectSyllabus>): SubjectSyllabus => ({
   fullDescription: "t", active: true, status: "DRAFT", revisionNumber: 1, topics: [], ...patch,
 });
 const client = () => new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-const mountCell = (subject: CurriculumSubject, onChanged = vi.fn()) => render(
-  <QueryClientProvider client={client()}>
-    <CurriculumSyllabusCell curriculumId={5} subject={subject} rows={[subject, sem2]} canLink onChanged={onChanged} />
-  </QueryClientProvider>,
-);
-
-describe("CurriculumSyllabusCell", () => {
+describe("CurriculumTopicsDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({}), syllabus({ id: 41, name: "Dasturlash (RU)", language: "RU", status: "APPROVED" })]);
   });
 
-  it("'+ Mavzular' bitta bosishda dasturni ochadi va ixcham mavzular oynasini reja limitlari bilan ko'rsatadi", async () => {
-    vi.mocked(curriculumApi.ensureSyllabus).mockResolvedValue(40);
-    const onChanged = vi.fn();
-    mountCell(sem1, onChanged);
+  it("rejadagi fan dasturi mavzularini ixcham ko'rinishda, reja limitlari bilan ochadi", async () => {
+    render(<QueryClientProvider client={client()}>
+      <CurriculumTopicsDialog rows={[{ ...sem1, syllabusId: 40 }, { ...sem2, syllabusId: 40 }]} canWrite onClose={vi.fn()} onSaved={vi.fn()} />
+    </QueryClientProvider>);
 
-    fireEvent.click(screen.getByRole("button", { name: /Mavzular/ }));
-    await waitFor(() => expect(curriculumApi.ensureSyllabus).toHaveBeenCalledWith(5, 9));
     expect(await screen.findByRole("dialog", { name: "Dasturlash 1,2 — mavzular" })).toBeInTheDocument();
-    expect(onChanged).toHaveBeenCalled();
+    expect(syllabusApi.list).toHaveBeenCalledWith(1);
 
     // Faqat rejada soati bor turlar (seminar yo'q), nom + soat + qism
     expect(screen.getAllByRole("tab").map((t) => t.textContent?.replace(/\d.*$/, "").trim())).toEqual(["Nazariy", "Amaliy", "Laboratoriya"]);
@@ -58,12 +50,6 @@ describe("CurriculumSyllabusCell", () => {
     expect(screen.getByLabelText("1-mavzu qismi")).toHaveValue("1");
     expect(screen.queryByLabelText("1-mavzu mazmuni")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Yuqoriga" })).not.toBeInTheDocument();
-  });
-
-  it("biriktirilgan dasturda mavzular soni va reja soatlariga mosligi ko'rinadi", () => {
-    mountCell({ ...sem1, syllabusId: 40, syllabusName: "Dasturlash 1,2", syllabusTopicCount: 12, syllabusHoursMatch: true });
-    const button = screen.getByRole("button", { name: /12 mavzu/ });
-    expect(button).toHaveAttribute("title", "Mavzu soatlari rejaga mos");
   });
 });
 

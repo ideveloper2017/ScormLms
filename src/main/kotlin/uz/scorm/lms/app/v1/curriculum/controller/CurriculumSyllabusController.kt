@@ -27,12 +27,6 @@ class CurriculumSyllabusController(private val service: CurriculumSyllabusServic
     fun create(@PathVariable id: Long, @PathVariable itemId: Long, @RequestBody request: CreateCurriculumSyllabusRequest, @CurrentUser user: User) =
         service.createAndAttach(id, itemId, request, requireNotNull(user.id))
 
-    /** "+ Mavzular": mavjud dastur biriktiriladi yoki yangisi yaratiladi; dastur id'si qaytadi */
-    @PostMapping("/auto")
-    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
-    fun ensure(@PathVariable id: Long, @PathVariable itemId: Long, @CurrentUser user: User) =
-        mapOf("syllabusId" to service.ensure(id, itemId, requireNotNull(user.id)))
-
     @DeleteMapping
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
     fun detach(@PathVariable id: Long, @PathVariable itemId: Long, @CurrentUser user: User) =
