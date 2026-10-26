@@ -126,6 +126,7 @@ class CourseService(
                 position = index + 1,
                 topicType = topic.type.name,
                 plannedHours = topic.hours,
+                syllabusTopicId = topic.id,
             ))
         }
     }

@@ -28,7 +28,16 @@ class CourseModuleService(
     @Transactional
     fun create(courseId: Long, request: CourseModuleRequest, userId: Long, mayManageAll: Boolean): CourseModuleDto {
         val course = accessService.requireManage(courseId, userId, mayManageAll)
-        val title = validTitle(request.title)
+        val topic = request.syllabusTopicId?.let { topicId ->
+            val syllabus = requireNotNull(course.syllabus) { "Kurs o'quv dasturiga bog'lanmagan" }
+            val topic = syllabus.topics.firstOrNull { it.id == topicId }
+                ?: throw IllegalArgumentException("Mavzu kurs o'quv dasturiga tegishli emas: $topicId")
+            require(!moduleRepository.existsByCourseIdAndSyllabusTopicIdAndDeletedFalse(courseId, topicId)) {
+                "Bu mavzu kursga allaqachon bo'lim sifatida qo'shilgan"
+            }
+            topic
+        }
+        val title = validTitle(request.title.ifBlank { topic?.title?.take(255).orEmpty() })
         val nextPosition = request.position ?: ((moduleRepository
             .findFirstByCourseIdAndDeletedFalseOrderByPositionDesc(courseId)?.position ?: 0) + 1)
         require(nextPosition > 0) { "Modul tartibi musbat bo'lishi kerak" }
@@ -37,8 +46,9 @@ class CourseModuleService(
             title = title,
             description = request.description?.trim(),
             position = nextPosition,
-            topicType = validTopicType(request.topicType),
-            plannedHours = validHours(request.plannedHours),
+            topicType = topic?.type?.name ?: validTopicType(request.topicType),
+            plannedHours = topic?.hours ?: validHours(request.plannedHours),
+            syllabusTopicId = topic?.id,
         )))
     }
 
@@ -90,6 +100,7 @@ class CourseModuleService(
         publishedAt = module.publishedAt,
         topicType = module.topicType,
         plannedHours = module.plannedHours,
+        syllabusTopicId = module.syllabusTopicId,
     )
 
     private fun validTopicType(value: String?): String? = value?.trim()?.uppercase()?.ifBlank { null }?.also {

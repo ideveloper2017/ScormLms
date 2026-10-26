@@ -81,6 +81,17 @@ class SubjectSyllabusServiceTest {
         assertEquals(2, result.theoreticalHours)
         assertEquals(4, result.practicalHours)
 
+        // id berilgan mavzu joyida yangilanadi (kurs bo'limi bog'lanishi saqlanadi), berilmagani o'chiriladi
+        val kirish = syllabus.topics.first { it.title == "Kirish" }.apply { id = 501 }
+        syllabus.topics.first { it.title == "Laboratoriya" }.id = 502
+        val renamed = service.updateTopics(40, listOf(SyllabusTopicRequest(THEORETICAL, "Kirish va maqsad", hours = 3, id = 501)))
+        assertEquals(listOf("Kirish va maqsad"), renamed.topics.map { it.title })
+        assertEquals(1, syllabus.topics.size)
+        assert(syllabus.topics.single() === kirish)
+        assertThrows<IllegalArgumentException> {
+            service.updateTopics(40, listOf(SyllabusTopicRequest(THEORETICAL, "Begona", hours = 2, id = 999)))
+        }
+
         syllabus.status = "APPROVED"
         assertThrows<IllegalArgumentException> { service.updateTopics(40, emptyList()) }
     }

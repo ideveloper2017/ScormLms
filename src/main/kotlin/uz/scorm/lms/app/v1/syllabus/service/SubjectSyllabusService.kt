@@ -120,19 +120,32 @@ class SubjectSyllabusService(
 
     private fun replaceTopics(value: SubjectSyllabus, requests: List<SyllabusTopicRequest>) {
         require(requests.size <= MAX_TOPICS) { "Mavzular soni $MAX_TOPICS tadan oshmasligi kerak" }
+        val ids = requests.mapNotNull { it.id }
+        require(ids.size == ids.toSet().size) { "Bir mavzu ro'yxatda ikki marta berilgan" }
+        // id berilgan mavzu joyida yangilanadi (kurs bo'limlari unga bog'langan), qolganlari yangi yaratiladi
+        val existing = value.topics.filter { it.id != null }.associateBy { requireNotNull(it.id) }
         val topics = requests.groupBy { it.type }.flatMap { (type, items) ->
             items.mapIndexed { index, item ->
                 val title = item.title.trim()
                 require(title.length in 2..500) { "Mavzu nomi 2-500 belgi bo'lishi kerak" }
                 require(item.hours in 1..MAX_TOPIC_HOURS) { "\"$title\" mavzusi soati 1-$MAX_TOPIC_HOURS oralig'ida bo'lishi kerak" }
-                SubjectSyllabusTopic(
+                val description = item.description?.trim()?.takeIf(String::isNotEmpty)
+                item.id?.let { id ->
+                    val topic = existing[id] ?: throw IllegalArgumentException("Mavzu ushbu dasturga tegishli emas: $id")
+                    topic.type = type
+                    topic.sortOrder = index + 1
+                    topic.title = title
+                    topic.description = description
+                    topic.hours = item.hours
+                    topic
+                } ?: SubjectSyllabusTopic(
                     syllabus = value, type = type, sortOrder = index + 1, title = title,
-                    description = item.description?.trim()?.takeIf(String::isNotEmpty), hours = item.hours,
+                    description = description, hours = item.hours,
                 )
             }
         }
-        value.topics.clear()
-        value.topics.addAll(topics)
+        value.topics.removeIf { old -> topics.none { it === old } }
+        topics.filter { new -> value.topics.none { it === new } }.forEach(value.topics::add)
     }
 
     private fun lock(id: Long) = syllabi.lockById(id) ?: throw NoSuchElementException("O'quv dasturi topilmadi: $id")

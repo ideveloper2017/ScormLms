@@ -35,12 +35,12 @@ export function SyllabusTopicsDialog({ item, canWrite, onClose, onSaved }: {
 }) {
   const editable = canWrite && item.status === "DRAFT";
   const [topics, setTopics] = useState<SyllabusTopicInput[]>(
-    (item.topics ?? []).map((t) => ({ type: t.type, title: t.title, description: t.description ?? "", hours: t.hours })),
+    (item.topics ?? []).map((t) => ({ id: t.id, type: t.type, title: t.title, description: t.description ?? "", hours: t.hours })),
   );
   const [error, setError] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: () => syllabusApi.updateTopics(item.id, topics.map((t) => ({
-      type: t.type, title: t.title.trim(), description: t.description?.trim() || null, hours: Number(t.hours),
+      id: t.id ?? null, type: t.type, title: t.title.trim(), description: t.description?.trim() || null, hours: Number(t.hours),
     }))),
     onSuccess: () => { onSaved(); onClose(); },
     onError: (e) => setError(extractApiError(e, "Mavzular saqlanmadi").message),

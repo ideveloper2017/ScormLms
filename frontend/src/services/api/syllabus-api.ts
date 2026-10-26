@@ -5,7 +5,8 @@ export type SyllabusLanguage = "UZ" | "EN" | "RU" | "KAA" | "UZ_CYRILLIC";
 export type SyllabusTopicType = "THEORETICAL" | "PRACTICAL";
 export const syllabusTopicTypes: Record<SyllabusTopicType, string> = { THEORETICAL: "Nazariy mashg'ulotlar", PRACTICAL: "Amaliy mashg'ulotlar" };
 export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours: number }
-export interface SyllabusTopicInput { type: SyllabusTopicType; title: string; description?: string | null; hours: number }
+/** id — mavjud mavzu (joyida yangilanadi, kurs bo'limlari bilan bog'lanish saqlanadi) */
+export interface SyllabusTopicInput { id?: number | null; type: SyllabusTopicType; title: string; description?: string | null; hours: number }
 export interface SubjectSyllabus {
   id: number; subjectId: number; subjectCode?: string | null; subjectName: string;
   name: string; language: SyllabusLanguage; shortDescription: string;
