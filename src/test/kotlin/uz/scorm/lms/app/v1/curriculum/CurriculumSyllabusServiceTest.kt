@@ -17,7 +17,7 @@ import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
 import uz.scorm.lms.app.v1.curriculum.service.CurriculumSyllabusService
-import uz.scorm.lms.app.v1.curriculum.service.curriculumHoursMatch
+import uz.scorm.lms.app.v1.curriculum.service.curriculumTopicsComplete
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.syllabus.model.SubjectModelProgram
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
@@ -91,20 +91,23 @@ class CurriculumSyllabusServiceTest {
     }
 
     @Test
-    fun `mavzu soatlari fanning barcha semestrlari bo'yicha reja soatlariga solishtiriladi`() {
+    fun `rejada soati bor har bir turga har bir semestr qismida mavzu kiritilgani tekshiriladi, soat solishtirilmaydi`() {
         val syllabus = SubjectSyllabus(programming, "Dasturlash 1,2", SyllabusLanguage.UZ, "Qisqa", null, "To'liq")
-        fun add(type: SyllabusTopicType, hours: Int, part: Int) {
-            syllabus.topics += SubjectSyllabusTopic(syllabus, type, syllabus.topics.size + 1, "Mavzu", hours = hours).apply { this.part = part }
+        fun add(type: SyllabusTopicType, part: Int) {
+            syllabus.topics += SubjectSyllabusTopic(syllabus, type, syllabus.topics.size + 1, "Mavzu").apply { this.part = part }
         }
-        add(SyllabusTopicType.THEORETICAL, 30, 1); add(SyllabusTopicType.PRACTICAL, 45, 1); add(SyllabusTopicType.LABORATORY, 44, 2)
-        assertFalse(curriculumHoursMatch(syllabus, listOf(sem1, sem2)))
-        add(SyllabusTopicType.LABORATORY, 1, 2)
-        assertTrue(curriculumHoursMatch(syllabus, listOf(sem1, sem2)))
+        assertFalse(curriculumTopicsComplete(syllabus, listOf(sem1, sem2)))
+        add(SyllabusTopicType.THEORETICAL, 1); add(SyllabusTopicType.PRACTICAL, 1); add(SyllabusTopicType.LABORATORY, 1)
+        // 2-qismda (2-semestr) hali mavzu yo'q
+        assertFalse(curriculumTopicsComplete(syllabus, listOf(sem1, sem2)))
+        add(SyllabusTopicType.THEORETICAL, 2); add(SyllabusTopicType.PRACTICAL, 2); add(SyllabusTopicType.LABORATORY, 2)
+        assertTrue(curriculumTopicsComplete(syllabus, listOf(sem1, sem2)))
 
-        // Masofaviy: turlarga bo'linmagan — auditoriya jami bilan solishtiriladi
+        // Masofaviy: turlarga bo'linmagan — istalgan turdagi mavzu yetarli
         val distance = row(13, writing, 1, 0, 0, 0).apply { auditoryHours = 60 }
         val distanceSyllabus = SubjectSyllabus(writing, "Akademik yozuv", SyllabusLanguage.UZ, "q", null, "t")
-        distanceSyllabus.topics += SubjectSyllabusTopic(distanceSyllabus, SyllabusTopicType.THEORETICAL, 1, "Mavzu", hours = 60)
-        assertTrue(curriculumHoursMatch(distanceSyllabus, listOf(distance)))
+        assertFalse(curriculumTopicsComplete(distanceSyllabus, listOf(distance)))
+        distanceSyllabus.topics += SubjectSyllabusTopic(distanceSyllabus, SyllabusTopicType.THEORETICAL, 1, "Mavzu")
+        assertTrue(curriculumTopicsComplete(distanceSyllabus, listOf(distance)))
     }
 }

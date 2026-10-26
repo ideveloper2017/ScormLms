@@ -159,7 +159,7 @@ data class CourseSyllabusTopicDto(
     val type: String,
     val sortOrder: Int,
     val title: String,
-    val hours: Int,
+    val hours: Int?,
     val moduleId: Long?,
     val moduleTitle: String?,
     /** Bo'lim bor, lekin nomi/turi/soati dasturdagidan farq qiladi */

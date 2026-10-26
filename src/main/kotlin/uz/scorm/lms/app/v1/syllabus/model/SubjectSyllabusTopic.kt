@@ -30,8 +30,9 @@ class SubjectSyllabusTopic(
     @Column(columnDefinition = "TEXT")
     var description: String? = null,
 
-    @Column(nullable = false)
-    var hours: Int,
+    /** Ixtiyoriy: soatlar fan bo'yicha o'quv rejada belgilanadi */
+    @Column
+    var hours: Int? = null,
 ) : BaseEntity() {
     /** Ko'p semestrli fanda mavzu qaysi qismga tegishli (1-qism — birinchi semestr); bir semestrli fanda null */
     @Column

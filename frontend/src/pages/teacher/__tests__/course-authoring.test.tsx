@@ -87,7 +87,7 @@ describe('course authoring', () => {
     fireEvent.click(await screen.findByRole('option', { name: /Mexanika dasturi/ }));
 
     expect(screen.getByRole('textbox', { name: 'Kurs nomi *' })).toHaveValue('Mexanika dasturi');
-    expect(screen.getByText(/2 ta mavzusi kurs modullari sifatida yaratiladi/)).toHaveTextContent('Nazariy 2 · Amaliy 4 soat');
+    expect(screen.getByText(/2 ta mavzusi kurs modullari sifatida yaratiladi/)).toHaveTextContent('Nazariy 1 · Amaliy 1.');
     fireEvent.click(screen.getByRole('button', { name: 'Kurs yaratish', exact: true }));
     await waitFor(() => expect(teacherPortalApi.createCourse).toHaveBeenCalledWith(expect.objectContaining({
       syllabusId: 31, subjectId: 3, shortDescription: 'Dastur qisqa mazmuni' })));

@@ -25,7 +25,7 @@ const sem2 = row({ id: 10, semester: 2, credits: 4, lectureHours: 12, practicalH
 const writing = row({
   id: 11, subjectId: 2, subjectCode: "AKY1104", subjectName: "Akademik yozuv", planRowNumber: "1.10", credits: 4, lectureHours: 0,
   practicalHours: 48, laboratoryHours: 0, auditoryHours: 48, selfStudyHours: 72,
-  syllabusId: 40, syllabusName: "Akademik yozuv", syllabusLanguage: "UZ", syllabusStatus: "APPROVED", syllabusTopicCount: 9, syllabusHoursMatch: true,
+  syllabusId: 40, syllabusName: "Akademik yozuv", syllabusLanguage: "UZ", syllabusStatus: "APPROVED", syllabusTopicCount: 9, syllabusComplete: true,
 });
 const version = (id: number, subjects: CurriculumSubject[], patch: Partial<CurriculumVersion> = {}) => ({
   id, programName: "Dasturiy injiniring", versionCode: `DI-${id}`, academicYear: "2025-2026", educationLanguage: "uz-Latn",
@@ -58,7 +58,7 @@ it("reja fanlari va ularning o'quv dasturlari; dastur yaratilgach mavzular oynas
   expect(within(dasturlash).getByText("Tuzilmagan")).toBeInTheDocument();
   const yozuv = screen.getByText("Akademik yozuv", { selector: "p.font-medium" }).closest("tr") as HTMLElement;
   expect(within(yozuv).getByText("Tasdiqlangan")).toBeInTheDocument();
-  expect(within(yozuv).getByRole("button", { name: /9 mavzu/ })).toHaveAttribute("title", "Mavzu soatlari rejaga mos");
+  expect(within(yozuv).getByRole("button", { name: /9 mavzu/ })).toHaveAttribute("title", "Rejadagi barcha mashg'ulot turlariga mavzu kiritilgan");
   expect(screen.getByText("2 ta fandan 1 tasiga o'quv dasturi tuzilgan")).toBeInTheDocument();
 
   fireEvent.click(within(dasturlash).getByRole("button", { name: /Dastur yaratish/ }));
@@ -71,7 +71,7 @@ it("reja fanlari va ularning o'quv dasturlari; dastur yaratilgach mavzular oynas
 
   vi.mocked(curriculumApi.createSyllabus).mockResolvedValue(version(5, []));
   vi.mocked(curriculumApi.get).mockResolvedValue(version(5, [
-    row({ syllabusId: 41, syllabusName: "Dasturlash 1,2", syllabusTopicCount: 0, syllabusHoursMatch: false }),
+    row({ syllabusId: 41, syllabusName: "Dasturlash 1,2", syllabusTopicCount: 0, syllabusComplete: false }),
     { ...sem2, syllabusId: 41 }, writing,
   ]));
   vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({})]);

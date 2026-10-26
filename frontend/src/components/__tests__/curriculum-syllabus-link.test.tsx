@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CurriculumTopicsDialog, LinkSyllabusDialog } from "@/components/admin/curriculum-syllabus-link";
-import { PlanHoursCheck } from "@/components/admin/syllabus-topics";
+import { PlanTopicsCheck } from "@/components/admin/syllabus-topics";
 import { curriculumApi, type CurriculumSubject, type CurriculumVersion } from "@/services/api/curriculum-api";
 import { syllabusApi, type SubjectSyllabus } from "@/services/api/syllabus-api";
 
@@ -41,13 +41,14 @@ describe("CurriculumTopicsDialog", () => {
     expect(await screen.findByRole("dialog", { name: "Dasturlash 1,2 — mavzular" })).toBeInTheDocument();
     expect(syllabusApi.list).toHaveBeenCalledWith(1);
 
-    // Faqat rejada soati bor turlar (seminar yo'q), nom + soat + qism
+    // Faqat rejada soati bor turlar (seminar yo'q); mavzuda nom va qism, soat yo'q (soat fan bo'yicha rejada)
     expect(screen.getAllByRole("tab").map((t) => t.textContent?.replace(/\d.*$/, "").trim())).toEqual(["Nazariy", "Amaliy", "Laboratoriya"]);
     const check = screen.getByLabelText("Reja bilan solishtirish");
-    expect(within(check).getAllByText("Nazariy")[0].parentElement).toHaveTextContent("Nazariy 0/30");
+    expect(within(check).getAllByText("Nazariy")[0].parentElement).toHaveTextContent("Nazariy 30 soat · mavzu yo'q");
     expect(within(check).getByText("2-qism (2-semestr):")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
     expect(screen.getByLabelText("1-mavzu qismi")).toHaveValue("1");
+    expect(screen.queryByLabelText("1-mavzu soati")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("1-mavzu mazmuni")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Yuqoriga" })).not.toBeInTheDocument();
   });
@@ -72,22 +73,24 @@ describe("LinkSyllabusDialog", () => {
   });
 });
 
-describe("PlanHoursCheck", () => {
-  it("qismlar bo'yicha ham solishtiradi, masofaviy rejada auditoriya jami bilan", () => {
+describe("PlanTopicsCheck", () => {
+  it("rejadagi soatni va har bir turga kiritilgan mavzular sonini ko'rsatadi, qismlar bo'yicha ham", () => {
     const plan = [
       { part: 1, semester: 1, lecture: 18, practical: 27, laboratory: 27, seminar: 0, auditory: 72 },
       { part: 2, semester: 2, lecture: 12, practical: 18, laboratory: 18, seminar: 0, auditory: 48 },
     ];
-    const { unmount } = render(<PlanHoursCheck plan={plan} topics={[
-      { type: "THEORETICAL", hours: 18, part: 1 }, { type: "THEORETICAL", hours: 12, part: 2 }, { type: "PRACTICAL", hours: 20, part: 1 },
+    const { unmount } = render(<PlanTopicsCheck plan={plan} topics={[
+      { type: "THEORETICAL", part: 1 }, { type: "THEORETICAL", part: 2 }, { type: "PRACTICAL", part: 1 },
     ]} />);
-    expect(screen.getByText("Nazariy").nextSibling).toHaveTextContent("taqsimlandi 30 / reja 30 ✓");
-    expect(screen.getByText("Amaliy").nextSibling).toHaveTextContent("taqsimlandi 20 / reja 45");
-    expect(screen.getByText("2-qism (2-semestr) · Nazariy").nextSibling).toHaveTextContent("taqsimlandi 12 / reja 12 ✓");
+    const [total, part1, part2] = screen.getAllByRole("list");
+    expect(within(total).getByText("Nazariy").parentElement).toHaveTextContent("Nazariy 30 soat · 2 mavzu ✓");
+    expect(within(total).getByText("Laboratoriya").parentElement).toHaveTextContent("Laboratoriya 45 soat · mavzu yo'q");
+    expect(within(part1).getByText("Amaliy").parentElement).toHaveTextContent("Amaliy 27 soat · 1 mavzu ✓");
+    expect(within(part2).getByText("Amaliy").parentElement).toHaveTextContent("Amaliy 18 soat · mavzu yo'q");
     unmount();
 
-    render(<PlanHoursCheck plan={[{ part: 1, semester: 1, lecture: 0, practical: 0, laboratory: 0, seminar: 0, auditory: 60 }]}
-      topics={[{ type: "THEORETICAL", hours: 60 }]} />);
-    expect(screen.getByText("Auditoriya (turlarga bo'linmagan)").nextSibling).toHaveTextContent("taqsimlandi 60 / reja 60 ✓");
+    render(<PlanTopicsCheck plan={[{ part: 1, semester: 1, lecture: 0, practical: 0, laboratory: 0, seminar: 0, auditory: 60 }]}
+      topics={[{ type: "THEORETICAL" }]} />);
+    expect(screen.getByText("Auditoriya").parentElement).toHaveTextContent("Auditoriya 60 soat · 1 mavzu ✓");
   });
 });

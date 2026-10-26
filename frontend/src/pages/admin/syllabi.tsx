@@ -76,7 +76,7 @@ export function AdminSyllabi() {
         <div>
           <h1 className="text-2xl font-bold">O'quv dasturi</h1>
           <p className="text-sm text-muted-foreground">
-            O'quv rejadagi har bir fan uchun o'quv dasturi va mavzulari. Mavzular soati rejadagi soatlarga teng bo'lishi kerak.
+            O'quv rejadagi har bir fan uchun o'quv dasturi va mavzulari. Soatlar fan bo'yicha o'quv rejada belgilanadi.
           </p>
         </div>
         {canWrite && curriculumId != null && (
@@ -153,8 +153,8 @@ export function AdminSyllabi() {
                         <TableCell>
                           {first.syllabusId ? (
                             <Button size="sm" variant="outline" className="h-8" onClick={() => setTopicsItemId(first.id)}
-                              title={first.syllabusHoursMatch ? "Mavzu soatlari rejaga mos" : "Mavzu soatlari reja soatlariga hali mos emas"}>
-                              {first.syllabusHoursMatch
+                              title={first.syllabusComplete ? "Rejadagi barcha mashg'ulot turlariga mavzu kiritilgan" : "Ba'zi mashg'ulot turlariga hali mavzu kiritilmagan"}>
+                              {first.syllabusComplete
                                 ? <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-green-600" />
                                 : <AlertTriangle className="mr-1 h-3.5 w-3.5 text-amber-600" />}
                               {first.syllabusTopicCount ?? 0} mavzu

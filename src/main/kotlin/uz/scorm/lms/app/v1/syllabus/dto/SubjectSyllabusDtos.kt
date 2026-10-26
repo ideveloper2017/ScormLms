@@ -35,7 +35,7 @@ data class SyllabusTopicDto(
     val sortOrder: Int,
     val title: String,
     val description: String? = null,
-    val hours: Int,
+    val hours: Int? = null,
     val part: Int? = null,
 )
 
@@ -59,7 +59,8 @@ data class SyllabusTopicRequest(
     val type: SyllabusTopicType,
     val title: String,
     val description: String? = null,
-    val hours: Int,
+    // Ixtiyoriy — soatlar fan bo'yicha o'quv rejada
+    val hours: Int? = null,
     // Mavjud mavzu id'si — berilsa mavzu joyida yangilanadi (kurs bo'limlari bilan bog'lanish saqlanadi)
     val id: Long? = null,
     // Ko'p semestrli fanda qism raqami (1, 2, ...)
