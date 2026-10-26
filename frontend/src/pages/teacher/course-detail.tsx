@@ -828,6 +828,13 @@ export function TeacherCourseDetail({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {course.syllabusName && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">O'quv dasturi: </span>
+                  <span className="font-medium">{course.syllabusName}</span>
+                  {course.syllabusRevision ? <span className="text-muted-foreground"> · {course.syllabusRevision}-versiya</span> : null}
+                </p>
+              )}
               <RichTextContent value={course.description || "Kurs tavsifi kiritilmagan"} className="text-sm" />
               <div>
                 <div className="flex justify-between text-sm mb-2">
@@ -995,8 +1002,16 @@ export function TeacherCourseDetail({
                         <CardTitle className="truncate text-base">
                           {module.title}
                         </CardTitle>
-                        <CardDescription>
-                          {sectionLessons.length} ta dars
+                        <CardDescription className="flex flex-wrap items-center gap-2">
+                          {module.topicType && (
+                            <Badge variant="outline" className={module.topicType === "THEORETICAL"
+                              ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300"
+                              : "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300"}>
+                              {module.topicType === "THEORETICAL" ? "Nazariy" : "Amaliy"}
+                              {module.plannedHours ? ` · ${module.plannedHours} soat` : ""}
+                            </Badge>
+                          )}
+                          <span>{sectionLessons.length} ta dars</span>
                         </CardDescription>
                       </div>
                     </div>

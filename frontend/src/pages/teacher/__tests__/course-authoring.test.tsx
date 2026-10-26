@@ -6,6 +6,7 @@ import { TeacherCourseCreate } from '../course-create';
 import { TeacherCourseDetail } from '../course-detail';
 import { teacherPortalApi, type TeacherCourse, type CourseModule, type CourseContent } from '@/services/api/teacher-portal-api';
 import { subjectGroupApi } from '@/services/api/subject-group-api';
+import { syllabusApi, type SubjectSyllabus } from '@/services/api/syllabus-api';
 
 const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
@@ -14,6 +15,7 @@ vi.mock('@/components/editor/lazy-rich-text-editor', () => ({ LazyRichTextEditor
   <textarea aria-label="Matn muharriri" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} /> }));
 vi.mock('@/components/course-forum', () => ({ CourseForum: () => null }));
 vi.mock('@/services/api/subject-group-api', () => ({ subjectGroupApi: { teachingOptions: vi.fn() } }));
+vi.mock('@/services/api/syllabus-api', () => ({ syllabusApi: { list: vi.fn() } }));
 vi.mock('@/services/api/teacher-portal-api', () => ({ teacherPortalApi: {
   getProfile: vi.fn(), getSubjectMaterialSubjects: vi.fn(), createCourse: vi.fn(), updateCourse: vi.fn(),
   uploadCourseThumbnail: vi.fn(), getCourse: vi.fn(), getEnrollments: vi.fn(), getModules: vi.fn(),
@@ -49,6 +51,7 @@ beforeEach(() => {
   vi.mocked(teacherPortalApi.getModules).mockResolvedValue([module]);
   vi.mocked(teacherPortalApi.getContents).mockResolvedValue([content]);
   vi.mocked(teacherPortalApi.getSubjectMaterials).mockResolvedValue([]);
+  vi.mocked(syllabusApi.list).mockResolvedValue([]);
 });
 
 function mount(mode: 'create' | 'edit' | 'detail' = 'create') {
@@ -68,6 +71,35 @@ async function selectSubject() {
 }
 
 describe('course authoring', () => {
+  it('creates a course from an approved syllabus and previews its topics as modules', async () => {
+    const approved: SubjectSyllabus = { id: 31, subjectId: 3, subjectName: 'Fizika', name: 'Mexanika dasturi', language: 'UZ',
+      shortDescription: 'Dastur qisqa mazmuni', fullDescription: "To'liq", active: true, status: 'APPROVED', revisionNumber: 2,
+      topics: [{ type: 'THEORETICAL', sortOrder: 1, title: 'Kirish', hours: 2 }, { type: 'PRACTICAL', sortOrder: 1, title: 'Tajriba', hours: 4 }],
+      theoreticalHours: 2, practicalHours: 4 };
+    vi.mocked(syllabusApi.list).mockResolvedValue([approved, { ...approved, id: 32, name: 'Qoralama dastur', status: 'DRAFT' }]);
+    mount();
+    await selectSubject();
+    await waitFor(() => expect(syllabusApi.list).toHaveBeenCalledWith(3));
+    const select = screen.getByRole('combobox', { name: "O'quv dasturi" });
+    await waitFor(() => expect(select).toBeEnabled());
+    fireEvent.keyDown(select, { key: 'ArrowDown' });
+    expect(screen.queryByRole('option', { name: /Qoralama dastur/ })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('option', { name: /Mexanika dasturi/ }));
+
+    expect(screen.getByRole('textbox', { name: 'Kurs nomi *' })).toHaveValue('Mexanika dasturi');
+    expect(screen.getByText(/2 ta mavzusi kurs modullari sifatida yaratiladi/)).toHaveTextContent('nazariy 2 soat, amaliy 4 soat');
+    fireEvent.click(screen.getByRole('button', { name: 'Kurs yaratish', exact: true }));
+    await waitFor(() => expect(teacherPortalApi.createCourse).toHaveBeenCalledWith(expect.objectContaining({
+      syllabusId: 31, subjectId: 3, shortDescription: 'Dastur qisqa mazmuni' })));
+  });
+
+  it('shows the syllabus topic type and hours on generated modules', async () => {
+    vi.mocked(teacherPortalApi.getCourse).mockResolvedValue({ ...course, syllabusId: 31, syllabusName: 'Mexanika dasturi', syllabusRevision: 2 });
+    vi.mocked(teacherPortalApi.getModules).mockResolvedValue([{ ...module, topicType: 'THEORETICAL', plannedHours: 2 }]);
+    mountDetail();
+    expect(await screen.findByText('Nazariy · 2 soat')).toBeInTheDocument();
+  });
+
   it('keeps a created course when its thumbnail upload fails and navigates away from create', async () => {
     vi.mocked(teacherPortalApi.uploadCourseThumbnail).mockRejectedValue(new Error('Upload failed'));
     mount();

@@ -26,7 +26,7 @@ class CourseCopyService(
         val target = access.course(created.id)
         val assetIds = mutableMapOf<Long, Long>()
         for (module in moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(sourceId)) {
-            val copied = modules.create(created.id, CourseModuleRequest(module.title, module.description, module.position), userId, false)
+            val copied = modules.create(created.id, CourseModuleRequest(module.title, module.description, module.position, module.topicType, module.plannedHours), userId, false)
             for (content in contentRepository.findAllByModuleIdAndDeletedFalseOrderByPositionAsc(requireNotNull(module.id))) {
                 val assetId = content.asset?.let { asset -> assetIds.getOrPut(requireNotNull(asset.id)) { assets.copyForCourse(asset, target, userId) } }
                 contents.create(created.id, copied.id, CourseContentRequest(title = content.title, description = content.description,

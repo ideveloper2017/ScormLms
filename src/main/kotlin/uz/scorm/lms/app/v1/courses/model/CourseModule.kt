@@ -34,6 +34,13 @@ class CourseModule(
 
     @Column(name = "published_at")
     var publishedAt: Instant? = null,
+
+    // Fan dasturi mavzusidan yaratilgan modul: THEORETICAL (nazariy) / PRACTICAL (amaliy) va rejadagi soat
+    @Column(name = "topic_type", length = 20)
+    var topicType: String? = null,
+
+    @Column(name = "planned_hours")
+    var plannedHours: Int? = null,
 ) : BaseEntity()
 
 enum class LearningItemStatus {

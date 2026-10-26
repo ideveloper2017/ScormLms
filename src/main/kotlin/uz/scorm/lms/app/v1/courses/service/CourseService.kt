@@ -8,11 +8,15 @@ import uz.scorm.lms.app.v1.courses.dto.CourseUpdateRequest
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.model.CourseExpiryPeriodType
+import uz.scorm.lms.app.v1.courses.model.CourseModule
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
+import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import uz.scorm.lms.app.v1.subjectgroup.service.AcademicSubjectGroupService
+import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
+import uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRepository
 import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import java.time.Instant
 
@@ -25,6 +29,8 @@ class CourseService(
     private val compatibilityService: ContentCompatibilityService,
     private val subjectGroupService: AcademicSubjectGroupService,
     private val teacherRepository: TeacherRepository,
+    private val syllabusRepository: SubjectSyllabusRepository,
+    private val moduleRepository: CourseModuleRepository,
 ) {
     @Transactional(readOnly = true)
     fun owned(userId: Long, mayManageAll: Boolean): List<CourseDto> =
@@ -60,13 +66,14 @@ class CourseService(
                 "O'qituvchiga ushbu fan biriktirilmagan"
             }
         }
+        val syllabus = request.syllabusId?.let { requireSyllabusFor(it, subject?.id) }
         val curriculum = curriculumItem?.curriculumVersion
-        val shortDescription = request.shortDescription.clean() ?: request.description.clean()
+        val shortDescription = request.shortDescription.clean() ?: request.description.clean() ?: syllabus?.shortDescription.clean()
         val course = Course(
             title = request.title.trim(),
             slug = slug(request.title),
             shortDescription = shortDescription,
-            description = request.description.clean(),
+            description = request.description.clean() ?: syllabus?.fullDescription.clean(),
             userId = ownerUserId,
             categoryId = subject?.subjectCategory?.id,
             status = CourseStatus.DRAFT.name,
@@ -84,14 +91,43 @@ class CourseService(
             discountedPrice = request.discountedPrice,
             expiryPeriodType = request.expiryPeriodType.name,
             dripContent = request.dripContent,
-            requirements = request.requirements.clean(),
+            requirements = request.requirements.clean() ?: syllabus?.requirements.clean(),
             outcomes = request.outcomes.clean(),
             faqs = request.faqs.clean(),
             metaKeywords = request.metaKeywords.clean(),
             metaDescription = request.metaDescription.clean(),
+            syllabus = syllabus,
+            syllabusRevision = syllabus?.revisionNumber,
         )
         validateMetadata(course)
-        return toDto(courseRepository.save(course))
+        val saved = courseRepository.save(course)
+        syllabus?.let { createModulesFromSyllabus(saved, it) }
+        return toDto(saved)
+    }
+
+    /** Kurs faqat shu fanning tasdiqlangan va faol dasturi asosida yaratiladi. */
+    private fun requireSyllabusFor(syllabusId: Long, subjectId: Long?): SubjectSyllabus {
+        val syllabus = syllabusRepository.findByIdAndDeletedFalse(syllabusId)
+            ?: throw NoSuchElementException("O'quv dasturi topilmadi: $syllabusId")
+        require(syllabus.status == "APPROVED" && syllabus.active) {
+            "Kurs faqat tasdiqlangan va faol o'quv dasturi asosida yaratiladi"
+        }
+        require(subjectId != null && syllabus.subject.id == subjectId) { "Tanlangan o'quv dasturi kurs faniga mos emas" }
+        return syllabus
+    }
+
+    /** Dastur mavzulari kurs modullariga aylanadi: avval nazariy, keyin amaliy mashg'ulotlar (qoralama holatda). */
+    private fun createModulesFromSyllabus(course: Course, syllabus: SubjectSyllabus) {
+        syllabus.topics.sortedWith(compareBy({ it.type }, { it.sortOrder })).forEachIndexed { index, topic ->
+            moduleRepository.save(CourseModule(
+                course = course,
+                title = topic.title.take(255),
+                description = topic.description,
+                position = index + 1,
+                topicType = topic.type.name,
+                plannedHours = topic.hours,
+            ))
+        }
     }
 
     @Transactional
@@ -191,6 +227,9 @@ class CourseService(
         academicYear = course.subjectGroup?.curriculumSubject?.curriculumVersion?.academicYear,
         semester = course.subjectGroup?.curriculumSubject?.semester,
         credits = course.subjectGroup?.curriculumSubject?.creditsSnapshot,
+        syllabusId = course.syllabus?.id,
+        syllabusName = course.syllabus?.name,
+        syllabusRevision = course.syllabusRevision,
         status = course.status?.lowercase() ?: "draft",
         startDate = course.startDate,
         endDate = course.endDate,
