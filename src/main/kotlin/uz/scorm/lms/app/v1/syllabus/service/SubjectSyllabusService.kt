@@ -7,6 +7,7 @@ import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusDto
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusRequest
 import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicDto
 import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
+import uz.scorm.lms.app.v1.syllabus.model.SubjectModelProgram
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType
@@ -21,9 +22,42 @@ class SubjectSyllabusService(
     private val audit: uz.scorm.lms.app.v1.audit.service.AuditService,
 ) {
     @Transactional(readOnly = true)
-    fun list(subjectId: Long?): List<SubjectSyllabusDto> = (subjectId?.let {
-        syllabi.findAllBySubjectIdAndDeletedFalseOrderByNameAsc(it)
-    } ?: syllabi.findAllByDeletedFalseOrderByNameAsc()).map(::dto)
+    fun list(subjectId: Long?, modelProgramId: Long? = null): List<SubjectSyllabusDto> = when {
+        modelProgramId != null -> syllabi.findAllByModelProgramIdAndDeletedFalseOrderByNameAsc(modelProgramId)
+        subjectId != null -> syllabi.findAllBySubjectIdAndDeletedFalseOrderByNameAsc(subjectId)
+        else -> syllabi.findAllByDeletedFalseOrderByNameAsc()
+    }.map(::dto)
+
+    /**
+     * O'quv dasturidan (namunaviy) o'quv yili va semestr uchun fan dasturi (ishchi dastur) yaratiladi:
+     * fan, til va ta'riflar o'quv dasturidan olinadi, mavzular shu yerda beriladi.
+     */
+    @Transactional
+    fun createWorkProgram(model: SubjectModelProgram, academicYear: String, semester: Int, topics: List<SyllabusTopicRequest>): SubjectSyllabusDto {
+        val year = academicYear.trim()
+        require(Regex("[0-9]{4}-[0-9]{4}").matches(year)) { "O'quv yili 2026-2027 ko'rinishida bo'lishi kerak" }
+        require(semester in 1..12) { "Semestr 1-12 oralig'ida bo'lishi kerak" }
+        require(model.active && model.subject.active && !model.subject.deleted) { "O'quv dasturi va fan faol bo'lishi kerak" }
+        val modelId = requireNotNull(model.id)
+        require(!syllabi.existsByModelProgramIdAndAcademicYearAndSemesterAndDeletedFalse(modelId, year, semester)) {
+            "Bu o'quv dasturi uchun $year o'quv yili $semester-semestr fan dasturi allaqachon mavjud"
+        }
+        val name = "${model.subject.name.trim()} · $year · $semester-semestr".take(500)
+        require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(requireNotNull(model.subject.id), model.language, name)) {
+            DUPLICATE_MESSAGE
+        }
+        val value = SubjectSyllabus(
+            subject = model.subject, name = name, language = model.language,
+            shortDescription = model.shortDescription, requirements = model.requirements,
+            fullDescription = model.fullDescription, active = true,
+        ).apply {
+            modelProgram = model
+            this.academicYear = year
+            this.semester = semester
+        }
+        replaceTopics(value, topics)
+        return dto(syllabi.save(value))
+    }
 
     @Transactional
     fun create(request: SubjectSyllabusRequest): SubjectSyllabusDto {
@@ -186,6 +220,9 @@ class SubjectSyllabusService(
             practicalHours = topics.filter { it.type == SyllabusTopicType.PRACTICAL }.sumOf { it.hours },
             laboratoryHours = topics.filter { it.type == SyllabusTopicType.LABORATORY }.sumOf { it.hours },
             seminarHours = topics.filter { it.type == SyllabusTopicType.SEMINAR }.sumOf { it.hours },
+            modelProgramId = value.modelProgram?.id,
+            academicYear = value.academicYear,
+            semester = value.semester,
         )
     }
 

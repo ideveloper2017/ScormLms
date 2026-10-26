@@ -16,7 +16,7 @@ import uz.scorm.lms.app.v1.courses.service.SyllabusCourseWizardService
 import uz.scorm.lms.app.v1.courses.service.SyllabusLinkedCourseDto
 import uz.scorm.lms.app.v1.courses.service.SyllabusTopicsWithCoursesDto
 import uz.scorm.lms.app.v1.courses.service.SyllabusWithCourseDto
-import uz.scorm.lms.app.v1.courses.service.SyllabusWithCourseRequest
+import uz.scorm.lms.app.v1.courses.service.WorkProgramRequest
 import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
 import uz.scorm.lms.app.v1.user.model.User
 
@@ -27,7 +27,7 @@ class SyllabusCourseWizardController(private val service: SyllabusCourseWizardSe
     @PostMapping
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE') and hasAuthority('COURSE_WRITE')")
     fun create(
-        @RequestBody request: SyllabusWithCourseRequest,
+        @RequestBody request: WorkProgramRequest,
         @CurrentUser user: User,
     ): ResponseEntity<ApiResponse<SyllabusWithCourseDto>> =
         ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(service.create(request, requireNotNull(user.id))))

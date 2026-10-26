@@ -20,7 +20,8 @@ class SubjectSyllabusController(private val service: SubjectSyllabusService) {
         @uz.scorm.lms.app.security.CurrentUser user: uz.scorm.lms.app.v1.user.model.User) = service.transition(id, request.action, user)
     @GetMapping
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")
-    fun list(@RequestParam(required = false) subjectId: Long?) = service.list(subjectId)
+    fun list(@RequestParam(required = false) subjectId: Long?, @RequestParam(required = false) modelProgramId: Long?) =
+        service.list(subjectId, modelProgramId)
 
     @PostMapping
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")

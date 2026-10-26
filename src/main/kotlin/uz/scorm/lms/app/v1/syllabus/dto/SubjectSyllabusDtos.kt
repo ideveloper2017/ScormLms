@@ -24,6 +24,9 @@ data class SubjectSyllabusDto(
     val practicalHours: Int = 0,
     val laboratoryHours: Int = 0,
     val seminarHours: Int = 0,
+    val modelProgramId: Long? = null,
+    val academicYear: String? = null,
+    val semester: Int? = null,
 )
 
 data class SyllabusTopicDto(

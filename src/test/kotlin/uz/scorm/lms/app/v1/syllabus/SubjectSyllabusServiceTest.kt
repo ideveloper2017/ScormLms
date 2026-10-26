@@ -127,6 +127,30 @@ class SubjectSyllabusServiceTest {
     }
 
     @Test
+    fun `fan dasturi o'quv dasturidan o'quv yili va semestr uchun yaratiladi`() {
+        val subject = Subject(name = "Matematika", code = "MA01").apply { id = 5 }
+        val model = uz.scorm.lms.app.v1.syllabus.model.SubjectModelProgram(subject, SyllabusLanguage.UZ, "Matematika",
+            "Namunaviy qisqa", "Talab", "Namunaviy to'liq").apply { id = 3 }
+        every { repository.existsByModelProgramIdAndAcademicYearAndSemesterAndDeletedFalse(3, "2026-2027", 1) } returns false
+        every { repository.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(5, SyllabusLanguage.UZ, "Matematika · 2026-2027 · 1-semestr") } returns false
+        every { repository.save(any()) } answers { firstArg<SubjectSyllabus>().apply { id = 50 } }
+
+        val result = service.createWorkProgram(model, " 2026-2027 ", 1, listOf(SyllabusTopicRequest(THEORETICAL, "Kirish", hours = 2)))
+
+        assertEquals("Matematika · 2026-2027 · 1-semestr", result.name)
+        assertEquals(3, result.modelProgramId)
+        assertEquals("2026-2027", result.academicYear)
+        assertEquals(1, result.semester)
+        assertEquals("Namunaviy to'liq", result.fullDescription)
+        assertEquals(2, result.theoreticalHours)
+
+        every { repository.existsByModelProgramIdAndAcademicYearAndSemesterAndDeletedFalse(3, "2026-2027", 1) } returns true
+        assertThrows<IllegalArgumentException> { service.createWorkProgram(model, "2026-2027", 1, emptyList()) }
+        assertThrows<IllegalArgumentException> { service.createWorkProgram(model, "2026", 1, emptyList()) }
+        assertThrows<IllegalArgumentException> { service.createWorkProgram(model, "2027-2028", 13, emptyList()) }
+    }
+
+    @Test
     fun `soati notogri mavzu rad etiladi`() {
         val subject = Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }
         every { repository.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(8, SyllabusLanguage.UZ, "Fan dasturi") } returns false

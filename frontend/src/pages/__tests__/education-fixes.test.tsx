@@ -18,6 +18,7 @@ import type { User } from '@/types/auth.types';
 vi.mock('@/services/api/academic-results-api');
 vi.mock('@/services/api/teacher-portal-api');
 vi.mock('@/services/api/syllabus-api');
+vi.mock('@/services/api/model-program-api', () => ({ modelProgramApi: { list: vi.fn(async () => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() } }));
 vi.mock('@/utils/csv-export');
 vi.mock('@/lib/academic-api', async importOriginal => ({ ...await importOriginal<object>(), listSubjects: vi.fn() }));
 vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { id: 1, role: { name: 'admin' }, roles: [], permissions: ['ACADEMIC_WRITE', 'REPORT_READ'] } }) }));
