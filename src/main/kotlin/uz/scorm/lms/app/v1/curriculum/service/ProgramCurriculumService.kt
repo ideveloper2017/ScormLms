@@ -15,6 +15,8 @@ import uz.scorm.lms.app.v1.curriculum.dto.CurriculumStudentDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumStudentPageDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumVersionDto
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSubjectHours
+import uz.scorm.lms.app.v1.curriculum.dto.UpdateCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
@@ -194,11 +196,12 @@ class ProgramCurriculumService(
         }
         val code = subject.code?.trim()
         require(!code.isNullOrBlank() && code.length <= 100) { "Curriculum fanining kodi majburiy" }
-        val credits = subject.credits
+        val credits = request.credits ?: subject.credits
         require(credits != null && credits in 1..60) { "Curriculum fanining krediti 1..60 oralig'ida bo'lishi kerak" }
+        require(request.semester in 1..version.semesterCount) { "Semestr o'quv reja chegarasidan tashqarida" }
         academicPeriodService.requireActiveSemester(request.semester)
-        require(!subjectItemRepository.existsByCurriculumVersionIdAndSubjectIdAndDeletedFalse(id, request.subjectId)) {
-            "Fan ushbu curriculumga allaqachon qo'shilgan"
+        require(!subjectItemRepository.existsByCurriculumVersionIdAndSubjectIdAndSemesterAndDeletedFalse(id, request.subjectId, request.semester)) {
+            "Fan ushbu curriculumga ${request.semester}-semestrda allaqachon qo'shilgan"
         }
         subjectItemRepository.save(ProgramCurriculumSubject(
             curriculumVersion = version,
@@ -208,8 +211,24 @@ class ProgramCurriculumService(
             creditsSnapshot = credits,
             semester = request.semester,
             planItemType = request.planItemType,
-        ))
+        ).also { applyPlanDetails(it, request.planRowNumber, request.hours ?: CurriculumSubjectHours()) })
         auditService.logAction("CURRICULUM_SUBJECT_ADDED", actorId, "curriculum=$id; subject=${subject.id}; semester=${request.semester}")
+        return toDto(version)
+    }
+
+    /** Reja fanining krediti, turi, T/r raqami va soatlari (faqat DRAFT rejada). */
+    @Transactional
+    fun updateSubject(id: Long, itemId: Long, request: UpdateCurriculumSubjectRequest, actorId: Long): CurriculumVersionDto {
+        val version = requireDraft(id)
+        val item = subjectItemRepository.findByIdAndDeletedFalse(itemId)
+            ?: throw NoSuchElementException("Curriculum fan bandi topilmadi: $itemId")
+        require(item.curriculumVersion.id == id) { "Fan bandi ushbu curriculumga tegishli emas" }
+        require(request.credits in 1..60) { "Curriculum fanining krediti 1..60 oralig'ida bo'lishi kerak" }
+        item.creditsSnapshot = request.credits
+        item.planItemType = request.planItemType
+        applyPlanDetails(item, request.planRowNumber, request.hours)
+        subjectItemRepository.save(item)
+        auditService.logAction("CURRICULUM_SUBJECT_UPDATED", actorId, "curriculum=$id; item=$itemId")
         return toDto(version)
     }
 
@@ -250,15 +269,10 @@ class ProgramCurriculumService(
                 (subject.program == null || subject.program?.id == version.program.id)) {
                 "Curriculumdagi ${item.subjectCodeSnapshot} fani faol va umumiy katalogga yoki shu dasturga tegishli bo'lishi kerak"
             }
-            val code = subject.code?.trim()
-            val credits = subject.credits
-            require(!code.isNullOrBlank() && credits != null && credits in 1..60) {
+            // Kod, nom va kredit fan qo'shilganda (yoki ishchi rejadan import qilinganda) qayd etilgan — reja ularni belgilaydi
+            require(item.subjectCodeSnapshot.isNotBlank() && item.creditsSnapshot in 1..60) {
                 "Curriculumdagi fan kodi va 1..60 kredit qiymati majburiy"
             }
-            item.subjectCodeSnapshot = code
-            item.subjectNameSnapshot = subject.name.trim()
-            item.creditsSnapshot = credits
-            subjectItemRepository.save(item)
         }
         version.status = CurriculumStatus.APPROVED
         version.passingPercentage = version.passingScore * 100.0 / version.ratingSystem.maxScore
@@ -323,6 +337,23 @@ class ProgramCurriculumService(
         }
     }
 
+    private fun applyPlanDetails(item: ProgramCurriculumSubject, planRowNumber: String?, hours: CurriculumSubjectHours) {
+        val row = planRowNumber?.trim()?.ifBlank { null }
+        require(row == null || row.length <= 20) { "T/r raqami 20 belgidan oshmasligi kerak" }
+        val values = listOf(hours.lecture, hours.practical, hours.laboratory, hours.seminar, hours.courseWork, hours.selfStudy, hours.auditory ?: 0)
+        require(values.all { it in 0..5000 }) { "Soatlar 0..5000 oralig'ida bo'lishi kerak" }
+        val typed = hours.lecture + hours.practical + hours.laboratory + hours.seminar
+        item.planRowNumber = row
+        item.lectureHours = hours.lecture
+        item.practicalHours = hours.practical
+        item.laboratoryHours = hours.laboratory
+        item.seminarHours = hours.seminar
+        item.courseWorkHours = hours.courseWork
+        // Turlar kiritilgan bo'lsa auditoriya ularning yig'indisi; masofaviy shaklda umumiy auditoriya soati
+        item.auditoryHours = if (typed > 0) typed else hours.auditory ?: 0
+        item.selfStudyHours = hours.selfStudy
+    }
+
     private fun requireProgram(id: Long) = programRepository.findById(id).orElseThrow {
         NoSuchElementException("Ta'lim dasturi topilmadi: $id")
     }.also {
@@ -352,7 +383,10 @@ class ProgramCurriculumService(
             .map { item -> CurriculumSubjectDto(
                 id = requireNotNull(item.id), subjectId = item.subject?.id, subjectCode = item.subjectCodeSnapshot,
                 subjectName = item.subjectNameSnapshot, credits = item.creditsSnapshot, semester = item.semester,
-                planItemType = item.planItemType.name,
+                planItemType = item.planItemType.name, planRowNumber = item.planRowNumber,
+                lectureHours = item.lectureHours, practicalHours = item.practicalHours, laboratoryHours = item.laboratoryHours,
+                seminarHours = item.seminarHours, courseWorkHours = item.courseWorkHours, auditoryHours = item.auditoryHours,
+                selfStudyHours = item.selfStudyHours, totalHours = item.auditoryHours + item.selfStudyHours,
             ) }
         return CurriculumVersionDto(
             id = requireNotNull(version.id), programId = requireNotNull(version.program.id), programName = version.program.name,
