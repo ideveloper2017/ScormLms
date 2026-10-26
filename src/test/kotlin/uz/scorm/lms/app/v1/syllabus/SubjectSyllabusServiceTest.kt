@@ -38,11 +38,23 @@ class SubjectSyllabusServiceTest {
 
     @Test
     fun `bir fan til va nom uchun takroriy dastur rad etiladi`() {
+        every { subjects.getEntity(8) } returns Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }
         every { repository.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(8, SyllabusLanguage.UZ, "Fan dasturi") } returns true
 
         assertThrows<IllegalArgumentException> {
             service.create(SubjectSyllabusRequest(8, "Fan dasturi", SyllabusLanguage.UZ, "Qisqa", null, "To'liq"))
         }
+    }
+
+    @Test
+    fun `nom berilmasa dastur fan nomini oladi`() {
+        every { subjects.getEntity(8) } returns Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }
+        every { repository.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(8, SyllabusLanguage.UZ, "Algoritmlar") } returns false
+        every { repository.save(any()) } answers { firstArg<SubjectSyllabus>().apply { id = 23 } }
+
+        val result = service.create(SubjectSyllabusRequest(8, language = SyllabusLanguage.UZ, shortDescription = "Qisqa", fullDescription = "To'liq"))
+
+        assertEquals("Algoritmlar", result.name)
     }
 
     @Test

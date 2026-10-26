@@ -16,7 +16,8 @@ export interface SubjectSyllabus {
 }
 export interface SyllabusRevision { revisionNumber: number; content: SubjectSyllabus; approvedByName: string; approvedAt: string }
 export interface SubjectSyllabusInput {
-  subjectId: number; name: string; language: SyllabusLanguage;
+  /** name berilmasa backend fan nomini oladi */
+  subjectId: number; name?: string; language: SyllabusLanguage;
   shortDescription: string; requirements?: string | null; fullDescription: string; active: boolean;
   topics?: SyllabusTopicInput[];
 }
