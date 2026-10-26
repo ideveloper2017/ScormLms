@@ -32,6 +32,28 @@ data class AddCurriculumSubjectRequest(
     val subjectId: Long,
     val semester: Int,
     val planItemType: CurriculumPlanItemType,
+    // Berilmasa fan katalogidagi kredit olinadi
+    val credits: Int? = null,
+    val planRowNumber: String? = null,
+    val hours: CurriculumSubjectHours? = null,
+)
+
+/** Reja fanining shu semestrdagi soatlari. auditory faqat turlar kiritilmaganda (masofaviy) hisobga olinadi. */
+data class CurriculumSubjectHours(
+    val lecture: Int = 0,
+    val practical: Int = 0,
+    val laboratory: Int = 0,
+    val seminar: Int = 0,
+    val courseWork: Int = 0,
+    val auditory: Int? = null,
+    val selfStudy: Int = 0,
+)
+
+data class UpdateCurriculumSubjectRequest(
+    val credits: Int,
+    val planItemType: CurriculumPlanItemType,
+    val planRowNumber: String? = null,
+    val hours: CurriculumSubjectHours = CurriculumSubjectHours(),
 )
 
 data class ApproveCurriculumRequest(
@@ -47,6 +69,16 @@ data class CurriculumSubjectDto(
     val credits: Int,
     val semester: Int,
     val planItemType: String,
+    val planRowNumber: String? = null,
+    val lectureHours: Int = 0,
+    val practicalHours: Int = 0,
+    val laboratoryHours: Int = 0,
+    val seminarHours: Int = 0,
+    val courseWorkHours: Int = 0,
+    val auditoryHours: Int = 0,
+    val selfStudyHours: Int = 0,
+    /** Umumiy yuklama = auditoriya + mustaqil ta'lim (1 kredit = 30 soat bo'lishi kutiladi) */
+    val totalHours: Int = 0,
 )
 
 data class CurriculumVersionDto(

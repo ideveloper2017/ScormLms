@@ -27,5 +27,5 @@ interface ProgramCurriculumVersionRepository : JpaRepository<ProgramCurriculumVe
 interface ProgramCurriculumSubjectRepository : JpaRepository<ProgramCurriculumSubject, Long> {
     fun findByIdAndDeletedFalse(id: Long): ProgramCurriculumSubject?
     fun findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(curriculumVersionId: Long): List<ProgramCurriculumSubject>
-    fun existsByCurriculumVersionIdAndSubjectIdAndDeletedFalse(curriculumVersionId: Long, subjectId: Long): Boolean
+    fun existsByCurriculumVersionIdAndSubjectIdAndSemesterAndDeletedFalse(curriculumVersionId: Long, subjectId: Long, semester: Int): Boolean
 }

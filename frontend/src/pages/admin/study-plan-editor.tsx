@@ -6,6 +6,7 @@ import {
   BookOpenCheck,
   CheckCircle2,
   FileCheck2,
+  FileSpreadsheet,
   Loader2,
   Plus,
   Save,
@@ -76,6 +77,8 @@ import {
   type SaveCurriculumVersionInput,
 } from "@/services/api/curriculum-api";
 import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
+import { CurriculumSubjectsTable } from "@/components/admin/curriculum-subjects-table";
+import { CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
 
 const EMPTY = "__empty__";
 
@@ -308,6 +311,7 @@ export function AdminStudyPlanEditor() {
     onError: (error) =>
       toast({ title: "Reja saqlanmadi", description: errorMessage(error), variant: "destructive" }),
   });
+  const [importOpen, setImportOpen] = useState(false);
   const addSubject = useMutation({
     mutationFn: () => curriculumApi.addSubject(id, { subjectId, semester, planItemType }),
     onSuccess: async () => {
@@ -356,7 +360,7 @@ export function AdminStudyPlanEditor() {
   const availableSubjects = (subjects.data ?? []).filter(
     (subject) =>
       subject.active &&
-      !item?.subjects.some((assigned) => assigned.subjectId === subject.id),
+      !item?.subjects.some((assigned) => assigned.subjectId === subject.id && assigned.semester === semester),
   );
   const semesterOptions = (semesterDefinitions.data ?? [])
     .filter((definition) => definition.active && definition.semesterNumber <= form.semesterCount)
@@ -726,17 +730,43 @@ export function AdminStudyPlanEditor() {
             </div>
           </TabsContent>
 
+          {importOpen && item && (
+            <CurriculumImportDialog
+              curriculumId={item.id}
+              onClose={() => setImportOpen(false)}
+              onImported={async (result) => {
+                await refresh();
+                toast({
+                  title: "Ishchi o'quv reja import qilindi",
+                  description: `${result.itemsAdded} ta fan qo'shildi, ${result.subjectsCreated} ta yangi fan yaratildi` +
+                    (result.itemsSkipped ? `, ${result.itemsSkipped} tasi rejada allaqachon bor edi` : ""),
+                });
+              }}
+            />
+          )}
+
           {!creating && item && (
             <TabsContent value="subjects">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpenCheck className="h-5 w-5" />
-                    Fanlarni biriktirish
-                  </CardTitle>
-                  <CardDescription>
-                    {item.subjectCount} ta fan · jami {item.totalCredits} kredit · {item.semesterCount} semestr
-                  </CardDescription>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1.5">
+                      <CardTitle className="flex items-center gap-2">
+                        <BookOpenCheck className="h-5 w-5" />
+                        Fanlarni biriktirish
+                      </CardTitle>
+                      <CardDescription>
+                        {item.subjectCount} ta fan · jami {item.totalCredits} kredit · {item.semesterCount} semestr ·
+                        soatlar ishchi o'quv reja bo'yicha
+                      </CardDescription>
+                    </div>
+                    {item.status === "DRAFT" && canWrite && (
+                      <Button variant="outline" onClick={() => setImportOpen(true)}>
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        Excel'dan import
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   {item.status === "DRAFT" && canWrite && (
@@ -809,56 +839,13 @@ export function AdminStudyPlanEditor() {
                     </div>
                   )}
 
-                  <div className="overflow-hidden rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Fan</TableHead>
-                          <TableHead>Semestr</TableHead>
-                          <TableHead>Turi</TableHead>
-                          <TableHead>Kredit</TableHead>
-                          {item.status === "DRAFT" && canWrite && <TableHead />}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {item.subjects.map((subject) => (
-                          <TableRow key={subject.id}>
-                            <TableCell>
-                              <p className="font-medium">{subject.subjectName}</p>
-                              <p className="text-xs text-muted-foreground">{subject.subjectCode}</p>
-                            </TableCell>
-                            <TableCell>{subject.semester}-semestr</TableCell>
-                            <TableCell>
-                              {subject.planItemType === "REQUIRED" ? "Majburiy" : "Tanlov"}
-                            </TableCell>
-                            <TableCell>{subject.credits}</TableCell>
-                            {item.status === "DRAFT" && canWrite && (
-                              <TableCell className="text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Fanni olib tashlash"
-                                  onClick={() => setSubjectToRemove(subject)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))}
-                        {item.subjects.length === 0 && (
-                          <TableRow>
-                            <TableCell
-                              colSpan={item.status === "DRAFT" && canWrite ? 5 : 4}
-                              className="h-24 text-center text-muted-foreground"
-                            >
-                              Rejaga hali fan biriktirilmagan.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <CurriculumSubjectsTable
+                    curriculumId={item.id}
+                    subjects={item.subjects}
+                    editable={item.status === "DRAFT" && canWrite}
+                    onRemove={setSubjectToRemove}
+                    onChanged={refresh}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
