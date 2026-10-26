@@ -11,6 +11,9 @@ interface SubjectSyllabusRepository : JpaRepository<SubjectSyllabus, Long> {
     fun findAllByDeletedFalseOrderByNameAsc(): List<SubjectSyllabus>
     fun findAllBySubjectIdAndDeletedFalseOrderByNameAsc(subjectId: Long): List<SubjectSyllabus>
     fun findByIdAndDeletedFalse(id: Long): SubjectSyllabus?
+    fun findAllByModelProgramIdAndDeletedFalseOrderByNameAsc(modelProgramId: Long): List<SubjectSyllabus>
+    fun countByModelProgramIdAndDeletedFalse(modelProgramId: Long): Long
+    fun existsByModelProgramIdAndAcademicYearAndSemesterAndDeletedFalse(modelProgramId: Long, academicYear: String, semester: Int): Boolean
     fun existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(subjectId: Long, language: SyllabusLanguage, name: String): Boolean
     fun existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalseAndIdNot(subjectId: Long, language: SyllabusLanguage, name: String, id: Long): Boolean
 }

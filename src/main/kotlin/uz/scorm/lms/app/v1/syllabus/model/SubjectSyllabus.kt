@@ -44,6 +44,17 @@ class SubjectSyllabus(
     @Column(name = "revision_number", nullable = false)
     var revisionNumber: Int = 1,
 ) : BaseEntity() {
+    /** Fan dasturi (ishchi dastur) qaysi o'quv dasturidan (namunaviy) va qaysi davr uchun yaratilgan */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "model_program_id")
+    var modelProgram: SubjectModelProgram? = null
+
+    @Column(name = "academic_year", length = 20)
+    var academicYear: String? = null
+
+    @Column
+    var semester: Int? = null
+
     /** Mavzular: avval nazariy, keyin amaliy, har biri o'z tartibida. */
     @OneToMany(mappedBy = "syllabus", cascade = [CascadeType.ALL], orphanRemoval = true)
     @OrderBy("type ASC, sortOrder ASC")

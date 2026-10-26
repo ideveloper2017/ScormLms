@@ -5,9 +5,9 @@ import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.courses.dto.CourseCreateRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseDto
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusDto
-import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusRequest
 import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
+import uz.scorm.lms.app.v1.syllabus.service.SubjectModelProgramService
 import uz.scorm.lms.app.v1.syllabus.service.SubjectSyllabusService
 
 /** "Fan dasturi va kurs" oynasining kurs qismi (null — faqat dastur yaratiladi). */
@@ -18,8 +18,12 @@ data class WizardCourseRequest(
     val language: String? = null,
 )
 
-data class SyllabusWithCourseRequest(
-    val syllabus: SubjectSyllabusRequest,
+/** Fan dasturi (ishchi dastur): o'quv dasturidan o'quv yili va semestr uchun, mavzular va ixtiyoriy kurs bilan. */
+data class WorkProgramRequest(
+    val modelProgramId: Long,
+    val academicYear: String,
+    val semester: Int,
+    val topics: List<SyllabusTopicRequest> = emptyList(),
     val course: WizardCourseRequest? = null,
 )
 
@@ -38,10 +42,12 @@ class SyllabusCourseWizardService(
     private val syllabusService: SubjectSyllabusService,
     private val courseService: CourseService,
     private val courseSyllabusService: CourseSyllabusService,
+    private val modelPrograms: SubjectModelProgramService,
 ) {
     @Transactional
-    fun create(request: SyllabusWithCourseRequest, ownerUserId: Long): SyllabusWithCourseDto {
-        val syllabus = syllabusService.create(request.syllabus.copy(topics = request.syllabus.topics ?: emptyList()))
+    fun create(request: WorkProgramRequest, ownerUserId: Long): SyllabusWithCourseDto {
+        val model = modelPrograms.getEntity(request.modelProgramId)
+        val syllabus = syllabusService.createWorkProgram(model, request.academicYear, request.semester, request.topics)
         val course = request.course?.let { course ->
             courseService.create(
                 CourseCreateRequest(
