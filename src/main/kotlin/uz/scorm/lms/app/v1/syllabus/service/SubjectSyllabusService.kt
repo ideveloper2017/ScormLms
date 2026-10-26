@@ -184,6 +184,8 @@ class SubjectSyllabusService(
             topics = topics,
             theoreticalHours = topics.filter { it.type == SyllabusTopicType.THEORETICAL }.sumOf { it.hours },
             practicalHours = topics.filter { it.type == SyllabusTopicType.PRACTICAL }.sumOf { it.hours },
+            laboratoryHours = topics.filter { it.type == SyllabusTopicType.LABORATORY }.sumOf { it.hours },
+            seminarHours = topics.filter { it.type == SyllabusTopicType.SEMINAR }.sumOf { it.hours },
         )
     }
 

@@ -109,6 +109,24 @@ class SubjectSyllabusServiceTest {
     }
 
     @Test
+    fun `laboratoriya va seminar mavzulari ham tartiblanadi va soatlari alohida hisoblanadi`() {
+        val subject = Subject(name = "Fizika", code = "FIZ").apply { id = 8 }
+        val syllabus = SubjectSyllabus(subject, "Fizika", SyllabusLanguage.UZ, "Qisqa", null, "To'liq").apply { id = 41 }
+        every { repository.lockById(41) } returns syllabus
+        every { repository.saveAndFlush(any<SubjectSyllabus>()) } answers { firstArg() }
+
+        val result = service.updateTopics(41, listOf(
+            SyllabusTopicRequest(uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.SEMINAR, "Munozara", hours = 2),
+            SyllabusTopicRequest(uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.LABORATORY, "Mayatnik", hours = 4),
+            SyllabusTopicRequest(THEORETICAL, "Kinematika", hours = 2),
+            SyllabusTopicRequest(PRACTICAL, "Masalalar", hours = 2),
+        ))
+
+        assertEquals(listOf("Kinematika", "Masalalar", "Mayatnik", "Munozara"), result.topics.map { it.title })
+        assertEquals(listOf(2, 2, 4, 2), listOf(result.theoreticalHours, result.practicalHours, result.laboratoryHours, result.seminarHours))
+    }
+
+    @Test
     fun `soati notogri mavzu rad etiladi`() {
         val subject = Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }
         every { repository.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(8, SyllabusLanguage.UZ, "Fan dasturi") } returns false

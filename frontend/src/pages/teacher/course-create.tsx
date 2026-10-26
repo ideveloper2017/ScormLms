@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { teacherPortalApi, type TeacherCourse, type CourseCreatePayload } from "@/services/api/teacher-portal-api";
 import { subjectGroupApi } from "@/services/api/subject-group-api";
 import { syllabusApi } from "@/services/api/syllabus-api";
+import { formatTypeHours, syllabusTypeHours } from "@/lib/syllabus";
 
 import { CourseFormField as Field } from "@/components/course-form-field";
 import { useAuth } from "@/contexts/auth-context";
@@ -338,7 +339,7 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
                     <p className="rounded-md border bg-muted/40 p-2 text-xs" role="status">
                       {(selectedSyllabus.topics?.length ?? 0) > 0
                         ? <>Dasturning {selectedSyllabus.topics?.length} ta mavzusi kurs modullari sifatida yaratiladi:
-                            nazariy {selectedSyllabus.theoreticalHours ?? 0} soat, amaliy {selectedSyllabus.practicalHours ?? 0} soat.
+                            {formatTypeHours(syllabusTypeHours(selectedSyllabus))} soat.
                             Darslarni modullar ichiga keyin qo'shasiz.</>
                         : "Dasturda mavzular kiritilmagan — kurs bo'sh holda yaratiladi."}
                     </p>

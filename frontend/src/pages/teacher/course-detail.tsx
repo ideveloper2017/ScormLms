@@ -67,6 +67,7 @@ import { RichTextContent } from "@/components/editor/rich-text-content";
 import { useSessionDraft, useUnloadWarning } from "@/hooks/use-session-draft";
 import { CoursePreview } from "@/components/course-preview";
 import { CourseSyllabusPanel } from "@/components/course-syllabus-panel";
+import { TopicTypeBadge } from "@/components/topic-type-badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -1005,14 +1006,7 @@ export function TeacherCourseDetail({
                           {module.title}
                         </CardTitle>
                         <CardDescription className="flex flex-wrap items-center gap-2">
-                          {module.topicType && (
-                            <Badge variant="outline" className={module.topicType === "THEORETICAL"
-                              ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300"
-                              : "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300"}>
-                              {module.topicType === "THEORETICAL" ? "Nazariy" : "Amaliy"}
-                              {module.plannedHours ? ` · ${module.plannedHours} soat` : ""}
-                            </Badge>
-                          )}
+                          {module.topicType && <TopicTypeBadge type={module.topicType} hours={module.plannedHours} />}
                           <span>{sectionLessons.length} ta dars</span>
                         </CardDescription>
                       </div>
