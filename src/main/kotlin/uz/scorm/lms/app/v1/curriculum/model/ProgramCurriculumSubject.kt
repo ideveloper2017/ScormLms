@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.subject.model.Subject
+import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 
 @Entity
 @Table(
@@ -69,6 +70,11 @@ class ProgramCurriculumSubject(
 
     @Column(name = "self_study_hours", nullable = false)
     var selfStudyHours: Int = 0
+
+    /** Biriktirilgan o'quv dasturi (mavzular shu dasturda); ko'p semestrli fanning barcha qatorlarida bir xil */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "syllabus_id")
+    var syllabus: SubjectSyllabus? = null
 }
 
 enum class CurriculumPlanItemType {

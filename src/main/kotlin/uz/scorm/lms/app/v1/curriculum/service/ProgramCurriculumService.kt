@@ -29,6 +29,8 @@ import uz.scorm.lms.app.v1.group.repository.GroupRepository
 import uz.scorm.lms.app.v1.student.model.StudentStatus
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
+import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
+import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.time.Instant
 import java.time.LocalDate
@@ -379,7 +381,9 @@ class ProgramCurriculumService(
         .orElseThrow { NoSuchElementException("Foydalanuvchi topilmadi: $id") }
 
     private fun toDto(version: ProgramCurriculumVersion): CurriculumVersionDto {
-        val items = subjectItemRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(requireNotNull(version.id))
+        val rows = subjectItemRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(requireNotNull(version.id))
+        val bySubject = rows.groupBy { it.subject?.id ?: -(it.id ?: 0) }
+        val items = rows
             .map { item -> CurriculumSubjectDto(
                 id = requireNotNull(item.id), subjectId = item.subject?.id, subjectCode = item.subjectCodeSnapshot,
                 subjectName = item.subjectNameSnapshot, credits = item.creditsSnapshot, semester = item.semester,
@@ -387,6 +391,9 @@ class ProgramCurriculumService(
                 lectureHours = item.lectureHours, practicalHours = item.practicalHours, laboratoryHours = item.laboratoryHours,
                 seminarHours = item.seminarHours, courseWorkHours = item.courseWorkHours, auditoryHours = item.auditoryHours,
                 selfStudyHours = item.selfStudyHours, totalHours = item.auditoryHours + item.selfStudyHours,
+                syllabusId = item.syllabus?.id, syllabusName = item.syllabus?.name, syllabusLanguage = item.syllabus?.language?.name,
+                syllabusStatus = item.syllabus?.status, syllabusTopicCount = item.syllabus?.topics?.size ?: 0,
+                syllabusHoursMatch = item.syllabus?.let { curriculumHoursMatch(it, bySubject.getValue(item.subject?.id ?: -(item.id ?: 0))) },
             ) }
         return CurriculumVersionDto(
             id = requireNotNull(version.id), programId = requireNotNull(version.program.id), programName = version.program.name,
@@ -407,4 +414,19 @@ class ProgramCurriculumService(
             createdByUserId = version.createdByUser.id,
         )
     }
+}
+
+/** Dastur mavzulari soatlari reja soatlariga teng: turlar bo'yicha yoki (masofaviy) auditoriya jami bo'yicha. */
+internal fun curriculumHoursMatch(syllabus: SubjectSyllabus, rows: List<ProgramCurriculumSubject>): Boolean {
+    val topic = { type: SyllabusTopicType -> syllabus.topics.filter { it.type == type }.sumOf { it.hours } }
+    val lecture = rows.sumOf { it.lectureHours }; val practical = rows.sumOf { it.practicalHours }
+    val laboratory = rows.sumOf { it.laboratoryHours }; val seminar = rows.sumOf { it.seminarHours }
+    if (lecture + practical + laboratory + seminar == 0) {
+        val auditory = rows.sumOf { it.auditoryHours }
+        return auditory > 0 && syllabus.topics.sumOf { it.hours } == auditory
+    }
+    return topic(SyllabusTopicType.THEORETICAL) == lecture &&
+        topic(SyllabusTopicType.PRACTICAL) == practical &&
+        topic(SyllabusTopicType.LABORATORY) == laboratory &&
+        topic(SyllabusTopicType.SEMINAR) == seminar
 }

@@ -36,6 +36,7 @@ data class SyllabusTopicDto(
     val title: String,
     val description: String? = null,
     val hours: Int,
+    val part: Int? = null,
 )
 
 data class SyllabusWorkflowRequest(val action: String)
@@ -61,4 +62,6 @@ data class SyllabusTopicRequest(
     val hours: Int,
     // Mavjud mavzu id'si — berilsa mavzu joyida yangilanadi (kurs bo'limlari bilan bog'lanish saqlanadi)
     val id: Long? = null,
+    // Ko'p semestrli fanda qism raqami (1, 2, ...)
+    val part: Int? = null,
 )

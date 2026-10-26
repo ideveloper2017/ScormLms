@@ -47,7 +47,7 @@ describe("SyllabusTopicsDialog", () => {
 
     expect(screen.getByText(/umumiy yuklama 120 soat/)).toHaveTextContent("mustaqil ta'lim: 118 soat");
     await waitFor(() => expect(syllabusApi.updateTopicsWithCourses).toHaveBeenCalledWith(40, [
-      { id: null, type: "THEORETICAL", title: "Kirish", description: null, hours: 2 },
+      { id: null, type: "THEORETICAL", title: "Kirish", description: null, hours: 2, part: null },
     ]));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(onSaved).toHaveBeenCalled();
