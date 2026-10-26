@@ -37,6 +37,8 @@ class CourseModuleService(
             title = title,
             description = request.description?.trim(),
             position = nextPosition,
+            topicType = validTopicType(request.topicType),
+            plannedHours = validHours(request.plannedHours),
         )))
     }
 
@@ -47,6 +49,8 @@ class CourseModuleService(
         module.title = validTitle(request.title)
         module.description = request.description?.trim()
         request.position?.let { require(it > 0); module.position = it }
+        request.topicType?.let { module.topicType = validTopicType(it) }
+        request.plannedHours?.let { module.plannedHours = validHours(it) }
         return toDto(moduleRepository.save(module))
     }
 
@@ -84,7 +88,19 @@ class CourseModuleService(
         status = module.status.lowercase(),
         contentCount = contentRepository.countByModuleIdAndDeletedFalse(requireNotNull(module.id)).toInt(),
         publishedAt = module.publishedAt,
+        topicType = module.topicType,
+        plannedHours = module.plannedHours,
     )
+
+    private fun validTopicType(value: String?): String? = value?.trim()?.uppercase()?.ifBlank { null }?.also {
+        require(it in TOPIC_TYPES) { "Mashg'ulot turi THEORETICAL yoki PRACTICAL bo'lishi kerak" }
+    }
+
+    private fun validHours(value: Int?): Int? = value?.also { require(it in 1..200) { "Modul soati 1-200 oralig'ida bo'lishi kerak" } }
+
+    private companion object {
+        val TOPIC_TYPES = setOf("THEORETICAL", "PRACTICAL")
+    }
 
     private fun validTitle(value: String): String = value.trim().also {
         require(it.isNotBlank()) { "Modul nomi majburiy" }

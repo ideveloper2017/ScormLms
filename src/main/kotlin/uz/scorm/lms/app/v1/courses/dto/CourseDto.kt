@@ -26,6 +26,9 @@ data class CourseDto(
     val academicYear: String?,
     val semester: Int?,
     val credits: Int?,
+    val syllabusId: Long? = null,
+    val syllabusName: String? = null,
+    val syllabusRevision: Int? = null,
     val status: String,
     val startDate: LocalDate?,
     val endDate: LocalDate?,
@@ -76,6 +79,8 @@ data class CourseCreateRequest(
     val faqs: String? = null,
     val metaKeywords: String? = null,
     val metaDescription: String? = null,
+    // Tasdiqlangan fan dasturi: mavzulari kurs modullari sifatida yaratiladi
+    val syllabusId: Long? = null,
 )
 
 data class CourseUpdateRequest(
@@ -143,12 +148,17 @@ data class CourseModuleDto(
     val status: String,
     val contentCount: Int,
     val publishedAt: Instant?,
+    val topicType: String? = null,
+    val plannedHours: Int? = null,
 )
 
 data class CourseModuleRequest(
     val title: String,
     val description: String? = null,
     val position: Int? = null,
+    // null — o'zgartirilmaydi
+    val topicType: String? = null,
+    val plannedHours: Int? = null,
 )
 
 data class CourseContentDto(

@@ -16,7 +16,7 @@ class CourseDateUpdateTest {
     private val repository = mockk<CourseRepository>()
     private val access = mockk<CourseAccessService>()
     private val service = CourseService(repository, mockk(relaxed = true), access,
-        mockk(), mockk(relaxed = true), mockk(), mockk())
+        mockk(), mockk(relaxed = true), mockk(), mockk(), mockk(), mockk())
     private val course = Course(title = "Kurs", userId = 1,
         startDate = LocalDate.of(2026, 9, 1), endDate = LocalDate.of(2026, 10, 1)).apply { id = 10 }
 

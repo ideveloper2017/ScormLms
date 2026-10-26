@@ -41,6 +41,10 @@ export interface TeacherCourse {
   academicYear?: string | null;
   semester?: number | null;
   credits?: number | null;
+  /** Kurs asos qilingan tasdiqlangan o'quv (fan) dasturi */
+  syllabusId?: number | null;
+  syllabusName?: string | null;
+  syllabusRevision?: number | null;
   students: number;
   progress: number;
   status: 'published' | 'draft' | 'archived';
@@ -86,6 +90,8 @@ export interface CourseCreatePayload {
   faqs?: string;
   metaKeywords?: string;
   metaDescription?: string;
+  /** Tasdiqlangan o'quv dasturi — mavzulari kurs modullari sifatida yaratiladi */
+  syllabusId?: number;
 }
 
 export interface CourseEnrollment {
@@ -120,6 +126,9 @@ export interface CourseModule {
   status: 'draft' | 'published';
   contentCount: number;
   publishedAt?: string | null;
+  /** O'quv dasturi mavzusidan yaratilgan modul: nazariy / amaliy va rejadagi soat */
+  topicType?: 'THEORETICAL' | 'PRACTICAL' | null;
+  plannedHours?: number | null;
 }
 
 export interface CourseContent {

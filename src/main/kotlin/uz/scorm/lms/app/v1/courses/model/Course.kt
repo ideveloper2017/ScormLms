@@ -5,6 +5,7 @@ import jakarta.persistence.*
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroup
+import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 import java.time.Instant
 import java.time.LocalDate
 
@@ -56,6 +57,14 @@ class Course(
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "subject_group_id")
     var subjectGroup: AcademicSubjectGroup? = null,
+
+    // Kurs asos qilingan tasdiqlangan fan dasturi va uning o'sha paytdagi versiyasi
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "syllabus_id")
+    var syllabus: SubjectSyllabus? = null,
+
+    @Column(name = "syllabus_revision")
+    var syllabusRevision: Int? = null,
 
     @Column(name = "start_date")
     var startDate: LocalDate? = null,

@@ -20,6 +20,7 @@ import { FileDropzone } from "@/components/file-dropzone";
 import { useToast } from "@/hooks/use-toast";
 import { teacherPortalApi, type TeacherCourse, type CourseCreatePayload } from "@/services/api/teacher-portal-api";
 import { subjectGroupApi } from "@/services/api/subject-group-api";
+import { syllabusApi } from "@/services/api/syllabus-api";
 
 import { CourseFormField as Field } from "@/components/course-form-field";
 import { useAuth } from "@/contexts/auth-context";
@@ -37,6 +38,7 @@ interface CourseForm {
   dripContent: boolean;
   startDate: string;
   endDate: string;
+  syllabusId: string;
 }
 
 const INITIAL_FORM: CourseForm = {
@@ -51,6 +53,7 @@ const INITIAL_FORM: CourseForm = {
   dripContent: false,
   startDate: "",
   endDate: "",
+  syllabusId: "",
 };
 
 export function TeacherCourseCreate({ course, onSaved, onCancel }: {
@@ -111,6 +114,15 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
   const selectedSubject = fallbackSubjects.find(
     (item) => String(item.id) === form.subjectId,
   );
+  // Tanlangan fanning tasdiqlangan va faol o'quv dasturlari
+  const catalogSubjectId = selectedGroup?.subjectId ?? selectedSubject?.id;
+  const syllabi = useQuery({
+    queryKey: ["syllabi", "approved", catalogSubjectId],
+    queryFn: () => syllabusApi.list(catalogSubjectId),
+    enabled: !course && Boolean(catalogSubjectId),
+    select: (items) => items.filter((item) => item.status === "APPROVED" && item.active),
+  });
+  const selectedSyllabus = (syllabi.data ?? []).find((item) => String(item.id) === form.syllabusId);
   const catalogSelection = form.subjectGroupId
     ? `group:${form.subjectGroupId}`
     : form.subjectId
@@ -138,7 +150,19 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
       ...current,
       subjectGroupId: group ? id : "",
       subjectId: subject ? id : "",
+      syllabusId: "",
       language: group?.programLanguage || subject?.programLanguage || current.language,
+    }));
+  };
+
+  const selectSyllabus = (value: string) => {
+    const syllabus = (syllabi.data ?? []).find((item) => String(item.id) === value);
+    setForm((current) => ({
+      ...current,
+      syllabusId: syllabus ? value : "",
+      // Bo'sh maydonlar dastur ma'lumotlari bilan to'ldiriladi
+      title: current.title.trim() || !syllabus ? current.title : syllabus.name,
+      shortDescription: current.shortDescription.trim() || !syllabus ? current.shortDescription : syllabus.shortDescription,
     }));
   };
 
@@ -180,6 +204,7 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
         dripContent: form.dripContent,
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
+        syllabusId: !course && selectedSyllabus ? selectedSyllabus.id : undefined,
       };
       const saved = course
         ? await teacherPortalApi.updateCourse(course.id, {
@@ -285,6 +310,42 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
                 </Select>
               </Field>
             </div>
+            <Field label="O'quv dasturi">
+              {course ? (
+                <Input disabled value={course.syllabusName
+                  ? `${course.syllabusName}${course.syllabusRevision ? ` · ${course.syllabusRevision}-versiya` : ""}`
+                  : "Dasturga bog'lanmagan"} />
+              ) : (
+                <div className="space-y-2">
+                  <Select value={form.syllabusId || "none"} onValueChange={(value) => selectSyllabus(value === "none" ? "" : value)}
+                    disabled={!catalogSubjectId || syllabi.isLoading}>
+                    <SelectTrigger className="w-full" aria-label="O'quv dasturi">
+                      <SelectValue placeholder={catalogSubjectId ? "Dasturni tanlang" : "Avval fanni tanlang"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Dasturisiz —</SelectItem>
+                      {(syllabi.data ?? []).map((item) => (
+                        <SelectItem key={item.id} value={String(item.id)}>
+                          {item.name} · {item.language} · {item.revisionNumber}-versiya
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {catalogSubjectId && !syllabi.isLoading && (syllabi.data?.length ?? 0) === 0 && (
+                    <p className="text-xs text-muted-foreground">Bu fan uchun tasdiqlangan o'quv dasturi yo'q.</p>
+                  )}
+                  {selectedSyllabus && (
+                    <p className="rounded-md border bg-muted/40 p-2 text-xs" role="status">
+                      {(selectedSyllabus.topics?.length ?? 0) > 0
+                        ? <>Dasturning {selectedSyllabus.topics?.length} ta mavzusi kurs modullari sifatida yaratiladi:
+                            nazariy {selectedSyllabus.theoreticalHours ?? 0} soat, amaliy {selectedSyllabus.practicalHours ?? 0} soat.
+                            Darslarni modullar ichiga keyin qo'shasiz.</>
+                        : "Dasturda mavzular kiritilmagan — kurs bo'sh holda yaratiladi."}
+                    </p>
+                  )}
+                </div>
+              )}
+            </Field>
             <Field label="Kurs tili *">
               <Select disabled={Boolean(course?.subjectGroupId || selectedGroup)} value={form.language} onValueChange={(value) => set("language", value)}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
