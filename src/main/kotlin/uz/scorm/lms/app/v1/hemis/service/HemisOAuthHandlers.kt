@@ -3,6 +3,7 @@ package uz.scorm.lms.app.v1.hemis.service
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import mu.KotlinLogging
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
@@ -23,7 +24,8 @@ const val HEMIS_EMPLOYEE_REGISTRATION_ID = "hemis-employee"
 @Component
 class HemisOAuthSuccessHandler(
     private val accountService: HemisOAuthAccountService,
-    private val employeeAccountService: HemisEmployeeAccountService,
+    // ObjectProvider: HemisEmployeeAccountService -> UserService -> SecurityConfig -> shu handler halqasini uzadi
+    private val employeeAccountService: ObjectProvider<HemisEmployeeAccountService>,
     private val loginCodeService: HemisOAuthLoginCodeService,
     @Value("\${app.hemis.oauth.frontend-callback-url:http://localhost:5173/auth/hemis/callback}")
     private val frontendCallbackUrl: String,
@@ -46,7 +48,7 @@ class HemisOAuthSuccessHandler(
         try {
             val registrationId = (authentication as? OAuth2AuthenticationToken)?.authorizedClientRegistrationId
             val user = if (registrationId == HEMIS_EMPLOYEE_REGISTRATION_ID) {
-                employeeAccountService.resolveActiveUser(principal)
+                employeeAccountService.getObject().resolveActiveUser(principal)
             } else {
                 accountService.resolveActiveUser(principal)
             }
