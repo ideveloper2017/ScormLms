@@ -62,6 +62,15 @@ class SubjectSyllabusService(
         return dto(syllabi.saveAndFlush(value))
     }
 
+    /** Dastur yaratilgandan keyin mavzular alohida kiritiladi: ro'yxat to'liq almashtiriladi (faqat qoralamada). */
+    @Transactional
+    fun updateTopics(id: Long, topics: List<SyllabusTopicRequest>): SubjectSyllabusDto {
+        val value = lock(id)
+        require(value.status == "DRAFT") { "Mavzular faqat qoralamada tahrirlanadi. Avval yangi versiya oching." }
+        replaceTopics(value, topics)
+        return dto(syllabi.saveAndFlush(value))
+    }
+
     @Transactional
     fun delete(id: Long) {
         val value = lock(id)
