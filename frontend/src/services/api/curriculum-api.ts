@@ -15,6 +15,74 @@ export interface CurriculumSubject {
   credits: number;
   semester: number;
   planItemType: CurriculumPlanItemType;
+  /** Ishchi o'quv rejadagi T/r (masalan "1.09") */
+  planRowNumber?: string | null;
+  lectureHours?: number;
+  practicalHours?: number;
+  laboratoryHours?: number;
+  seminarHours?: number;
+  courseWorkHours?: number;
+  /** Auditoriya jami (masofaviy shaklda turlarga bo'linmagan bo'lishi mumkin) */
+  auditoryHours?: number;
+  selfStudyHours?: number;
+  /** Umumiy yuklama = auditoriya + mustaqil ta'lim (1 kredit = 30 soat) */
+  totalHours?: number;
+}
+
+/** Reja fanining shu semestrdagi soatlari; auditory faqat turlar kiritilmaganda hisobga olinadi */
+export interface CurriculumSubjectHours {
+  lecture: number;
+  practical: number;
+  laboratory: number;
+  seminar: number;
+  courseWork: number;
+  auditory?: number | null;
+  selfStudy: number;
+}
+
+export interface UpdateCurriculumSubjectInput {
+  credits: number;
+  planItemType: CurriculumPlanItemType;
+  planRowNumber?: string | null;
+  hours: CurriculumSubjectHours;
+}
+
+export type CurriculumImportAction = "USE_EXISTING" | "CREATE" | "SKIP";
+
+export interface CurriculumImportRow {
+  rowNumber: string;
+  code: string;
+  name: string;
+  planItemType: CurriculumPlanItemType;
+  alternative: boolean;
+  totalHours: number;
+  auditoryHours: number;
+  lectureHours: number;
+  practicalHours: number;
+  laboratoryHours: number;
+  seminarHours: number;
+  courseWorkHours: number;
+  selfStudyHours: number;
+  semesterCredits: { semester: number; credits: number }[];
+  action: CurriculumImportAction;
+  subjectId?: number | null;
+  subjectCode?: string | null;
+  subjectName?: string | null;
+  createCode?: string | null;
+  issues: string[];
+}
+
+export interface CurriculumImportPreview {
+  sheets: { name: string; rowCount: number }[];
+  sheet?: string | null;
+  rows: CurriculumImportRow[];
+}
+
+export interface CurriculumImportResult {
+  subjectsCreated: number;
+  itemsAdded: number;
+  itemsSkipped: number;
+  curriculum: CurriculumVersion;
 }
 
 export interface CurriculumVersion {
@@ -138,6 +206,9 @@ export interface AddCurriculumSubjectInput {
   subjectId: number;
   semester: number;
   planItemType: CurriculumPlanItemType;
+  credits?: number;
+  planRowNumber?: string | null;
+  hours?: CurriculumSubjectHours;
 }
 
 export interface ApproveCurriculumInput {
@@ -201,6 +272,19 @@ export const curriculumApi = {
   update: async (id: number, input: SaveCurriculumVersionInput) => (await api.put<CurriculumVersion>(`/curricula/${id}`, input)).data,
   addSubject: async (id: number, input: AddCurriculumSubjectInput) => (await api.post<CurriculumVersion>(`/curricula/${id}/subjects`, input)).data,
   removeSubject: async (id: number, itemId: number) => (await api.delete<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}`)).data,
+  updateSubject: async (id: number, itemId: number, input: UpdateCurriculumSubjectInput) =>
+    (await api.put<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}`, input)).data,
+  /** Ishchi o'quv reja Excel faylini o'qiydi (hech narsa saqlanmaydi) */
+  importPreview: async (id: number, file: File, sheet?: string | null) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (sheet) form.append("sheet", sheet);
+    return (await api.post<CurriculumImportPreview>(`/curricula/${id}/import/preview`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })).data;
+  },
+  importApply: async (id: number, rows: CurriculumImportRow[]) =>
+    (await api.post<CurriculumImportResult>(`/curricula/${id}/import`, { rows })).data,
   approve: async (id: number, input: ApproveCurriculumInput) => (await api.post<CurriculumVersion>(`/curricula/${id}/approve`, input)).data,
   archive: async (id: number) => (await api.post<CurriculumVersion>(`/curricula/${id}/archive`)).data,
 };
