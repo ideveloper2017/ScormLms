@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { SyllabusWorkflow, syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { SyllabusTopicsDialog } from "@/components/admin/syllabus-topics";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,11 +14,12 @@ import { listSubjects } from "@/lib/academic-api";
 import { hasAuthority } from "@/lib/rbac-api";
 import { syllabusApi, type SubjectSyllabus, type SubjectSyllabusInput, type SyllabusLanguage } from "@/services/api/syllabus-api";
 
-interface Form { subjectId: number; name: string; language: SyllabusLanguage; shortDescription: string; requirements: string; fullDescription: string; active: boolean }
+interface Form { subjectId: number; language: SyllabusLanguage; shortDescription: string; requirements: string; fullDescription: string; active: boolean }
 
-// Mavzular bu yerda yuborilmaydi — ular alohida "Mavzular" oynasida saqlanadi (topics=null — o'zgarmaydi)
+// Nom yuborilmaydi — dastur fan bilan aniqlanadi (backend fan nomini oladi).
+// Mavzular ham yuborilmaydi — ular alohida "Mavzular" oynasida saqlanadi (topics=null — o'zgarmaydi)
 const toInput = (f: Form): SubjectSyllabusInput => ({
-  ...f, name: f.name.trim(), shortDescription: f.shortDescription.trim(), requirements: f.requirements.trim() || null, fullDescription: f.fullDescription.trim(),
+  ...f, shortDescription: f.shortDescription.trim(), requirements: f.requirements.trim() || null, fullDescription: f.fullDescription.trim(),
 });
 
 interface Props {
@@ -74,9 +74,9 @@ export function AdminSyllabi({ subjectId, onClearSubject, embedded = false }: Pr
         } },
         { header: "Fan tili", cell: (x) => x.language },
       ]}
-      blankForm={() => ({ subjectId: subjectId ?? 0, name: "", language: "UZ", shortDescription: "", requirements: "", fullDescription: "", active: true })}
-      toForm={(x) => ({ subjectId: x.subjectId, name: x.name, language: x.language, shortDescription: x.shortDescription, requirements: x.requirements ?? "", fullDescription: x.fullDescription, active: x.active })}
-      validate={(f) => !f.subjectId ? "Fan tanlang" : f.name.trim().length < 3 ? "Nomi kamida 3 belgi" : f.shortDescription.trim().length < 3 ? "Qisqa ta'rif majburiy" : f.fullDescription.trim().length < 3 ? "To'liq ta'rif majburiy" : null}
+      blankForm={() => ({ subjectId: subjectId ?? 0, language: "UZ", shortDescription: "", requirements: "", fullDescription: "", active: true })}
+      toForm={(x) => ({ subjectId: x.subjectId, language: x.language, shortDescription: x.shortDescription, requirements: x.requirements ?? "", fullDescription: x.fullDescription, active: x.active })}
+      validate={(f) => !f.subjectId ? "Fan tanlang" : f.shortDescription.trim().length < 3 ? "Qisqa ta'rif majburiy" : f.fullDescription.trim().length < 3 ? "To'liq ta'rif majburiy" : null}
       onCreate={async (f) => {
         const created = await syllabusApi.create(toInput(f));
         // Yaratish oynasi yopilgandan keyin mavzular oynasi ochiladi
@@ -85,8 +85,10 @@ export function AdminSyllabi({ subjectId, onClearSubject, embedded = false }: Pr
       onUpdate={(id, f) => syllabusApi.update(id, toInput(f)).then(() => undefined)}
       onDelete={syllabusApi.delete}
       renderForm={(f, set, { isEdit }) => <>
-        <div className="space-y-1.5"><Label>Fan *</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={f.subjectId} onChange={(e) => set({ subjectId: Number(e.target.value) })}><option value={0}>Fan tanlang</option>{(subjects.data ?? []).filter(x => x.active || x.id === f.subjectId).map(x => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></div>
-        <div className="grid grid-cols-[1fr_160px] gap-3"><div className="space-y-1.5"><Label>Nomi *</Label><Input value={f.name} onChange={(e) => set({ name: e.target.value })} /></div><div className="space-y-1.5"><Label>Dastur tili *</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={f.language} onChange={(e) => set({ language: e.target.value as SyllabusLanguage })}><option value="UZ">O'zbekcha</option><option value="EN">English</option><option value="RU">Русский</option><option value="KAA">Qaraqalpaqsha</option><option value="UZ_CYRILLIC">Ўзбекча</option></select></div></div>
+        <div className="grid grid-cols-[1fr_180px] gap-3">
+          <div className="space-y-1.5"><Label>Fan *</Label><select aria-label="Fan" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={f.subjectId} onChange={(e) => set({ subjectId: Number(e.target.value) })}><option value={0}>Fan tanlang</option>{(subjects.data ?? []).filter(x => x.active || x.id === f.subjectId).map(x => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></div>
+          <div className="space-y-1.5"><Label>Dastur tili *</Label><select aria-label="Dastur tili" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={f.language} onChange={(e) => set({ language: e.target.value as SyllabusLanguage })}><option value="UZ">O'zbekcha</option><option value="EN">English</option><option value="RU">Русский</option><option value="KAA">Qaraqalpaqsha</option><option value="UZ_CYRILLIC">Ўзбекча</option></select></div>
+        </div>
         <div className="space-y-1.5"><Label>Qisqa ta'rif *</Label><Textarea value={f.shortDescription} onChange={(e) => set({ shortDescription: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Talablar</Label><Textarea value={f.requirements} onChange={(e) => set({ requirements: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>To'liq ta'rif *</Label><Textarea className="min-h-24" value={f.fullDescription} onChange={(e) => set({ fullDescription: e.target.value })} /></div>

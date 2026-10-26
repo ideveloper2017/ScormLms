@@ -38,7 +38,8 @@ data class SyllabusRevisionDto(val revisionNumber: Int, val content: SubjectSyll
 
 data class SubjectSyllabusRequest(
     val subjectId: Long,
-    val name: String,
+    // Berilmasa fan nomi olinadi — dastur fan bilan aniqlanadi
+    val name: String? = null,
     val language: SyllabusLanguage,
     val shortDescription: String,
     val requirements: String? = null,

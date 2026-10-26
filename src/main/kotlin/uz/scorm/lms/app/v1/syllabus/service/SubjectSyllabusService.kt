@@ -27,12 +27,14 @@ class SubjectSyllabusService(
 
     @Transactional
     fun create(request: SubjectSyllabusRequest): SubjectSyllabusDto {
+        val subject = subjects.getEntity(request.subjectId)
         val normalized = normalize(request)
-        require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(request.subjectId, request.language, normalized.name)) {
-            "Ushbu fan, til va nom uchun o'quv dasturi mavjud"
+        val name = syllabusName(request, subject.name)
+        require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(request.subjectId, request.language, name)) {
+            DUPLICATE_MESSAGE
         }
         val value = SubjectSyllabus(
-            subject = subjects.getEntity(request.subjectId), name = normalized.name, language = request.language,
+            subject = subject, name = name, language = request.language,
             shortDescription = normalized.shortDescription, requirements = normalized.requirements,
             fullDescription = normalized.fullDescription, active = request.active,
         )
@@ -47,12 +49,16 @@ class SubjectSyllabusService(
         require(value.revisionNumber == 1 || (value.subject.id == request.subjectId && value.language == request.language)) {
             "Yangi versiyada fan va til o'zgartirilmaydi; boshqa fan uchun alohida dastur yarating"
         }
+        val subject = subjects.getEntity(request.subjectId)
         val normalized = normalize(request)
-        require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalseAndIdNot(request.subjectId, request.language, normalized.name, id)) {
-            "Ushbu fan, til va nom uchun o'quv dasturi mavjud"
+        // Nom yuborilmasa va fan o'zgarmasa — mavjud nom saqlanadi (eski dasturlar nomi buzilmaydi)
+        val name = if (request.name.isNullOrBlank() && value.subject.id == subject.id) value.name
+            else syllabusName(request, subject.name)
+        require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalseAndIdNot(request.subjectId, request.language, name, id)) {
+            DUPLICATE_MESSAGE
         }
-        value.subject = subjects.getEntity(request.subjectId)
-        value.name = normalized.name
+        value.subject = subject
+        value.name = name
         value.language = request.language
         value.shortDescription = normalized.shortDescription
         value.requirements = normalized.requirements
@@ -153,8 +159,12 @@ class SubjectSyllabusService(
     private fun requireEntity(id: Long) = syllabi.findByIdAndDeletedFalse(id)
         ?: throw NoSuchElementException("O'quv dasturi topilmadi: $id")
 
+    /** Nom berilmasa (yangi forma) — fan nomi; shu sababli bir fan va til uchun bitta dastur bo'ladi. */
+    private fun syllabusName(request: SubjectSyllabusRequest, subjectName: String): String =
+        (request.name?.trim()?.ifBlank { null } ?: subjectName.trim()).take(500)
+            .also { require(it.isNotBlank()) { "O'quv dasturi nomi aniqlanmadi" } }
+
     private fun normalize(value: SubjectSyllabusRequest) = value.copy(
-        name = value.name.trim().also { require(it.length in 3..500) { "O'quv dasturi nomi 3-500 belgi bo'lishi kerak" } },
         shortDescription = value.shortDescription.trim().also { require(it.length in 3..2000) { "Qisqa ta'rif 3-2000 belgi bo'lishi kerak" } },
         requirements = value.requirements?.trim()?.takeIf(String::isNotEmpty),
         fullDescription = value.fullDescription.trim().also { require(it.length >= 3) { "To'liq ta'rif majburiy" } },
@@ -180,5 +190,6 @@ class SubjectSyllabusService(
     private companion object {
         const val MAX_TOPICS = 300
         const val MAX_TOPIC_HOURS = 200
+        const val DUPLICATE_MESSAGE = "Ushbu fan va til uchun o'quv dasturi allaqachon mavjud — uni tahrirlang yoki yangi versiya oching"
     }
 }
