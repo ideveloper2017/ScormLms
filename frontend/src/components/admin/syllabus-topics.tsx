@@ -55,10 +55,11 @@ export function SyllabusTopicsEditor({ value, onChange }: EditorProps) {
         </span>
       </div>
       <Tabs value={tab} onValueChange={(v) => { setTab(v as SyllabusTopicType); setBulk(null); }}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid h-auto w-full grid-cols-2">
           {TYPES.map((type) => (
-            <TabsTrigger key={type} value={type}>
-              {syllabusTopicTypes[type]} <Badge variant="secondary" className="ml-2">{byType(type).length} · {sumHours(byType(type))} s</Badge>
+            <TabsTrigger key={type} value={type} className="gap-2">
+              {type === "THEORETICAL" ? "Nazariy" : "Amaliy"}
+              <Badge variant="secondary" className="shrink-0">{byType(type).length} ta · {sumHours(byType(type))} soat</Badge>
             </TabsTrigger>
           ))}
         </TabsList>

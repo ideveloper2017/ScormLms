@@ -61,7 +61,8 @@ export function AdminSyllabi({ subjectId, onClearSubject, embedded = false }: Pr
       allowCreate={subjects.isSuccess}
       canEditItem={item => item.status === "DRAFT" && subjects.isSuccess}
       canDeleteItem={item => item.status === "DRAFT" && item.revisionNumber === 1}
-      dialogClassName="max-w-4xl max-h-[90vh] overflow-y-auto"
+      // sm: prefiksi — dialogning bazaviy sm:max-w-md klassini almashtirish uchun
+      dialogClassName="sm:max-w-4xl max-h-[90vh] overflow-y-auto"
       getId={(x) => x.id} getName={(x) => x.name} search={(x) => `${x.name} ${x.subjectName} ${x.subjectCode ?? ""} ${x.language}`}
       columns={[
         { header: "Versiya", cell: x => `${x.revisionNumber} · ${syllabusStatuses[x.status]}` },

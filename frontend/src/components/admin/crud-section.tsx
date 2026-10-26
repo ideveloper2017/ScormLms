@@ -48,7 +48,7 @@ export interface CrudSectionProps<T, FormT> {
   allowDelete?: boolean;
   canEditItem?: (item: T) => boolean;
   canDeleteItem?: (item: T) => boolean;
-  /** Forma dialogi uchun qo'shimcha klass (masalan, kengroq dialog: "max-w-4xl"). */
+  /** Forma dialogi uchun qo'shimcha klass (masalan, kengroq dialog: "sm:max-w-4xl"). */
   dialogClassName?: string;
 }
 
