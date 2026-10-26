@@ -79,6 +79,21 @@ data class CurriculumSubjectDto(
     val selfStudyHours: Int = 0,
     /** Umumiy yuklama = auditoriya + mustaqil ta'lim (1 kredit = 30 soat bo'lishi kutiladi) */
     val totalHours: Int = 0,
+    val syllabusId: Long? = null,
+    val syllabusName: String? = null,
+    val syllabusLanguage: String? = null,
+    val syllabusStatus: String? = null,
+    val syllabusTopicCount: Int = 0,
+    /** Dastur mavzulari soatlari reja soatlariga (fanning barcha semestrlari bo'yicha) mosmi; dastur yo'q bo'lsa null */
+    val syllabusHoursMatch: Boolean? = null,
+)
+
+/** Reja fani uchun yangi o'quv dasturi (fan nomi bilan) — yaratiladi va biriktiriladi */
+data class CreateCurriculumSyllabusRequest(
+    val language: uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage,
+    val shortDescription: String,
+    val requirements: String? = null,
+    val fullDescription: String,
 )
 
 data class CurriculumVersionDto(

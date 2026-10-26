@@ -32,7 +32,11 @@ class SubjectSyllabusTopic(
 
     @Column(nullable = false)
     var hours: Int,
-) : BaseEntity()
+) : BaseEntity() {
+    /** Ko'p semestrli fanda mavzu qaysi qismga tegishli (1-qism — birinchi semestr); bir semestrli fanda null */
+    @Column
+    var part: Int? = null
+}
 
 /**
  * Mashg'ulot turlari (tartibi kursdagi bo'limlar tartibini ham belgilaydi):

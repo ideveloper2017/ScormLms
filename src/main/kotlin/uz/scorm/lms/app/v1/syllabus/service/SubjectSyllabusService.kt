@@ -76,6 +76,21 @@ class SubjectSyllabusService(
         return dto(syllabi.save(value))
     }
 
+    /** O'quv rejadan: fan uchun (o'quv dasturi namunasiga bog'langan) yangi o'quv dasturi; nomi — fan nomi. */
+    @Transactional
+    fun createForSubject(model: SubjectModelProgram, shortDescription: String, requirements: String?, fullDescription: String): SubjectSyllabus {
+        val subject = model.subject
+        val name = subject.name.trim().take(500)
+        require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(requireNotNull(subject.id), model.language, name)) {
+            "«$name» fani uchun bu tilda o'quv dasturi allaqachon bor — uni ro'yxatdan tanlang"
+        }
+        val normalized = normalize(SubjectSyllabusRequest(requireNotNull(subject.id), name, model.language, shortDescription, requirements, fullDescription))
+        return syllabi.save(SubjectSyllabus(
+            subject = subject, name = name, language = model.language, shortDescription = normalized.shortDescription,
+            requirements = normalized.requirements, fullDescription = normalized.fullDescription, active = true,
+        ).apply { modelProgram = model })
+    }
+
     @Transactional
     fun update(id: Long, request: SubjectSyllabusRequest): SubjectSyllabusDto {
         val value = lock(id)
@@ -170,6 +185,7 @@ class SubjectSyllabusService(
                 require(title.length in 2..500) { "Mavzu nomi 2-500 belgi bo'lishi kerak" }
                 require(item.hours in 1..MAX_TOPIC_HOURS) { "\"$title\" mavzusi soati 1-$MAX_TOPIC_HOURS oralig'ida bo'lishi kerak" }
                 val description = item.description?.trim()?.takeIf(String::isNotEmpty)
+                require(item.part == null || item.part in 1..12) { "\"$title\" mavzusining qismi 1-12 oralig'ida bo'lishi kerak" }
                 item.id?.let { id ->
                     val topic = existing[id] ?: throw IllegalArgumentException("Mavzu ushbu dasturga tegishli emas: $id")
                     topic.type = type
@@ -177,11 +193,12 @@ class SubjectSyllabusService(
                     topic.title = title
                     topic.description = description
                     topic.hours = item.hours
+                    topic.part = item.part
                     topic
                 } ?: SubjectSyllabusTopic(
                     syllabus = value, type = type, sortOrder = index + 1, title = title,
                     description = description, hours = item.hours,
-                )
+                ).apply { part = item.part }
             }
         }
         value.topics.removeIf { old -> topics.none { it === old } }
@@ -206,7 +223,7 @@ class SubjectSyllabusService(
 
     private fun dto(value: SubjectSyllabus): SubjectSyllabusDto {
         val topics = value.topics.sortedWith(compareBy({ it.type }, { it.sortOrder })).map {
-            SyllabusTopicDto(it.id, it.type, it.sortOrder, it.title, it.description, it.hours)
+            SyllabusTopicDto(it.id, it.type, it.sortOrder, it.title, it.description, it.hours, it.part)
         }
         return SubjectSyllabusDto(
             id = requireNotNull(value.id), subjectId = requireNotNull(value.subject.id), subjectCode = value.subject.code,
