@@ -26,6 +26,28 @@ export const topicTypeMeta: Record<SyllabusTopicType, { short: string; badge: st
   },
 };
 
+/** O'quv rejadagi fanning bitta semestri (qismi) soatlari — dastur mavzulari shu limitlarga taqsimlanadi. */
+export interface PlanPart {
+  part: number;
+  semester: number;
+  lecture: number;
+  practical: number;
+  laboratory: number;
+  seminar: number;
+  /** Auditoriya jami (masofaviy shaklda turlarga bo'linmagan) */
+  auditory: number;
+}
+
+const PLAN_FIELD: Record<SyllabusTopicType, keyof Pick<PlanPart, "lecture" | "practical" | "laboratory" | "seminar">> = {
+  THEORETICAL: "lecture", PRACTICAL: "practical", LABORATORY: "laboratory", SEMINAR: "seminar",
+};
+
+/** Reja limiti: tur bo'yicha soat (null — rejada turlarga bo'linmagan, faqat auditoriya jami). */
+export function planHours(parts: PlanPart[], type: SyllabusTopicType): number | null {
+  const typed = parts.reduce((sum, p) => sum + p.lecture + p.practical + p.laboratory + p.seminar, 0);
+  return typed === 0 ? null : parts.reduce((sum, p) => sum + p[PLAN_FIELD[type]], 0);
+}
+
 /** Faqat soati bor turlarni qisqa ko'rinishda: "Nazariy 4 · Laboratoriya 2". */
 export function formatTypeHours(hours: Partial<Record<SyllabusTopicType, number>>): string {
   const parts = TOPIC_TYPES.filter((type) => (hours[type] ?? 0) > 0).map((type) => `${topicTypeMeta[type].short} ${hours[type]}`);

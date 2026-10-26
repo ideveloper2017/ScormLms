@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CurriculumSyllabusCell } from "@/components/admin/curriculum-syllabus-link";
 import { extractApiError } from "@/lib/academic-api";
 import { HOURS_PER_CREDIT } from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
@@ -29,10 +30,14 @@ const mismatch = (s: CurriculumSubject) => total(s) > 0 && total(s) !== s.credit
  * O'quv reja fanlari: T/r, kredit va soatlar mashg'ulot turlari bo'yicha (ishchi o'quv reja ustunlari).
  * Umumiy yuklama kredit × 30 soatga teng bo'lmasa ogohlantiriladi.
  */
-export function CurriculumSubjectsTable({ curriculumId, subjects, editable, onRemove, onChanged }: {
+export function CurriculumSubjectsTable({ curriculumId, subjects, editable, canLinkSyllabus = false, educationLanguage = "uz", onRemove, onChanged }: {
   curriculumId: number;
   subjects: CurriculumSubject[];
+  /** Kredit/soatlarni tahrirlash va fanni olib tashlash (faqat qoralama reja) */
   editable: boolean;
+  /** O'quv dasturini biriktirish (arxivlanmagan reja) */
+  canLinkSyllabus?: boolean;
+  educationLanguage?: string;
   onRemove: (subject: CurriculumSubject) => void;
   onChanged: () => unknown;
 }) {
@@ -56,6 +61,7 @@ export function CurriculumSubjectsTable({ curriculumId, subjects, editable, onRe
               <TableHead className="text-right">Kredit</TableHead>
               {HOUR_COLUMNS.map((c) => <TableHead key={c.key} className="text-right">{c.label}</TableHead>)}
               <TableHead className="text-right">Jami soat</TableHead>
+              <TableHead>O'quv dasturi</TableHead>
               {editable && <TableHead />}
             </TableRow>
           </TableHeader>
@@ -81,6 +87,11 @@ export function CurriculumSubjectsTable({ curriculumId, subjects, editable, onRe
                     </span>
                   )}
                 </TableCell>
+                <TableCell>
+                  <CurriculumSyllabusCell curriculumId={curriculumId} subject={subject}
+                    rows={rows.filter((r) => r.subjectId != null && r.subjectId === subject.subjectId)}
+                    canLink={canLinkSyllabus} canEditTopics={canLinkSyllabus} educationLanguage={educationLanguage} onChanged={onChanged} />
+                </TableCell>
                 {editable && (
                   <TableCell className="whitespace-nowrap text-right">
                     <Button variant="ghost" size="icon" aria-label="Fan soatlarini tahrirlash" onClick={() => setEditing(subject)}>
@@ -95,7 +106,7 @@ export function CurriculumSubjectsTable({ curriculumId, subjects, editable, onRe
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={HOUR_COLUMNS.length + (editable ? 7 : 6)} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={HOUR_COLUMNS.length + (editable ? 8 : 7)} className="h-24 text-center text-muted-foreground">
                   Rejaga hali fan biriktirilmagan. Fanlarni qo'lda qo'shing yoki ishchi o'quv rejani Excel'dan import qiling.
                 </TableCell>
               </TableRow>
@@ -108,6 +119,7 @@ export function CurriculumSubjectsTable({ curriculumId, subjects, editable, onRe
                 <TableCell className="text-right font-medium">{sum("credits")}</TableCell>
                 {HOUR_COLUMNS.map((c) => <TableCell key={c.key} className="text-right tabular-nums">{sum(c.key)}</TableCell>)}
                 <TableCell className="text-right font-medium tabular-nums">{rows.reduce((acc, s) => acc + total(s), 0)}</TableCell>
+                <TableCell />
                 {editable && <TableCell />}
               </TableRow>
             </TableFooter>

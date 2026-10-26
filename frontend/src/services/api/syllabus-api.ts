@@ -7,9 +7,10 @@ export const syllabusTopicTypes: Record<SyllabusTopicType, string> = {
   THEORETICAL: "Nazariy mashg'ulotlar (ma'ruza)", PRACTICAL: "Amaliy mashg'ulotlar",
   LABORATORY: "Laboratoriya mashg'ulotlari", SEMINAR: "Seminar mashg'ulotlari",
 };
-export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours: number }
+/** part — ko'p semestrli fanda qism (1-qism — birinchi semestr) */
+export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours: number; part?: number | null }
 /** id — mavjud mavzu (joyida yangilanadi, kurs bo'limlari bilan bog'lanish saqlanadi) */
-export interface SyllabusTopicInput { id?: number | null; type: SyllabusTopicType; title: string; description?: string | null; hours: number }
+export interface SyllabusTopicInput { id?: number | null; type: SyllabusTopicType; title: string; description?: string | null; hours: number; part?: number | null }
 export interface SubjectSyllabus {
   id: number; subjectId: number; subjectCode?: string | null; subjectName: string;
   name: string; language: SyllabusLanguage; shortDescription: string;

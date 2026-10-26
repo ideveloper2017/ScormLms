@@ -27,6 +27,21 @@ export interface CurriculumSubject {
   selfStudyHours?: number;
   /** Umumiy yuklama = auditoriya + mustaqil ta'lim (1 kredit = 30 soat) */
   totalHours?: number;
+  /** Biriktirilgan o'quv dasturi (ko'p semestrli fanning barcha qatorlarida bir xil) */
+  syllabusId?: number | null;
+  syllabusName?: string | null;
+  syllabusLanguage?: string | null;
+  syllabusStatus?: "DRAFT" | "IN_REVIEW" | "APPROVED" | null;
+  syllabusTopicCount?: number;
+  /** Dastur mavzulari soatlari reja soatlariga mosmi */
+  syllabusHoursMatch?: boolean | null;
+}
+
+export interface CreateCurriculumSyllabusInput {
+  language: "UZ" | "EN" | "RU" | "KAA" | "UZ_CYRILLIC";
+  shortDescription: string;
+  requirements?: string | null;
+  fullDescription: string;
 }
 
 /** Reja fanining shu semestrdagi soatlari; auditory faqat turlar kiritilmaganda hisobga olinadi */
@@ -272,6 +287,14 @@ export const curriculumApi = {
   update: async (id: number, input: SaveCurriculumVersionInput) => (await api.put<CurriculumVersion>(`/curricula/${id}`, input)).data,
   addSubject: async (id: number, input: AddCurriculumSubjectInput) => (await api.post<CurriculumVersion>(`/curricula/${id}/subjects`, input)).data,
   removeSubject: async (id: number, itemId: number) => (await api.delete<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}`)).data,
+  /** Reja faniga mavjud o'quv dasturini biriktirish (fanning barcha semestr qatorlariga) */
+  attachSyllabus: async (id: number, itemId: number, syllabusId: number) =>
+    (await api.put<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/syllabus/${syllabusId}`)).data,
+  /** Fan nomi bilan yangi o'quv dasturi yaratib biriktirish */
+  createSyllabus: async (id: number, itemId: number, input: CreateCurriculumSyllabusInput) =>
+    (await api.post<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/syllabus`, input)).data,
+  detachSyllabus: async (id: number, itemId: number) =>
+    (await api.delete<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/syllabus`)).data,
   updateSubject: async (id: number, itemId: number, input: UpdateCurriculumSubjectInput) =>
     (await api.put<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}`, input)).data,
   /** Ishchi o'quv reja Excel faylini o'qiydi (hech narsa saqlanmaydi) */
