@@ -282,9 +282,10 @@ export function SyllabusTopicsEditor({ value, onChange, parts = 1, compact = fal
                 {topicTypeMeta[type].empty} hali kiritilmagan
               </p>
             )}
+            {byType(type).length > 0 && <div className={compact ? "divide-y rounded-md border px-2" : "space-y-2"}>
             {byType(type).map((topic, index) => (
-              <div key={index} className="flex items-start gap-2 rounded-md border p-2">
-                <span className="mt-2 w-6 shrink-0 text-right text-sm text-muted-foreground">{index + 1}.</span>
+              <div key={index} className={compact ? "flex items-center gap-2 py-1.5" : "flex items-start gap-2 rounded-md border p-2"}>
+                <span className={cn("w-6 shrink-0 text-right text-sm text-muted-foreground", !compact && "mt-2")}>{index + 1}.</span>
                 <div className="flex-1 space-y-1.5">
                   <Input
                     aria-label={`${index + 1}-mavzu nomi`}
@@ -306,16 +307,17 @@ export function SyllabusTopicsEditor({ value, onChange, parts = 1, compact = fal
                     {Array.from({ length: parts }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}-qism</option>)}
                   </select>
                 )}
-                <div className="w-20 shrink-0">
+                <div className={compact ? "flex shrink-0 items-center gap-1" : "w-20 shrink-0"}>
                   <Input
                     aria-label={`${index + 1}-mavzu soati`}
                     type="number"
                     min={1}
                     max={200}
+                    className={compact ? "w-16" : undefined}
                     value={topic.hours}
                     onChange={(e) => update(type, index, { hours: Number(e.target.value) })}
                   />
-                  <span className="text-[10px] text-muted-foreground">soat</span>
+                  <span className={compact ? "text-xs text-muted-foreground" : "text-[10px] text-muted-foreground"}>soat</span>
                 </div>
                 {!compact && <div className="flex shrink-0 flex-col">
                   <Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Yuqoriga" disabled={index === 0} onClick={() => move(type, index, -1)}><ArrowUp className="h-3 w-3" /></Button>
@@ -326,6 +328,7 @@ export function SyllabusTopicsEditor({ value, onChange, parts = 1, compact = fal
                 </Button>
               </div>
             ))}
+            </div>}
             {bulk !== null ? (
               <div className="space-y-2 rounded-md border p-2">
                 <Textarea
