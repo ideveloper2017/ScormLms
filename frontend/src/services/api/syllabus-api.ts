@@ -7,10 +7,10 @@ export const syllabusTopicTypes: Record<SyllabusTopicType, string> = {
   THEORETICAL: "Nazariy mashg'ulotlar (ma'ruza)", PRACTICAL: "Amaliy mashg'ulotlar",
   LABORATORY: "Laboratoriya mashg'ulotlari", SEMINAR: "Seminar mashg'ulotlari",
 };
-/** part — ko'p semestrli fanda qism (1-qism — birinchi semestr) */
-export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours: number; part?: number | null }
+/** part — ko'p semestrli fanda qism (1-qism — birinchi semestr); hours — eski ma'lumot, soatlar fan bo'yicha o'quv rejada */
+export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours?: number | null; part?: number | null }
 /** id — mavjud mavzu (joyida yangilanadi, kurs bo'limlari bilan bog'lanish saqlanadi) */
-export interface SyllabusTopicInput { id?: number | null; type: SyllabusTopicType; title: string; description?: string | null; hours: number; part?: number | null }
+export interface SyllabusTopicInput { id?: number | null; type: SyllabusTopicType; title: string; description?: string | null; part?: number | null }
 export interface SubjectSyllabus {
   id: number; subjectId: number; subjectCode?: string | null; subjectName: string;
   name: string; language: SyllabusLanguage; shortDescription: string;
@@ -29,15 +29,6 @@ export interface SubjectSyllabusInput {
 }
 /** Dasturga bog'langan kurs: qoralamasi mavzular bilan avtomatik moslanadi, nashr qilingani — kurs sahifasida */
 export interface SyllabusLinkedCourse { id: number; title: string; status: string; autoSync: boolean; added: number; updated: number }
-/** Fan dasturi (ishchi dastur): o'quv dasturidan o'quv yili va semestr uchun, mavzular va ixtiyoriy kurs bilan */
-export interface WorkProgramInput {
-  modelProgramId: number;
-  academicYear: string;
-  semester: number;
-  topics: SyllabusTopicInput[];
-  /** null — faqat fan dasturi yaratiladi */
-  course: { title: string; shortDescription?: string | null; level?: string; language?: string } | null;
-}
 export const syllabusApi = {
   history: async (id: number) => (await api.get<SyllabusRevision[]>(`/syllabi/${id}/history`)).data,
   workflow: async (id: number, action: "SUBMIT" | "RETURN" | "APPROVE" | "NEW_VERSION") => (await api.post<SubjectSyllabus>(`/syllabi/${id}/workflow`, { action })).data,
@@ -47,9 +38,6 @@ export const syllabusApi = {
   create: async (input: SubjectSyllabusInput) => (await api.post<SubjectSyllabus>("/syllabi", input)).data,
   update: async (id: number, input: SubjectSyllabusInput) => (await api.put<SubjectSyllabus>(`/syllabi/${id}`, input)).data,
   delete: async (id: number) => { await api.delete(`/syllabi/${id}`); },
-  /** Fan dasturi (o'quv dasturidan, davr uchun), mavzular va (ixtiyoriy) shu dastur asosidagi kurs birga yaratiladi */
-  createWorkProgram: async (input: WorkProgramInput) =>
-    (await api.post<{ success: boolean; data: { syllabus: SubjectSyllabus; course?: { id: number | string; title: string } | null } }>("/syllabus-courses", input)).data.data,
   linkedCourses: async (syllabusId: number) =>
     (await api.get<{ success: boolean; data: SyllabusLinkedCourse[] }>(`/syllabus-courses/${syllabusId}/courses`)).data.data,
   /** Mavzularni saqlaydi va bog'langan qoralama kurslar bo'limlarini moslaydi */

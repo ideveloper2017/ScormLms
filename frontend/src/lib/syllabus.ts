@@ -1,4 +1,4 @@
-import type { SubjectSyllabus, SyllabusLanguage, SyllabusTopicInput, SyllabusTopicType } from "@/services/api/syllabus-api";
+import type { SyllabusLanguage, SyllabusTopic, SyllabusTopicInput, SyllabusTopicType } from "@/services/api/syllabus-api";
 
 /** Mashg'ulot turlari tartibi — kursdagi bo'limlar ham shu tartibda bo'ladi (backend enum tartibi bilan bir xil). */
 export const TOPIC_TYPES: SyllabusTopicType[] = ["THEORETICAL", "PRACTICAL", "LABORATORY", "SEMINAR"];
@@ -48,36 +48,20 @@ export function planHours(parts: PlanPart[], type: SyllabusTopicType): number | 
   return typed === 0 ? null : parts.reduce((sum, p) => sum + p[PLAN_FIELD[type]], 0);
 }
 
-/** Faqat soati bor turlarni qisqa ko'rinishda: "Nazariy 4 · Laboratoriya 2". */
-export function formatTypeHours(hours: Partial<Record<SyllabusTopicType, number>>): string {
-  const parts = TOPIC_TYPES.filter((type) => (hours[type] ?? 0) > 0).map((type) => `${topicTypeMeta[type].short} ${hours[type]}`);
-  return parts.length ? parts.join(" · ") : "0";
-}
-
-/** Dastur DTO'sidagi turlar bo'yicha soatlar. */
-export function syllabusTypeHours(s: Pick<SubjectSyllabus, "theoreticalHours" | "practicalHours" | "laboratoryHours" | "seminarHours">) {
-  return {
-    THEORETICAL: s.theoreticalHours ?? 0, PRACTICAL: s.practicalHours ?? 0,
-    LABORATORY: s.laboratoryHours ?? 0, SEMINAR: s.seminarHours ?? 0,
-  } satisfies Record<SyllabusTopicType, number>;
+/** Turlar bo'yicha mavzular soni qisqa ko'rinishda: "Nazariy 4 · Laboratoriya 2" (mavzusi bor turlar). */
+export function formatTypeCounts(topics: Pick<SyllabusTopic, "type">[]): string {
+  return TOPIC_TYPES.map((type) => [type, topics.filter((t) => t.type === type).length] as const)
+    .filter(([, count]) => count > 0).map(([type, count]) => `${topicTypeMeta[type].short} ${count}`).join(" · ");
 }
 
 /** Mavzular ro'yxatini tekshiradi; xato matni yoki null qaytaradi. */
 export function validateTopics(topics: SyllabusTopicInput[]): string | null {
   const empty = topics.find((t) => t.title.trim().length < 2);
-  if (empty) return `${topicTypeMeta[empty.type].short} mavzu nomi kiritilmagan`;
-  const bad = topics.find((t) => !Number.isInteger(Number(t.hours)) || Number(t.hours) < 1 || Number(t.hours) > 200);
-  return bad ? `"${bad.title.trim()}" mavzusi soati 1–200 oralig'ida bo'lishi kerak` : null;
+  return empty ? `${topicTypeMeta[empty.type].short} mavzu nomi kiritilmagan` : null;
 }
 
 /** Kredit-modul tizimi: 1 kredit = 30 akademik soat (auditoriya + mustaqil ta'lim). */
 export const HOURS_PER_CREDIT = 30;
-
-/** Fan yuklamasi: umumiy soat, auditoriya (barcha mashg'ulot turlari) va qolgan mustaqil ta'lim soati. */
-export function creditWorkload(credits: number, auditoryHours: number) {
-  const total = credits * HOURS_PER_CREDIT;
-  return { total, auditory: auditoryHours, selfStudy: total - auditoryHours, exceeded: auditoryHours > total };
-}
 
 /** Dastur tilidan kurs tili (kurs faqat uz/ru/en tillarini qo'llaydi). */
 export function courseLanguageOf(language: SyllabusLanguage): "uz" | "ru" | "en" {
@@ -91,3 +75,5 @@ export const syllabusLanguages: { value: SyllabusLanguage; label: string }[] = [
   { value: "KAA", label: "Qaraqalpaqsha" },
   { value: "UZ_CYRILLIC", label: "Ўзбекча" },
 ];
+
+export const languageLabel = (language?: string | null) => syllabusLanguages.find((l) => l.value === language)?.label ?? language ?? "";

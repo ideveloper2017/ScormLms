@@ -16,9 +16,9 @@ const draft: SubjectSyllabus = {
   id: 40, subjectId: 7, subjectCode: "FIZ", subjectName: "Fizika", name: "Fizika dasturi", language: "UZ",
   shortDescription: "Qisqa", fullDescription: "To'liq", active: true, status: "DRAFT", revisionNumber: 1, topics: [],
 };
-const mountDialog = (item: SubjectSyllabus, onSaved = vi.fn(), onClose = vi.fn(), credits?: number) => render(
+const mountDialog = (item: SubjectSyllabus, onSaved = vi.fn(), onClose = vi.fn()) => render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-    <SyllabusTopicsDialog item={item} canWrite credits={credits} onSaved={onSaved} onClose={onClose} />
+    <SyllabusTopicsDialog item={item} canWrite onSaved={onSaved} onClose={onClose} />
   </QueryClientProvider>,
 );
 
@@ -34,7 +34,7 @@ describe("SyllabusTopicsDialog", () => {
     ] });
     const onSaved = vi.fn();
     const onClose = vi.fn();
-    mountDialog(draft, onSaved, onClose, 4);
+    mountDialog(draft, onSaved, onClose);
     expect(await screen.findByText(/qoralama — bo'limlari avtomatik yangilanadi/)).toBeInTheDocument();
     expect(screen.getByText(/nashr qilingan — dastur tasdiqlangach/)).toBeInTheDocument();
 
@@ -45,9 +45,10 @@ describe("SyllabusTopicsDialog", () => {
     fireEvent.change(screen.getByLabelText("1-mavzu nomi"), { target: { value: " Kirish " } });
     fireEvent.click(screen.getByRole("button", { name: "Mavzularni saqlash" }));
 
-    expect(screen.getByText(/umumiy yuklama 120 soat/)).toHaveTextContent("mustaqil ta'lim: 118 soat");
+    // Mavzuda soat yo'q — soatlar fan bo'yicha o'quv rejada
+    expect(screen.queryByLabelText("1-mavzu soati")).not.toBeInTheDocument();
     await waitFor(() => expect(syllabusApi.updateTopicsWithCourses).toHaveBeenCalledWith(40, [
-      { id: null, type: "THEORETICAL", title: "Kirish", description: null, hours: 2, part: null },
+      { id: null, type: "THEORETICAL", title: "Kirish", description: null, part: null },
     ]));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(onSaved).toHaveBeenCalled();
@@ -68,16 +69,16 @@ function Harness({ initial, spy }: { initial: SyllabusTopicInput[]; spy: (v: Syl
 }
 
 describe("SyllabusTopicsEditor", () => {
-  it("nazariy mavzu qo'shadi va soatlarni hisoblaydi", () => {
+  it("nazariy mavzu qo'shadi va mavzular sonini ko'rsatadi", () => {
     const spy = vi.fn();
-    render(<Harness initial={[{ type: "PRACTICAL", title: "Laboratoriya", hours: 4 }]} spy={spy} />);
+    render(<Harness initial={[{ type: "PRACTICAL", title: "Laboratoriya" }]} spy={spy} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
     fireEvent.change(screen.getByLabelText("1-mavzu nomi"), { target: { value: "Kirish" } });
 
     const last = spy.mock.calls.at(-1)?.[0] as SyllabusTopicInput[];
     expect(last.map((t) => [t.type, t.title])).toEqual([["THEORETICAL", "Kirish"], ["PRACTICAL", "Laboratoriya"]]);
-    expect(screen.getByText(/Jami: 6 soat \(Nazariy 2 · Amaliy 4\)/)).toBeInTheDocument();
+    expect(screen.getByText("Jami: 2 ta mavzu")).toBeInTheDocument();
   });
 
   it("ro'yxatdan bir nechta mavzuni bir yo'la qo'shadi", () => {
@@ -97,7 +98,7 @@ describe("SyllabusTopicsEditor", () => {
 describe("Laboratoriya va seminar", () => {
   it("laboratoriya va seminar mavzulari alohida tablarda kiritiladi va tartibda turadi", () => {
     const spy = vi.fn();
-    render(<Harness initial={[{ type: "THEORETICAL", title: "Kirish", hours: 2 }]} spy={spy} />);
+    render(<Harness initial={[{ type: "THEORETICAL", title: "Kirish" }]} spy={spy} />);
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: /Seminar/ }));
     fireEvent.click(screen.getByRole("tab", { name: /Seminar/ }));
@@ -107,11 +108,10 @@ describe("Laboratoriya va seminar", () => {
     fireEvent.click(screen.getByRole("tab", { name: /Laboratoriya/ }));
     fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
     fireEvent.change(screen.getByLabelText("1-mavzu nomi"), { target: { value: "Mayatnik" } });
-    fireEvent.change(screen.getByLabelText("1-mavzu soati"), { target: { value: "4" } });
 
     const last = spy.mock.calls.at(-1)?.[0] as SyllabusTopicInput[];
     expect(last.map((t) => [t.type, t.title])).toEqual([["THEORETICAL", "Kirish"], ["LABORATORY", "Mayatnik"], ["SEMINAR", "Munozara"]]);
-    expect(screen.getByText(/Jami: 8 soat \(Nazariy 2 · Laboratoriya 4 · Seminar 2\)/)).toBeInTheDocument();
+    expect(screen.getByText("Jami: 3 ta mavzu")).toBeInTheDocument();
   });
 
   it("ko'rinishda faqat mavzusi bor turlar chiqadi", () => {

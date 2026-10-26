@@ -64,6 +64,20 @@ describe("CurriculumSubjectsTable", () => {
     auditoryHours: 72, selfStudyHours: 100, totalHours: 172,
   };
 
+  it("ikki semestrli fan bitta qatorda ko'rsatiladi", () => {
+    render(<QueryClientProvider client={client()}>
+      <CurriculumSubjectsTable curriculumId={5} editable={false} onRemove={vi.fn()} onChanged={vi.fn()} subjects={[
+        { ...subject, totalHours: 180, selfStudyHours: 108 },
+        { ...subject, id: 10, semester: 2, credits: 4, lectureHours: 12, practicalHours: 18, laboratoryHours: 18, auditoryHours: 48, selfStudyHours: 72, totalHours: 120 },
+      ]} />
+    </QueryClientProvider>);
+    const rowEl = screen.getByText("Dasturlash 1,2").closest("tr") as HTMLElement;
+    expect(within(rowEl).getByText("1, 2")).toBeInTheDocument();
+    expect(within(rowEl).getByText("6+4")).toBeInTheDocument();
+    expect(within(rowEl).getByText("M 30 · A 45 · L 45")).toBeInTheDocument();
+    expect(screen.getAllByRole("row")).toHaveLength(2); // sarlavha + bitta fan
+  });
+
   it("soatlarni ko'rsatadi, kreditga mos kelmasa ogohlantiradi va tahrirlaydi", async () => {
     vi.mocked(curriculumApi.updateSubject).mockResolvedValue({} as never);
     const onChanged = vi.fn();
@@ -73,9 +87,11 @@ describe("CurriculumSubjectsTable", () => {
 
     const rowEl = screen.getByText("Dasturlash 1,2").closest("tr") as HTMLElement;
     expect(within(rowEl).getByText("1.09")).toBeInTheDocument();
+    expect(within(rowEl).getByText("M 18 · A 27 · L 27")).toBeInTheDocument();
     expect(within(rowEl).getByLabelText("Soat kreditga mos emas")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Fan soatlarini tahrirlash" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Dasturlash 1,2 — amallar" }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Kredit va soatlar" }));
     expect(screen.getByLabelText("Auditoriya jami")).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Mustaqil ta'lim"), { target: { value: "108" } });
     expect(screen.getByText(/= 180 soat — kreditga mos/)).toBeInTheDocument();

@@ -33,8 +33,8 @@ export interface CurriculumSubject {
   syllabusLanguage?: string | null;
   syllabusStatus?: "DRAFT" | "IN_REVIEW" | "APPROVED" | null;
   syllabusTopicCount?: number;
-  /** Dastur mavzulari soatlari reja soatlariga mosmi */
-  syllabusHoursMatch?: boolean | null;
+  /** Rejada soati bor har bir mashg'ulot turiga (har bir semestr qismida) mavzu kiritilganmi */
+  syllabusComplete?: boolean | null;
 }
 
 export interface CreateCurriculumSyllabusInput {

@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { extractApiError } from "@/lib/academic-api";
-import { TOPIC_TYPES as TYPES, creditWorkload, formatTypeHours, planHours, topicTypeMeta, validateTopics, type PlanPart } from "@/lib/syllabus";
-import { TopicTypeBadge } from "@/components/topic-type-badge";
+import { TOPIC_TYPES as TYPES, planHours, topicTypeMeta, validateTopics, type PlanPart } from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -18,17 +17,15 @@ import {
   type SubjectSyllabus, type SyllabusTopic, type SyllabusTopicInput, type SyllabusTopicType,
 } from "@/services/api/syllabus-api";
 
-
-
 /**
  * O'quv dasturi mavzularini alohida boshqarish (dastur yaratilgandan keyin).
  * Faqat qoralama dasturda tahrirlanadi; aks holda ko'rish rejimida ochiladi.
  */
-export function SyllabusTopicsDialog({ item, canWrite, credits, plan, onClose, onSaved }: {
+export function SyllabusTopicsDialog({ item, canWrite, plan, title, onClose, onSaved }: {
   item: SubjectSyllabus;
   canWrite: boolean;
-  /** Fan krediti — yuklama hisobi uchun */
-  credits?: number | null;
+  /** Oyna sarlavhasi (berilmasa "Mavzular — dastur nomi") */
+  title?: string;
   /** O'quv rejadan ochilganda: fanning semestrlar (qismlar) bo'yicha reja soatlari */
   plan?: PlanPart[];
   onClose: () => void;
@@ -37,9 +34,14 @@ export function SyllabusTopicsDialog({ item, canWrite, credits, plan, onClose, o
   const { toast } = useToast();
   const editable = canWrite && item.status === "DRAFT";
   const [topics, setTopics] = useState<SyllabusTopicInput[]>(
-    (item.topics ?? []).map((t) => ({ id: t.id, type: t.type, title: t.title, description: t.description ?? "", hours: t.hours, part: t.part ?? null })),
+    (item.topics ?? []).map((t) => ({ id: t.id, type: t.type, title: t.title, description: t.description ?? "", part: t.part ?? null })),
   );
   const parts = Math.max(plan?.length ?? 0, ...topics.map((t) => t.part ?? 1), 1);
+  // Rejadan ochilganda ixcham: faqat rejada soati bor turlar va mavzu nomlari
+  const compact = Boolean(plan?.length);
+  const planTypes = plan?.length && TYPES.some((type) => planHours(plan, type) !== null)
+    ? TYPES.filter((type) => (planHours(plan, type) ?? 0) > 0 || topics.some((t) => t.type === type))
+    : undefined;
   const [error, setError] = useState<string | null>(null);
   const courses = useQuery({
     queryKey: ["syllabus-courses", item.id],
@@ -47,7 +49,7 @@ export function SyllabusTopicsDialog({ item, canWrite, credits, plan, onClose, o
   });
   const save = useMutation({
     mutationFn: () => syllabusApi.updateTopicsWithCourses(item.id, topics.map((t) => ({
-      id: t.id ?? null, type: t.type, title: t.title.trim(), description: t.description?.trim() || null, hours: Number(t.hours),
+      id: t.id ?? null, type: t.type, title: t.title.trim(), description: t.description?.trim() || null,
       part: parts > 1 ? t.part ?? 1 : null,
     }))),
     onSuccess: (result) => {
@@ -73,20 +75,21 @@ export function SyllabusTopicsDialog({ item, canWrite, credits, plan, onClose, o
     <Dialog open onOpenChange={(open) => { if (!open && !save.isPending) onClose(); }}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Mavzular — {item.name}</DialogTitle>
+          <DialogTitle>{title ?? `Mavzular — ${item.name}`}</DialogTitle>
           <DialogDescription>
-            {item.subjectCode ? `${item.subjectCode} · ` : ""}{item.subjectName}.{" "}
-            {editable
-              ? "Nazariy, amaliy, laboratoriya va seminar mashg'ulotlari mavzulari hamda soatlarini kiriting. Mavzular mazmuni (darslar, materiallar) kurs modulida to'ldiriladi."
-              : "Mavzular faqat qoralama dasturda tahrirlanadi — tahrirlash uchun yangi versiya oching."}
+            {!editable
+              ? "Dastur tasdiqlangan — mavzularni o'zgartirish uchun \"O'quv dasturi\" bo'limida yangi versiya oching."
+              : compact
+                ? "Har bir mashg'ulot turi uchun mavzu nomlarini kiriting. Soatlar fan bo'yicha o'quv rejada belgilangan."
+                : "Nazariy, amaliy, laboratoriya va seminar mashg'ulotlari mavzularini kiriting. Mavzular mazmuni (darslar, materiallar) kurs modulida to'ldiriladi."}
           </DialogDescription>
         </DialogHeader>
+        {plan?.length ? <PlanTopicsCheck topics={editable ? topics : item.topics ?? []} plan={plan} /> : null}
         {editable
-          ? <SyllabusTopicsEditor value={topics} parts={parts} onChange={(value) => { setTopics(value); setError(null); }} />
+          ? <SyllabusTopicsEditor value={topics} parts={parts} compact={compact} types={planTypes}
+              onChange={(value) => { setTopics(value); setError(null); }} />
           : <SyllabusTopicsView topics={item.topics} />}
-        {plan?.length ? <PlanHoursCheck topics={editable ? topics : item.topics ?? []} plan={plan} /> : null}
-        <CreditWorkload credits={credits} topics={editable ? topics : item.topics ?? []} />
-        {(courses.data?.length ?? 0) > 0 && (
+        {!compact && (courses.data?.length ?? 0) > 0 && (
           <div className="space-y-1 rounded-md border p-2 text-xs">
             <p className="font-medium">Bu dastur asosidagi kurslar</p>
             <ul className="space-y-0.5">
@@ -115,72 +118,38 @@ export function SyllabusTopicsDialog({ item, canWrite, credits, plan, onClose, o
   );
 }
 
-const sumHours = (topics: Pick<SyllabusTopicInput, "hours">[]) => topics.reduce((total, t) => total + (Number(t.hours) || 0), 0);
-
-/** Kredit-modul tizimidagi yuklama: auditoriya (barcha mashg'ulot turlari) va mustaqil ta'lim soatlari. */
-export function CreditWorkload({ credits, topics }: { credits?: number | null; topics: Pick<SyllabusTopicInput, "hours">[] }) {
-  const auditory = sumHours(topics);
-  if (!credits) {
-    return <p className="text-xs text-muted-foreground">Auditoriya soatlari: {auditory}. Fan krediti ko'rsatilmagan — mustaqil ta'lim hisoblanmadi.</p>;
-  }
-  const load = creditWorkload(credits, auditory);
-  return (
-    <p role={load.exceeded ? "alert" : "status"} className={cn("rounded-md border p-2 text-xs",
-      load.exceeded ? "border-destructive text-destructive" : "bg-muted/40")}>
-      Fan krediti: {credits} → umumiy yuklama {load.total} soat. Auditoriya (barcha mashg'ulotlar): {load.auditory} soat ·
-      mustaqil ta'lim: {Math.max(load.selfStudy, 0)} soat
-      {load.exceeded && " — auditoriya soatlari kredit hajmidan oshib ketdi"}
-    </p>
-  );
-}
-
 /**
- * O'quv reja bilan solishtirish: dastur mavzulari soatlari reja soatlariga (tur bo'yicha, ko'p semestrli fanda
- * qismlar bo'yicha ham) teng bo'lishi kerak. Masofaviy shaklda auditoriya jami solishtiriladi.
+ * O'quv reja bilan solishtirish: rejadagi soatlar (fan bo'yicha) va har bir mashg'ulot turiga kiritilgan mavzular soni.
+ * Rejada soati bor tur uchun kamida bitta mavzu bo'lishi kerak; ko'p semestrli fanda qismlar bo'yicha ham.
+ * Masofaviy shaklda (turlarga bo'linmagan) auditoriya jami ko'rsatiladi.
  */
-export function PlanHoursCheck({ topics, plan }: { topics: Pick<SyllabusTopicInput, "type" | "hours" | "part">[]; plan: PlanPart[] }) {
-  const row = (label: string, done: number, limit: number) => (
-    <li key={label} className={cn("flex items-center justify-between gap-2", done === limit ? "text-green-700 dark:text-green-400" : "text-amber-700 dark:text-amber-400")}>
-      <span>{label}</span>
-      <span className="tabular-nums">taqsimlandi {done} / reja {limit}{done === limit ? " ✓" : ""}</span>
+export function PlanTopicsCheck({ topics, plan }: { topics: Pick<SyllabusTopicInput, "type" | "part">[]; plan: PlanPart[] }) {
+  const chip = (label: string, hours: number, count: number) => (
+    <li key={label} className={cn("rounded-full border px-2 py-0.5 tabular-nums", count > 0
+      ? "border-green-300 text-green-700 dark:border-green-800 dark:text-green-400"
+      : "border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400")}>
+      <span>{label}</span> <span>{hours} soat · {count > 0 ? `${count} mavzu ✓` : "mavzu yo'q"}</span>
     </li>
   );
-  const lines = (parts: PlanPart[], filter: (t: Pick<SyllabusTopicInput, "part">) => boolean, prefix = "") => {
+  const chips = (parts: PlanPart[], filter: (t: Pick<SyllabusTopicInput, "part">) => boolean) => {
     const scoped = topics.filter(filter);
-    const typed = TYPES.map((type) => ({ type, limit: planHours(parts, type) }));
-    if (typed.every((t) => t.limit === null)) {
-      return [row(`${prefix}Auditoriya (turlarga bo'linmagan)`, sumHours(scoped), parts.reduce((s, p) => s + p.auditory, 0))];
+    const typed = TYPES.map((type) => ({ type, hours: planHours(parts, type) }));
+    if (typed.every((t) => t.hours === null)) {
+      return [chip("Auditoriya", parts.reduce((sum, p) => sum + p.auditory, 0), scoped.length)];
     }
-    return typed.filter((t) => (t.limit ?? 0) > 0 || scoped.some((x) => x.type === t.type))
-      .map((t) => row(`${prefix}${topicTypeMeta[t.type].short}`, sumHours(scoped.filter((x) => x.type === t.type)), t.limit ?? 0));
+    return typed.filter((t) => (t.hours ?? 0) > 0 || scoped.some((x) => x.type === t.type))
+      .map((t) => chip(topicTypeMeta[t.type].short, t.hours ?? 0, scoped.filter((x) => x.type === t.type).length));
   };
   return (
-    <div className="space-y-1.5 rounded-md border p-2 text-xs" aria-label="Reja bilan solishtirish">
-      <p className="font-medium">O'quv reja bilan solishtirish</p>
-      <ul className="space-y-0.5">{lines(plan, () => true)}</ul>
+    <div className="space-y-1 text-xs" aria-label="Reja bilan solishtirish">
+      <ul className="flex flex-wrap items-center gap-1.5"><li className="text-muted-foreground">O'quv reja:</li>{chips(plan, () => true)}</ul>
       {plan.length > 1 && plan.map((p) => (
-        <ul key={p.part} className="space-y-0.5 border-t pt-1">
-          {lines([p], (t) => (t.part ?? 1) === p.part, `${p.part}-qism (${p.semester}-semestr) · `)}
+        <ul key={p.part} className="flex flex-wrap items-center gap-1.5">
+          <li className="text-muted-foreground">{p.part}-qism ({p.semester}-semestr):</li>
+          {chips([p], (t) => (t.part ?? 1) === p.part)}
         </ul>
       ))}
     </div>
-  );
-}
-
-/** Kurs tuzilmasi: mavzular kursda qaysi tartibda bo'lim bo'lishi (nazariy, amaliy, laboratoriya, seminar). */
-export function CoursePlanPreview({ topics }: { topics: SyllabusTopicInput[] }) {
-  const ordered = TYPES.flatMap((type) => topics.filter((t) => t.type === type));
-  if (ordered.length === 0) return <p className="text-xs text-muted-foreground">Mavzu qo'shilgach, kurs bo'limlari shu yerda ko'rinadi.</p>;
-  return (
-    <ol className="max-h-64 divide-y overflow-y-auto rounded-md border text-xs" aria-label="Kurs bo'limlari">
-      {ordered.map((t, index) => (
-        <li key={`${t.type}-${index}`} className="flex items-center gap-2 px-2 py-1.5">
-          <span className="w-5 shrink-0 text-muted-foreground">{index + 1}.</span>
-          <span className="min-w-0 flex-1 truncate">{t.title.trim() || <i className="text-muted-foreground">nomsiz mavzu</i>}</span>
-          <TopicTypeBadge type={t.type} hours={Number(t.hours) || 0} suffix="s" />
-        </li>
-      ))}
-    </ol>
   );
 }
 
@@ -189,11 +158,16 @@ interface EditorProps {
   onChange: (value: SyllabusTopicInput[]) => void;
   /** Ko'p semestrli fan: qismlar soni (> 1 bo'lsa har bir mavzuda qism tanlanadi) */
   parts?: number;
+  /** Ixcham: faqat mavzu nomi (qisqa mazmun va tartib tugmalarisiz) */
+  compact?: boolean;
+  /** Ko'rsatiladigan mashg'ulot turlari (berilmasa hammasi) */
+  types?: SyllabusTopicType[];
 }
 
 /** Fan dasturi mavzularini kiritish: har bir mashg'ulot turi (nazariy, amaliy, laboratoriya, seminar) alohida ro'yxatda. */
-export function SyllabusTopicsEditor({ value, onChange, parts = 1 }: EditorProps) {
-  const [tab, setTab] = useState<SyllabusTopicType>("THEORETICAL");
+export function SyllabusTopicsEditor({ value, onChange, parts = 1, compact = false, types }: EditorProps) {
+  const visibleTypes = types?.length ? types : TYPES;
+  const [tab, setTab] = useState<SyllabusTopicType>(visibleTypes[0]);
   const [bulk, setBulk] = useState<string | null>(null);
 
   // Har bir tur ichida tartib saqlanadi; qayta yig'ishda turlar TYPES tartibida
@@ -213,10 +187,10 @@ export function SyllabusTopicsEditor({ value, onChange, parts = 1 }: EditorProps
     replaceType(type, items);
   };
   const add = (type: SyllabusTopicType) =>
-    replaceType(type, [...byType(type), { type, title: "", description: "", hours: 2, part: parts > 1 ? 1 : null }]);
+    replaceType(type, [...byType(type), { type, title: "", description: "", part: parts > 1 ? 1 : null }]);
   const addBulk = (type: SyllabusTopicType) => {
     const titles = (bulk ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
-    if (titles.length) replaceType(type, [...byType(type), ...titles.map((title) => ({ type, title, description: "", hours: 2, part: parts > 1 ? 1 : null }))]);
+    if (titles.length) replaceType(type, [...byType(type), ...titles.map((title) => ({ type, title, description: "", part: parts > 1 ? 1 : null }))]);
     setBulk(null);
   };
 
@@ -224,29 +198,28 @@ export function SyllabusTopicsEditor({ value, onChange, parts = 1 }: EditorProps
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Label>Mavzular</Label>
-        <span className="text-xs text-muted-foreground">
-          Jami: {sumHours(value)} soat ({formatTypeHours(Object.fromEntries(TYPES.map((t) => [t, sumHours(byType(t))])))})
-        </span>
+        <span className="text-xs text-muted-foreground">Jami: {value.length} ta mavzu</span>
       </div>
       <Tabs value={tab} onValueChange={(v) => { setTab(v as SyllabusTopicType); setBulk(null); }}>
-        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
-          {TYPES.map((type) => (
+        <TabsList className="grid h-auto w-full" style={{ gridTemplateColumns: `repeat(${Math.min(visibleTypes.length, 4)}, minmax(0, 1fr))` }}>
+          {visibleTypes.map((type) => (
             <TabsTrigger key={type} value={type} className="flex-col gap-0.5 py-1.5">
               <span>{topicTypeMeta[type].short}</span>
-              <span className="text-[11px] font-normal text-muted-foreground">{byType(type).length} ta · {sumHours(byType(type))} soat</span>
+              <span className="text-[11px] font-normal text-muted-foreground">{byType(type).length} ta mavzu</span>
             </TabsTrigger>
           ))}
         </TabsList>
-        {TYPES.map((type) => (
+        {visibleTypes.map((type) => (
           <TabsContent key={type} value={type} className="space-y-2">
             {byType(type).length === 0 && (
               <p className="rounded-md border border-dashed p-3 text-center text-sm text-muted-foreground">
                 {topicTypeMeta[type].empty} hali kiritilmagan
               </p>
             )}
+            {byType(type).length > 0 && <div className={compact ? "divide-y rounded-md border px-2" : "space-y-2"}>
             {byType(type).map((topic, index) => (
-              <div key={index} className="flex items-start gap-2 rounded-md border p-2">
-                <span className="mt-2 w-6 shrink-0 text-right text-sm text-muted-foreground">{index + 1}.</span>
+              <div key={index} className={compact ? "flex items-center gap-2 py-1.5" : "flex items-start gap-2 rounded-md border p-2"}>
+                <span className={cn("w-6 shrink-0 text-right text-sm text-muted-foreground", !compact && "mt-2")}>{index + 1}.</span>
                 <div className="flex-1 space-y-1.5">
                   <Input
                     aria-label={`${index + 1}-mavzu nomi`}
@@ -254,13 +227,13 @@ export function SyllabusTopicsEditor({ value, onChange, parts = 1 }: EditorProps
                     placeholder="Mavzu nomi"
                     onChange={(e) => update(type, index, { title: e.target.value })}
                   />
-                  <Input
+                  {!compact && <Input
                     aria-label={`${index + 1}-mavzu mazmuni`}
                     value={topic.description ?? ""}
                     placeholder="Qisqa mazmuni (ixtiyoriy)"
                     className="h-8 text-xs"
                     onChange={(e) => update(type, index, { description: e.target.value })}
-                  />
+                  />}
                 </div>
                 {parts > 1 && (
                   <select aria-label={`${index + 1}-mavzu qismi`} className="h-10 w-24 shrink-0 rounded-md border bg-background px-2 text-sm"
@@ -268,26 +241,16 @@ export function SyllabusTopicsEditor({ value, onChange, parts = 1 }: EditorProps
                     {Array.from({ length: parts }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}-qism</option>)}
                   </select>
                 )}
-                <div className="w-20 shrink-0">
-                  <Input
-                    aria-label={`${index + 1}-mavzu soati`}
-                    type="number"
-                    min={1}
-                    max={200}
-                    value={topic.hours}
-                    onChange={(e) => update(type, index, { hours: Number(e.target.value) })}
-                  />
-                  <span className="text-[10px] text-muted-foreground">soat</span>
-                </div>
-                <div className="flex shrink-0 flex-col">
+                {!compact && <div className="flex shrink-0 flex-col">
                   <Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Yuqoriga" disabled={index === 0} onClick={() => move(type, index, -1)}><ArrowUp className="h-3 w-3" /></Button>
                   <Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label="Pastga" disabled={index === byType(type).length - 1} onClick={() => move(type, index, 1)}><ArrowDown className="h-3 w-3" /></Button>
-                </div>
+                </div>}
                 <Button type="button" size="icon" variant="ghost" className="shrink-0 text-destructive" aria-label="Mavzuni o'chirish" onClick={() => remove(type, index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
+            </div>}
             {bulk !== null ? (
               <div className="space-y-2 rounded-md border p-2">
                 <Textarea
@@ -330,7 +293,7 @@ export function SyllabusTopicsView({ topics }: { topics?: SyllabusTopic[] | null
           <div key={type} className="rounded-md border">
             <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2 text-sm font-medium">
               <span>{syllabusTopicTypes[type]}</span>
-              <span className="text-xs text-muted-foreground">{sumHours(items)} soat</span>
+              <span className="text-xs text-muted-foreground">{items.length} ta</span>
             </div>
             {items.length === 0
               ? <p className="px-3 py-2 text-sm text-muted-foreground">—</p>
@@ -343,7 +306,6 @@ export function SyllabusTopicsView({ topics }: { topics?: SyllabusTopic[] | null
                         {t.title}
                         {t.description && <span className="block text-xs text-muted-foreground">{t.description}</span>}
                       </span>
-                      <span className="shrink-0 text-muted-foreground">{t.hours} s</span>
                     </li>
                   ))}
                 </ol>

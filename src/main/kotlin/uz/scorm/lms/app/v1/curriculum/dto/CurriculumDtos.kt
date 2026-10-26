@@ -84,8 +84,8 @@ data class CurriculumSubjectDto(
     val syllabusLanguage: String? = null,
     val syllabusStatus: String? = null,
     val syllabusTopicCount: Int = 0,
-    /** Dastur mavzulari soatlari reja soatlariga (fanning barcha semestrlari bo'yicha) mosmi; dastur yo'q bo'lsa null */
-    val syllabusHoursMatch: Boolean? = null,
+    /** Rejada soati bor har bir mashg'ulot turiga (har bir semestr qismida) mavzu kiritilganmi; dastur yo'q bo'lsa null */
+    val syllabusComplete: Boolean? = null,
 )
 
 /** Reja fani uchun yangi o'quv dasturi (fan nomi bilan) — yaratiladi va biriktiriladi */

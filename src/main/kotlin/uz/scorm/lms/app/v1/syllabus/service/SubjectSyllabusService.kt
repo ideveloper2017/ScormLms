@@ -183,7 +183,7 @@ class SubjectSyllabusService(
             items.mapIndexed { index, item ->
                 val title = item.title.trim()
                 require(title.length in 2..500) { "Mavzu nomi 2-500 belgi bo'lishi kerak" }
-                require(item.hours in 1..MAX_TOPIC_HOURS) { "\"$title\" mavzusi soati 1-$MAX_TOPIC_HOURS oralig'ida bo'lishi kerak" }
+                require(item.hours == null || item.hours in 1..MAX_TOPIC_HOURS) { "\"$title\" mavzusi soati 1-$MAX_TOPIC_HOURS oralig'ida bo'lishi kerak" }
                 val description = item.description?.trim()?.takeIf(String::isNotEmpty)
                 require(item.part == null || item.part in 1..12) { "\"$title\" mavzusining qismi 1-12 oralig'ida bo'lishi kerak" }
                 item.id?.let { id ->
@@ -233,10 +233,10 @@ class SubjectSyllabusService(
             createdAt = value.createdAt, updatedAt = value.updatedAt,
             status = value.status, revisionNumber = value.revisionNumber,
             topics = topics,
-            theoreticalHours = topics.filter { it.type == SyllabusTopicType.THEORETICAL }.sumOf { it.hours },
-            practicalHours = topics.filter { it.type == SyllabusTopicType.PRACTICAL }.sumOf { it.hours },
-            laboratoryHours = topics.filter { it.type == SyllabusTopicType.LABORATORY }.sumOf { it.hours },
-            seminarHours = topics.filter { it.type == SyllabusTopicType.SEMINAR }.sumOf { it.hours },
+            theoreticalHours = topics.filter { it.type == SyllabusTopicType.THEORETICAL }.sumOf { it.hours ?: 0 },
+            practicalHours = topics.filter { it.type == SyllabusTopicType.PRACTICAL }.sumOf { it.hours ?: 0 },
+            laboratoryHours = topics.filter { it.type == SyllabusTopicType.LABORATORY }.sumOf { it.hours ?: 0 },
+            seminarHours = topics.filter { it.type == SyllabusTopicType.SEMINAR }.sumOf { it.hours ?: 0 },
             modelProgramId = value.modelProgram?.id,
             academicYear = value.academicYear,
             semester = value.semester,

@@ -393,7 +393,7 @@ class ProgramCurriculumService(
                 selfStudyHours = item.selfStudyHours, totalHours = item.auditoryHours + item.selfStudyHours,
                 syllabusId = item.syllabus?.id, syllabusName = item.syllabus?.name, syllabusLanguage = item.syllabus?.language?.name,
                 syllabusStatus = item.syllabus?.status, syllabusTopicCount = item.syllabus?.topics?.size ?: 0,
-                syllabusHoursMatch = item.syllabus?.let { curriculumHoursMatch(it, bySubject.getValue(item.subject?.id ?: -(item.id ?: 0))) },
+                syllabusComplete = item.syllabus?.let { curriculumTopicsComplete(it, bySubject.getValue(item.subject?.id ?: -(item.id ?: 0))) },
             ) }
         return CurriculumVersionDto(
             id = requireNotNull(version.id), programId = requireNotNull(version.program.id), programName = version.program.name,
@@ -416,17 +416,20 @@ class ProgramCurriculumService(
     }
 }
 
-/** Dastur mavzulari soatlari reja soatlariga teng: turlar bo'yicha yoki (masofaviy) auditoriya jami bo'yicha. */
-internal fun curriculumHoursMatch(syllabus: SubjectSyllabus, rows: List<ProgramCurriculumSubject>): Boolean {
-    val topic = { type: SyllabusTopicType -> syllabus.topics.filter { it.type == type }.sumOf { it.hours } }
-    val lecture = rows.sumOf { it.lectureHours }; val practical = rows.sumOf { it.practicalHours }
-    val laboratory = rows.sumOf { it.laboratoryHours }; val seminar = rows.sumOf { it.seminarHours }
-    if (lecture + practical + laboratory + seminar == 0) {
-        val auditory = rows.sumOf { it.auditoryHours }
-        return auditory > 0 && syllabus.topics.sumOf { it.hours } == auditory
+/**
+ * Dastur mavzulari rejani qamraydimi: rejada soati bor har bir mashg'ulot turiga (ko'p semestrli fanda har bir qismda)
+ * kamida bitta mavzu kiritilgan. Masofaviy shaklda (turlarga bo'linmagan) har bir qismda kamida bitta mavzu.
+ * Soatlar fan bo'yicha rejada — mavzu soatlari solishtirilmaydi.
+ */
+internal fun curriculumTopicsComplete(syllabus: SubjectSyllabus, rows: List<ProgramCurriculumSubject>): Boolean {
+    if (syllabus.topics.isEmpty()) return false
+    return rows.sortedBy { it.semester }.withIndex().all { (index, row) ->
+        val part = syllabus.topics.filter { (it.part ?: 1) == index + 1 || rows.size == 1 }
+        val required = listOf(
+            SyllabusTopicType.THEORETICAL to row.lectureHours, SyllabusTopicType.PRACTICAL to row.practicalHours,
+            SyllabusTopicType.LABORATORY to row.laboratoryHours, SyllabusTopicType.SEMINAR to row.seminarHours,
+        ).filter { it.second > 0 }.map { it.first }
+        if (required.isEmpty()) row.auditoryHours == 0 || part.isNotEmpty()
+        else required.all { type -> part.any { it.type == type } }
     }
-    return topic(SyllabusTopicType.THEORETICAL) == lecture &&
-        topic(SyllabusTopicType.PRACTICAL) == practical &&
-        topic(SyllabusTopicType.LABORATORY) == laboratory &&
-        topic(SyllabusTopicType.SEMINAR) == seminar
 }

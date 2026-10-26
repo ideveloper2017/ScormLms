@@ -843,8 +843,6 @@ export function AdminStudyPlanEditor() {
                     curriculumId={item.id}
                     subjects={item.subjects}
                     editable={item.status === "DRAFT" && canWrite}
-                    canLinkSyllabus={item.status !== "ARCHIVED" && canWrite}
-                    educationLanguage={item.educationLanguage}
                     onRemove={setSubjectToRemove}
                     onChanged={refresh}
                   />
