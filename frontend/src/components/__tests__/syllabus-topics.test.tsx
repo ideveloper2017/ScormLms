@@ -7,25 +7,36 @@ import { syllabusApi, type SubjectSyllabus, type SyllabusTopicInput } from "@/se
 
 vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  syllabusApi: { updateTopics: vi.fn() },
+  syllabusApi: { updateTopicsWithCourses: vi.fn(), linkedCourses: vi.fn() },
 }));
+const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
+vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }));
 
 const draft: SubjectSyllabus = {
   id: 40, subjectId: 7, subjectCode: "FIZ", subjectName: "Fizika", name: "Fizika dasturi", language: "UZ",
   shortDescription: "Qisqa", fullDescription: "To'liq", active: true, status: "DRAFT", revisionNumber: 1, topics: [],
 };
-const mountDialog = (item: SubjectSyllabus, onSaved = vi.fn(), onClose = vi.fn()) => render(
-  <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
-    <SyllabusTopicsDialog item={item} canWrite onSaved={onSaved} onClose={onClose} />
+const mountDialog = (item: SubjectSyllabus, onSaved = vi.fn(), onClose = vi.fn(), credits?: number) => render(
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
+    <SyllabusTopicsDialog item={item} canWrite credits={credits} onSaved={onSaved} onClose={onClose} />
   </QueryClientProvider>,
 );
 
 describe("SyllabusTopicsDialog", () => {
-  it("qoralama dasturga mavzularni alohida saqlaydi", async () => {
-    vi.mocked(syllabusApi.updateTopics).mockResolvedValue(draft);
+  it("qoralama dasturga mavzularni saqlaydi va bog'langan qoralama kursni yangilaydi", async () => {
+    vi.mocked(syllabusApi.linkedCourses).mockResolvedValue([
+      { id: 77, title: "Fizika 2026", status: "draft", autoSync: true, added: 0, updated: 0 },
+      { id: 78, title: "Fizika 2025", status: "published", autoSync: false, added: 0, updated: 0 },
+    ]);
+    vi.mocked(syllabusApi.updateTopicsWithCourses).mockResolvedValue({ syllabus: draft, courses: [
+      { id: 77, title: "Fizika 2026", status: "draft", autoSync: true, added: 1, updated: 0 },
+      { id: 78, title: "Fizika 2025", status: "published", autoSync: false, added: 0, updated: 0 },
+    ] });
     const onSaved = vi.fn();
     const onClose = vi.fn();
-    mountDialog(draft, onSaved, onClose);
+    mountDialog(draft, onSaved, onClose, 4);
+    expect(await screen.findByText(/qoralama — bo'limlari avtomatik yangilanadi/)).toBeInTheDocument();
+    expect(screen.getByText(/nashr qilingan — dastur tasdiqlangach/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
     fireEvent.click(screen.getByRole("button", { name: "Mavzularni saqlash" }));
@@ -34,14 +45,17 @@ describe("SyllabusTopicsDialog", () => {
     fireEvent.change(screen.getByLabelText("1-mavzu nomi"), { target: { value: " Kirish " } });
     fireEvent.click(screen.getByRole("button", { name: "Mavzularni saqlash" }));
 
-    await waitFor(() => expect(syllabusApi.updateTopics).toHaveBeenCalledWith(40, [
+    expect(screen.getByText(/umumiy yuklama 120 soat/)).toHaveTextContent("mustaqil ta'lim: 118 soat");
+    await waitFor(() => expect(syllabusApi.updateTopicsWithCourses).toHaveBeenCalledWith(40, [
       { id: null, type: "THEORETICAL", title: "Kirish", description: null, hours: 2 },
     ]));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(onSaved).toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ description: "«Fizika 2026»: 1 ta bo'lim qo'shildi, 0 ta yangilandi" }));
   });
 
   it("tasdiqlangan dastur mavzularini faqat ko'rsatadi", () => {
+    vi.mocked(syllabusApi.linkedCourses).mockResolvedValue([]);
     mountDialog({ ...draft, status: "APPROVED", topics: [{ type: "PRACTICAL", sortOrder: 1, title: "Tajriba", hours: 4 }] });
     expect(screen.getByText("Tajriba")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mavzularni saqlash" })).not.toBeInTheDocument();

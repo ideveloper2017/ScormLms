@@ -8,25 +8,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { SyllabusTopicsEditor } from "@/components/admin/syllabus-topics";
+import { CoursePlanPreview, CreditWorkload, SyllabusTopicsEditor } from "@/components/admin/syllabus-topics";
 import { extractApiError, type SubjectRecord } from "@/lib/academic-api";
 import { courseLanguageOf, syllabusLanguages, validateTopics } from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
 import { syllabusApi, type SyllabusLanguage, type SyllabusTopicInput } from "@/services/api/syllabus-api";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 const STEPS: { step: Step; label: string }[] = [
   { step: 1, label: "Fan va ta'riflar" },
-  { step: 2, label: "Mavzular" },
-  { step: 3, label: "Kurs" },
+  { step: 2, label: "Mavzular va kurs" },
 ];
 const selectClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 
 interface CourseForm { enabled: boolean; title: string; shortDescription: string; level: string; language: string }
 
 /**
- * "Fan dasturi va kurs": fan dasturi, uning nazariy/amaliy mavzulari va shu dastur asosidagi kurs
- * bitta oynada, 3 qadamda yaratiladi. Kurs bo'limlari mavzulardan hosil bo'ladi.
+ * "Fan dasturi va kurs": oliy ta'limda fan dasturi (reja) va undan qurilgan elektron kurs bitta birlik.
+ * 1-qadam — fan va ta'riflar; 2-qadam — mavzular va kurs bir ekranda: har bir mavzu kursda bo'lim bo'ladi.
  */
 export function SyllabusCourseWizard({ subjects, defaultSubjectId, onClose, onCreated }: {
   subjects: SubjectRecord[];
@@ -67,38 +66,37 @@ export function SyllabusCourseWizard({ subjects, defaultSubjectId, onClose, onCr
       if (!syllabus.subjectId) return "Fan tanlang";
       if (syllabus.shortDescription.trim().length < 3) return "Qisqa ta'rif majburiy";
       if (syllabus.fullDescription.trim().length < 3) return "To'liq ta'rif majburiy";
+      return null;
     }
-    if (current === 2) return validateTopics(topics);
-    if (current === 3 && course.enabled) {
-      if (!course.title.trim()) return "Kurs nomi majburiy";
-      if (course.title.trim().length > 255) return "Kurs nomi 255 belgidan oshmasligi kerak";
-    }
+    const topicError = validateTopics(topics);
+    if (topicError) return topicError;
+    if (course.enabled && !course.title.trim()) return "Kurs nomi majburiy";
+    if (course.enabled && course.title.trim().length > 255) return "Kurs nomi 255 belgidan oshmasligi kerak";
     return null;
   };
   const next = () => {
     const problem = validate(step);
     setError(problem);
     if (problem) return;
-    if (step === 2) {
-      // Kurs qadami dastur ma'lumotlari bilan to'ldiriladi (bo'sh bo'lsa)
+    if (step === 1) {
+      // Kurs ma'lumotlari dastur ma'lumotlari bilan to'ldiriladi (bo'sh bo'lsa)
       setCourse((c) => ({
         ...c,
         title: c.title || subject?.name || "",
         shortDescription: c.shortDescription || syllabus.shortDescription,
         language: c.language || courseLanguageOf(syllabus.language),
       }));
-    }
-    if (step < 3) setStep((step + 1) as Step);
-    else create.mutate();
+      setStep(2);
+    } else create.mutate();
   };
-  const back = () => { setError(null); if (step > 1) setStep((step - 1) as Step); };
+  const back = () => { setError(null); setStep(1); };
 
   const result = create.data;
   const busy = create.isPending;
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={cn("max-h-[92vh] overflow-y-auto", step === 2 && !result ? "sm:max-w-6xl" : "sm:max-w-3xl")}>
         <DialogHeader>
           <DialogTitle>Fan dasturi va kurs</DialogTitle>
           <DialogDescription>Fan dasturi, uning mavzulari va shu dastur asosidagi kurs bitta oynada yaratiladi.</DialogDescription>
@@ -116,6 +114,7 @@ export function SyllabusCourseWizard({ subjects, defaultSubjectId, onClose, onCr
             {result.course && (
               <p className="text-sm">
                 Kurs «{result.course.title}» yaratildi — har bir mavzu kursda bo'lim bo'ldi. Darslar va materiallarni kursda qo'shing.
+                Dastur qoralama ekan, mavzular o'zgarsa kurs bo'limlari ham avtomatik yangilanadi.
               </p>
             )}
             <p className="text-xs text-muted-foreground">Dasturni tekshiruvga yuborish va tasdiqlash "Mazmun va tarix" orqali bajariladi.</p>
@@ -126,11 +125,11 @@ export function SyllabusCourseWizard({ subjects, defaultSubjectId, onClose, onCr
           </div>
         ) : (
           <>
-            <ol className="grid grid-cols-3 gap-2" aria-label="Qadamlar">
+            <ol className="grid grid-cols-2 gap-2" aria-label="Qadamlar">
               {STEPS.map(({ step: value, label }) => (
                 <li key={value} aria-current={step === value ? "step" : undefined}
                   className={cn("flex items-center gap-2 rounded-md border px-3 py-2 text-sm",
-                    step === value ? "border-primary bg-primary/5 font-medium" : step > value ? "text-muted-foreground" : "text-muted-foreground/70")}>
+                    step === value ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground")}>
                   <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs",
                     step >= value ? "bg-primary text-primary-foreground" : "bg-muted")}>{value}</span>
                   {label}
@@ -145,7 +144,9 @@ export function SyllabusCourseWizard({ subjects, defaultSubjectId, onClose, onCr
                     <select id="wizard-subject" className={selectClass} value={syllabus.subjectId}
                       onChange={(e) => setSyllabus({ ...syllabus, subjectId: Number(e.target.value) })}>
                       <option value={0}>Fan tanlang</option>
-                      {subjects.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}
+                      {subjects.filter((s) => s.active).map((s) => (
+                        <option key={s.id} value={s.id}>{s.code} · {s.name}{s.credits ? ` · ${s.credits} kredit` : ""}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="space-y-1.5"><Label htmlFor="wizard-language">Dastur tili *</Label>
@@ -165,55 +166,57 @@ export function SyllabusCourseWizard({ subjects, defaultSubjectId, onClose, onCr
             )}
 
             {step === 2 && (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  {subject ? `${subject.code ?? ""} · ${subject.name}. ` : ""}Nazariy va amaliy mavzular hamda soatlarini kiriting — ular kursda bo'limlar bo'ladi.
-                </p>
-                <SyllabusTopicsEditor value={topics} onChange={(value) => { setTopics(value); setError(null); }} />
-              </div>
-            )}
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="min-w-0 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {subject ? `${subject.code ?? ""} · ${subject.name}. ` : ""}Nazariy va amaliy mavzular hamda soatlarini kiriting —
+                    har bir mavzu kursda bo'lim bo'ladi, darslar shu bo'limlarga qo'shiladi.
+                  </p>
+                  <SyllabusTopicsEditor value={topics} onChange={(value) => { setTopics(value); setError(null); }} />
+                  <CreditWorkload credits={subject?.credits} topics={topics} />
+                </div>
 
-            {step === 3 && (
-              <div className="grid gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={course.enabled} onCheckedChange={(enabled) => setCourse({ ...course, enabled })} aria-label="Kurs ham yaratilsin" />
-                  Shu dastur asosida kurs ham yaratilsin
-                </label>
-                {course.enabled ? (
-                  <>
-                    <div className="space-y-1.5"><Label htmlFor="wizard-course-title">Kurs nomi *</Label>
-                      <Input id="wizard-course-title" maxLength={255} value={course.title} onChange={(e) => setCourse({ ...course, title: e.target.value })} /></div>
-                    <div className="space-y-1.5"><Label htmlFor="wizard-course-short">Kursning qisqa tavsifi</Label>
-                      <Textarea id="wizard-course-short" value={course.shortDescription} onChange={(e) => setCourse({ ...course, shortDescription: e.target.value })} /></div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5"><Label htmlFor="wizard-course-level">Kurs darajasi</Label>
-                        <select id="wizard-course-level" className={selectClass} value={course.level} onChange={(e) => setCourse({ ...course, level: e.target.value })}>
-                          <option value="BEGINNER">Boshlang'ich</option><option value="INTERMEDIATE">O'rta</option><option value="ADVANCED">Yuqori</option>
-                        </select></div>
-                      <div className="space-y-1.5"><Label htmlFor="wizard-course-language">Kurs tili</Label>
-                        <select id="wizard-course-language" className={selectClass} value={course.language} onChange={(e) => setCourse({ ...course, language: e.target.value })}>
-                          <option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
-                        </select></div>
-                    </div>
-                    <p className="rounded-md border bg-muted/40 p-2 text-xs">
-                      {topics.length > 0
-                        ? `${topics.length} ta mavzu kursda bo'lim sifatida yaratiladi. Kurs o'qituvchisi — siz; kurs qoralama holatda bo'ladi.`
-                        : "Mavzular kiritilmagan — kurs bo'sh holda yaratiladi."}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Faqat fan dasturi yaratiladi. Kursni keyin "Kurs yaratish" sahifasida shu dasturdan yaratish mumkin.</p>
-                )}
+                <aside className="space-y-3 rounded-lg border bg-muted/20 p-3" aria-label="Kurs">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <Switch checked={course.enabled} onCheckedChange={(enabled) => setCourse({ ...course, enabled })} aria-label="Kurs ham yaratilsin" />
+                    Shu dastur asosida kurs
+                  </label>
+                  {course.enabled ? (
+                    <>
+                      <div className="space-y-1.5"><Label htmlFor="wizard-course-title">Kurs nomi *</Label>
+                        <Input id="wizard-course-title" maxLength={255} value={course.title} onChange={(e) => setCourse({ ...course, title: e.target.value })} /></div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5"><Label htmlFor="wizard-course-level">Daraja</Label>
+                          <select id="wizard-course-level" className={selectClass} value={course.level} onChange={(e) => setCourse({ ...course, level: e.target.value })}>
+                            <option value="BEGINNER">Boshlang'ich</option><option value="INTERMEDIATE">O'rta</option><option value="ADVANCED">Yuqori</option>
+                          </select></div>
+                        <div className="space-y-1.5"><Label htmlFor="wizard-course-language">Kurs tili</Label>
+                          <select id="wizard-course-language" className={selectClass} value={course.language} onChange={(e) => setCourse({ ...course, language: e.target.value })}>
+                            <option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
+                          </select></div>
+                      </div>
+                      <div className="space-y-1.5"><Label htmlFor="wizard-course-short">Kursning qisqa tavsifi</Label>
+                        <Textarea id="wizard-course-short" rows={3} value={course.shortDescription} onChange={(e) => setCourse({ ...course, shortDescription: e.target.value })} /></div>
+                      <div className="space-y-1.5">
+                        <p className="text-sm font-medium">Kurs tuzilmasi</p>
+                        <CoursePlanPreview topics={topics} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Kurs o'qituvchisi — siz; kurs qoralama holatda yaratiladi.</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Faqat fan dasturi yaratiladi. Kursni keyin "Kurs yaratish" sahifasida shu dasturdan yaratish mumkin.</p>
+                  )}
+                </aside>
               </div>
             )}
 
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
-              {step > 1 ? <Button variant="outline" onClick={back} disabled={busy}>Orqaga</Button>
+              {step === 2 ? <Button variant="outline" onClick={back} disabled={busy}>Orqaga</Button>
                 : <Button variant="outline" onClick={onClose}>Bekor qilish</Button>}
               <Button onClick={next} disabled={busy}>
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {step < 3 ? "Keyingi" : course.enabled ? "Dastur va kursni yaratish" : "Dasturni yaratish"}
+                {step === 1 ? "Keyingi" : course.enabled ? "Dastur va kursni yaratish" : "Dasturni yaratish"}
               </Button>
             </DialogFooter>
           </>

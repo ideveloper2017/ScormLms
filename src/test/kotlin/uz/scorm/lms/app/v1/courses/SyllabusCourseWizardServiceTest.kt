@@ -24,7 +24,21 @@ import uz.scorm.lms.app.v1.syllabus.service.SubjectSyllabusService
 class SyllabusCourseWizardServiceTest {
     private val syllabi = mockk<SubjectSyllabusService>()
     private val courses = mockk<CourseService>()
-    private val service = SyllabusCourseWizardService(syllabi, courses)
+    private val courseSyllabus = mockk<uz.scorm.lms.app.v1.courses.service.CourseSyllabusService>()
+    private val service = SyllabusCourseWizardService(syllabi, courses, courseSyllabus)
+
+    @Test
+    fun `mavzular saqlanganda bog'langan qoralama kurslar ham moslanadi`() {
+        val topics = listOf(SyllabusTopicRequest(THEORETICAL, "Kirish", hours = 2))
+        every { syllabi.updateTopics(41, topics) } returns syllabus
+        val linked = listOf(uz.scorm.lms.app.v1.courses.service.SyllabusLinkedCourseDto(77, "Matematika", "draft", true, added = 1))
+        every { courseSyllabus.syncDraftCourses(41) } returns linked
+
+        val result = service.updateTopics(41, topics)
+
+        assertSame(syllabus, result.syllabus)
+        assertEquals(linked, result.courses)
+    }
 
     private val syllabusRequest = SubjectSyllabusRequest(5, language = SyllabusLanguage.RU, shortDescription = "Qisqa",
         fullDescription = "To'liq", topics = listOf(SyllabusTopicRequest(THEORETICAL, "Kirish", hours = 2)))

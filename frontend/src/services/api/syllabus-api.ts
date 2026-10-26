@@ -21,6 +21,8 @@ export interface SubjectSyllabusInput {
   shortDescription: string; requirements?: string | null; fullDescription: string; active: boolean;
   topics?: SyllabusTopicInput[];
 }
+/** Dasturga bog'langan kurs: qoralamasi mavzular bilan avtomatik moslanadi, nashr qilingani — kurs sahifasida */
+export interface SyllabusLinkedCourse { id: number; title: string; status: string; autoSync: boolean; added: number; updated: number }
 export interface SyllabusWithCourseInput {
   syllabus: SubjectSyllabusInput;
   /** null — faqat dastur yaratiladi */
@@ -36,6 +38,11 @@ export const syllabusApi = {
   /** "Fan dasturi va kurs": dastur, mavzular va (ixtiyoriy) shu dastur asosidagi kurs birga yaratiladi */
   createWithCourse: async (input: SyllabusWithCourseInput) =>
     (await api.post<{ success: boolean; data: { syllabus: SubjectSyllabus; course?: { id: number | string; title: string } | null } }>("/syllabus-courses", input)).data.data,
+  linkedCourses: async (syllabusId: number) =>
+    (await api.get<{ success: boolean; data: SyllabusLinkedCourse[] }>(`/syllabus-courses/${syllabusId}/courses`)).data.data,
+  /** Mavzularni saqlaydi va bog'langan qoralama kurslar bo'limlarini moslaydi */
+  updateTopicsWithCourses: async (syllabusId: number, topics: SyllabusTopicInput[]) =>
+    (await api.put<{ success: boolean; data: { syllabus: SubjectSyllabus; courses: SyllabusLinkedCourse[] } }>(`/syllabus-courses/${syllabusId}/topics`, topics)).data.data,
   /** Mavzular dastur yaratilgandan keyin alohida saqlanadi (ro'yxat to'liq almashtiriladi, faqat qoralamada). */
   updateTopics: async (id: number, topics: SyllabusTopicInput[]) => (await api.put<SubjectSyllabus>(`/syllabi/${id}/topics`, topics)).data,
 };
