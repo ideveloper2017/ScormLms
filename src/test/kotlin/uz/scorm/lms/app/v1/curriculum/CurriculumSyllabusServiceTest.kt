@@ -91,6 +91,29 @@ class CurriculumSyllabusServiceTest {
     }
 
     @Test
+    fun `bitta tugma - reja tilidagi mavjud dastur biriktiriladi, bo'lmasa yangisi yaratiladi`() {
+        every { version.educationLanguage } returns "ru"
+        val uz = SubjectSyllabus(programming, "Dasturlash 1,2", SyllabusLanguage.UZ, "q", null, "t").apply { id = 50 }
+        val ru = SubjectSyllabus(programming, "Dasturlash 1,2", SyllabusLanguage.RU, "q", null, "t").apply { id = 51; status = "APPROVED" }
+        every { syllabi.findAllBySubjectIdAndDeletedFalseOrderByNameAsc(1) } returns listOf(uz, ru)
+
+        assertEquals(51L, service.ensure(5, 11, actorId = 9))
+        assertSame(ru, sem1.syllabus)
+        // Biriktirilgan bo'lsa o'sha qaytadi
+        assertEquals(51L, service.ensure(5, 11, actorId = 9))
+
+        sem1.syllabus = null; sem2.syllabus = null
+        every { syllabi.findAllBySubjectIdAndDeletedFalseOrderByNameAsc(1) } returns listOf(uz)
+        every { models.findFirstBySubjectIdAndLanguageAndDeletedFalse(1, SyllabusLanguage.RU) } returns
+            SubjectModelProgram(programming, SyllabusLanguage.RU, "Dasturlash 1,2", "q", null, "t").apply { id = 3 }
+        val created = SubjectSyllabus(programming, "Dasturlash 1,2", SyllabusLanguage.RU, "q", null, "t").apply { id = 52 }
+        every { syllabusService.createForSubject(any(), any(), any(), any()) } returns created
+
+        assertEquals(52L, service.ensure(5, 11, actorId = 9))
+        verify { syllabusService.createForSubject(any(), "Dasturlash 1,2 fanining o'quv dasturi", null, "Dasturlash 1,2 fanining o'quv dasturi") }
+    }
+
+    @Test
     fun `mavzu soatlari fanning barcha semestrlari bo'yicha reja soatlariga solishtiriladi`() {
         val syllabus = SubjectSyllabus(programming, "Dasturlash 1,2", SyllabusLanguage.UZ, "Qisqa", null, "To'liq")
         fun add(type: SyllabusTopicType, hours: Int, part: Int) {

@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, Loader2, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Loader2, MoreHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CurriculumSyllabusCell } from "@/components/admin/curriculum-syllabus-link";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CurriculumSyllabusCell, LinkSyllabusDialog } from "@/components/admin/curriculum-syllabus-link";
 import { extractApiError } from "@/lib/academic-api";
 import { HOURS_PER_CREDIT } from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
@@ -14,42 +18,51 @@ import {
   curriculumApi, type CurriculumPlanItemType, type CurriculumSubject, type CurriculumSubjectHours,
 } from "@/services/api/curriculum-api";
 
-const HOUR_COLUMNS = [
-  { key: "lectureHours", label: "Ma'ruza" },
-  { key: "practicalHours", label: "Amaliy" },
-  { key: "laboratoryHours", label: "Lab." },
-  { key: "seminarHours", label: "Seminar" },
-  { key: "auditoryHours", label: "Auditoriya" },
-  { key: "selfStudyHours", label: "Mustaqil" },
-] as const;
-
 const total = (s: CurriculumSubject) => s.totalHours ?? (s.auditoryHours ?? 0) + (s.selfStudyHours ?? 0);
 const mismatch = (s: CurriculumSubject) => total(s) > 0 && total(s) !== s.credits * HOURS_PER_CREDIT;
 
+/** Fanning barcha semestrlari bo'yicha soatlar qisqa ko'rinishda: "M 30 · A 45 · L 45" (masofaviy: "Aud. 60"). */
+const hoursText = (rows: CurriculumSubject[]) => {
+  const sum = (key: keyof CurriculumSubject) => rows.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
+  const typed = ([["M", "lectureHours"], ["A", "practicalHours"], ["L", "laboratoryHours"], ["S", "seminarHours"]] as const)
+    .map(([label, key]) => [label, sum(key)] as const).filter(([, value]) => value > 0);
+  if (typed.length) return typed.map(([label, value]) => `${label} ${value}`).join(" · ");
+  return sum("auditoryHours") > 0 ? `Aud. ${sum("auditoryHours")}` : "—";
+};
+
 /**
- * O'quv reja fanlari: T/r, kredit va soatlar mashg'ulot turlari bo'yicha (ishchi o'quv reja ustunlari).
- * Umumiy yuklama kredit × 30 soatga teng bo'lmasa ogohlantiriladi.
+ * O'quv reja fanlari — ixcham ko'rinish: bir fan bitta qator (ko'p semestrli fan semestrlari birlashtiriladi),
+ * soatlar qisqa yozuvda, mavzular bitta tugma orqali. Tahrirlash/o'chirish "⋯" menyusida.
  */
-export function CurriculumSubjectsTable({ curriculumId, subjects, editable, canLinkSyllabus = false, educationLanguage = "uz", onRemove, onChanged }: {
+export function CurriculumSubjectsTable({ curriculumId, subjects, editable, canLinkSyllabus = false, onRemove, onChanged }: {
   curriculumId: number;
   subjects: CurriculumSubject[];
   /** Kredit/soatlarni tahrirlash va fanni olib tashlash (faqat qoralama reja) */
   editable: boolean;
-  /** O'quv dasturini biriktirish (arxivlanmagan reja) */
+  /** O'quv dasturini biriktirish va mavzular (arxivlanmagan reja) */
   canLinkSyllabus?: boolean;
-  educationLanguage?: string;
   onRemove: (subject: CurriculumSubject) => void;
   onChanged: () => unknown;
 }) {
   const [editing, setEditing] = useState<CurriculumSubject | null>(null);
-  const rows = [...subjects].sort((a, b) => a.semester - b.semester
-    || (a.planRowNumber ?? "~").localeCompare(b.planRowNumber ?? "~", undefined, { numeric: true })
-    || a.subjectName.localeCompare(b.subjectName));
-  const sum = (key: keyof CurriculumSubject) => rows.reduce((acc, s) => acc + (Number(s[key]) || 0), 0);
+  const [linking, setLinking] = useState<CurriculumSubject | null>(null);
+  const groups = Object.values(subjects.reduce<Record<string, CurriculumSubject[]>>((acc, s) => {
+    const key = s.subjectId != null ? `s${s.subjectId}` : `i${s.id}`;
+    (acc[key] ??= []).push(s);
+    return acc;
+  }, {})).map((rows) => rows.sort((a, b) => a.semester - b.semester))
+    .sort((a, b) => a[0].semester - b[0].semester
+      || (a[0].planRowNumber ?? "~").localeCompare(b[0].planRowNumber ?? "~", undefined, { numeric: true })
+      || a[0].subjectName.localeCompare(b[0].subjectName));
+  const showMenu = editable || canLinkSyllabus;
 
   return (
     <>
       {editing && <EditSubjectDialog curriculumId={curriculumId} subject={editing} onClose={() => setEditing(null)} onSaved={onChanged} />}
+      {linking && (
+        <LinkSyllabusDialog curriculumId={curriculumId} subject={linking}
+          onClose={() => setLinking(null)} onLinked={async () => { await onChanged(); setLinking(null); }} />
+      )}
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
@@ -57,73 +70,78 @@ export function CurriculumSubjectsTable({ curriculumId, subjects, editable, canL
               <TableHead className="w-14">T/r</TableHead>
               <TableHead>Fan</TableHead>
               <TableHead>Semestr</TableHead>
-              <TableHead>Turi</TableHead>
               <TableHead className="text-right">Kredit</TableHead>
-              {HOUR_COLUMNS.map((c) => <TableHead key={c.key} className="text-right">{c.label}</TableHead>)}
-              <TableHead className="text-right">Jami soat</TableHead>
-              <TableHead>O'quv dasturi</TableHead>
-              {editable && <TableHead />}
+              <TableHead>Soatlar</TableHead>
+              <TableHead>Mavzular</TableHead>
+              {showMenu && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((subject) => (
-              <TableRow key={subject.id}>
-                <TableCell className="text-muted-foreground">{subject.planRowNumber ?? "—"}</TableCell>
-                <TableCell>
-                  <p className="font-medium">{subject.subjectName}</p>
-                  <p className="text-xs text-muted-foreground">{subject.subjectCode}</p>
-                </TableCell>
-                <TableCell>{subject.semester}-semestr</TableCell>
-                <TableCell>{subject.planItemType === "REQUIRED" ? "Majburiy" : "Tanlov"}</TableCell>
-                <TableCell className="text-right">{subject.credits}</TableCell>
-                {HOUR_COLUMNS.map((c) => (
-                  <TableCell key={c.key} className="text-right tabular-nums">{subject[c.key] || <span className="text-muted-foreground">—</span>}</TableCell>
-                ))}
-                <TableCell className={cn("text-right tabular-nums", mismatch(subject) && "text-amber-700 dark:text-amber-400")}>
-                  {total(subject) || <span className="text-muted-foreground">—</span>}
-                  {mismatch(subject) && (
-                    <span title={`${subject.credits} kredit × ${HOURS_PER_CREDIT} = ${subject.credits * HOURS_PER_CREDIT} soat bo'lishi kerak`}>
-                      <AlertTriangle className="ml-1 inline h-3.5 w-3.5" aria-label="Soat kreditga mos emas" />
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <CurriculumSyllabusCell curriculumId={curriculumId} subject={subject}
-                    rows={rows.filter((r) => r.subjectId != null && r.subjectId === subject.subjectId)}
-                    canLink={canLinkSyllabus} canEditTopics={canLinkSyllabus} educationLanguage={educationLanguage} onChanged={onChanged} />
-                </TableCell>
-                {editable && (
-                  <TableCell className="whitespace-nowrap text-right">
-                    <Button variant="ghost" size="icon" aria-label="Fan soatlarini tahrirlash" onClick={() => setEditing(subject)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" aria-label="Fanni olib tashlash" onClick={() => onRemove(subject)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+            {groups.map((rows) => {
+              const first = rows[0];
+              const warn = rows.some(mismatch);
+              return (
+                <TableRow key={first.id}>
+                  <TableCell className="text-muted-foreground">{first.planRowNumber ?? "—"}</TableCell>
+                  <TableCell>
+                    <p className="font-medium">{first.subjectName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {first.subjectCode}
+                      {first.planItemType === "ELECTIVE" && <Badge variant="outline" className="ml-2 px-1.5 py-0 text-[10px]">Tanlov</Badge>}
+                    </p>
                   </TableCell>
-                )}
-              </TableRow>
-            ))}
-            {rows.length === 0 && (
+                  <TableCell className="whitespace-nowrap">{rows.map((r) => r.semester).join(", ")}</TableCell>
+                  <TableCell className="text-right tabular-nums">{rows.map((r) => r.credits).join("+")}</TableCell>
+                  <TableCell className={cn("whitespace-nowrap text-sm tabular-nums", warn && "text-amber-700 dark:text-amber-400")}>
+                    {hoursText(rows)}
+                    {warn && (
+                      <span title={`Soatlar kreditga mos emas (1 kredit = ${HOURS_PER_CREDIT} soat) — "⋯" orqali tuzating`}>
+                        <AlertTriangle className="ml-1 inline h-3.5 w-3.5" aria-label="Soat kreditga mos emas" />
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <CurriculumSyllabusCell curriculumId={curriculumId} subject={first} rows={rows}
+                      canLink={canLinkSyllabus} onChanged={onChanged} />
+                  </TableCell>
+                  {showMenu && (
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`${first.subjectName} — amallar`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {editable && rows.map((r) => (
+                            <DropdownMenuItem key={`edit-${r.id}`} onClick={() => setEditing(r)}>
+                              Kredit va soatlar{rows.length > 1 ? ` (${r.semester}-semestr)` : ""}
+                            </DropdownMenuItem>
+                          ))}
+                          {canLinkSyllabus && first.subjectId && (
+                            <DropdownMenuItem onClick={() => setLinking(first)}>Boshqa o'quv dasturini tanlash</DropdownMenuItem>
+                          )}
+                          {editable && <DropdownMenuSeparator />}
+                          {editable && rows.map((r) => (
+                            <DropdownMenuItem key={`remove-${r.id}`} className="text-destructive" onClick={() => onRemove(r)}>
+                              Rejadan olib tashlash{rows.length > 1 ? ` (${r.semester}-semestr)` : ""}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
+            {groups.length === 0 && (
               <TableRow>
-                <TableCell colSpan={HOUR_COLUMNS.length + (editable ? 8 : 7)} className="h-24 text-center text-muted-foreground">
-                  Rejaga hali fan biriktirilmagan. Fanlarni qo'lda qo'shing yoki ishchi o'quv rejani Excel'dan import qiling.
+                <TableCell colSpan={showMenu ? 7 : 6} className="h-24 text-center text-muted-foreground">
+                  Rejaga hali fan biriktirilmagan. Fanlarni qo'lda qo'shing yoki ishchi o'quv rejani Excel'dan yuklang.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
-          {rows.length > 0 && (
-            <TableFooter>
-              <TableRow>
-                <TableCell colSpan={4} className="font-medium">Jami</TableCell>
-                <TableCell className="text-right font-medium">{sum("credits")}</TableCell>
-                {HOUR_COLUMNS.map((c) => <TableCell key={c.key} className="text-right tabular-nums">{sum(c.key)}</TableCell>)}
-                <TableCell className="text-right font-medium tabular-nums">{rows.reduce((acc, s) => acc + total(s), 0)}</TableCell>
-                <TableCell />
-                {editable && <TableCell />}
-              </TableRow>
-            </TableFooter>
-          )}
         </Table>
       </div>
     </>

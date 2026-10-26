@@ -11,6 +11,7 @@ import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectReposit
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
 import uz.scorm.lms.app.v1.syllabus.model.SubjectModelProgram
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
+import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
 import uz.scorm.lms.app.v1.syllabus.repository.SubjectModelProgramRepository
 import uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRepository
 import uz.scorm.lms.app.v1.syllabus.service.SubjectSyllabusService
@@ -63,6 +64,29 @@ class CurriculumSyllabusService(
         return curriculumService.get(id)
     }
 
+    /**
+     * Bitta tugma ("+ Mavzular"): fanga dastur biriktirilmagan bo'lsa, reja tilidagi mavjud dastur biriktiriladi
+     * (tasdiqlangani afzal), bo'lmasa fan nomi bilan yangisi yaratiladi. Biriktirilgan dastur id'si qaytadi.
+     */
+    @Transactional
+    fun ensure(id: Long, itemId: Long, actorId: Long): Long {
+        val rows = subjectRows(id, itemId)
+        rows.firstNotNullOfOrNull { it.syllabus }?.let { return requireNotNull(it.id) }
+        val subject = requireNotNull(rows.first().subject)
+        val language = LANGUAGES[rows.first().curriculumVersion.educationLanguage] ?: SyllabusLanguage.UZ
+        val existing = syllabi.findAllBySubjectIdAndDeletedFalseOrderByNameAsc(requireNotNull(subject.id))
+            .filter { it.language == language }
+            .maxByOrNull { if (it.status == "APPROVED") 2 else 1 }
+        if (existing != null) {
+            link(rows, existing)
+            auditService.logAction("CURRICULUM_SYLLABUS_ATTACHED", actorId, "curriculum=$id; item=$itemId; syllabus=${existing.id}; auto=true")
+            return requireNotNull(existing.id)
+        }
+        val text = "${subject.name.trim()} fanining o'quv dasturi"
+        createAndAttach(id, itemId, CreateCurriculumSyllabusRequest(language, text, null, text), actorId)
+        return requireNotNull(subjectRows(id, itemId).first().syllabus?.id)
+    }
+
     private fun link(rows: List<ProgramCurriculumSubject>, syllabus: SubjectSyllabus?) {
         rows.forEach { it.syllabus = syllabus; items.save(it) }
     }
@@ -76,5 +100,13 @@ class CurriculumSyllabusService(
         val subjectId = requireNotNull(item.subject?.id) { "Reja fani katalogdagi fanga bog'lanmagan" }
         return items.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(id)
             .filter { it.subject?.id == subjectId }
+    }
+
+    private companion object {
+        /** O'quv reja tili -> dastur tili */
+        val LANGUAGES = mapOf(
+            "uz" to SyllabusLanguage.UZ, "uz-Latn" to SyllabusLanguage.UZ, "uz-Cyrl" to SyllabusLanguage.UZ_CYRILLIC,
+            "kaa" to SyllabusLanguage.KAA, "ru" to SyllabusLanguage.RU, "en" to SyllabusLanguage.EN,
+        )
     }
 }
