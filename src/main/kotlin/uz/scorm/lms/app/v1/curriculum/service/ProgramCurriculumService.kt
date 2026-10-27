@@ -228,6 +228,7 @@ class ProgramCurriculumService(
         require(request.credits in 1..60) { "Curriculum fanining krediti 1..60 oralig'ida bo'lishi kerak" }
         item.creditsSnapshot = request.credits
         item.planItemType = request.planItemType
+        item.courseWorkType = request.courseWorkType
         applyPlanDetails(item, request.planRowNumber, request.hours)
         subjectItemRepository.save(item)
         auditService.logAction("CURRICULUM_SUBJECT_UPDATED", actorId, "curriculum=$id; item=$itemId")
@@ -389,7 +390,8 @@ class ProgramCurriculumService(
                 subjectName = item.subjectNameSnapshot, credits = item.creditsSnapshot, semester = item.semester,
                 planItemType = item.planItemType.name, planRowNumber = item.planRowNumber,
                 lectureHours = item.lectureHours, practicalHours = item.practicalHours, laboratoryHours = item.laboratoryHours,
-                seminarHours = item.seminarHours, courseWorkHours = item.courseWorkHours, auditoryHours = item.auditoryHours,
+                seminarHours = item.seminarHours, courseWorkHours = item.courseWorkHours, courseWorkType = item.courseWorkType?.name,
+                auditoryHours = item.auditoryHours,
                 selfStudyHours = item.selfStudyHours, totalHours = item.auditoryHours + item.selfStudyHours,
                 syllabusId = item.syllabus?.id, syllabusName = item.syllabus?.name, syllabusLanguage = item.syllabus?.language?.name,
                 syllabusStatus = item.syllabus?.status, syllabusTopicCount = item.syllabus?.topics?.size ?: 0,

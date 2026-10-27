@@ -1,5 +1,6 @@
 package uz.scorm.lms.app.v1.curriculum.dto
 
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
@@ -54,6 +55,8 @@ data class UpdateCurriculumSubjectRequest(
     val planItemType: CurriculumPlanItemType,
     val planRowNumber: String? = null,
     val hours: CurriculumSubjectHours = CurriculumSubjectHours(),
+    /** Kurs ishi (KI) yoki kurs loyihasi (KL); null — yo'q */
+    val courseWorkType: CurriculumCourseWorkType? = null,
 )
 
 data class ApproveCurriculumRequest(
@@ -75,6 +78,8 @@ data class CurriculumSubjectDto(
     val laboratoryHours: Int = 0,
     val seminarHours: Int = 0,
     val courseWorkHours: Int = 0,
+    /** COURSE_WORK — kurs ishi, COURSE_PROJECT — kurs loyihasi */
+    val courseWorkType: String? = null,
     val auditoryHours: Int = 0,
     val selfStudyHours: Int = 0,
     /** Umumiy yuklama = auditoriya + mustaqil ta'lim (1 kredit = 30 soat bo'lishi kutiladi) */

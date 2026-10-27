@@ -1,5 +1,6 @@
 package uz.scorm.lms.app.v1.curriculum.dto
 
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
 
 data class CurriculumImportSheetDto(val name: String, val rowCount: Int)
@@ -32,12 +33,28 @@ data class CurriculumImportRowDto(
     /** CREATE uchun katalogdagi yangi fan kodi (reja kodi band bo'lsa qo'shimcha bilan) */
     val createCode: String? = null,
     val issues: List<String> = emptyList(),
+    /** KI — kurs ishi, KL — kurs loyihasi (ko'p semestrli fanda oxirgi semestrga yoziladi) */
+    val courseWorkType: CurriculumCourseWorkType? = null,
+)
+
+/** Fayl sarlavhasi: yo'nalish, akademik daraja, ta'lim shakli, o'qish muddati, kvalifikatsiya. */
+data class CurriculumImportHeaderDto(
+    val programCode: String? = null,
+    val programName: String? = null,
+    val degree: String? = null,
+    val educationForm: String? = null,
+    val educationFormText: String? = null,
+    val durationYears: Int? = null,
+    val qualification: String? = null,
 )
 
 data class CurriculumImportPreviewDto(
     val sheets: List<CurriculumImportSheetDto>,
     val sheet: String?,
     val rows: List<CurriculumImportRowDto>,
+    val header: CurriculumImportHeaderDto? = null,
+    /** Fayl sarlavhasi rejaga mos kelmasa (yo'nalish, ta'lim shakli, o'qish muddati) */
+    val warnings: List<String> = emptyList(),
 )
 
 data class CurriculumImportApplyRequest(val rows: List<CurriculumImportRowDto>)

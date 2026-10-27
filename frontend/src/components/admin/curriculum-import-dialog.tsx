@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { extractApiError } from "@/lib/academic-api";
 import {
-  curriculumApi, type CurriculumImportAction, type CurriculumImportPreview, type CurriculumImportResult, type CurriculumImportRow,
+  courseWorkLabels, curriculumApi, type CurriculumImportAction, type CurriculumImportPreview, type CurriculumImportResult,
+  type CurriculumImportRow,
 } from "@/services/api/curriculum-api";
 
 const selectClass = "h-9 w-full min-w-44 rounded-md border bg-background px-2 text-sm";
@@ -67,8 +68,9 @@ export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
         <DialogHeader>
           <DialogTitle>Ishchi o'quv rejani Excel'dan import qilish</DialogTitle>
           <DialogDescription>
-            "II. O'quv rejasi" bo'limidagi fanlar, soatlar (ma'ruza, amaliy, laboratoriya, seminar, mustaqil ta'lim) va semestrlar
-            bo'yicha kreditlar o'qiladi. Ko'p semestrli fan har semestr uchun alohida qo'shiladi.
+            "II. O'quv rejasi" bo'limidagi fanlar, soatlar (ma'ruza, amaliy, laboratoriya, seminar, mustaqil ta'lim), kurs ishi
+            (loyihasi) va semestrlar bo'yicha kreditlar o'qiladi. Ko'p semestrli fan har semestr uchun alohida qo'shiladi.
+            Fayl sarlavhasi (yo'nalish, ta'lim shakli, muddat) rejaga solishtiriladi.
           </DialogDescription>
         </DialogHeader>
 
@@ -96,6 +98,28 @@ export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
           <p className="flex items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
             <FileSpreadsheet className="h-5 w-5" />Ishchi o'quv reja faylini tanlang — avval ko'rib chiqasiz, so'ng rejaga qo'shiladi.
           </p>
+        )}
+
+        {preview?.header && !load.isPending && (preview.header.programCode || preview.header.educationFormText) && (
+          <div className="rounded-md border bg-muted/40 p-3 text-sm" aria-label="Fayl sarlavhasi">
+            <p className="font-medium">{[preview.header.programCode, preview.header.programName].filter(Boolean).join(" – ")}</p>
+            <p className="text-xs text-muted-foreground">
+              {[
+                preview.header.degree,
+                preview.header.educationFormText && `ta'lim shakli: ${preview.header.educationFormText}`,
+                preview.header.durationYears && `o'qish muddati: ${preview.header.durationYears} yil`,
+                preview.header.qualification && `kvalifikatsiya: ${preview.header.qualification}`,
+              ].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+        )}
+        {!load.isPending && (preview?.warnings?.length ?? 0) > 0 && (
+          <div aria-label="Fayl va reja farqi" className="space-y-1 rounded-md border border-amber-300 p-3 text-sm text-amber-800 dark:border-amber-800 dark:text-amber-300">
+            {preview!.warnings!.map((warning) => (
+              <p key={warning} className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{warning}</p>
+            ))}
+            <p className="text-xs">Fayl to'g'ri rejaga yuklanayotganini tekshiring.</p>
+          </div>
         )}
 
         {preview && !load.isPending && (
@@ -129,7 +153,10 @@ export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
                         </TableCell>
                         <TableCell>
                           <p className="font-medium">{row.name}</p>
-                          <p className="text-xs text-muted-foreground">{row.code} · {row.planItemType === "REQUIRED" ? "Majburiy" : "Tanlov"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {row.code} · {row.planItemType === "REQUIRED" ? "Majburiy" : "Tanlov"}
+                            {row.courseWorkType && <Badge variant="outline" className="ml-2 px-1.5 py-0 text-[10px]">{courseWorkLabels[row.courseWorkType]}</Badge>}
+                          </p>
                           {row.issues.map((issue) => (
                             <p key={issue} className="mt-0.5 flex items-start gap-1 text-xs text-amber-700 dark:text-amber-400">
                               <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{issue}

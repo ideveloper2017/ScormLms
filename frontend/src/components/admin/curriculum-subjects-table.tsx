@@ -15,7 +15,8 @@ import { groupBySubject, hoursText } from "@/lib/curriculum-subjects";
 import { HOURS_PER_CREDIT } from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
 import {
-  curriculumApi, type CurriculumPlanItemType, type CurriculumSubject, type CurriculumSubjectHours,
+  courseWorkLabels, curriculumApi, type CurriculumCourseWorkType, type CurriculumPlanItemType, type CurriculumSubject,
+  type CurriculumSubjectHours,
 } from "@/services/api/curriculum-api";
 
 const total = (s: CurriculumSubject) => s.totalHours ?? (s.auditoryHours ?? 0) + (s.selfStudyHours ?? 0);
@@ -63,6 +64,11 @@ export function CurriculumSubjectsTable({ curriculumId, subjects, editable, onRe
                     <p className="text-xs text-muted-foreground">
                       {first.subjectCode}
                       {first.planItemType === "ELECTIVE" && <Badge variant="outline" className="ml-2 px-1.5 py-0 text-[10px]">Tanlov</Badge>}
+                      {rows.filter((r) => r.courseWorkType).map((r) => (
+                        <Badge key={`cw-${r.id}`} variant="outline" className="ml-2 px-1.5 py-0 text-[10px]">
+                          {courseWorkLabels[r.courseWorkType!]}{rows.length > 1 ? ` (${r.semester}-sem.)` : ""}
+                        </Badge>
+                      ))}
                     </p>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{rows.map((r) => r.semester).join(", ")}</TableCell>
@@ -121,7 +127,6 @@ const HOUR_FIELDS: { key: keyof CurriculumSubjectHours; label: string }[] = [
   { key: "practical", label: "Amaliy" },
   { key: "laboratory", label: "Laboratoriya" },
   { key: "seminar", label: "Seminar" },
-  { key: "courseWork", label: "Kurs ishi" },
   { key: "selfStudy", label: "Mustaqil ta'lim" },
 ];
 
@@ -134,6 +139,7 @@ function EditSubjectDialog({ curriculumId, subject, onClose, onSaved }: {
   const [credits, setCredits] = useState(subject.credits);
   const [planItemType, setPlanItemType] = useState<CurriculumPlanItemType>(subject.planItemType);
   const [rowNumber, setRowNumber] = useState(subject.planRowNumber ?? "");
+  const [courseWorkType, setCourseWorkType] = useState<CurriculumCourseWorkType | null>(subject.courseWorkType ?? null);
   const [hours, setHours] = useState<CurriculumSubjectHours>({
     lecture: subject.lectureHours ?? 0, practical: subject.practicalHours ?? 0, laboratory: subject.laboratoryHours ?? 0,
     seminar: subject.seminarHours ?? 0, courseWork: subject.courseWorkHours ?? 0, auditory: subject.auditoryHours ?? 0,
@@ -146,7 +152,7 @@ function EditSubjectDialog({ curriculumId, subject, onClose, onSaved }: {
   const expected = credits * HOURS_PER_CREDIT;
   const save = useMutation({
     mutationFn: () => curriculumApi.updateSubject(curriculumId, subject.id, {
-      credits, planItemType, planRowNumber: rowNumber.trim() || null, hours: { ...hours, auditory },
+      credits, planItemType, planRowNumber: rowNumber.trim() || null, hours: { ...hours, auditory }, courseWorkType,
     }),
     onSuccess: async () => { await onSaved(); onClose(); },
     onError: (e) => setError(extractApiError(e, "Saqlanmadi").message),
@@ -181,6 +187,13 @@ function EditSubjectDialog({ curriculumId, subject, onClose, onSaved }: {
             <Input id="cs-auditory" type="number" min={0} value={auditory} disabled={typed > 0}
               title={typed > 0 ? "Mashg'ulot turlari yig'indisi" : "Masofaviy shakl: turlarga bo'linmagan auditoriya soati"}
               onChange={(e) => setHour("auditory", e.target.value)} /></div>
+          <div className="space-y-1.5"><Label htmlFor="cs-course-work">Kurs ishi (loyihasi)</Label>
+            <select id="cs-course-work" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={courseWorkType ?? ""}
+              onChange={(e) => setCourseWorkType((e.target.value || null) as CurriculumCourseWorkType | null)}>
+              <option value="">Yo'q</option>
+              <option value="COURSE_WORK">{courseWorkLabels.COURSE_WORK} (KI)</option>
+              <option value="COURSE_PROJECT">{courseWorkLabels.COURSE_PROJECT} (KL)</option>
+            </select></div>
         </div>
         <p role="status" className={cn("rounded-md border p-2 text-xs", totalHours !== expected ? "border-amber-300 text-amber-800 dark:text-amber-300" : "bg-muted/40")}>
           Umumiy yuklama: {auditory} (auditoriya) + {hours.selfStudy} (mustaqil) = {totalHours} soat

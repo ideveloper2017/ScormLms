@@ -6,6 +6,9 @@ export type CurriculumPlanItemType = "REQUIRED" | "ELECTIVE";
 export type CurriculumStatus = "DRAFT" | "APPROVED" | "ARCHIVED";
 export type CurriculumStudentStatus = "ACTIVE" | "SUSPENDED" | "EXPELLED" | "GRADUATED";
 export type CurriculumEducationForm = "FULL_TIME" | "PART_TIME" | "EVENING" | "DISTANCE";
+/** Ishchi o'quv rejadagi "Kurs ishi (loyihasi)" ustuni: KI — kurs ishi, KL — kurs loyihasi */
+export type CurriculumCourseWorkType = "COURSE_WORK" | "COURSE_PROJECT";
+export const courseWorkLabels: Record<CurriculumCourseWorkType, string> = { COURSE_WORK: "Kurs ishi", COURSE_PROJECT: "Kurs loyihasi" };
 
 export interface CurriculumSubject {
   id: number;
@@ -22,6 +25,7 @@ export interface CurriculumSubject {
   laboratoryHours?: number;
   seminarHours?: number;
   courseWorkHours?: number;
+  courseWorkType?: CurriculumCourseWorkType | null;
   /** Auditoriya jami (masofaviy shaklda turlarga bo'linmagan bo'lishi mumkin) */
   auditoryHours?: number;
   selfStudyHours?: number;
@@ -60,6 +64,7 @@ export interface UpdateCurriculumSubjectInput {
   planItemType: CurriculumPlanItemType;
   planRowNumber?: string | null;
   hours: CurriculumSubjectHours;
+  courseWorkType?: CurriculumCourseWorkType | null;
 }
 
 export type CurriculumImportAction = "USE_EXISTING" | "CREATE" | "SKIP";
@@ -85,12 +90,27 @@ export interface CurriculumImportRow {
   subjectName?: string | null;
   createCode?: string | null;
   issues: string[];
+  courseWorkType?: CurriculumCourseWorkType | null;
+}
+
+/** Fayl sarlavhasi: yo'nalish, akademik daraja, ta'lim shakli, o'qish muddati, kvalifikatsiya */
+export interface CurriculumImportHeader {
+  programCode?: string | null;
+  programName?: string | null;
+  degree?: string | null;
+  educationForm?: CurriculumEducationForm | null;
+  educationFormText?: string | null;
+  durationYears?: number | null;
+  qualification?: string | null;
 }
 
 export interface CurriculumImportPreview {
   sheets: { name: string; rowCount: number }[];
   sheet?: string | null;
   rows: CurriculumImportRow[];
+  header?: CurriculumImportHeader | null;
+  /** Fayl sarlavhasi rejaga mos kelmasa (yo'nalish, ta'lim shakli, o'qish muddati) */
+  warnings?: string[];
 }
 
 export interface CurriculumImportResult {

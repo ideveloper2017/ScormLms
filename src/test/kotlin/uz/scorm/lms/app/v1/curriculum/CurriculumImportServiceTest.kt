@@ -13,6 +13,7 @@ import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction.CREATE
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction.SKIP
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction.USE_EXISTING
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportApplyRequest
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType.COURSE_WORK
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumSubject
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
@@ -21,6 +22,7 @@ import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionReposit
 import uz.scorm.lms.app.v1.curriculum.service.CurriculumImportService
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
 import uz.scorm.lms.app.v1.program.model.Program
+import uz.scorm.lms.app.v1.student.model.EducationForm
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import java.io.ByteArrayOutputStream
@@ -49,19 +51,24 @@ class CurriculumImportServiceTest {
         every { subjects.findAll() } returns listOf(programming, writing, other)
     }
 
-    private fun excel(): MockMultipartFile = XSSFWorkbook().use { wb ->
+    /** header — fanlar jadvalidan yuqoridagi sarlavha (yo'nalish, ta'lim shakli, o'qish muddati) */
+    private fun excel(header: String? = null): MockMultipartFile = XSSFWorkbook().use { wb ->
         val sheet = wb.createSheet("Reja")
+        val top = if (header != null) 2 else 0
         fun put(r: Int, vararg cells: Pair<Int, Any>) {
-            val row = sheet.getRow(r) ?: sheet.createRow(r)
+            val row = sheet.getRow(r + top) ?: sheet.createRow(r + top)
             cells.forEach { (c, v) -> row.createCell(c).apply { if (v is Number) setCellValue(v.toDouble()) else setCellValue(v.toString()) } }
         }
+        header?.let { put(-2, 2 to it) }
         put(0, 0 to "T/r", 1 to "Fanning malakaviy kodi", 2 to "O‘quv fanlari nomlari", 3 to "Umumiy yuklama hajmi",
             4 to "Auditoriya mashg‘ulotlari", 9 to "Mustaqil ta’lim")
-        put(1, 4 to "Jami", 5 to "Ma’ruza", 6 to "Amaliy", 7 to "Laboratoriya", 8 to "Seminar", 10 to "Semestrlar")
+        put(1, 4 to "Jami", 5 to "Ma’ruza", 6 to "Amaliy", 7 to "Laboratoriya", 8 to "Seminar", 10 to "Semestrlar", 15 to "Kurs ishi (loyihasi)")
         put(2, 10 to 1, 11 to 2, 12 to 3, 13 to 4, 14 to 5)
         put(3, 0 to "1.00", 2 to "Majburiy fanlar")
-        put(4, 0 to "1.09", 1 to "DAS1110", 2 to "Dasturlash 1,2", 3 to 300, 4 to 120, 5 to 30, 6 to 45, 7 to 45, 9 to 180, 10 to 6, 11 to 4)
-        put(5, 0 to "1.10", 1 to "AKY1104", 2 to "Akademik yozuv", 3 to 120, 4 to 48, 6 to 48, 9 to 72, 10 to 4)
+        put(4, 0 to "1.09", 1 to "DAS1110", 2 to "Dasturlash 1,2", 3 to 300, 4 to 120, 5 to 30, 6 to 45, 7 to 45, 9 to 180, 10 to 6, 11 to 4,
+            15 to "KI")
+        // "Akademik yozuv" — "о" kirillda: katalogdagi lotin nomga baribir moslanadi
+        put(5, 0 to "1.10", 1 to "AKY1104", 2 to "Akademik y\u043ezuv", 3 to 120, 4 to 48, 6 to 48, 9 to 72, 10 to 4)
         put(6, 0 to "2.00", 2 to "Tanlov fanlari")
         put(7, 0 to "2.04", 1 to "PDT2504", 2 to "Python dasturlash tili", 3 to 120, 4 to 48, 5 to 24, 6 to 24, 9 to 72, 14 to 4)
         put(8, 1 to "PHPDT2504", 2 to "PHP dasturlash tili")
@@ -106,7 +113,27 @@ class CurriculumImportServiceTest {
             second.practicalHours, second.laboratoryHours, second.auditoryHours, second.selfStudyHours))
         assertEquals("1.09", first.planRowNumber)
         assertEquals("DAS1110", first.subjectCodeSnapshot)
+        // Kurs ishi fan tugaydigan (oxirgi) semestrga yoziladi
+        assertEquals(listOf(null, COURSE_WORK), listOf(first.courseWorkType, second.courseWorkType))
         verify { subjects.save(match { it.code == "PDT2504-A" && it.name == "Python dasturlash tili" && it.credits == 4 && it.program == null }) }
+    }
+
+    @Test
+    fun `fayl sarlavhasi o'qiladi va rejaga mos kelmasa ogohlantiriladi`() {
+        every { program.code } returns "60610400"
+        every { program.name } returns "Dasturiy injiniring"
+        every { version.educationForm } returns EducationForm.FULL_TIME
+        val preview = service.preview(5, excel(
+            "Ta’lim yo‘nalishi: 60610300 - Kompyuter injiniringi\nTa’lim shakli - masofaviy\nO‘qish muddati - 4 yil",
+        ), null)
+
+        assertEquals("60610300", preview.header?.programCode)
+        assertEquals("DISTANCE", preview.header?.educationForm)
+        assertEquals(listOf(
+            "Fayldagi yo'nalish 60610300 – Kompyuter injiniringi, reja yo'nalishi 60610400 – Dasturiy injiniring",
+            "Faylda ta'lim shakli masofaviy, rejada kunduzgi",
+        ), preview.warnings) // 4 yil = 8 semestr — muddat mos
+        assertEquals(5, preview.rows.size)
     }
 
     @Test
