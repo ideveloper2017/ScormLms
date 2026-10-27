@@ -7,18 +7,21 @@ import uz.scorm.lms.app.v1.academicperiod.service.AcademicPeriodService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportApplyRequest
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportHeaderDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportPreviewDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportResultDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportRowDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportSemesterCredit
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportSheetDto
 import uz.scorm.lms.app.v1.curriculum.importer.CurriculumWorkbookParser
+import uz.scorm.lms.app.v1.curriculum.importer.ParsedHeader
 import uz.scorm.lms.app.v1.curriculum.importer.ParsedPlanRow
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumSubject
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
+import uz.scorm.lms.app.v1.student.model.EducationForm
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 
@@ -47,11 +50,32 @@ class CurriculumImportService(
         } catch (_: Exception) {
             throw IllegalArgumentException("Excel faylni o'qib bo'lmadi — ishchi o'quv reja fayli ekanini tekshiring")
         }
+        val header = workbook.header
         return CurriculumImportPreviewDto(
             sheets = workbook.sheets.map { CurriculumImportSheetDto(it.name, it.rowCount) },
             sheet = workbook.sheet,
             rows = match(version, workbook.rows),
+            header = header?.let {
+                CurriculumImportHeaderDto(it.programCode, it.programName, it.degree, it.educationForm?.name, it.educationFormText,
+                    it.durationYears, it.qualification)
+            },
+            warnings = header?.let { headerWarnings(version, it) }.orEmpty(),
         )
+    }
+
+    /** Fayl sarlavhasi rejaga mos kelmasa ogohlantiradi: yo'nalish, ta'lim shakli, o'qish muddati (semestrlar soni). */
+    private fun headerWarnings(version: ProgramCurriculumVersion, header: ParsedHeader): List<String> = buildList {
+        val planCode = version.program.code?.filter(Char::isDigit).orEmpty()
+        if (header.programCode != null && planCode.isNotEmpty() && header.programCode != planCode) {
+            add("Fayldagi yo'nalish ${header.programCode}${header.programName?.let { " – $it" }.orEmpty()}, " +
+                "reja yo'nalishi ${version.program.code} – ${version.program.name}")
+        }
+        if (header.educationForm != null && header.educationForm != version.educationForm) {
+            add("Faylda ta'lim shakli ${FORMS.getValue(header.educationForm)}, rejada ${FORMS.getValue(version.educationForm)}")
+        }
+        header.durationYears?.takeIf { it * 2 != version.semesterCount }?.let { years ->
+            add("Faylda o'qish muddati $years yil (${years * 2} semestr), rejada ${version.semesterCount} semestr")
+        }
     }
 
     @Transactional
@@ -91,6 +115,8 @@ class CurriculumImportService(
                     planRowNumber = row.rowNumber.trim().take(20).takeIf { it.isNotEmpty() && it != "-" }
                     lectureHours = lecture[i]; practicalHours = practical[i]
                     laboratoryHours = laboratory[i]; seminarHours = seminar[i]; courseWorkHours = courseWork[i]
+                    // Kurs ishi (loyihasi) fan tugaydigan semestrda topshiriladi
+                    courseWorkType = row.courseWorkType?.takeIf { i == credits.lastIndex }
                     auditoryHours = if (typed > 0) typed else auditory[i]
                     selfStudyHours = selfStudy[i]
                 })
@@ -105,7 +131,8 @@ class CurriculumImportService(
     private fun match(version: ProgramCurriculumVersion, rows: List<ParsedPlanRow>): List<CurriculumImportRowDto> {
         val catalog = subjects.findAll().filter { !it.deleted }
         val eligible = catalog.filter { it.active && (it.program == null || it.program?.id == version.program.id) }
-        val byCode = eligible.groupBy { it.code?.trim()?.uppercase() }
+        // Katalogdagi kod va nomlarda ham kirill harflari aralashgan bo'lishi mumkin
+        val byCode = eligible.groupBy { it.code?.let { code -> CurriculumWorkbookParser.latinCode(code.trim()).uppercase() } }
         val byName = eligible.groupBy { nameKey(it.name) }
         val usedCodes = catalog.mapNotNull { it.code?.trim()?.uppercase() }.toMutableSet()
         return rows.map { row ->
@@ -121,7 +148,7 @@ class CurriculumImportService(
                 lectureHours = row.lectureHours, practicalHours = row.practicalHours, laboratoryHours = row.laboratoryHours,
                 seminarHours = row.seminarHours, courseWorkHours = row.courseWorkHours, selfStudyHours = row.selfStudyHours,
                 semesterCredits = row.semesterCredits.map { (semester, credits) -> CurriculumImportSemesterCredit(semester, credits) },
-                issues = issues,
+                issues = issues, courseWorkType = row.courseWorkType,
             )
             when {
                 row.semesterCredits.isEmpty() || outside.isNotEmpty() -> base.copy(action = CurriculumImportAction.SKIP)
@@ -160,8 +187,12 @@ class CurriculumImportService(
         return ('A'..'Z').map { "$code-$it" }.firstOrNull { it.uppercase() !in used } ?: "$code-${System.nanoTime() % 10000}"
     }
 
-    /** Nom kaliti: faqat harf va raqamlar ("Dasturlash 1, 2" = "Dasturlash 1,2", apostrof turlari farqlanmaydi). */
-    private fun nameKey(value: String) = CurriculumWorkbookParser.norm(value).replace(Regex("[^\\p{L}\\p{N}]"), "")
+    /**
+     * Nom kaliti: faqat harf va raqamlar ("Dasturlash 1, 2" = "Dasturlash 1,2", apostrof turlari farqlanmaydi,
+     * lotin so'z ichidagi kirill harfi — "еng" — lotinga o'tkaziladi).
+     */
+    private fun nameKey(value: String) =
+        CurriculumWorkbookParser.norm(CurriculumWorkbookParser.latinize(value)).replace(Regex("[^\\p{L}\\p{N}]"), "")
 
     private fun requireDraft(id: Long) = (versions.findByIdAndDeletedFalse(id)
         ?: throw NoSuchElementException("Curriculum versiyasi topilmadi: $id")).also {
@@ -171,5 +202,9 @@ class CurriculumImportService(
     private companion object {
         const val MAX_FILE_SIZE = 10L * 1024 * 1024
         const val MAX_ROWS = 500
+        val FORMS = mapOf(
+            EducationForm.FULL_TIME to "kunduzgi", EducationForm.PART_TIME to "sirtqi",
+            EducationForm.EVENING to "kechki", EducationForm.DISTANCE to "masofaviy",
+        )
     }
 }

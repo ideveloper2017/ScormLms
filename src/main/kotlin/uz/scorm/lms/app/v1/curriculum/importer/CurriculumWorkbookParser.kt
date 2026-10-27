@@ -5,7 +5,9 @@ import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.DataFormatter
 import org.apache.poi.ss.usermodel.Sheet
 import org.apache.poi.ss.usermodel.WorkbookFactory
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
+import uz.scorm.lms.app.v1.student.model.EducationForm
 import java.io.InputStream
 import kotlin.math.roundToInt
 
@@ -27,11 +29,24 @@ data class ParsedPlanRow(
     /** semestr -> kredit */
     val semesterCredits: Map<Int, Int>,
     val issues: List<String>,
+    /** "Kurs ishi (loyihasi)" ustunidagi KI / KL belgisi */
+    val courseWorkType: CurriculumCourseWorkType? = null,
 )
 
 data class ParsedSheet(val name: String, val rowCount: Int)
 
-data class ParsedWorkbook(val sheets: List<ParsedSheet>, val sheet: String?, val rows: List<ParsedPlanRow>)
+/** Reja sarlavhasi (fanlar jadvalidan yuqorida): "Ta'lim yo'nalishi: 60610300 - ...", "Ta'lim shakli - masofaviy" va h.k. */
+data class ParsedHeader(
+    val programCode: String? = null,
+    val programName: String? = null,
+    val degree: String? = null,
+    val educationFormText: String? = null,
+    val educationForm: EducationForm? = null,
+    val durationYears: Int? = null,
+    val qualification: String? = null,
+)
+
+data class ParsedWorkbook(val sheets: List<ParsedSheet>, val sheet: String?, val rows: List<ParsedPlanRow>, val header: ParsedHeader? = null)
 
 /**
  * NamDTU ishchi o'quv reja Excel faylidan "II. O'QUV REJASI" bo'limini o'qiydi.
@@ -58,11 +73,15 @@ object CurriculumWorkbookParser {
     )
 
     fun parse(input: InputStream, sheetName: String? = null): ParsedWorkbook = WorkbookFactory.create(input).use { workbook ->
-        val parsed = (0 until workbook.numberOfSheets).map { workbook.getSheetAt(it) }
-            .associate { sheet -> sheet.sheetName to (findColumns(sheet)?.let { readRows(sheet, it) } ?: emptyList()) }
-        val sheets = parsed.map { (name, rows) -> ParsedSheet(name, rows.size) }
+        // Yashirin varaqlar (eski nusxalar, ma'lumotnomalar) o'qilmaydi
+        val parsed = (0 until workbook.numberOfSheets)
+            .filterNot { workbook.isSheetHidden(it) || workbook.isSheetVeryHidden(it) }
+            .map { workbook.getSheetAt(it) }
+            .associate { sheet -> sheet.sheetName to findColumns(sheet)?.let { columns -> columns to readRows(sheet, columns) } }
+        val sheets = parsed.map { (name, table) -> ParsedSheet(name, table?.second?.size ?: 0) }
         val selected = sheetName?.takeIf { it in parsed } ?: sheets.firstOrNull { it.rowCount > 0 }?.name
-        ParsedWorkbook(sheets, selected, selected?.let { parsed.getValue(it) } ?: emptyList())
+        val table = selected?.let { parsed[it] }
+        ParsedWorkbook(sheets, selected, table?.second ?: emptyList(), table?.let { readHeader(workbook.getSheet(selected), it.first.headerRow) })
     }
 
     /** Soatni semestrlarga kredit ulushi bo'yicha bo'ladi (eng katta qoldiq usuli) — yig'indi saqlanadi. */
@@ -126,9 +145,9 @@ object CurriculumWorkbookParser {
         for (r in (c.headerRow + 1)..sheet.lastRowNum) {
             val row = sheet.getRow(r) ?: continue
             fun cell(col: Int?) = col?.let { row.getCell(it) }
-            val rowNo = text(cell(c.rowNo)).replace("..", ".")
-            val code = text(cell(c.code)).replace(" ", "")
-            val name = text(cell(c.name)).replace(Regex("\\s+"), " ")
+            val rowNo = text(cell(c.rowNo)).replace("..", ".").trimEnd('.')
+            val code = latinCode(text(cell(c.code)).replace(" ", ""))
+            val name = latinize(text(cell(c.name)).replace(Regex("\\s+"), " "))
             val nameKey = norm(name)
             if (nameKey.startsWith("hammasi") || norm(rowNo).startsWith("izoh")) break
             // Blok sarlavhasi: "1.00 Majburiy fanlar" / "2.00 Tanlov fanlari"
@@ -153,13 +172,16 @@ object CurriculumWorkbookParser {
             val total = number(cell(c.total)) ?: (auditory + selfStudy)
             val credits = c.semesters.mapNotNull { (col, semester) -> number(row.getCell(col))?.takeIf { it > 0 }?.let { semester to it } }.toMap()
             val courseWorkText = text(cell(c.courseWork))
+            val courseWorkType = courseWorkType(courseWorkText)
             val issues = buildList {
                 if (credits.isEmpty()) add("Semestrlar bo'yicha kredit topilmadi — qator import qilinmaydi")
                 val creditHours = credits.values.sum() * HOURS_PER_CREDIT
                 if (credits.isNotEmpty() && total != creditHours) add("Umumiy yuklama $total soat, kredit bo'yicha ${creditHours} soat bo'lishi kerak")
                 if (auditory + selfStudy != total) add("Auditoriya ($auditory) + mustaqil ta'lim ($selfStudy) umumiy yuklamaga ($total) teng emas")
                 if (typed > 0 && typed != auditory) add("Mashg'ulot turlari yig'indisi ($typed) auditoriya jamiga ($auditory) teng emas")
-                if (courseWorkText.isNotEmpty() && number(cell(c.courseWork)) == null) add("Kurs ishi ustunidagi \"$courseWorkText\" soat emas — e'tiborga olinmadi")
+                if (courseWorkText.isNotEmpty() && number(cell(c.courseWork)) == null && courseWorkType == null) {
+                    add("Kurs ishi ustunidagi \"$courseWorkText\" tushunilmadi (KI — kurs ishi, KL — kurs loyihasi) — e'tiborga olinmadi")
+                }
             }
             val parsed = ParsedPlanRow(
                 rowNumber = rowNo.ifEmpty { "-" }, code = code, name = name,
@@ -167,13 +189,79 @@ object CurriculumWorkbookParser {
                 alternative = false, totalHours = total, auditoryHours = auditory,
                 lectureHours = lecture, practicalHours = practical, laboratoryHours = laboratory, seminarHours = seminar,
                 courseWorkHours = number(cell(c.courseWork)) ?: 0, selfStudyHours = selfStudy,
-                semesterCredits = credits.toSortedMap(), issues = issues,
+                semesterCredits = credits.toSortedMap(), issues = issues, courseWorkType = courseWorkType,
             )
             rows += parsed
             primary = parsed
         }
         return rows
     }
+
+    /**
+     * Fanlar jadvalidan yuqoridagi sarlavha. Ikki xil yoziladi: bitta katakda qatorma-qator ("Ta'lim shakli - masofaviy")
+     * yoki yorliq va qiymat qo'shni kataklarda ("Ta'lim shakli" | "-" | "масофавий").
+     */
+    private fun readHeader(sheet: Sheet, untilRow: Int): ParsedHeader {
+        // Kataklar " | " bilan, qatorlar ROW belgisi bilan ajratiladi (katak ichidagi qator — "\n")
+        val text = (0 until untilRow).mapNotNull(sheet::getRow).joinToString(ROW) { row ->
+            row.map(::text).filter(String::isNotEmpty).joinToString(" | ")
+        }.replace(Regex("[‘’ʻʼ`´]"), "'")
+        fun value(label: String, wholeCell: Boolean = false): String? {
+            val stop = if (wholeCell) "|$ROW" else "|$ROW\\n"
+            return Regex("$label[\\s|:–-]*([^$stop]+)", RegexOption.IGNORE_CASE).find(text)?.groupValues?.get(1)
+                ?.replace(Regex("\\s+"), " ")?.trim()?.ifEmpty { null }
+        }
+        val program = Regex("yo'nalishi[\\s|:–-]*(\\d{8})\\s*[–-]?\\s*([^|$ROW\\n]*)", RegexOption.IGNORE_CASE).find(text)
+        val form = value("ta'lim shakli")
+        return ParsedHeader(
+            programCode = program?.groupValues?.get(1),
+            programName = program?.groupValues?.get(2)?.replace(Regex("\\s+"), " ")?.trim()?.ifEmpty { null },
+            degree = value("akademik daraja"),
+            educationFormText = form,
+            educationForm = form?.let(::educationForm),
+            durationYears = value("o'qish muddati")?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() },
+            // Kvalifikatsiya katak ichida bir necha qatorga bo'linishi mumkin
+            qualification = value("kvalifikatsiya", wholeCell = true),
+        )
+    }
+
+    /** Ta'lim shakli matni (lotin yoki kirill) -> qiymat. */
+    private fun educationForm(value: String): EducationForm? {
+        val v = value.lowercase()
+        return when {
+            "masof" in v || "масоф" in v -> EducationForm.DISTANCE
+            "kunduz" in v || "кундуз" in v -> EducationForm.FULL_TIME
+            "sirtq" in v || "сиртқ" in v || "сиртк" in v -> EducationForm.PART_TIME
+            "kechki" in v || "кечки" in v -> EducationForm.EVENING
+            else -> null
+        }
+    }
+
+    /** "Kurs ishi (loyihasi)" ustunidagi belgi: KI — kurs ishi, KL — kurs loyihasi (kirillda ham). */
+    private fun courseWorkType(value: String): CurriculumCourseWorkType? =
+        when (latinCode(value).uppercase().replace(Regex("[^\\p{L}]"), "")) {
+            "KI", "KИ" -> CurriculumCourseWorkType.COURSE_WORK
+            "KL", "KЛ" -> CurriculumCourseWorkType.COURSE_PROJECT
+            else -> null
+        }
+
+    /** Fan kodi lotinda bo'ladi: unga tushib qolgan kirill harflari ("КМА1606") lotinga almashtiriladi. */
+    fun latinCode(value: String): String = value.map { HOMOGLYPHS[it] ?: it }.joinToString("")
+
+    /** Lotin yozuvidagi so'z ichiga tushib qolgan kirill harflari ("еng") lotinga almashtiriladi; to'liq kirill so'zlar o'zgarmaydi. */
+    fun latinize(value: String): String = Regex("\\S+").replace(value) { match ->
+        val word = match.value
+        if (word.any { it in 'a'..'z' || it in 'A'..'Z' } && word.any { it in HOMOGLYPHS }) latinCode(word) else word
+    }
+
+    /** Ko'rinishi lotin harfiga o'xshash kirill harflari */
+    private val HOMOGLYPHS = mapOf(
+        'а' to 'a', 'е' to 'e', 'о' to 'o', 'р' to 'p', 'с' to 'c', 'у' to 'y', 'х' to 'x', 'к' to 'k', 'м' to 'm', 'т' to 't',
+        'А' to 'A', 'В' to 'B', 'Е' to 'E', 'К' to 'K', 'М' to 'M', 'Н' to 'H', 'О' to 'O', 'Р' to 'P', 'С' to 'C', 'Т' to 'T',
+        'У' to 'Y', 'Х' to 'X',
+    )
+
+    private const val ROW = "\u0001"
 
     private fun text(cell: Cell?): String = cell?.let { formatter.formatCellValue(it).trim() }.orEmpty()
 

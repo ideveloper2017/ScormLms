@@ -64,6 +64,11 @@ class ProgramCurriculumSubject(
     @Column(name = "course_work_hours", nullable = false)
     var courseWorkHours: Int = 0
 
+    /** Shu semestrda kurs ishi (KI) yoki kurs loyihasi (KL) bor-yo'qligi */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "course_work_type", length = 20)
+    var courseWorkType: CurriculumCourseWorkType? = null
+
     /** Auditoriya jami: turlar yig'indisi yoki masofaviy shaklda turlarga bo'linmagan soat */
     @Column(name = "auditory_hours", nullable = false)
     var auditoryHours: Int = 0
@@ -80,5 +85,11 @@ class ProgramCurriculumSubject(
 enum class CurriculumPlanItemType {
     REQUIRED,
     ELECTIVE,
+}
+
+/** Ishchi o'quv rejadagi "Kurs ishi (loyihasi)" ustuni: KI — kurs ishi, KL — kurs loyihasi. */
+enum class CurriculumCourseWorkType {
+    COURSE_WORK,
+    COURSE_PROJECT,
 }
 
