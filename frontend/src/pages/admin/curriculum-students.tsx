@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
 import { curriculumApi } from "@/services/api/curriculum-api";
+import { statusLabel } from "@/lib/status-labels";
 
 const message = (error: unknown) => error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
 
@@ -107,7 +108,7 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
     {curricula.isPending && <p role="status">O'quv rejalar yuklanmoqda...</p>}
     {curricula.isError && <div role="alert" className="rounded border p-3 text-destructive">Rejalarni yuklab bo'lmadi. <Button variant="outline" onClick={() => void curricula.refetch()}>Qayta urinish</Button></div>}
     <Card><CardHeader><CardTitle>Semestr muddati</CardTitle><CardDescription>Talabaning yo'nalishi, o'quv yili va semestri rejaga mos bo'lishi shart.</CardDescription></CardHeader><CardContent className={embedded ? "grid gap-4 md:grid-cols-3" : "grid gap-4 md:grid-cols-4"}>
-      {!embedded && <div className="space-y-2 md:col-span-2"><Label>O'quv reja</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" aria-label="O'quv reja" disabled={busy} value={curriculumId} onChange={(event) => chooseCurriculum(Number(event.target.value))}><option value={0}>Rejani tanlang</option>{(curricula.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.programName} · {item.versionCode} · {item.academicYear} ({item.status})</option>)}</select></div>}
+      {!embedded && <div className="space-y-2 md:col-span-2"><Label>O'quv reja</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" aria-label="O'quv reja" disabled={busy} value={curriculumId} onChange={(event) => chooseCurriculum(Number(event.target.value))}><option value={0}>Rejani tanlang</option>{(curricula.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.programName} · {item.versionCode} · {item.academicYear} ({statusLabel(item.status)})</option>)}</select></div>}
       <div className="space-y-2"><Label>Semestr</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" aria-label="Semestr" disabled={!selected || busy} value={semester} onChange={(event) => setSemester(Number(event.target.value))}>{Array.from({ length: selected?.semesterCount ?? 1 }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}-semestr</option>)}</select></div>
       <div className="flex items-end"><Badge variant={selected?.status === "APPROVED" ? "default" : "secondary"}>{selected?.status ?? "Reja tanlanmagan"}</Badge></div>
       <div className="space-y-2"><Label>Boshlanish sanasi</Label><Input aria-label="Boshlanish sanasi" disabled={!canWrite || busy} min={selected?.validFrom} max={selected?.validUntil} type="date" value={startsOn} onChange={(event) => setStartsOn(event.target.value)} /></div>

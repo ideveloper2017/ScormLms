@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select.tsx';
+import { statusLabel } from "@/lib/status-labels";
 
 const students = [
   {
@@ -110,7 +111,7 @@ export function Students() {
       case 'inactive':
         return <Badge className="bg-gray-100 text-gray-800">Nofaol</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">{statusLabel(status)}</Badge>;
     }
   };
 

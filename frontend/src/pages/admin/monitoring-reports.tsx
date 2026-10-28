@@ -20,6 +20,7 @@ import {
   type StudentIpReportRow,
   type StudentLoginMonitorRow,
 } from "@/services/api/monitoring-reports-api";
+import { statusLabel } from "@/lib/status-labels";
 
 const ALL="__all__";
 const date=(value?:string|null)=>value?new Date(value).toLocaleString("uz-Latn"):"Kirmagan";
@@ -36,7 +37,7 @@ export function InactiveStudentMonitoring(){
 
 export function ElectiveChoiceMonitoring(){
   const [status,setStatus]=useState(ALL),[year,setYear]=useState(ALL),[program,setProgram]=useState(ALL),[semester,setSemester]=useState(ALL),[subject,setSubject]=useState(ALL),[group,setGroup]=useState(ALL);const query=useQuery({queryKey:["elective-exceptions"],queryFn:listElectiveExceptions,staleTime:30_000});const rows=query.data??[];const vals=(f:(r:ElectiveChoiceExceptionRow)=>string)=>[...new Set(rows.map(f).filter(Boolean))].sort();const filtered=rows.filter(r=>(status===ALL||r.status===status)&&(year===ALL||r.academicYear===year)&&(program===ALL||r.curriculum===program)&&(semester===ALL||String(r.semester)===semester)&&(subject===ALL||r.subject===subject)&&(group===ALL||r.group===group));
-  const columns:ColumnDef<ElectiveChoiceExceptionRow>[]=[{accessorKey:"fullName",header:"F.I.O."},{accessorKey:"curriculum",header:"O'quv reja"},{accessorKey:"group",header:"Guruh"},{accessorKey:"subject",header:"Fan"},{accessorKey:"semester",header:"Semestr"},{id:"status",header:"Holati",cell:({row})=><Badge variant="destructive">{row.original.status}</Badge>}];
+  const columns:ColumnDef<ElectiveChoiceExceptionRow>[]=[{accessorKey:"fullName",header:"F.I.O."},{accessorKey:"curriculum",header:"O'quv reja"},{accessorKey:"group",header:"Guruh"},{accessorKey:"subject",header:"Fan"},{accessorKey:"semester",header:"Semestr"},{id:"status",header:"Holati",cell:({row})=><Badge variant="destructive">{statusLabel(row.original.status)}</Badge>}];
   return <div className="space-y-6 p-3 sm:p-6"><Header title="Tanlov fanlari" description="Mavjud ixtiyoriy fan kontekstida fanni tanlamagan faol talabalar." onExport={()=>csv("elective-exceptions.csv",["F.I.O.","Reja","Guruh","Fan","Yil","Semestr","Holat"],filtered.map(r=>[r.fullName,r.curriculum,r.group,r.subject,r.academicYear,r.semester,r.status]))}/><div className="flex flex-wrap gap-3 rounded-lg border p-4"><Filter label="Status" value={status} values={vals(r=>r.status)} onChange={setStatus}/><Filter label="O'quv yili" value={year} values={vals(r=>r.academicYear)} onChange={setYear}/><Filter label="O'quv dasturi" value={program} values={vals(r=>r.curriculum)} onChange={setProgram}/><Filter label="Semestr" value={semester} values={vals(r=>String(r.semester))} onChange={setSemester}/><Filter label="Fan" value={subject} values={vals(r=>r.subject)} onChange={setSubject}/><Filter label="Guruh" value={group} values={vals(r=>r.group)} onChange={setGroup}/></div><State loading={query.isLoading} error={query.error} retry={()=>query.refetch()}/>{!query.isLoading&&!query.error&&<DataTable columns={columns} data={filtered} searchPlaceholder="F.I.O. bo'yicha qidirish..." emptyText="Ma'lumot mavjud emas"/>}</div>;
 }
 

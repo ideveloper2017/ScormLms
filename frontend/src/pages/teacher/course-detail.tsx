@@ -761,7 +761,7 @@ export function TeacherCourseDetail({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Sectionlar", value: modules.length, color: "text-blue-600" },
+          { label: "Bo'limlar", value: modules.length, color: "text-blue-600" },
           {
             label: "Darslar",
             value: contents.length,
@@ -887,7 +887,7 @@ export function TeacherCourseDetail({
               <Input
                 value={moduleTitle}
                 onChange={(event) => setModuleTitle(event.target.value)}
-                placeholder="Section nomi, masalan: 1-mavzu. Kirish"
+                placeholder="Bo'lim nomi, masalan: 1-mavzu. Kirish"
               />
               <Button
                 onClick={saveModule}
@@ -899,7 +899,7 @@ export function TeacherCourseDetail({
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                {editingModuleId ? "Sectionni yangilash" : "Section qo'shish"}
+                {editingModuleId ? "Bo'limni yangilash" : "Bo'lim qo'shish"}
               </Button>
               {editingModuleId && (
                 <Button
@@ -925,10 +925,10 @@ export function TeacherCourseDetail({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
-              <Field label="Section *">
+              <Field label="Bo'lim *">
                 <Select value={bankModuleId} onValueChange={setBankModuleId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sectionni tanlang" />
+                    <SelectValue placeholder="Bo'limni tanlang" />
                   </SelectTrigger>
                   <SelectContent>
                     {modules.map((module) => (
@@ -1030,7 +1030,7 @@ export function TeacherCourseDetail({
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Sectionni tahrirlash"
+                        aria-label="Bo'limni tahrirlash"
                         onClick={() => editModule(module)}
                       >
                         <Edit className="h-4 w-4" />
@@ -1051,7 +1051,7 @@ export function TeacherCourseDetail({
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Sectionni o'chirish"
+                        aria-label="Bo'limni o'chirish"
                         className="text-destructive"
                         disabled={deleteModuleMutation.isPending}
                         onClick={() => {
@@ -1062,7 +1062,7 @@ export function TeacherCourseDetail({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                       <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" aria-label="Sectionni ochish yoki yopish">
+                        <Button variant="ghost" size="icon" aria-label="Bo'limni ochish yoki yopish">
                           <ChevronDown className="h-4 w-4" />
                         </Button>
                       </CollapsibleTrigger>
@@ -1467,14 +1467,14 @@ export function TeacherCourseDetail({
                 placeholder="Dars mavzusi"
               />
             </Field>
-            <Field label="Section *">
+            <Field label="Bo'lim *">
               <Select
                 value={contentModuleId}
                 onValueChange={setContentModuleId}
                 disabled={Boolean(editingContentId)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sectionni tanlang" />
+                  <SelectValue placeholder="Bo'limni tanlang" />
                 </SelectTrigger>
                 <SelectContent>
                   {modules.map((module) => (

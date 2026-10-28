@@ -53,6 +53,7 @@ import { useCourses } from '@/hooks/courses/useCourses';
 import { CourseCardSkeletonList } from '@/components/ui/skeletons/CourseCardSkeleton';
 import { toast } from 'sonner';
 import type { CourseFilters } from '@/types/course.types';
+import { statusLabel } from "@/lib/status-labels";
 
 // Mock data removed - now using API
 
@@ -117,7 +118,7 @@ export function Courses() {
       case 'completed':
         return <Badge className="bg-gray-100 text-gray-800">Yakunlangan</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">{statusLabel(status)}</Badge>;
     }
   };
 

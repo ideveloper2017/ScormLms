@@ -255,7 +255,7 @@ export function AdminPrograms() {
                       <p className="text-xs text-muted-foreground">Yillik haqiqiy kvota va kontrakt “Qabul va kontrakt” bo'limida hujjat bilan tasdiqlanadi.</p>
                     </div>
                   </div>
-                  <div className="space-y-1.5"><Label>Legacy litsenziya eslatmasi (ixtiyoriy)</Label><Input value={form.licenseReference} onChange={(e) => set({ licenseReference: e.target.value })} placeholder="Eski tizimdan qolgan ma'lumot" /><p className="text-xs text-muted-foreground">16-band bo'yicha rasmiy nodavlat OTM qamrovi “Nodavlat litsenziyalari” bo'limida yuritiladi.</p></div>
+                  <div className="space-y-1.5"><Label>Eski litsenziya bo'yicha izoh (ixtiyoriy)</Label><Input value={form.licenseReference} onChange={(e) => set({ licenseReference: e.target.value })} placeholder="Eski tizimdan qolgan ma'lumot" /><p className="text-xs text-muted-foreground">16-band bo'yicha rasmiy nodavlat OTM qamrovi “Nodavlat litsenziyalari” bo'limida yuritiladi.</p></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5"><Label>Kunduzgi normativ (oy)</Label><Input type="number" min={1} max={120} value={form.fullTimeDurationMonths ?? ""} onChange={(e) => set({ fullTimeDurationMonths: e.target.value ? Number(e.target.value) : null })} placeholder="Masalan: 48" /></div>
                     <div className="space-y-1.5"><Label>Masofaviy davomiylik (oy)</Label><Input type="number" min={form.fullTimeDurationMonths ?? 1} max={120} value={form.distanceDurationMonths ?? ""} onChange={(e) => set({ distanceDurationMonths: e.target.value ? Number(e.target.value) : null })} placeholder="Kamida kunduzgi muddat" /></div>

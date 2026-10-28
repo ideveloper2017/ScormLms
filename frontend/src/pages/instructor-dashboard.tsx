@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAuth } from '@/contexts/auth-context';
 import { qk } from '@/lib/query-keys';
 import { instructorApi } from '@/services/api/instructor-api';
+import { statusLabel } from "@/lib/status-labels";
 
 function DashboardSkeleton() {
   return (
@@ -224,7 +225,7 @@ export function InstructorDashboard() {
                       <CardTitle className="text-base">{c.title}</CardTitle>
                       <CardDescription>{c.students} talaba</CardDescription>
                     </div>
-                    {STATUS_BADGE[c.status] ?? <Badge variant="secondary">{c.status}</Badge>}
+                    {STATUS_BADGE[c.status] ?? <Badge variant="secondary">{statusLabel(c.status)}</Badge>}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">

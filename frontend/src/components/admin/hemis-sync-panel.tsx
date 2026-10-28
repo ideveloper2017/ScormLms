@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { hemisSyncApi, type HemisConflict, type HemisRunStatus } from '@/services/api/hemis-sync-api';
 import { HemisConnectionCheck } from './hemis-connection-check';
+import { statusLabel } from "@/lib/status-labels";
 
 const runVariant: Record<HemisRunStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   QUEUED: 'secondary', RUNNING: 'outline', COMPLETED: 'default', PARTIAL: 'secondary', FAILED: 'destructive',
@@ -92,7 +93,7 @@ export function HemisSyncPanel() {
         <TabsList className="grid w-full grid-cols-3"><TabsTrigger value="runs">Tarix</TabsTrigger><TabsTrigger value="mappings">Guruhlarni moslashtirish</TabsTrigger><TabsTrigger value="conflicts">Ziddiyatlar</TabsTrigger></TabsList>
         <TabsContent value="runs" className="space-y-2 pt-3">
           {runs.data?.map(run => <div key={run.id} className="grid gap-2 rounded border p-3 text-sm lg:grid-cols-[90px_120px_1fr_auto] lg:items-center">
-            <strong>#{run.id}</strong><Badge variant={runVariant[run.status]} className="w-fit">{run.status}</Badge>
+            <strong>#{run.id}</strong><Badge variant={runVariant[run.status]} className="w-fit">{statusLabel(run.status)}</Badge>
             <span className="text-muted-foreground">Ko‘rildi {run.recordsSeen} · yangi {run.created} · yangilandi {run.updated} · konflikt {run.conflicts} · xato {run.errors}</span>
             {run.canResume && state?.canManage && <Button size="sm" variant="outline" disabled={resume.isPending} onClick={() => resume.mutate(run.id)}><RotateCcw className="mr-2 h-3 w-3" />Davom ettirish</Button>}
           </div>)}
@@ -112,7 +113,7 @@ export function HemisSyncPanel() {
           {conflicts.data?.map(conflict => <div key={conflict.id} className="grid gap-2 rounded border p-3 text-sm lg:grid-cols-[1fr_1fr_auto] lg:items-center">
             <div><strong>{conflict.code}</strong><div className="text-xs text-muted-foreground">{conflict.studentNumberMasked} · run #{conflict.runId}</div></div>
             <div className="text-xs text-muted-foreground">{conflict.fieldName ?? 'manba'}: {conflict.localValueMasked ?? '—'} → {conflict.sourceValueMasked ?? '—'}</div>
-            {conflict.canResolve ? <Button size="sm" variant="outline" onClick={() => { setSelectedConflict(conflict); setNote(''); }}>Ko‘rib chiqildi</Button> : <Badge variant="secondary">{conflict.status}</Badge>}
+            {conflict.canResolve ? <Button size="sm" variant="outline" onClick={() => { setSelectedConflict(conflict); setNote(''); }}>Ko‘rib chiqildi</Button> : <Badge variant="secondary">{statusLabel(conflict.status)}</Badge>}
           </div>)}
           {conflicts.data?.length === 0 && <Empty text="Konflikt mavjud emas." />}
         </TabsContent>

@@ -221,7 +221,7 @@ export function TeacherManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>HEMIS ID</Label>
-                  <Input value={form.hemisEmployeeId} onChange={(e) => set({ hemisEmployeeId: e.target.value })} placeholder="employee_id_number" autoComplete="off" />
+                  <Input value={form.hemisEmployeeId} onChange={(e) => set({ hemisEmployeeId: e.target.value })} placeholder="HEMIS'dagi xodim ID raqami" autoComplete="off" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>HEMIS login</Label>
@@ -238,7 +238,7 @@ export function TeacherManagement() {
             {!isEdit && (
               <div className="rounded-md border border-dashed p-3">
                 <p className="mb-2 text-xs text-muted-foreground">
-                  Login akkaunti (ixtiyoriy) — to'ldirilsa, o'qituvchi tizimga kira oladi (rol: teacher).
+                  Login akkaunti (ixtiyoriy) — to'ldirilsa, o'qituvchi tizimga kira oladi.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">

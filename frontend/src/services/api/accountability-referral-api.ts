@@ -31,7 +31,7 @@ const unwrap = <T>(response: ApiResponse<T>, fallback: string): T => {
 };
 
 export const accountabilityReferralInputError = (input: SaveAccountabilityReferralInput, today: string): string | null => {
-  if (!input.complianceIssueId) return "Compliance vazifasi majburiy";
+  if (!input.complianceIssueId) return "Muvofiqlik vazifasini tanlang";
   if (input.reviewSubjectReference.trim().length < 5) return "Tekshiruv subyekti rekviziti kamida 5 belgi bo'lishi kerak";
   if (input.competentAuthority.trim().length < 3) return "Vakolatli organ majburiy";
   if (input.legalBasis.trim().length < 5) return "Huquqiy asos majburiy";

@@ -170,7 +170,7 @@ describe('course contents protection', () => {
 
   it('does not delete a module until the warning about its lessons is accepted', async () => {
     mountDetail();
-    const remove = await screen.findByRole('button', { name: "Sectionni o'chirish" });
+    const remove = await screen.findByRole('button', { name: "Bo'limni o'chirish" });
     fireEvent.click(remove);
     expect(teacherPortalApi.deleteModule).not.toHaveBeenCalled();
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('barcha darslar'));

@@ -11,15 +11,15 @@ import { useToast } from '@/hooks/use-toast';
 import { qk } from '@/lib/query-keys';
 import { teacherPortalApi } from '@/services/api/teacher-portal-api';
 import { teacherExamApi, type ExamAttendanceStatus, type ExamAppeal } from '@/services/api/teacher-exam-api';
+import { statusLabel } from "@/lib/status-labels";
 
 const today = new Date().toISOString().slice(0, 10);
-const statusLabel: Record<string, string> = { DRAFT: 'Draft', PUBLISHED: "E'lon qilingan", ONGOING: 'Davom etmoqda', COMPLETED: 'Yakunlangan' };
 
 function AppealReview({ appeal, onReview }: { appeal: ExamAppeal; onReview: (status: 'APPROVED' | 'PARTIAL' | 'REJECTED', decision: string, score?: number) => void }) {
   const [decision, setDecision] = useState('Natija qayta ko‘rib chiqildi');
   const [score, setScore] = useState('');
   return <div className="border rounded-lg p-3 space-y-2">
-    <div className="font-medium">{appeal.studentName} <Badge variant="outline">{appeal.status}</Badge></div>
+    <div className="font-medium">{appeal.studentName} <Badge variant="outline">{statusLabel(appeal.status)}</Badge></div>
     <p className="text-sm text-muted-foreground">{appeal.reason}</p>
     {appeal.status === 'PENDING' && <div className="flex flex-col sm:flex-row gap-2">
       <Input value={decision} onChange={event => setDecision(event.target.value)} placeholder="Qaror izohi" />
@@ -79,7 +79,7 @@ export function TeacherExams() {
       <Button disabled={!courseId || !title.trim() || !location.trim() || !examDate || !examTime || create.isPending} onClick={() => create.mutate()}><Plus className="h-4 w-4 mr-2" />Yaratish</Button>
     </CardContent></Card>
     <div className="grid lg:grid-cols-2 gap-4">{(sessions.data ?? []).map(session => <Card key={session.id} className={selectedId === session.id ? 'border-primary' : ''}><CardContent className="p-4 space-y-3">
-      <div className="flex justify-between gap-3"><div><div className="font-semibold">{session.title}</div><div className="text-sm text-muted-foreground">{session.courseTitle} · {session.examDate} {session.examTime} · {session.location}</div>{!session.curriculumLinked && <div className="flex items-center gap-1 text-xs text-amber-600 mt-1"><AlertTriangle className="h-3 w-3" />Kurs tasdiqlangan o'quv rejaga bog'lanmagan (fan oqimi yo'q)</div>}</div><Badge>{statusLabel[session.status]}</Badge></div>
+      <div className="flex justify-between gap-3"><div><div className="font-semibold">{session.title}</div><div className="text-sm text-muted-foreground">{session.courseTitle} · {session.examDate} {session.examTime} · {session.location}</div>{!session.curriculumLinked && <div className="flex items-center gap-1 text-xs text-amber-600 mt-1"><AlertTriangle className="h-3 w-3" />Kurs tasdiqlangan o'quv rejaga bog'lanmagan (fan oqimi yo'q)</div>}</div><Badge>{statusLabel(session.status)}</Badge></div>
       <div className="flex gap-3 text-sm"><span><Users className="inline h-4 w-4" /> {session.registeredCount}</span><span className="text-green-600">Kelgan: {session.presentCount}</span><span className="text-red-600">Kelmagan: {session.absentCount}</span></div>
       <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedId(session.id)}><ClipboardCheck className="h-4 w-4 mr-1" />Ro'yxat</Button>{session.status === 'DRAFT' && <><Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'publish' })}><CalendarCheck className="h-4 w-4 mr-1" />E'lon qilish</Button><Button size="icon" variant="ghost" className="text-destructive" onClick={() => action.mutate({ id: session.id, kind: 'remove' })}><Trash2 className="h-4 w-4" /></Button></>}{session.status === 'PUBLISHED' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'start' })}><Play className="h-4 w-4 mr-1" />Boshlash</Button>}{session.status === 'ONGOING' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'complete' })}><CheckCircle2 className="h-4 w-4 mr-1" />Yakunlash</Button>}</div>
     </CardContent></Card>)}</div>

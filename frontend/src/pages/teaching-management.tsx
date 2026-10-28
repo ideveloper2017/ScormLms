@@ -55,6 +55,7 @@ import { Label } from '@/components/ui/label.tsx';
 import { Textarea } from '@/components/ui/textarea.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
 import { Progress } from '@/components/ui/progress.tsx';
+import { statusLabel } from "@/lib/status-labels";
 
 const students = [
   {
@@ -261,7 +262,7 @@ export function TeachingManagement() {
       case 'transferred':
         return <Badge className="bg-blue-100 text-blue-800">O'tkazilgan</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">{statusLabel(status)}</Badge>;
     }
   };
 

@@ -168,11 +168,11 @@ export const decision559UatApi = {
   },
   list: async () => {
     const response = await api.get<ApiResponse<Decision559UatRun[]>>("/compliance/559/uat/runs");
-    return unwrap(response.data, "UAT runlarini yuklab bo'lmadi");
+    return unwrap(response.data, "Sinovlarni yuklab bo'lmadi");
   },
   detail: async (id: number) => {
     const response = await api.get<ApiResponse<Decision559UatDetail>>(`/compliance/559/uat/runs/${id}`);
-    return unwrap(response.data, "UAT runini yuklab bo'lmadi");
+    return unwrap(response.data, "Sinovni yuklab bo'lmadi");
   },
   manualEvidenceProgress: async (runId: number) => {
     const response = await api.get<ApiResponse<Decision559UatManualEvidenceProgress>>(
@@ -218,7 +218,7 @@ export const decision559UatApi = {
       title,
       sourceSha256: DECISION_559_SOURCE_SHA256,
     });
-    return unwrap(response.data, "UAT runini yaratib bo'lmadi");
+    return unwrap(response.data, "Sinovni yaratib bo'lmadi");
   },
   saveEvidence: async (runId: number, input: UatEvidenceInput) => {
     const form = new FormData();
@@ -261,15 +261,15 @@ export const decision559UatApi = {
   },
   submit: async (runId: number) => {
     const response = await api.post<ApiResponse<Decision559UatRun>>(`/compliance/559/uat/runs/${runId}/submit`);
-    return unwrap(response.data, "UAT runini reviewga yuborib bo'lmadi");
+    return unwrap(response.data, "Sinovni ko'rib chiqishga yuborib bo'lmadi");
   },
   approve: async (runId: number) => {
     const response = await api.post<ApiResponse<Decision559UatRun>>(`/compliance/559/uat/runs/${runId}/approve`);
-    return unwrap(response.data, "UAT runini tasdiqlab bo'lmadi");
+    return unwrap(response.data, "Sinovni tasdiqlab bo'lmadi");
   },
   reject: async (runId: number, reason: string) => {
     const response = await api.post<ApiResponse<Decision559UatRun>>(`/compliance/559/uat/runs/${runId}/reject`, { reason });
-    return unwrap(response.data, "UAT runini rad etib bo'lmadi");
+    return unwrap(response.data, "Sinovni rad etib bo'lmadi");
   },
   evidenceFile: async (id: number): Promise<DownloadedUatFile> => {
     const response = await api.get<Blob>(`/compliance/559/uat/evidence/${id}/file`, { responseType: "blob" });

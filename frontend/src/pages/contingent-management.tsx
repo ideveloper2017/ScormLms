@@ -53,6 +53,7 @@ import { Label } from '@/components/ui/label.tsx';
 import { Textarea } from '@/components/ui/textarea.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
 import { Progress } from '@/components/ui/progress.tsx';
+import { statusLabel } from "@/lib/status-labels";
 
 const students = [
   {
@@ -243,7 +244,7 @@ export function ContingentManagement() {
       case 'suspended':
         return <Badge className="bg-red-100 text-red-800">To\'xtatilgan</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">{statusLabel(status)}</Badge>;
     }
   };
 

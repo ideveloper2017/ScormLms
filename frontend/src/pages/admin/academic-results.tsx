@@ -32,6 +32,7 @@ import {
   type StudentGpaRow,
   type TestResultRow,
 } from "@/services/api/academic-results-api";
+import { statusLabel } from "@/lib/status-labels";
 
 const ALL = "__all__";
 const matchesSearch = (row: object, search: string) => Object.values(row).filter(value => typeof value === "string" || typeof value === "number").join(" ").toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
@@ -111,7 +112,7 @@ export function AcademicStatements({ finalStatement }: { finalStatement: boolean
     { accessorKey: "statement", header: "Vedmost" }, { accessorKey: "addedDate", header: "Qo'shilgan sana" },
     { id: "results", header: "Natijalar", cell: ({ row }) => `${row.original.passedCount}/${row.original.resultCount}` },
     { id: "average", header: "O'rtacha", cell: ({ row }) => number(row.original.averageScore) },
-    { id: "status", header: "Holati", cell: ({ row }) => <Badge variant={row.original.status === "COMPLETED" ? "default" : "secondary"}>{row.original.status}</Badge> },
+    { id: "status", header: "Holati", cell: ({ row }) => <Badge variant={row.original.status === "COMPLETED" ? "default" : "secondary"}>{statusLabel(row.original.status)}</Badge> },
   ];
   return <div className="space-y-6 p-3 sm:p-6">
     {statementId != null && <StatementDetails key={statementId} id={statementId} canWrite={hasAuthority(user, "ACADEMIC_WRITE")} close={() => setStatementId(null)} />}
