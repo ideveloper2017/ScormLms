@@ -653,14 +653,14 @@ export function StudentManagement({
           <Field label="Ism *"><Input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} /></Field>
           <Field label="Familiya *"><Input value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} /></Field>
           <Field label="Otasining ismi"><Input value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} /></Field>
-          <Field label="JSHSHIR *"><Input value={formData.pinfl} disabled={!!editingStudent} onChange={e => setFormData({...formData, pinfl: e.target.value})} /></Field>
+          <Field label="JSHSHIR *"><Input inputMode="numeric" maxLength={14} placeholder="14 xonali raqam" value={formData.pinfl} disabled={!!editingStudent} onChange={e => setFormData({...formData, pinfl: e.target.value})} /></Field>
           <Field label="Talaba raqami *"><Input value={formData.studentNumber} disabled={!!editingStudent} onChange={e => setFormData({...formData, studentNumber: e.target.value})} /></Field>
           <Field label="Tug'ilgan sana *"><Input type="date" value={formData.birthDate} disabled={!!editingStudent} onChange={e => setFormData({...formData, birthDate: e.target.value})} /></Field>
           <Field label="Jinsi *"><Select value={formData.gender} disabled={!!editingStudent} onValueChange={(value: Gender) => setFormData({...formData, gender: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="MALE">Erkak</SelectItem><SelectItem value="FEMALE">Ayol</SelectItem></SelectContent></Select></Field>
           <Field label="Fuqarolik mamlakati *"><Select value={formData.citizenshipCountryId} disabled={!!editingStudent || countriesQuery.isLoading} onValueChange={value => { const country = countriesQuery.data?.find(item => String(item.id) === value); setFormData({...formData, citizenshipCountryId: value, citizenship: country?.code === 'UZ' ? 'UZBEKISTAN' : 'OTHER'}); }}><SelectTrigger><SelectValue placeholder="Mamlakatni tanlang" /></SelectTrigger><SelectContent>{(countriesQuery.data ?? []).map(country => <SelectItem key={country.id} value={String(country.id)}>{country.name} ({country.code})</SelectItem>)}</SelectContent></Select></Field>
           <Field label="Telefon"><Input type="tel" placeholder="+998 90 123 45 67" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} /></Field>
           <Field label="Email"><Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></Field>
-          <Field label="Foto URL"><Input type="url" value={formData.photoUrl} onChange={e => setFormData({...formData, photoUrl: e.target.value})} /></Field>
+          <Field label="Rasm havolasi (ixtiyoriy)"><Input type="url" placeholder="https://..." value={formData.photoUrl} onChange={e => setFormData({...formData, photoUrl: e.target.value})} /></Field>
 
           <h3 className="border-b pb-2 pt-2 font-semibold sm:col-span-2">Pasport ma'lumotlari</h3>
           <Field label="Hujjat turi"><Select value={formData.passportType} onValueChange={(value: PassportType | 'NONE') => setFormData({...formData, passportType: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Kiritilmagan</SelectItem><SelectItem value="ID_CARD">ID karta</SelectItem><SelectItem value="BIOMETRIC_PASSPORT">Biometrik pasport</SelectItem><SelectItem value="PASSPORT">Pasport</SelectItem><SelectItem value="BIRTH_CERTIFICATE">Tug'ilganlik guvohnomasi</SelectItem></SelectContent></Select></Field>
@@ -675,7 +675,14 @@ export function StudentManagement({
           <Field label="Tuman yoki shahar"><Select value={formData.permanentDistrictId} disabled={!formData.permanentRegionId || permanentDistrictsQuery.isLoading} onValueChange={value => setFormData({...formData, permanentDistrictId: value})}><SelectTrigger><SelectValue placeholder={formData.permanentDistrict || "Avval hududni tanlang"} /></SelectTrigger><SelectContent>{(permanentDistrictsQuery.data ?? []).map(district => <SelectItem key={district.id} value={String(district.id)}>{district.name}</SelectItem>)}</SelectContent></Select></Field>
           <div className="space-y-2 sm:col-span-2"><Label>Manzil</Label><Textarea value={formData.permanentAddress} onChange={e => setFormData({...formData, permanentAddress: e.target.value})} /></div>
 
-          <h3 className="border-b pb-2 pt-2 font-semibold sm:col-span-2">Hozirgi yashash manzili</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 pt-2 sm:col-span-2">
+            <h3 className="font-semibold">Hozirgi yashash manzili</h3>
+            <Button type="button" variant="ghost" size="sm" disabled={!formData.permanentRegionId && !formData.permanentAddress}
+              onClick={() => setFormData({ ...formData, currentRegion: formData.permanentRegion, currentRegionId: formData.permanentRegionId,
+                currentDistrict: formData.permanentDistrict, currentDistrictId: formData.permanentDistrictId, currentAddress: formData.permanentAddress })}>
+              Doimiy manzil bilan bir xil
+            </Button>
+          </div>
           <Field label="Hudud"><Select value={formData.currentRegionId} onValueChange={value => setFormData({...formData, currentRegionId: value, currentDistrictId: ''})}><SelectTrigger><SelectValue placeholder={formData.currentRegion || "Hududni tanlang"} /></SelectTrigger><SelectContent>{(regionsQuery.data ?? []).map(region => <SelectItem key={region.id} value={String(region.id)}>{region.name}</SelectItem>)}</SelectContent></Select></Field>
           <Field label="Tuman yoki shahar"><Select value={formData.currentDistrictId} disabled={!formData.currentRegionId || currentDistrictsQuery.isLoading} onValueChange={value => setFormData({...formData, currentDistrictId: value})}><SelectTrigger><SelectValue placeholder={formData.currentDistrict || "Avval hududni tanlang"} /></SelectTrigger><SelectContent>{(currentDistrictsQuery.data ?? []).map(district => <SelectItem key={district.id} value={String(district.id)}>{district.name}</SelectItem>)}</SelectContent></Select></Field>
           <div className="space-y-2 sm:col-span-2"><Label>Manzil</Label><Textarea value={formData.currentAddress} onChange={e => setFormData({...formData, currentAddress: e.target.value})} /></div>

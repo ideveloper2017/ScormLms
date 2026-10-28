@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/query-keys";
 import { KeyRound } from "lucide-react";
@@ -33,6 +34,11 @@ interface TeacherForm {
   password: string;
 }
 
+// O'qituvchi kartochkasi uchun tayyor qiymatlar (ro'yxatda yo'q qiymatni ham yozish mumkin)
+const ACADEMIC_DEGREES = ["Falsafa doktori (PhD)", "Fan doktori (DSc)", "Fan nomzodi"];
+const ACADEMIC_RANKS = ["Dotsent", "Professor", "Katta ilmiy xodim"];
+const POSITIONS = ["Assistent", "O'qituvchi", "Katta o'qituvchi", "Dotsent", "Professor", "Kafedra mudiri"];
+
 export function TeacherManagement() {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "TEACHER_WRITE");
@@ -46,6 +52,15 @@ export function TeacherManagement() {
     form.subjectIds.includes(id)
       ? form.subjectIds.filter((s) => s !== id)
       : [...form.subjectIds, id];
+
+  const [subjectSearch, setSubjectSearch] = useState("");
+  /** Tanlangan fanlar tepada, qolganlari qidiruv bo'yicha */
+  const visibleSubjects = (selected: number[]) => {
+    const query = subjectSearch.trim().toLowerCase();
+    return subjects
+      .filter((s) => !query || selected.includes(s.id) || s.name.toLowerCase().includes(query))
+      .sort((a, b) => Number(selected.includes(b.id)) - Number(selected.includes(a.id)) || a.name.localeCompare(b.name));
+  };
 
   return (
     <div className="p-3 sm:p-4 md:p-6">
@@ -168,18 +183,21 @@ export function TeacherManagement() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Ilmiy daraja</Label>
-                <Input value={form.academicDegree} onChange={(e) => set({ academicDegree: e.target.value })} placeholder="PhD, DSc" />
+                <Label htmlFor="teacher-degree">Ilmiy daraja</Label>
+                <Input id="teacher-degree" list="teacher-degrees" value={form.academicDegree} onChange={(e) => set({ academicDegree: e.target.value })} placeholder="Ro'yxatdan tanlang yoki yozing" />
+                <datalist id="teacher-degrees">{ACADEMIC_DEGREES.map((value) => <option key={value} value={value} />)}</datalist>
               </div>
               <div className="space-y-1.5">
-                <Label>Ilmiy unvon</Label>
-                <Input value={form.academicRank} onChange={(e) => set({ academicRank: e.target.value })} placeholder="dotsent, professor" />
+                <Label htmlFor="teacher-rank">Ilmiy unvon</Label>
+                <Input id="teacher-rank" list="teacher-ranks" value={form.academicRank} onChange={(e) => set({ academicRank: e.target.value })} placeholder="Ro'yxatdan tanlang yoki yozing" />
+                <datalist id="teacher-ranks">{ACADEMIC_RANKS.map((value) => <option key={value} value={value} />)}</datalist>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Lavozim</Label>
-                <Input value={form.position} onChange={(e) => set({ position: e.target.value })} placeholder="katta o'qituvchi" />
+                <Label htmlFor="teacher-position">Lavozim</Label>
+                <Input id="teacher-position" list="teacher-positions" value={form.position} onChange={(e) => set({ position: e.target.value })} placeholder="Ro'yxatdan tanlang yoki yozing" />
+                <datalist id="teacher-positions">{POSITIONS.map((value) => <option key={value} value={value} />)}</datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Kafedra</Label>
@@ -193,13 +211,18 @@ export function TeacherManagement() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Fanlar</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Fanlar</Label>
+                <span className="text-xs text-muted-foreground">{form.subjectIds.length} ta tanlangan</span>
+              </div>
               {subjects.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Fanlar mavjud emas</p>
               ) : (
-                <ScrollArea className="h-32 rounded-md border p-2">
+                <>
+                <Input aria-label="Fanni qidirish" value={subjectSearch} onChange={(e) => setSubjectSearch(e.target.value)} placeholder="Fan nomi bo'yicha qidirish..." />
+                <ScrollArea className="h-40 rounded-md border p-2">
                   <div className="space-y-2">
-                    {subjects.map((s) => (
+                    {visibleSubjects(form.subjectIds).map((s) => (
                       <label key={s.id} className="flex cursor-pointer items-center gap-2 text-sm">
                         <Checkbox
                           checked={form.subjectIds.includes(s.id)}
@@ -210,11 +233,13 @@ export function TeacherManagement() {
                     ))}
                   </div>
                 </ScrollArea>
+                </>
               )}
             </div>
 
-            <div className="rounded-md border border-dashed p-3">
-              <p className="mb-2 text-xs text-muted-foreground">
+            <details className="rounded-md border border-dashed p-3">
+              <summary className="cursor-pointer text-sm font-medium">HEMIS orqali kirish (ixtiyoriy)</summary>
+              <p className="mb-2 mt-2 text-xs text-muted-foreground">
                 HEMIS orqali kirish — o'qituvchi HEMIS xodim logini bilan kiradi. HEMIS ID yoki loginidan
                 kamida bittasini kiriting; LMS logini bo'lmasa, birinchi kirishda avtomatik yaratiladi.
               </p>
@@ -228,7 +253,7 @@ export function TeacherManagement() {
                   <Input value={form.hemisLogin} onChange={(e) => set({ hemisLogin: e.target.value })} autoComplete="off" />
                 </div>
               </div>
-            </div>
+            </details>
 
             <div className="flex items-center gap-2">
               <Switch checked={form.active} onCheckedChange={(v) => set({ active: v })} />
