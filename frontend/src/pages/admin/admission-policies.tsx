@@ -13,6 +13,7 @@ import { listPrograms } from "@/lib/academic-api";
 import { hasAuthority } from "@/lib/rbac-api";
 import { admissionPolicyApi, admissionPolicyInputError, authorityForGovernance, type DistanceAdmissionPolicy, type InstitutionGovernanceType, type SaveDistanceAdmissionPolicyInput } from "@/services/api/admission-policy-api";
 import { statusLabel } from "@/lib/status-labels";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const currentAcademicYear = () => { const now = new Date(); const year = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1; return `${year}-${year + 1}`; };
 const initialForm = (): SaveDistanceAdmissionPolicyInput => ({
@@ -45,7 +46,7 @@ export function AdminAdmissionPolicies() {
     {canWrite && <Card><CardHeader><CardTitle className="flex items-center gap-2"><Landmark className="h-5 w-5" />Yangi siyosat versiyasi</CardTitle><CardDescription>Tasdiqlangan siyosatsiz masofaviy qabul, transfer yoki qayta tiklash amalga oshmaydi.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
       <div className="space-y-2"><Label>Masofaviy dastur</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.programId} onChange={(e) => setForm({ ...form, programId: Number(e.target.value) })}><option value={0}>Dastur tanlang</option>{(programs.data ?? []).filter((p) => p.active && p.distanceEnabled).map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} - ` : ""}{p.name}</option>)}</select></div>
       <div className="space-y-2"><Label>Versiya kodi</Label><Input value={form.versionCode} onChange={(e) => setForm({ ...form, versionCode: e.target.value })} placeholder="QABUL-2026-01" /></div>
-      <div className="space-y-2"><Label>O'quv yili</Label><Input value={form.academicYear} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} /></div>
+      <div className="space-y-2"><Label>O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" value={form.academicYear} onChange={(academicYear) => setForm((f) => ({ ...f, academicYear }))} /></div>
       <div className="space-y-2"><Label>OTM boshqaruv turi</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.institutionGovernanceType} onChange={(e) => changeGovernance(e.target.value as InstitutionGovernanceType)}>{Object.entries(governanceLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
       <div className="space-y-2"><Label>OTM nomi</Label><Input value={form.institutionName} onChange={(e) => setForm({ ...form, institutionName: e.target.value })} /></div>
       <div className="space-y-2"><Label>Tasdiqlovchi organ</Label><Input value={form.approvingAuthorityName} onChange={(e) => setForm({ ...form, approvingAuthorityName: e.target.value })} placeholder="Masalan: Oliy ta'lim, fan va innovatsiyalar vazirligi" /></div>

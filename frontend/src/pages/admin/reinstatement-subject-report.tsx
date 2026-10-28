@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { listReinstatementSubjectReport } from '@/lib/student-api';
 import type { CourseEnrollmentStatus } from '@/types/student.types';
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const enrollmentLabel: Record<CourseEnrollmentStatus, string> = {
   ACTIVE: 'Faol',
@@ -47,7 +48,7 @@ export function AdminReinstatementSubjectReport() {
 
     <Card><CardContent className="grid gap-4 pt-6 md:grid-cols-2">
       <div className="space-y-2"><Label htmlFor="reinstatement-search">Talaba</Label><Input id="reinstatement-search" value={search} placeholder="F.I.O. yoki talaba raqami" onChange={event => { setSearch(event.target.value); setPage(0); }} /></div>
-      <div className="space-y-2"><Label htmlFor="reinstatement-year">O'quv yili</Label><Input id="reinstatement-year" value={academicYear} placeholder="2026-2027" maxLength={9} onChange={event => { setAcademicYear(event.target.value); setPage(0); }} /></div>
+      <div className="space-y-2"><Label htmlFor="reinstatement-year">O'quv yili</Label><AcademicYearSelect id="reinstatement-year" emptyLabel="Barcha yillar" value={academicYear} onChange={year => { setAcademicYear(year); setPage(0); }} /></div>
     </CardContent></Card>
 
     {report.isLoading && <div className="flex justify-center p-12"><Loader2 className="animate-spin" /></div>}

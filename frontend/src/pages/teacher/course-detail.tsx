@@ -75,6 +75,7 @@ import {
   type CourseContent,
   type CourseModule,
 } from "@/services/api/teacher-portal-api";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const CONTENT_META: Record<
   string,
@@ -1309,7 +1310,7 @@ export function TeacherCourseDetail({
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 flex-[2]">
-                  <label className="space-y-1 text-sm">O'quv yili<Input value={enrollmentAcademicYear} onChange={(event) => setEnrollmentAcademicYear(event.target.value)} placeholder="2026-2027" disabled={course.status === "archived"} /></label>
+                  <label className="space-y-1 text-sm">O'quv yili<AcademicYearSelect aria-label="O'quv yili" value={enrollmentAcademicYear} onChange={setEnrollmentAcademicYear} disabled={course.status === "archived"} /></label>
                   <label className="space-y-1 text-sm">Semestr<Input type="number" min={1} max={20} value={enrollmentSemester} onChange={(event) => setEnrollmentSemester(event.target.value)} disabled={course.status === "archived"} /></label>
                   <label className="space-y-1 text-sm">Kredit<Input type="number" min={0} max={100} value={enrollmentCredits} onChange={(event) => setEnrollmentCredits(event.target.value)} disabled={course.status === "archived"} /></label>
                   <div className="space-y-1 text-sm">Fan turi<Select value={enrollmentRequired} onValueChange={setEnrollmentRequired}><SelectTrigger aria-label="Fan turi"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="true">Majburiy</SelectItem><SelectItem value="false">Tanlov</SelectItem></SelectContent></Select></div>

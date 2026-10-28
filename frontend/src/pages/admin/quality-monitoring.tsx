@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasAuthority } from "@/lib/rbac-api";
 import { canCompleteQualityMonitoringStudy, qualityMonitoringApi, qualityMonitoringParticipantRange, type CompleteQualityMonitoringStudyInput, type QualityMonitoringMethod, type QualityMonitoringStudy } from "@/services/api/quality-monitoring-api";
 import { statusLabel } from "@/lib/status-labels";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const methodMeta: Record<QualityMonitoringMethod, { label: string; icon: typeof UsersRound }> = {
   FOCUS_GROUP: { label: "Fokus-guruh", icon: UsersRound },
@@ -60,7 +61,7 @@ export function AdminQualityMonitoring() {
       <div className="space-y-2"><Label>Usul</Label><Select value={form.method} onValueChange={(value) => setForm({ ...form, method: value as QualityMonitoringMethod })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(methodMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-2"><Label>Nomi</Label><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></div>
       <div className="space-y-2 md:col-span-2"><Label>Maqsad</Label><Textarea value={form.objective} onChange={(event) => setForm({ ...form, objective: event.target.value })} /></div>
-      <div className="space-y-2"><Label>O'quv yili</Label><Input value={form.academicYear} onChange={(event) => setForm({ ...form, academicYear: event.target.value })} /></div>
+      <div className="space-y-2"><Label>O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" value={form.academicYear} onChange={(academicYear) => setForm((f) => ({ ...f, academicYear }))} /></div>
       <div className="space-y-2"><Label>Bog'langan anonim so'rov ID (ixtiyoriy)</Label><Input type="number" min={1} value={form.relatedSurveyId} onChange={(event) => setForm({ ...form, relatedSurveyId: event.target.value })} /></div>
       <div className="space-y-2"><Label>Boshlanish</Label><Input type="datetime-local" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} /></div>
       <div className="space-y-2"><Label>Tugash</Label><Input type="datetime-local" value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} /></div>

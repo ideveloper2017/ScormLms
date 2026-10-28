@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { downloadInstitutionReport, getContentCompletenessReport, getInstitutionReport, type ReportExportFormat } from "@/services/api/reports-api";
 import { statusLabel } from "@/lib/status-labels";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const today = new Date().toISOString().slice(0, 10);
 const sixMonthsAgo = (() => { const value = new Date(); value.setMonth(value.getMonth() - 6); value.setDate(1); return value.toISOString().slice(0, 10); })();
@@ -47,7 +48,7 @@ export function Reports() {
     <Card>
       <CardHeader className="gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div><CardTitle>Yillik kontent to'liqligi</CardTitle><CardDescription className="mt-1">Har bir kursning nashr, kontent, nazorat va sinxron/asinxron mashg'ulot mezonlari.</CardDescription></div>
-        <div className="flex items-end gap-2"><div><Label className="text-xs">O'quv yili</Label><Input className="w-36" placeholder="2026-2027" value={academicYear} onChange={(event) => setAcademicYear(event.target.value)} /></div><Button variant="outline" disabled={!/^\d{4}-\d{4}$/.test(academicYear)} onClick={() => setAppliedAcademicYear(academicYear)}>Ko'rsatish</Button></div>
+        <div className="flex items-end gap-2"><div><Label className="text-xs">O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" className="w-40" value={academicYear} onChange={setAcademicYear} /></div><Button variant="outline" disabled={!/^\d{4}-\d{4}$/.test(academicYear)} onClick={() => setAppliedAcademicYear(academicYear)}>Ko'rsatish</Button></div>
       </CardHeader>
       <CardContent className="space-y-5">
         {completeness.isLoading ? <Skeleton className="h-52 w-full" /> : completeness.error || !completeness.data ? <div className="rounded-md border border-destructive/40 p-6 text-center"><p className="text-sm text-destructive">{(completeness.error as Error)?.message ?? "Kontent to'liqligi yuklanmadi"}</p><Button className="mt-3" variant="outline" onClick={() => completeness.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Qayta urinish</Button></div> : <>

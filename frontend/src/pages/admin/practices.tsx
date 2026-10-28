@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasAuthority } from "@/lib/rbac-api";
 import { canApprovePractice, canCompletePractice, practiceApi, practicePlacementInputValid, type SaveStudentPracticeInput, type StudentPractice } from "@/services/api/practice-api";
 import { statusLabel } from "@/lib/status-labels";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const today = () => {
   const date = new Date();
@@ -80,7 +81,7 @@ export function AdminPractices() {
     <div><h1 className="text-2xl font-bold">Talaba amaliyoti</h1><p className="text-sm text-muted-foreground">559-son qaror 23-bandi: o'quv rejasidagi muddat, mos ish joyi yoki OTM kelishgan tashkilot.</p></div>
     {canWrite && <Card><CardHeader><CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Amaliyotni rejalashtirish</CardTitle><CardDescription>Talaba ishlamasa yoki ish joyi yo'nalishga mos bo'lmasa, hamkor tashkilot kelishuvi majburiy.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
       <div className="space-y-2"><Label>Faol masofaviy talaba</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.studentId} onChange={(event) => setForm({ ...form, studentId: Number(event.target.value) })}><option value={0}>Talabani tanlang</option>{(students.data ?? []).map((student) => <option key={student.id} value={student.id}>{student.studentNumber} - {student.fullName}</option>)}</select></div>
-      <div className="space-y-2"><Label>O'quv yili</Label><Input value={form.academicYear} onChange={(event) => setForm({ ...form, academicYear: event.target.value })} /></div>
+      <div className="space-y-2"><Label>O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" value={form.academicYear} onChange={(academicYear) => setForm((f) => ({ ...f, academicYear }))} /></div>
       <div className="space-y-2 md:col-span-2"><Label>O'quv reja rekviziti</Label><Input value={form.planReference} onChange={(event) => setForm({ ...form, planReference: event.target.value })} placeholder="Tasdiqlangan reja raqami, semestr va amaliyot turi" /></div>
       <div className="space-y-2"><Label>Boshlanish</Label><Input type="date" value={form.startsOn} onChange={(event) => setForm({ ...form, startsOn: event.target.value })} /></div>
       <div className="space-y-2"><Label>Tugash</Label><Input type="date" value={form.endsOn} onChange={(event) => setForm({ ...form, endsOn: event.target.value })} /></div>

@@ -59,6 +59,7 @@ import { Loader2, Download, UserPlus, RefreshCcw, ArrowRightLeft, MoreHorizontal
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { hasAuthority } from '@/lib/rbac-api';
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 type LifecycleAction = Exclude<StudentLifecycleEventType, 'ADMISSION'>;
 
@@ -708,7 +709,7 @@ export function StudentManagement({
 
     <Dialog open={!!lifecycleTarget} onOpenChange={open => { if (!open) setLifecycleTarget(null); }}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{lifecycleTarget && `${lifecycleTarget.student.fullName}: ${actionLabel[lifecycleTarget.action]}`}</DialogTitle></DialogHeader>
       <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
-        {lifecycleTarget?.action === 'TRANSFER' && <><Field label="Yangi ta'lim dasturi *"><AcademicSelect kind="program" valueMode="id" value={lifecycleForm.targetProgramId} onChange={value => setLifecycleForm({...lifecycleForm, targetProgramId: value, targetGroupId: ''})} /></Field><Field label="Yangi guruh"><AcademicSelect kind="group" valueMode="id" value={lifecycleForm.targetGroupId} onChange={value => setLifecycleForm({...lifecycleForm, targetGroupId: value})} /></Field><Field label="O'quv yili"><Input value={lifecycleForm.academicYear} placeholder="2026-2027" onChange={e => setLifecycleForm({...lifecycleForm, academicYear: e.target.value})} /></Field></>}
+        {lifecycleTarget?.action === 'TRANSFER' && <><Field label="Yangi ta'lim dasturi *"><AcademicSelect kind="program" valueMode="id" value={lifecycleForm.targetProgramId} onChange={value => setLifecycleForm({...lifecycleForm, targetProgramId: value, targetGroupId: ''})} /></Field><Field label="Yangi guruh"><AcademicSelect kind="group" valueMode="id" value={lifecycleForm.targetGroupId} onChange={value => setLifecycleForm({...lifecycleForm, targetGroupId: value})} /></Field><Field label="O'quv yili"><AcademicYearSelect aria-label="O'quv yili" emptyLabel="Tanlanmagan" value={lifecycleForm.academicYear ?? ''} onChange={academicYear => setLifecycleForm(f => ({ ...f, academicYear }))} /></Field></>}
         <EvidenceFields value={lifecycleForm} onChange={patch => setLifecycleForm({...lifecycleForm, ...patch})} />
       </div><DialogFooter><Button variant="outline" onClick={() => setLifecycleTarget(null)}>Bekor qilish</Button><Button disabled={saving} onClick={submitLifecycle}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Buyruqni qo'llash</Button></DialogFooter></DialogContent>
     </Dialog>

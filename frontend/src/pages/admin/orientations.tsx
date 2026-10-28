@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasAuthority } from "@/lib/rbac-api";
 import { canRecordOrientationAttendance, orientationApi, type CreateOrientationInput, type OrientationAttendanceStatus } from "@/services/api/orientation-api";
 import { statusLabel } from "@/lib/status-labels";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const localDateTime = (offsetHours: number) => {
   const date = new Date(Date.now() + offsetHours * 3_600_000);
@@ -59,7 +60,7 @@ export function AdminOrientations() {
     {canWrite && <Card><CardHeader><CardTitle className="flex items-center gap-2"><CalendarCheck2 className="h-5 w-5" />Yangi orientatsiya</CardTitle><CardDescription>E'lon qilinganda mos faol masofaviy talabalar ro'yxati snapshot qilinadi.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
       <div className="space-y-2"><Label>Nomi</Label><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></div>
       <div className="space-y-2"><Label>O'tkazish joyi</Label><Input value={form.venue} onChange={(event) => setForm({ ...form, venue: event.target.value })} placeholder="Bino, xona" /></div>
-      <div className="space-y-2"><Label>O'quv yili</Label><Input value={form.academicYear} onChange={(event) => setForm({ ...form, academicYear: event.target.value })} /></div>
+      <div className="space-y-2"><Label>O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" value={form.academicYear} onChange={(academicYear) => setForm((f) => ({ ...f, academicYear }))} /></div>
       <div className="grid grid-cols-2 gap-2"><div className="space-y-2"><Label>Boshlanish</Label><Input type="datetime-local" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} /></div><div className="space-y-2"><Label>Tugash</Label><Input type="datetime-local" value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} /></div></div>
       <div className="space-y-2 md:col-span-2"><Label>Yo'riqnoma</Label><Textarea value={form.instructions} onChange={(event) => setForm({ ...form, instructions: event.target.value })} placeholder="Kirish, kurslar, topshiriqlar, testlar va texnik yordam bo'yicha ko'rsatma" /></div>
       <Button className="md:col-span-2 md:w-fit" disabled={!form.title.trim() || !form.venue.trim() || create.isPending} onClick={() => create.mutate()}><CalendarCheck2 className="mr-2 h-4 w-4" />Qoralama yaratish</Button>

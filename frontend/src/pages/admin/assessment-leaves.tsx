@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasAuthority } from "@/lib/rbac-api";
 import { assessmentLeaveApi, assessmentLeaveDays, assessmentLeaveInputError, type AssessmentLeaveEvidence, type AssessmentLeavePurpose, type SaveAssessmentLeaveEvidenceInput } from "@/services/api/assessment-leave-api";
 import { statusLabel } from "@/lib/status-labels";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const localDate = (date = new Date()) => { const copy = new Date(date); copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset()); return copy.toISOString().slice(0, 10); };
 const currentYear = () => { const d = new Date(); const first = d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1; return `${first}-${first + 1}`; };
@@ -37,7 +38,7 @@ export function AdminAssessmentLeaves() {
     <div><h1 className="text-2xl font-bold">Yakuniy baholash ta'tili</h1><p className="text-sm text-muted-foreground">559-son qaror 22-bandi: ishlaydigan masofaviy talaba uchun kamida 15 kalendar kun ish haqi saqlangan ta'til dalili.</p></div>
     {canWrite && <Card><CardHeader><CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5" />{editingId ? "Qoralamani tahrirlash" : "Ish beruvchi ta'til dalili"}</CardTitle><CardDescription>Mehnat faoliyati, baholash maqsadi, ish beruvchi buyrug'i va himoyalangan dalil rekviziti birga saqlanadi.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
       <div className="space-y-2"><Label>Faol masofaviy talaba</Label><select disabled={!!editingId} className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.studentId} onChange={(e) => setForm({ ...form, studentId: Number(e.target.value) })}><option value={0}>Talabani tanlang</option>{(students.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.studentNumber} - {s.fullName}</option>)}</select></div>
-      <div className="space-y-2"><Label>O'quv yili</Label><Input value={form.academicYear} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} /></div>
+      <div className="space-y-2"><Label>O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" value={form.academicYear} onChange={(academicYear) => setForm((f) => ({ ...f, academicYear }))} /></div>
       <div className="space-y-2"><Label>Ta'til maqsadi</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.leavePurpose} onChange={(e) => setForm({ ...form, leavePurpose: e.target.value as AssessmentLeavePurpose })}>{Object.entries(purposeLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
       <div className="space-y-2"><Label>Baholash/himoya rekviziti</Label><Input value={form.assessmentReference} onChange={(e) => setForm({ ...form, assessmentReference: e.target.value })} placeholder="Jadval, DAK yoki himoya buyrug'i" /></div>
       <div className="space-y-2"><Label>Ish beruvchi</Label><Input value={form.employerName} onChange={(e) => setForm({ ...form, employerName: e.target.value })} /></div>

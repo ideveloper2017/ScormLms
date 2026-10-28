@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasAuthority } from "@/lib/rbac-api";
 import { foreignTeacherEngagementApi, foreignTeacherEngagementInputError, type ForeignTeacherEngagement, type SaveForeignTeacherEngagementInput } from "@/services/api/foreign-teacher-engagement-api";
 import { statusLabel } from "@/lib/status-labels";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const localDate = () => { const date = new Date(); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0, 10); };
 const currentAcademicYear = () => { const date = new Date(); const first = date.getMonth() >= 8 ? date.getFullYear() : date.getFullYear() - 1; return `${first}-${first + 1}`; };
@@ -38,7 +39,7 @@ export function AdminForeignTeacherEngagements() {
     <div><h1 className="text-2xl font-bold">Xorijiy pedagoglar</h1><p className="text-sm text-muted-foreground">559-son qaror 25-bandi bo'yicha masofadan dars olib boradigan xorijiy pedagogni jalb qilish dalillari.</p></div>
     {canWrite && <Card><CardHeader><CardTitle className="flex items-center gap-2"><Globe2 className="h-5 w-5" />{editingId ? "Qoralamani tahrirlash" : "Xorijiy pedagog engagementi"}</CardTitle><CardDescription>Fuqarolik va malaka dalili, shartnoma, buyruq, davr hamda masofaviy kurslar bir yozuvda tekshiriladi.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">
       <div className="space-y-2"><Label>Faol pedagog</Label><select disabled={!!editingId} className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: Number(e.target.value) })}><option value={0}>Pedagogni tanlang</option>{(teachers.data ?? []).map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName}{teacher.academicDegree ? ` - ${teacher.academicDegree}` : ""}</option>)}</select></div>
-      <div className="space-y-2"><Label>O'quv yili</Label><Input value={form.academicYear} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} /></div>
+      <div className="space-y-2"><Label>O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" value={form.academicYear} onChange={(academicYear) => setForm((f) => ({ ...f, academicYear }))} /></div>
       <div className="space-y-2"><Label>Fuqarolik davlati kodi</Label><Input maxLength={2} value={form.citizenshipCountryCode} onChange={(e) => setForm({ ...form, citizenshipCountryCode: e.target.value.toUpperCase() })} placeholder="ISO alpha-2, masalan IL" /></div>
       <div className="space-y-2"><Label>Fuqarolik dalili rekviziti</Label><Input value={form.citizenshipEvidenceReference} onChange={(e) => setForm({ ...form, citizenshipEvidenceReference: e.target.value })} /></div>
       <div className="space-y-2 md:col-span-2"><Label>Malaka hujjati rekviziti</Label><Input value={form.qualificationReference} onChange={(e) => setForm({ ...form, qualificationReference: e.target.value })} /></div>

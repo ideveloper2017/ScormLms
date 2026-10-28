@@ -17,6 +17,7 @@ import {
   type CallLetterRecord, type DocumentStudent, type SaveCallLetterRequest,
   type SaveTranscriptRequest, type TranscriptRecord,
 } from "@/services/api/academic-documents-api";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const day = (offset = 0) => {
   const value = new Date();
@@ -138,7 +139,7 @@ export function StudentTranscripts() {
         <StudentSelect students={studentsQuery.data ?? []} value={form.studentId} onChange={(studentId) => { const student = studentsQuery.data?.find((row) => row.id === studentId); set({ studentId, academicYear: student?.academicYear ?? form.academicYear, semester: student?.semester ?? form.semester }); }} />
         {studentsQuery.error && <p className="text-sm text-destructive">Talabalar ro'yxati yuklanmadi.</p>}
         <div className="space-y-1.5"><Label>Transkript raqami {context.isEdit ? "*" : "(bo'sh qoldirilsa avtomatik)"}</Label><Input value={form.documentNumber ?? ""} onChange={(event) => set({ documentNumber: event.target.value })} /></div>
-        <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>O'quv yili *</Label><Input placeholder="2025-2026" value={form.academicYear} onChange={(event) => set({ academicYear: event.target.value })} /></div><div className="space-y-1.5"><Label>Semestrgacha *</Label><Input type="number" min={1} max={20} value={form.semester} onChange={(event) => set({ semester: Number(event.target.value) })} /></div></div>
+        <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>O'quv yili *</Label><AcademicYearSelect aria-label="O'quv yili" value={form.academicYear} onChange={(academicYear) => set({ academicYear })} /></div><div className="space-y-1.5"><Label>Semestrgacha *</Label><Input type="number" min={1} max={20} value={form.semester} onChange={(event) => set({ semester: Number(event.target.value) })} /></div></div>
       </div>}
     />
   </div>;
