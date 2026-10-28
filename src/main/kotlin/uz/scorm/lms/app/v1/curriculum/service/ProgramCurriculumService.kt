@@ -10,6 +10,9 @@ import uz.scorm.lms.app.v1.academicperiod.service.AcademicPeriodService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.curriculum.dto.AddCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.ApproveCurriculumRequest
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumComponentDto
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumScheduleDto
+import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumComponentRequest
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSubjectDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumStudentDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumStudentPageDto
@@ -17,11 +20,15 @@ import uz.scorm.lms.app.v1.curriculum.dto.CurriculumVersionDto
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSubjectHours
 import uz.scorm.lms.app.v1.curriculum.dto.UpdateCurriculumSubjectRequest
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
+import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumComponent
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumSubject
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
+import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumComponentRepository
+import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumScheduleRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
@@ -47,6 +54,8 @@ class ProgramCurriculumService(
     private val academicPeriodService: AcademicPeriodService,
     private val userRepository: UserRepository,
     private val auditService: AuditService,
+    private val componentRepository: ProgramCurriculumComponentRepository,
+    private val scheduleRepository: ProgramCurriculumScheduleRepository,
 ) {
     @Transactional(readOnly = true)
     fun list(): List<CurriculumVersionDto> =
@@ -137,6 +146,7 @@ class ProgramCurriculumService(
             validFrom = request.validFrom,
             validUntil = request.validUntil,
             createdByUser = requireUser(actorId),
+            qualification = qualificationOf(request.qualification),
         ))
         auditService.logAction(
             "CURRICULUM_VERSION_CREATED",
@@ -181,6 +191,7 @@ class ProgramCurriculumService(
         version.qualificationRequirementsReference = request.qualificationRequirementsReference.trim()
         version.validFrom = request.validFrom
         version.validUntil = request.validUntil
+        version.qualification = qualificationOf(request.qualification)
         versionRepository.save(version)
         auditService.logAction("CURRICULUM_VERSION_UPDATED", actorId, "curriculum=$id; version=${version.versionCode}")
         return toDto(version)
@@ -233,6 +244,61 @@ class ProgramCurriculumService(
         subjectItemRepository.save(item)
         auditService.logAction("CURRICULUM_SUBJECT_UPDATED", actorId, "curriculum=$id; item=$itemId")
         return toDto(version)
+    }
+
+    /** Malakaviy amaliyot yoki YaDA qo'shish (faqat DRAFT rejada). */
+    @Transactional
+    fun addComponent(id: Long, request: SaveCurriculumComponentRequest, actorId: Long): CurriculumVersionDto {
+        val version = requireDraft(id)
+        val component = componentRepository.save(ProgramCurriculumComponent(
+            curriculumVersion = version, type = request.type, name = "", semester = request.semester,
+        ).also { applyComponent(it, version, request) })
+        auditService.logAction("CURRICULUM_COMPONENT_ADDED", actorId, "curriculum=$id; component=${component.id}; type=${request.type}")
+        return toDto(version)
+    }
+
+    @Transactional
+    fun updateComponent(id: Long, componentId: Long, request: SaveCurriculumComponentRequest, actorId: Long): CurriculumVersionDto {
+        val version = requireDraft(id)
+        val component = requireComponent(id, componentId)
+        applyComponent(component, version, request)
+        componentRepository.save(component)
+        auditService.logAction("CURRICULUM_COMPONENT_UPDATED", actorId, "curriculum=$id; component=$componentId")
+        return toDto(version)
+    }
+
+    @Transactional
+    fun removeComponent(id: Long, componentId: Long, actorId: Long): CurriculumVersionDto {
+        val version = requireDraft(id)
+        val component = requireComponent(id, componentId)
+        component.deleted = true
+        componentRepository.save(component)
+        auditService.logAction("CURRICULUM_COMPONENT_REMOVED", actorId, "curriculum=$id; component=$componentId")
+        return toDto(version)
+    }
+
+    private fun requireComponent(id: Long, componentId: Long) = (componentRepository.findByIdAndDeletedFalse(componentId)
+        ?: throw NoSuchElementException("Reja qismi topilmadi: $componentId")).also {
+        require(it.curriculumVersion.id == id) { "Reja qismi ushbu curriculumga tegishli emas" }
+    }
+
+    private fun applyComponent(component: ProgramCurriculumComponent, version: ProgramCurriculumVersion, request: SaveCurriculumComponentRequest) {
+        val name = request.name?.trim()?.ifBlank { null } ?: COMPONENT_NAMES.getValue(request.type)
+        require(name.length <= 500) { "Nomi 500 belgidan oshmasligi kerak" }
+        require(request.semester in 1..version.semesterCount) { "Semestr 1..${version.semesterCount} oralig'ida bo'lishi kerak" }
+        require(request.credits in 0..60) { "Kredit 0..60 oralig'ida bo'lishi kerak" }
+        require(request.hours in 0..5000) { "Soat 0..5000 oralig'ida bo'lishi kerak" }
+        require(request.weeks == null || request.weeks in 0..52) { "Hafta 0..52 oralig'ida bo'lishi kerak" }
+        component.type = request.type
+        component.name = name
+        component.semester = request.semester
+        component.credits = request.credits
+        component.hours = request.hours
+        component.weeks = request.weeks
+    }
+
+    private fun qualificationOf(value: String?): String? = value?.trim()?.ifBlank { null }?.also {
+        require(it.length <= 255) { "Kvalifikatsiya 255 belgidan oshmasligi kerak" }
     }
 
     @Transactional
@@ -397,6 +463,10 @@ class ProgramCurriculumService(
                 syllabusStatus = item.syllabus?.status, syllabusTopicCount = item.syllabus?.topics?.size ?: 0,
                 syllabusComplete = item.syllabus?.let { curriculumTopicsComplete(it, bySubject.getValue(item.subject?.id ?: -(item.id ?: 0))) },
             ) }
+        val components = componentRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscTypeAsc(requireNotNull(version.id))
+            .map { CurriculumComponentDto(requireNotNull(it.id), it.type, it.name, it.semester, it.credits, it.hours, it.weeks) }
+        val schedule = scheduleRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderByCourseAsc(requireNotNull(version.id))
+            .map { CurriculumScheduleDto(it.course, it.weeks.split(",")) }
         return CurriculumVersionDto(
             id = requireNotNull(version.id), programId = requireNotNull(version.program.id), programName = version.program.name,
             facultyId = version.program.department?.faculty?.id, facultyName = version.program.department?.faculty?.name,
@@ -409,11 +479,20 @@ class ProgramCurriculumService(
             normativeBasisType = version.normativeBasisType.name, standardReference = version.standardReference,
             qualificationRequirementsReference = version.qualificationRequirementsReference, validFrom = version.validFrom,
             validUntil = version.validUntil, status = version.status.name, subjects = items, subjectCount = items.size,
-            totalCredits = items.sumOf(CurriculumSubjectDto::credits), approvalOrderNumber = version.approvalOrderNumber,
+            totalCredits = items.sumOf(CurriculumSubjectDto::credits) + components.sumOf(CurriculumComponentDto::credits),
+            approvalOrderNumber = version.approvalOrderNumber,
             approvalOrderDate = version.approvalOrderDate, approvedAt = version.approvedAt,
             approvedByName = version.approvedByUser?.fullName ?: version.approvedByUser?.username,
             archivedAt = version.archivedAt,
             createdByUserId = version.createdByUser.id,
+            qualification = version.qualification, components = components, schedule = schedule,
+        )
+    }
+
+    private companion object {
+        val COMPONENT_NAMES = mapOf(
+            CurriculumComponentType.PRACTICE to "Malakaviy amaliyot",
+            CurriculumComponentType.STATE_ATTESTATION to "Yakuniy davlat attestatsiyasi",
         )
     }
 }

@@ -1,5 +1,6 @@
 package uz.scorm.lms.app.v1.curriculum.dto
 
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
 
@@ -48,6 +49,25 @@ data class CurriculumImportHeaderDto(
     val qualification: String? = null,
 )
 
+/** Yangi reja formasini fayldan to'ldirish: sarlavha, kodi bo'yicha topilgan yo'nalish, semestrlar soni (muddat × 2) */
+data class CurriculumImportDraftDto(
+    val sheet: String?,
+    val header: CurriculumImportHeaderDto?,
+    val programId: Long?,
+    val programName: String?,
+    val semesterCount: Int?,
+)
+
+/** Malakaviy amaliyot / YaDA: semestr kredit yoki o'quv jarayoni jadvalidan (topilmasa — oxirgi semestr) */
+data class CurriculumImportComponentDto(
+    val type: CurriculumComponentType,
+    val name: String,
+    val semester: Int? = null,
+    val credits: Int = 0,
+    val hours: Int = 0,
+    val weeks: Int? = null,
+)
+
 data class CurriculumImportPreviewDto(
     val sheets: List<CurriculumImportSheetDto>,
     val sheet: String?,
@@ -55,13 +75,23 @@ data class CurriculumImportPreviewDto(
     val header: CurriculumImportHeaderDto? = null,
     /** Fayl sarlavhasi rejaga mos kelmasa (yo'nalish, ta'lim shakli, o'qish muddati) */
     val warnings: List<String> = emptyList(),
+    val components: List<CurriculumImportComponentDto> = emptyList(),
+    /** "I. O'quv jarayoni jadvali" */
+    val schedule: List<CurriculumScheduleDto> = emptyList(),
 )
 
-data class CurriculumImportApplyRequest(val rows: List<CurriculumImportRowDto>)
+/** Ko'rib chiqishdagi qatorlar (qarorlar bilan); amaliyot/YaDA, jadval va kvalifikatsiya ham shu fayldan */
+data class CurriculumImportApplyRequest(
+    val rows: List<CurriculumImportRowDto>,
+    val components: List<CurriculumImportComponentDto> = emptyList(),
+    val schedule: List<CurriculumScheduleDto> = emptyList(),
+    val qualification: String? = null,
+)
 
 data class CurriculumImportResultDto(
     val subjectsCreated: Int,
     val itemsAdded: Int,
     val itemsSkipped: Int,
     val curriculum: CurriculumVersionDto,
+    val componentsAdded: Int = 0,
 )

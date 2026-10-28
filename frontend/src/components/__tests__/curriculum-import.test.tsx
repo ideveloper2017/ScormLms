@@ -1,13 +1,13 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
+import { CurriculumExcelPrefill, CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
 import { CurriculumSubjectsTable } from "@/components/admin/curriculum-subjects-table";
 import { curriculumApi, type CurriculumImportRow, type CurriculumSubject } from "@/services/api/curriculum-api";
 
 vi.mock("@/services/api/curriculum-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  curriculumApi: { importPreview: vi.fn(), importApply: vi.fn(), updateSubject: vi.fn() },
+  curriculumApi: { importPreview: vi.fn(), importApply: vi.fn(), updateSubject: vi.fn(), importDraft: vi.fn() },
 }));
 
 const client = () => new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -30,6 +30,9 @@ describe("CurriculumImportDialog", () => {
       header: { programCode: "60610300", programName: "Kompyuter injiniringi", degree: "BAKALAVR", educationForm: "DISTANCE",
         educationFormText: "masofaviy", durationYears: 4, qualification: "Kompyuter tizimlari muhandisi" },
       warnings: ["Faylda ta'lim shakli masofaviy, rejada kunduzgi"],
+      components: [{ type: "PRACTICE", name: "Malakaviy amaliyot", semester: 8, credits: 30, hours: 900, weeks: 15 },
+        { type: "STATE_ATTESTATION", name: "Yakuniy davlat attestatsiyasi", semester: 8, credits: 0, hours: 0, weeks: 8 }],
+      schedule: [{ course: 1, weeks: ["FT", "", "A"] }],
     });
     vi.mocked(curriculumApi.importApply).mockResolvedValue({ subjectsCreated: 0, itemsAdded: 2, itemsSkipped: 0, curriculum: {} as never });
     const onImported = vi.fn();
@@ -45,6 +48,10 @@ describe("CurriculumImportDialog", () => {
     expect(screen.getByLabelText("Fayl sarlavhasi")).toHaveTextContent("ta'lim shakli: masofaviy · o'qish muddati: 4 yil · kvalifikatsiya: Kompyuter tizimlari muhandisi");
     expect(screen.getByLabelText("Fayl va reja farqi")).toHaveTextContent("Faylda ta'lim shakli masofaviy, rejada kunduzgi");
     expect(screen.getByText("Dasturlash 1,2").closest("tr")).toHaveTextContent("Kurs ishi");
+    const extras = screen.getByLabelText("Fan bo'lmagan qismlar");
+    expect(extras).toHaveTextContent("Malakaviy amaliyot — 8-semestr · 30 kredit · 900 soat · 15 hafta");
+    expect(extras).toHaveTextContent("Yakuniy davlat attestatsiyasi — 8-semestr · 8 hafta");
+    expect(extras).toHaveTextContent("O'quv jarayoni jadvali — 1 kurs bo'yicha haftalar");
     expect(screen.getByText("1: 6, 2: 4")).toBeInTheDocument();
     expect(screen.getAllByText("M 30 · A 45 · L 45 · MT 180")).toHaveLength(2);
     expect(screen.getByText(/PDT2504-A kodi bilan yaratiladi/)).toBeInTheDocument();
@@ -59,8 +66,45 @@ describe("CurriculumImportDialog", () => {
     await waitFor(() => expect(curriculumApi.importApply).toHaveBeenCalledWith(5, [
       expect.objectContaining({ code: "DAS1110", action: "USE_EXISTING" }),
       expect.objectContaining({ code: "PDT2504", action: "SKIP" }),
-    ]));
+    ], {
+      // Amaliyot/YaDA, o'quv jarayoni jadvali va kvalifikatsiya ham fayldan
+      components: [expect.objectContaining({ type: "PRACTICE" }), expect.objectContaining({ type: "STATE_ATTESTATION" })],
+      schedule: [{ course: 1, weeks: ["FT", "", "A"] }],
+      qualification: "Kompyuter tizimlari muhandisi",
+    }));
     await waitFor(() => expect(onImported).toHaveBeenCalled());
+  });
+});
+
+describe("Excel'dan reja yaratish", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("yangi reja formasi fayldan to'ldiriladi, yo'nalish topilmasa ogohlantiriladi", async () => {
+    vi.mocked(curriculumApi.importDraft).mockResolvedValue({
+      sheet: "1-курс_KI_2025", programId: null, programName: null, semesterCount: 8,
+      header: { programCode: "60610300", programName: "Kompyuter injiniringi", educationForm: "DISTANCE", educationFormText: "masofaviy",
+        durationYears: 4, qualification: "Kompyuter tizimlari muhandisi" },
+    });
+    const onFilled = vi.fn();
+    render(<QueryClientProvider client={client()}><CurriculumExcelPrefill onFilled={onFilled} /></QueryClientProvider>);
+
+    const file = new File(["x"], "reja.xlsx");
+    fireEvent.change(screen.getByLabelText("Ishchi o'quv reja faylidan to'ldirish"), { target: { files: [file] } });
+    await waitFor(() => expect(onFilled).toHaveBeenCalledWith(expect.objectContaining({ semesterCount: 8 }), file));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Fayldan olindi: 60610300 – Kompyuter injiniringi · ta'lim shakli: masofaviy · 8 semestr · kvalifikatsiya: Kompyuter tizimlari muhandisi");
+    expect(screen.getByRole("status")).toHaveTextContent("Yo'nalish 60610300 tizimda topilmadi");
+  });
+
+  it("reja yaratilgach import oynasi shu faylni darhol o'qiydi", async () => {
+    vi.mocked(curriculumApi.importPreview).mockResolvedValue({ sheets: [{ name: "Reja", rowCount: 0 }], sheet: "Reja", rows: [] });
+    const file = new File(["x"], "reja.xlsx");
+    render(<QueryClientProvider client={client()}>
+      <CurriculumImportDialog curriculumId={7} initialFile={file} onClose={vi.fn()} onImported={vi.fn()} />
+    </QueryClientProvider>);
+    await waitFor(() => expect(curriculumApi.importPreview).toHaveBeenCalledWith(7, file, undefined));
+    expect(curriculumApi.importPreview).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Fayl: reja.xlsx")).toBeInTheDocument();
   });
 });
 

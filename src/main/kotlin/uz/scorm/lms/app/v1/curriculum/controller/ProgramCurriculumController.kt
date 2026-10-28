@@ -18,6 +18,7 @@ import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.curriculum.dto.AddCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.ApproveCurriculumRequest
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportApplyRequest
+import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumComponentRequest
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
 import uz.scorm.lms.app.v1.curriculum.dto.UpdateCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.service.CurriculumImportService
@@ -75,6 +76,28 @@ class ProgramCurriculumController(
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
     fun removeSubject(@PathVariable id: Long, @PathVariable itemId: Long, @CurrentUser user: User) =
         service.removeSubject(id, itemId, requireNotNull(user.id))
+
+    /** Malakaviy amaliyot / yakuniy davlat attestatsiyasi (fan bo'lmagan reja qismlari) */
+    @PostMapping("/{id}/components")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun addComponent(@PathVariable id: Long, @RequestBody request: SaveCurriculumComponentRequest, @CurrentUser user: User) =
+        service.addComponent(id, request, requireNotNull(user.id))
+
+    @PutMapping("/{id}/components/{componentId}")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun updateComponent(@PathVariable id: Long, @PathVariable componentId: Long, @RequestBody request: SaveCurriculumComponentRequest,
+        @CurrentUser user: User) = service.updateComponent(id, componentId, request, requireNotNull(user.id))
+
+    @DeleteMapping("/{id}/components/{componentId}")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun removeComponent(@PathVariable id: Long, @PathVariable componentId: Long, @CurrentUser user: User) =
+        service.removeComponent(id, componentId, requireNotNull(user.id))
+
+    /** Yangi reja formasini ishchi o'quv reja faylidan to'ldirish: sarlavha va kodi bo'yicha yo'nalish (hech narsa saqlanmaydi). */
+    @PostMapping("/import/draft", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun importDraft(@RequestParam("file") file: MultipartFile, @RequestParam(required = false) sheet: String?) =
+        importService.draft(file, sheet)
 
     /** Ishchi o'quv reja Excel faylini o'qib, fanlar va tizimdagi fanlarga moslikni ko'rsatadi (hech narsa saqlanmaydi). */
     @PostMapping("/{id}/import/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])

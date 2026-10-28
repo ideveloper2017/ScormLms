@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import uz.scorm.lms.app.v1.curriculum.importer.CurriculumWorkbookParser
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType.PRACTICE
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType.STATE_ATTESTATION
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType.COURSE_PROJECT
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType.COURSE_WORK
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType.ELECTIVE
@@ -99,22 +101,32 @@ class CurriculumWorkbookParserTest {
             cells.forEach { (c, v) -> row.createCell(c).apply { if (v is Number) setCellValue(v.toDouble()) else setCellValue(v.toString()) } }
         }
         fun org.apache.poi.ss.usermodel.Sheet.table(code: String) {
-            put(6, 1 to "T/r", 3 to "Fanning malakaviy kodi", 7 to "O‘quv fanlari, bloklar va faoliyat turlarining nomlari",
+            // I. O'quv jarayoni jadvali: haftalar 1..52 (D..), I va IV kurs
+            put(7, 2 to "Kurs", 3 to "Haftalar")
+            put(8, *(1..52).map { 2 + it to it }.toTypedArray())
+            put(9, 2 to "I", 3 to "FT", *(19..21).map { 2 + it to "A" }.toTypedArray(), *(41..50).map { 2 + it to "T" }.toTypedArray())
+            put(10, 2 to "IV", 3 to "FT", *(22..36).map { 2 + it to "M" }.toTypedArray(), *(37..44).map { 2 + it to "B" }.toTypedArray(),
+                *(45..48).map { 2 + it to "\u0422" }.toTypedArray())
+            put(11, 3 to "JAMI:")
+            put(16, 1 to "T/r", 3 to "Fanning malakaviy kodi", 7 to "O‘quv fanlari, bloklar va faoliyat turlarining nomlari",
                 o to "Talabaning o‘quv yuklamasi, soatlarda")
-            put(7, o to "Umumiy yuklama hajmi", o + 4 to "Auditoriya mashg‘ulotlari, soatlarda", o + 16 to "Mustaqil ta’lim")
-            put(8, o + 4 to "Jami", o + 6 to "Ma’ruza", o + 8 to "Amaliy", o + 10 to "Laboratoriya", o + 12 to "Seminar", o + 14 to "Kurs ishi (loyihasi)")
-            put(10, o + 18 to "Semestrlar")
-            put(11, *(1..8).map { o + 16 + it * 2 to it }.toTypedArray())
-            put(12, 1 to "1.00", 7 to "Majburiy fanlar")
-            put(13, 1 to "1.01", 3 to code, 7 to "O'zbekistonning еng yangi tarixi", o to 120, o + 4 to 48, o + 6 to 24, o + 12 to 24, o + 16 to 72, o + 18 to 4)
-            put(14, 1 to "1.11", 3 to "MAB1306", 7 to "Ma'lumotlar bazasi", o to 180, o + 4 to 72, o + 6 to 24, o + 8 to 24, o + 10 to 24,
+            put(17, o to "Umumiy yuklama hajmi", o + 4 to "Auditoriya mashg‘ulotlari, soatlarda", o + 16 to "Mustaqil ta’lim")
+            put(18, o + 4 to "Jami", o + 6 to "Ma’ruza", o + 8 to "Amaliy", o + 10 to "Laboratoriya", o + 12 to "Seminar", o + 14 to "Kurs ishi (loyihasi)")
+            put(20, o + 18 to "Semestrlar")
+            put(21, *(1..8).map { o + 16 + it * 2 to it }.toTypedArray())
+            put(22, 1 to "1.00", 7 to "Majburiy fanlar")
+            put(23, 1 to "1.01", 3 to code, 7 to "O'zbekistonning еng yangi tarixi", o to 120, o + 4 to 48, o + 6 to 24, o + 12 to 24, o + 16 to 72, o + 18 to 4)
+            put(24, 1 to "1.11", 3 to "MAB1306", 7 to "Ma'lumotlar bazasi", o to 180, o + 4 to 72, o + 6 to 24, o + 8 to 24, o + 10 to 24,
                 o + 14 to "KI", o + 16 to 108, o + 22 to 6)
-            put(15, 1 to "1.22", 3 to "КМА1606", 7 to "Kompyuter arxitekturasi", o to 180, o + 4 to 72, o + 6 to 24, o + 8 to 24,
+            put(25, 1 to "1.22", 3 to "КМА1606", 7 to "Kompyuter arxitekturasi", o to 180, o + 4 to 72, o + 6 to 24, o + 8 to 24,
                 o + 10 to 24, o + 14 to "KL", o + 16 to 108, o + 28 to 6)
-            put(16, 1 to "2.00", 7 to "Tanlov fanlari")
-            put(17, 1 to "2.01.", 3 to "ET2504", 7 to "Energiya tejamkorligi", o to 120, o + 4 to 48, o + 6 to 24, o + 12 to 24, o + 16 to 72, o + 26 to 4)
-            put(18, 3 to "PP2504", 7 to "Pedagogika va psixologiya")
-            put(19, 7 to "HAMMASI")
+            put(26, 1 to "2.00", 7 to "Tanlov fanlari")
+            put(27, 1 to "2.01.", 3 to "ET2504", 7 to "Energiya tejamkorligi", o to 120, o + 4 to 48, o + 6 to 24, o + 12 to 24, o + 16 to 72, o + 26 to 4)
+            put(28, 3 to "PP2504", 7 to "Pedagogika va psixologiya")
+            put(29, 7 to "Jami", o to 6300)
+            put(30, 7 to "Malakaviy amaliyot (ishlab chiqarish va bitiruv oldi amaliyotlar)", o to 900, o + 16 to 900, o + 32 to 30)
+            put(31, 7 to "Yakuniy davlat attestasiyasi")
+            put(32, 7 to "HAMMASI")
         }
         wb.createSheet("1-курс ААТ- 2022").table("ESKI2022")
         wb.setSheetHidden(0, true)
@@ -147,6 +159,23 @@ class CurriculumWorkbookParserTest {
         assertTrue(result.rows.all { it.issues.isEmpty() })
         // To'liq kirill so'zlar o'zgarmaydi
         assertEquals("Ўзбекистон тарихи", CurriculumWorkbookParser.latinize("Ўзбекистон тарихи"))
+    }
+
+    @Test
+    fun `o'quv jarayoni jadvali, malakaviy amaliyot va YaDA o'qiladi`() {
+        val result = CurriculumWorkbookParser.parse(ByteArrayInputStream(ki2025(headerInOneCell = true)))
+
+        val (first, fourth) = result.schedule
+        assertEquals(1 to 50, first.course to first.weeks.size) // 50-haftadan keyingi bo'sh haftalar o'quv yiliga kirmaydi
+        assertEquals(listOf("FT", "", ""), first.weeks.take(3))
+        assertEquals(4 to 48, fourth.course to fourth.weeks.size)
+        assertEquals("T", fourth.weeks.last()) // kirill "Т" lotinga o'tadi
+
+        val (practice, attestation) = result.components
+        assertEquals(listOf(PRACTICE, 8, 30, 900, 15), listOf(practice.type, practice.semester, practice.credits, practice.hours, practice.weeks))
+        // YaDA kreditsiz: semestr va hafta jadvaldan (B — 37–44-haftalar, IV kurs bahorgi semestri)
+        assertEquals(listOf(STATE_ATTESTATION, 8, 0, 8), listOf(attestation.type, attestation.semester, attestation.credits, attestation.weeks))
+        assertEquals(5, result.rows.size) // amaliyot va YaDA fan sifatida o'qilmaydi
     }
 
     @Test

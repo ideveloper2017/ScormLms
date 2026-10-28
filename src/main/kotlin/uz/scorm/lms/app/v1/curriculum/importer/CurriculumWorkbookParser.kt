@@ -5,6 +5,7 @@ import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.DataFormatter
 import org.apache.poi.ss.usermodel.Sheet
 import org.apache.poi.ss.usermodel.WorkbookFactory
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
 import uz.scorm.lms.app.v1.student.model.EducationForm
@@ -46,7 +47,27 @@ data class ParsedHeader(
     val qualification: String? = null,
 )
 
-data class ParsedWorkbook(val sheets: List<ParsedSheet>, val sheet: String?, val rows: List<ParsedPlanRow>, val header: ParsedHeader? = null)
+/** Fan bo'lmagan reja qismi (malakaviy amaliyot, YaDA): semestr va hafta o'quv jarayoni jadvalidan aniqlanishi mumkin. */
+data class ParsedComponent(
+    val type: CurriculumComponentType,
+    val name: String,
+    val semester: Int?,
+    val credits: Int,
+    val hours: Int,
+    val weeks: Int? = null,
+)
+
+/** "I. O'quv jarayoni jadvali" qatori: kurs va haftalar kodlari (1-haftadan; "" — nazariy ta'lim). */
+data class ParsedScheduleRow(val course: Int, val weeks: List<String>)
+
+data class ParsedWorkbook(
+    val sheets: List<ParsedSheet>,
+    val sheet: String?,
+    val rows: List<ParsedPlanRow>,
+    val header: ParsedHeader? = null,
+    val components: List<ParsedComponent> = emptyList(),
+    val schedule: List<ParsedScheduleRow> = emptyList(),
+)
 
 /**
  * NamDTU ishchi o'quv reja Excel faylidan "II. O'QUV REJASI" bo'limini o'qiydi.
@@ -78,11 +99,18 @@ object CurriculumWorkbookParser {
             .filterNot { workbook.isSheetHidden(it) || workbook.isSheetVeryHidden(it) }
             .map { workbook.getSheetAt(it) }
             .associate { sheet -> sheet.sheetName to findColumns(sheet)?.let { columns -> columns to readRows(sheet, columns) } }
-        val sheets = parsed.map { (name, table) -> ParsedSheet(name, table?.second?.size ?: 0) }
+        val sheets = parsed.map { (name, table) -> ParsedSheet(name, table?.second?.rows?.size ?: 0) }
         val selected = sheetName?.takeIf { it in parsed } ?: sheets.firstOrNull { it.rowCount > 0 }?.name
-        val table = selected?.let { parsed[it] }
-        ParsedWorkbook(sheets, selected, table?.second ?: emptyList(), table?.let { readHeader(workbook.getSheet(selected), it.first.headerRow) })
+        val table = selected?.let { parsed[it] } ?: return@use ParsedWorkbook(sheets, selected, emptyList())
+        val sheet = workbook.getSheet(selected)
+        val schedule = readSchedule(sheet, table.first.headerRow)
+        ParsedWorkbook(
+            sheets, selected, table.second.rows, readHeader(sheet, table.first.headerRow),
+            withSchedule(table.second.components, schedule), schedule,
+        )
     }
+
+    private data class PlanTable(val rows: List<ParsedPlanRow>, val components: List<ParsedComponent>)
 
     /** Soatni semestrlarga kredit ulushi bo'yicha bo'ladi (eng katta qoldiq usuli) — yig'indi saqlanadi. */
     fun splitByCredits(value: Int, credits: List<Int>): List<Int> {
@@ -138,8 +166,9 @@ object CurriculumWorkbookParser {
         )
     }
 
-    private fun readRows(sheet: Sheet, c: Columns): List<ParsedPlanRow> {
+    private fun readRows(sheet: Sheet, c: Columns): PlanTable {
         val rows = mutableListOf<ParsedPlanRow>()
+        val components = mutableListOf<ParsedComponent>()
         var block = CurriculumPlanItemType.REQUIRED
         var primary: ParsedPlanRow? = null
         for (r in (c.headerRow + 1)..sheet.lastRowNum) {
@@ -153,6 +182,14 @@ object CurriculumWorkbookParser {
             // Blok sarlavhasi: "1.00 Majburiy fanlar" / "2.00 Tanlov fanlari"
             if (code.isEmpty() && nameKey.contains("fanlar")) {
                 block = if (nameKey.contains("tanlov") || rowNo.startsWith("2")) CurriculumPlanItemType.ELECTIVE else CurriculumPlanItemType.REQUIRED
+                primary = null
+                continue
+            }
+            // Fan bo'lmagan qismlar: "Malakaviy amaliyot ...", "Yakuniy davlat attestatsiyasi"
+            componentType(nameKey)?.takeIf { code.isEmpty() }?.let { type ->
+                val credits = c.semesters.mapNotNull { (col, semester) -> number(row.getCell(col))?.takeIf { it > 0 }?.let { semester to it } }
+                components += ParsedComponent(type, name, credits.minOfOrNull { it.first }, credits.sumOf { it.second },
+                    number(cell(c.total)) ?: number(cell(c.selfStudy)) ?: 0)
                 primary = null
                 continue
             }
@@ -194,8 +231,52 @@ object CurriculumWorkbookParser {
             rows += parsed
             primary = parsed
         }
-        return rows
+        return PlanTable(rows, components)
     }
+
+    private fun componentType(nameKey: String): CurriculumComponentType? = when {
+        nameKey.startsWith("malakaviy amaliyot") -> CurriculumComponentType.PRACTICE
+        "davlat attesta" in nameKey -> CurriculumComponentType.STATE_ATTESTATION
+        else -> null
+    }
+
+    /**
+     * "I. O'quv jarayoni jadvali": haftalar raqamlari (1..52) qatori, undan keyingi kurs qatorlari (I, II, III, IV)
+     * har bir hafta kodini beradi. Oxirgi koddan keyingi bo'sh haftalar o'quv yiliga kirmaydi.
+     */
+    private fun readSchedule(sheet: Sheet, untilRow: Int): List<ParsedScheduleRow> {
+        val weekRow = (0 until untilRow).mapNotNull(sheet::getRow).firstOrNull { row ->
+            row.mapNotNull { number(it)?.takeIf { n -> n in 1..53 } }.let { it.size >= 40 && it == it.sorted() }
+        } ?: return emptyList()
+        val weekCols = weekRow.mapNotNull { cell -> number(cell)?.takeIf { it in 1..53 }?.let { cell.columnIndex to it } }.toMap()
+        val firstWeekCol = weekCols.keys.min()
+        val result = mutableListOf<ParsedScheduleRow>()
+        for (r in weekRow.rowNum + 1 until untilRow) {
+            val row = sheet.getRow(r) ?: continue
+            val label = row.filter { it.columnIndex < firstWeekCol }.map(::text).firstOrNull(String::isNotEmpty) ?: continue
+            val course = ROMAN[latinCode(label).uppercase()] ?: continue
+            val byWeek = weekCols.entries.associate { (col, week) ->
+                week to latinCode(text(row.getCell(col))).uppercase().replace(Regex("[^A-Z]"), "").take(3)
+            }
+            val last = byWeek.filterValues(String::isNotEmpty).keys.maxOrNull() ?: continue
+            result += ParsedScheduleRow(course, (1..last).map { byWeek[it].orEmpty() })
+        }
+        return result
+    }
+
+    /** Amaliyot (M) va YaDA (B) haftalari; kredit ko'rsatilmagan bo'lsa semestr ham jadvaldagi joyidan olinadi. */
+    private fun withSchedule(components: List<ParsedComponent>, schedule: List<ParsedScheduleRow>) = components.map { component ->
+        val code = if (component.type == CurriculumComponentType.PRACTICE) "M" else "B"
+        val rows = schedule.filter { code in it.weeks }
+        val semester = component.semester ?: rows.lastOrNull()?.let { row ->
+            // 1–21-haftalar (sentyabr–yanvar) — kuzgi semestr, qolgani bahorgi
+            if (row.weeks.indexOf(code) < AUTUMN_WEEKS) row.course * 2 - 1 else row.course * 2
+        }
+        component.copy(semester = semester, weeks = rows.sumOf { row -> row.weeks.count { it == code } }.takeIf { it > 0 })
+    }
+
+    private val ROMAN = mapOf("I" to 1, "II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6)
+    private const val AUTUMN_WEEKS = 21
 
     /**
      * Fanlar jadvalidan yuqoridagi sarlavha. Ikki xil yoziladi: bitta katakda qatorma-qator ("Ta'lim shakli - masofaviy")

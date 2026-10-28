@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
+import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumComponent
+import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumScheduleRow
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumSubject
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
 import java.time.LocalDate
@@ -22,6 +24,15 @@ interface ProgramCurriculumVersionRepository : JpaRepository<ProgramCurriculumVe
           and c.program.deleted = false and c.program.active = true and c.program.distanceEnabled = true
     """)
     fun countCurrentApproved(@Param("status") status: CurriculumStatus, @Param("onDate") onDate: LocalDate): Long
+}
+
+interface ProgramCurriculumComponentRepository : JpaRepository<ProgramCurriculumComponent, Long> {
+    fun findByIdAndDeletedFalse(id: Long): ProgramCurriculumComponent?
+    fun findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscTypeAsc(curriculumVersionId: Long): List<ProgramCurriculumComponent>
+}
+
+interface ProgramCurriculumScheduleRepository : JpaRepository<ProgramCurriculumScheduleRow, Long> {
+    fun findAllByCurriculumVersionIdAndDeletedFalseOrderByCourseAsc(curriculumVersionId: Long): List<ProgramCurriculumScheduleRow>
 }
 
 interface ProgramCurriculumSubjectRepository : JpaRepository<ProgramCurriculumSubject, Long> {

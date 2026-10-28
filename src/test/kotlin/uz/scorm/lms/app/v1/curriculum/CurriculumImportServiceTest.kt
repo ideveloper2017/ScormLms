@@ -13,15 +13,24 @@ import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction.CREATE
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction.SKIP
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction.USE_EXISTING
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportApplyRequest
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportComponentDto
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumScheduleDto
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType.PRACTICE
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType.STATE_ATTESTATION
+import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumComponent
+import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumScheduleRow
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType.COURSE_WORK
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumSubject
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
+import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumComponentRepository
+import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumScheduleRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
 import uz.scorm.lms.app.v1.curriculum.service.CurriculumImportService
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
 import uz.scorm.lms.app.v1.program.model.Program
+import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.student.model.EducationForm
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
@@ -33,7 +42,11 @@ class CurriculumImportServiceTest {
     private val items = mockk<ProgramCurriculumSubjectRepository>()
     private val subjects = mockk<SubjectRepository>()
     private val curriculum = mockk<ProgramCurriculumService>(relaxed = true)
-    private val service = CurriculumImportService(versions, items, subjects, mockk(relaxed = true), mockk(relaxed = true), curriculum)
+    private val components = mockk<ProgramCurriculumComponentRepository>(relaxed = true)
+    private val schedule = mockk<ProgramCurriculumScheduleRepository>(relaxed = true)
+    private val programs = mockk<ProgramRepository>()
+    private val service = CurriculumImportService(versions, items, subjects, mockk(relaxed = true), mockk(relaxed = true), curriculum,
+        components, schedule, programs)
 
     private val program = mockk<Program>(relaxed = true).also { every { it.id } returns 77 }
     private val version = mockk<ProgramCurriculumVersion>(relaxed = true).also {
@@ -134,6 +147,46 @@ class CurriculumImportServiceTest {
             "Faylda ta'lim shakli masofaviy, rejada kunduzgi",
         ), preview.warnings) // 4 yil = 8 semestr — muddat mos
         assertEquals(5, preview.rows.size)
+    }
+
+    @Test
+    fun `amaliyot va YaDA qo'shiladi (borlari o'tkaziladi), o'quv jarayoni jadvali va kvalifikatsiya yoziladi`() {
+        every { versions.save(any()) } answers { firstArg() }
+        every { components.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscTypeAsc(5) } returns
+            listOf(ProgramCurriculumComponent(version, PRACTICE, "Malakaviy amaliyot", 8, 30, 900))
+        every { schedule.findAllByCurriculumVersionIdAndDeletedFalseOrderByCourseAsc(5) } returns emptyList()
+        val added = mutableListOf<ProgramCurriculumComponent>()
+        every { components.save(capture(added)) } answers { firstArg() }
+        val weeks = mutableListOf<ProgramCurriculumScheduleRow>()
+        every { schedule.save(capture(weeks)) } answers { firstArg() }
+
+        val result = service.apply(5, CurriculumImportApplyRequest(
+            rows = emptyList(),
+            components = listOf(
+                CurriculumImportComponentDto(PRACTICE, "Malakaviy amaliyot", 8, 30, 900, 15),
+                CurriculumImportComponentDto(STATE_ATTESTATION, "Yakuniy davlat attestasiyasi", null, 0, 0, 8),
+            ),
+            schedule = listOf(CurriculumScheduleDto(1, listOf("FT", "", "A")), CurriculumScheduleDto(4, listOf("M", "B"))),
+            qualification = " Kompyuter tizimlari muhandisi ",
+        ), actorId = 9)
+
+        assertEquals(1, result.componentsAdded) // amaliyot 8-semestrda allaqachon bor
+        assertEquals(listOf(STATE_ATTESTATION to 8), added.map { it.type to it.semester }) // semestr berilmasa — oxirgi
+        assertEquals(listOf(1 to "FT,,A", 4 to "M,B"), weeks.map { it.course to it.weeks })
+        verify { version.qualification = "Kompyuter tizimlari muhandisi" }
+    }
+
+    @Test
+    fun `yangi reja formasi uchun sarlavha va kodi bo'yicha yo'nalish topiladi`() {
+        val ki = Program(name = "Kompyuter injiniringi", code = "60610300").apply { id = 31 }
+        val old = Program(name = "Eski", code = "60610300").apply { id = 30; active = false }
+        every { programs.findAll() } returns listOf(old, ki)
+
+        val draft = service.draft(excel("Ta’lim yo‘nalishi: 60610300 - Kompyuter injiniringi\nTa’lim shakli - masofaviy\nO‘qish muddati - 4 yil"), null)
+
+        assertEquals(31L, draft.programId)
+        assertEquals(8, draft.semesterCount)
+        assertEquals("DISTANCE", draft.header?.educationForm)
     }
 
     @Test
