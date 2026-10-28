@@ -38,7 +38,7 @@ describe("superadmin sidebar navigation", () => {
 
   it("har bir ochiladigan bo'limda referensdagi sahifalar sonini saqlaydi", () => {
     const counts: Record<string, number> = {
-      "Tuzilishi": 2,
+      "Tuzilishi": 3, // + Kafedralar
       "Ta'lim jarayoni": 14,
       "O'zlashtirish": 7,
       "O'qituvchilar": 2,
@@ -46,7 +46,7 @@ describe("superadmin sidebar navigation", () => {
       "Talabalar harakati": 3,
       "Akademik arxiv": 2,
       "559-son qaror": 10,
-      "Monitoring": 8,
+      "Monitoring": 7, // "O'qituvchilar" dublikati olib tashlandi
       "Yangiliklar": 2,
       "Akkauntlar": 2,
       "Statistika": 10,
@@ -72,5 +72,26 @@ describe("superadmin sidebar navigation", () => {
     expect(links["Bitirgan talabalar"]).toBe("/students/graduated");
     expect(links["Ko'chirish"]).toBe("/transfer-students");
     expect(links["Chetlashtirilgan talabalar"]).toBe("/students/expelled");
+    expect(links["Kafedralar"]).toBe("/admin/departments");
+  });
+});
+
+describe("oddiy foydalanuvchi uchun menyu", () => {
+  it("bir bo'limda bir sahifa ikki marta takrorlanmaydi", () => {
+    for (const role of ["super_admin", "metodist", "teacher", "student", "monitoring"]) {
+      for (const section of buildNav(role)) {
+        const hrefs = section.items.map((item) => item.href);
+        expect(new Set(hrefs).size, `${role}: ${section.label}`).toBe(hrefs.length);
+      }
+    }
+  });
+
+  it("inglizcha nomlar yo'q va metodistda 'Kengaytirilgan' aralash guruhi qolmagan", () => {
+    const names = ["super_admin", "metodist", "teacher", "student"].flatMap((role) =>
+      buildNav(role).flatMap((section) => [section.label, ...section.items.map((item) => item.name)]));
+    expect(names).not.toContain("Dashboard");
+    expect(names.some((name) => /Vedmost|Audit log|LMS orientatsiyasi/.test(name))).toBe(false);
+    expect(buildNav("metodist").map((section) => section.label)).toEqual(
+      ["Asosiy", "Tuzilma", "Talabalar", "Ta'lim jarayoni", "Nazorat va hisobot", "Qo'shimcha", "559-son qaror"]);
   });
 });

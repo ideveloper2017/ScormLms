@@ -551,7 +551,7 @@ export function AdminStudyPlanEditor() {
                       </Select>
                       {facultyId > 0 && programs.isSuccess && visiblePrograms.length === 0 && (
                         <p className="text-xs text-amber-700 dark:text-amber-400">
-                          Bu fakultetda yo'nalish topilmadi. "Mutaxassisliklar" bo'limida yo'nalishni shu fakultet kafedrasiga biriktiring.
+                          Bu fakultetda yo'nalish topilmadi. "Ta'lim yo'nalishlari" bo'limida yo'nalishni shu fakultet kafedrasiga biriktiring.
                         </p>
                       )}
                       {item?.subjectCount && item.status === "DRAFT" ? (
