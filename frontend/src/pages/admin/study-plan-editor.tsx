@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,6 +71,7 @@ import {
   curriculumApi,
   curriculumInputError,
   type CurriculumEducationForm,
+  type CurriculumImportDraft,
   type CurriculumStatus,
   type CurriculumSubject,
   type CurriculumVersion,
@@ -78,7 +79,7 @@ import {
 } from "@/services/api/curriculum-api";
 import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 import { CurriculumSubjectsTable } from "@/components/admin/curriculum-subjects-table";
-import { CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
+import { CurriculumExcelPrefill, CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
 import { CurriculumComponentsCard, CurriculumScheduleCard } from "@/components/admin/curriculum-components";
 
 const EMPTY = "__empty__";
@@ -210,6 +211,7 @@ export function AdminStudyPlanEditor() {
   const [approvalOrderNumber, setApprovalOrderNumber] = useState("");
   const [approvalOrderDate, setApprovalOrderDate] = useState("");
 
+  const location = useLocation();
   const detail = useQuery({
     queryKey: ["curricula", id],
     queryFn: () => curriculumApi.get(id),
@@ -270,6 +272,15 @@ export function AdminStudyPlanEditor() {
     }));
   }, [academicYears.data, creating, ratings.data]);
 
+  // Excel'dan yaratilgan reja ochilganda — fanlar importi shu fayl bilan
+  useEffect(() => {
+    const file = (location.state as { importFile?: File } | null)?.importFile;
+    if (creating || !item || !file) return;
+    setImportFile(file);
+    setImportOpen(true);
+    navigate(location.pathname + location.search, { replace: true, state: null });
+  }, [creating, item, location.pathname, location.search, location.state, navigate]);
+
   useEffect(() => {
     if (!item || initializedId.current === item.id) return;
     initializedId.current = item.id;
@@ -300,7 +311,7 @@ export function AdminStudyPlanEditor() {
       await queryClient.invalidateQueries({ queryKey: ["curricula"] });
       toast({ title: "O'quv reja yaratildi", description: "Endi fanlarni biriktirishingiz mumkin." });
       setTab("subjects");
-      navigate("/edu-process/curriculum/" + created.id, { replace: true });
+      navigate("/edu-process/curriculum/" + created.id, { replace: true, state: excelFile ? { importFile: excelFile } : null });
     },
     onError: (error) =>
       toast({ title: "Reja yaratilmadi", description: errorMessage(error), variant: "destructive" }),
@@ -315,6 +326,9 @@ export function AdminStudyPlanEditor() {
       toast({ title: "Reja saqlanmadi", description: errorMessage(error), variant: "destructive" }),
   });
   const [importOpen, setImportOpen] = useState(false);
+  // Reja Excel'dan to'ldirib yaratilsa: saqlangach shu fayl bilan import oynasi ochiladi
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const addSubject = useMutation({
     mutationFn: () => curriculumApi.addSubject(id, { subjectId, semester, planItemType }),
     onSuccess: async () => {
@@ -408,6 +422,22 @@ export function AdminStudyPlanEditor() {
     }));
   };
 
+  /** Fayldan: yo'nalish (fakulteti bilan), ta'lim shakli, semestrlar soni, kvalifikatsiya */
+  const applyDraft = (draft: CurriculumImportDraft, file: File) => {
+    setExcelFile(file);
+    const program = (programs.data ?? []).find((entry) => entry.id === draft.programId);
+    if (program) {
+      setFacultyId(program.departmentId ? departmentFaculty.get(program.departmentId) ?? 0 : 0);
+      selectProgram(String(program.id));
+    }
+    setForm((current) => ({
+      ...current,
+      educationForm: draft.header?.educationForm ?? current.educationForm,
+      semesterCount: draft.semesterCount ?? current.semesterCount,
+      qualification: draft.header?.qualification ?? current.qualification,
+    }));
+  };
+
   const submit = () => {
     setSaveAttempted(true);
     if (formError) return;
@@ -474,6 +504,7 @@ export function AdminStudyPlanEditor() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {creating && canWrite && <CurriculumExcelPrefill onFilled={applyDraft} />}
                   <div className="flex justify-center">
                     <div className="inline-flex overflow-hidden rounded-md border">
                       <Button
@@ -751,7 +782,8 @@ export function AdminStudyPlanEditor() {
           {importOpen && item && (
             <CurriculumImportDialog
               curriculumId={item.id}
-              onClose={() => setImportOpen(false)}
+              initialFile={importFile}
+              onClose={() => { setImportOpen(false); setImportFile(null); }}
               onImported={async (result) => {
                 await refresh();
                 toast({

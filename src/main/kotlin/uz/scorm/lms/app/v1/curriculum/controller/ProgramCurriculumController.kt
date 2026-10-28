@@ -93,6 +93,12 @@ class ProgramCurriculumController(
     fun removeComponent(@PathVariable id: Long, @PathVariable componentId: Long, @CurrentUser user: User) =
         service.removeComponent(id, componentId, requireNotNull(user.id))
 
+    /** Yangi reja formasini ishchi o'quv reja faylidan to'ldirish: sarlavha va kodi bo'yicha yo'nalish (hech narsa saqlanmaydi). */
+    @PostMapping("/import/draft", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun importDraft(@RequestParam("file") file: MultipartFile, @RequestParam(required = false) sheet: String?) =
+        importService.draft(file, sheet)
+
     /** Ishchi o'quv reja Excel faylini o'qib, fanlar va tizimdagi fanlarga moslikni ko'rsatadi (hech narsa saqlanmaydi). */
     @PostMapping("/{id}/import/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")

@@ -1,13 +1,13 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
+import { CurriculumExcelPrefill, CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
 import { CurriculumSubjectsTable } from "@/components/admin/curriculum-subjects-table";
 import { curriculumApi, type CurriculumImportRow, type CurriculumSubject } from "@/services/api/curriculum-api";
 
 vi.mock("@/services/api/curriculum-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  curriculumApi: { importPreview: vi.fn(), importApply: vi.fn(), updateSubject: vi.fn() },
+  curriculumApi: { importPreview: vi.fn(), importApply: vi.fn(), updateSubject: vi.fn(), importDraft: vi.fn() },
 }));
 
 const client = () => new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -73,6 +73,38 @@ describe("CurriculumImportDialog", () => {
       qualification: "Kompyuter tizimlari muhandisi",
     }));
     await waitFor(() => expect(onImported).toHaveBeenCalled());
+  });
+});
+
+describe("Excel'dan reja yaratish", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("yangi reja formasi fayldan to'ldiriladi, yo'nalish topilmasa ogohlantiriladi", async () => {
+    vi.mocked(curriculumApi.importDraft).mockResolvedValue({
+      sheet: "1-курс_KI_2025", programId: null, programName: null, semesterCount: 8,
+      header: { programCode: "60610300", programName: "Kompyuter injiniringi", educationForm: "DISTANCE", educationFormText: "masofaviy",
+        durationYears: 4, qualification: "Kompyuter tizimlari muhandisi" },
+    });
+    const onFilled = vi.fn();
+    render(<QueryClientProvider client={client()}><CurriculumExcelPrefill onFilled={onFilled} /></QueryClientProvider>);
+
+    const file = new File(["x"], "reja.xlsx");
+    fireEvent.change(screen.getByLabelText("Ishchi o'quv reja faylidan to'ldirish"), { target: { files: [file] } });
+    await waitFor(() => expect(onFilled).toHaveBeenCalledWith(expect.objectContaining({ semesterCount: 8 }), file));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Fayldan olindi: 60610300 – Kompyuter injiniringi · ta'lim shakli: masofaviy · 8 semestr · kvalifikatsiya: Kompyuter tizimlari muhandisi");
+    expect(screen.getByRole("status")).toHaveTextContent("Yo'nalish 60610300 tizimda topilmadi");
+  });
+
+  it("reja yaratilgach import oynasi shu faylni darhol o'qiydi", async () => {
+    vi.mocked(curriculumApi.importPreview).mockResolvedValue({ sheets: [{ name: "Reja", rowCount: 0 }], sheet: "Reja", rows: [] });
+    const file = new File(["x"], "reja.xlsx");
+    render(<QueryClientProvider client={client()}>
+      <CurriculumImportDialog curriculumId={7} initialFile={file} onClose={vi.fn()} onImported={vi.fn()} />
+    </QueryClientProvider>);
+    await waitFor(() => expect(curriculumApi.importPreview).toHaveBeenCalledWith(7, file, undefined));
+    expect(curriculumApi.importPreview).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Fayl: reja.xlsx")).toBeInTheDocument();
   });
 });
 

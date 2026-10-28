@@ -8,6 +8,7 @@ import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportApplyRequest
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportComponentDto
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportDraftDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportHeaderDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportPreviewDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportResultDto
@@ -18,6 +19,7 @@ import uz.scorm.lms.app.v1.curriculum.dto.CurriculumScheduleDto
 import uz.scorm.lms.app.v1.curriculum.importer.CurriculumWorkbookParser
 import uz.scorm.lms.app.v1.curriculum.importer.ParsedHeader
 import uz.scorm.lms.app.v1.curriculum.importer.ParsedPlanRow
+import uz.scorm.lms.app.v1.curriculum.importer.ParsedWorkbook
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumComponent
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumScheduleRow
@@ -27,6 +29,7 @@ import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumComponentRepos
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumScheduleRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
+import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.student.model.EducationForm
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
@@ -45,33 +48,56 @@ class CurriculumImportService(
     private val curriculumService: ProgramCurriculumService,
     private val components: ProgramCurriculumComponentRepository,
     private val schedule: ProgramCurriculumScheduleRepository,
+    private val programs: ProgramRepository,
 ) {
     @Transactional(readOnly = true)
     fun preview(id: Long, file: MultipartFile, sheet: String?): CurriculumImportPreviewDto {
         val version = requireDraft(id)
-        val fileName = file.originalFilename.orEmpty().lowercase()
-        require(!file.isEmpty) { "Excel fayl tanlanmagan" }
-        require(file.size <= MAX_FILE_SIZE) { "Fayl hajmi 10 MB dan oshmasligi kerak" }
-        require(fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) { "Faqat .xlsx yoki .xls fayl qabul qilinadi" }
-        val workbook = try {
-            file.inputStream.use { CurriculumWorkbookParser.parse(it, sheet) }
-        } catch (_: Exception) {
-            throw IllegalArgumentException("Excel faylni o'qib bo'lmadi — ishchi o'quv reja fayli ekanini tekshiring")
-        }
+        val workbook = readWorkbook(file, sheet)
         val header = workbook.header
         return CurriculumImportPreviewDto(
             sheets = workbook.sheets.map { CurriculumImportSheetDto(it.name, it.rowCount) },
             sheet = workbook.sheet,
             rows = match(version, workbook.rows),
-            header = header?.let {
-                CurriculumImportHeaderDto(it.programCode, it.programName, it.degree, it.educationForm?.name, it.educationFormText,
-                    it.durationYears, it.qualification)
-            },
+            header = header?.let(::headerDto),
             warnings = header?.let { headerWarnings(version, it) }.orEmpty(),
             components = workbook.components.map { CurriculumImportComponentDto(it.type, it.name, it.semester, it.credits, it.hours, it.weeks) },
             schedule = workbook.schedule.map { CurriculumScheduleDto(it.course, it.weeks) },
         )
     }
+
+    /**
+     * Yangi reja formasini fayldan to'ldirish uchun: sarlavha (ta'lim shakli, muddat, kvalifikatsiya) va kodi bo'yicha
+     * tizimdagi yo'nalish. Hech narsa saqlanmaydi.
+     */
+    @Transactional(readOnly = true)
+    fun draft(file: MultipartFile, sheet: String?): CurriculumImportDraftDto {
+        val workbook = readWorkbook(file, sheet)
+        val header = workbook.header
+        val program = header?.programCode?.let { code ->
+            programs.findAll().filter { !it.deleted && it.active }.firstOrNull { it.code?.filter(Char::isDigit) == code }
+        }
+        return CurriculumImportDraftDto(
+            sheet = workbook.sheet, header = header?.let(::headerDto), programId = program?.id, programName = program?.name,
+            semesterCount = header?.durationYears?.let { it * 2 }?.takeIf { it in 1..15 },
+        )
+    }
+
+    private fun readWorkbook(file: MultipartFile, sheet: String?): ParsedWorkbook {
+        val fileName = file.originalFilename.orEmpty().lowercase()
+        require(!file.isEmpty) { "Excel fayl tanlanmagan" }
+        require(file.size <= MAX_FILE_SIZE) { "Fayl hajmi 10 MB dan oshmasligi kerak" }
+        require(fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) { "Faqat .xlsx yoki .xls fayl qabul qilinadi" }
+        return try {
+            file.inputStream.use { CurriculumWorkbookParser.parse(it, sheet) }
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Excel faylni o'qib bo'lmadi — ishchi o'quv reja fayli ekanini tekshiring")
+        }
+    }
+
+    private fun headerDto(h: ParsedHeader) = CurriculumImportHeaderDto(
+        h.programCode, h.programName, h.degree, h.educationForm?.name, h.educationFormText, h.durationYears, h.qualification,
+    )
 
     /** Fayl sarlavhasi rejaga mos kelmasa ogohlantiradi: yo'nalish, ta'lim shakli, o'qish muddati (semestrlar soni). */
     private fun headerWarnings(version: ProgramCurriculumVersion, header: ParsedHeader): List<String> = buildList {

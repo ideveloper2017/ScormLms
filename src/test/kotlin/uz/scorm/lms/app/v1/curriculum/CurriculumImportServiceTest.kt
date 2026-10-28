@@ -30,6 +30,7 @@ import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionReposit
 import uz.scorm.lms.app.v1.curriculum.service.CurriculumImportService
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
 import uz.scorm.lms.app.v1.program.model.Program
+import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.student.model.EducationForm
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
@@ -43,7 +44,9 @@ class CurriculumImportServiceTest {
     private val curriculum = mockk<ProgramCurriculumService>(relaxed = true)
     private val components = mockk<ProgramCurriculumComponentRepository>(relaxed = true)
     private val schedule = mockk<ProgramCurriculumScheduleRepository>(relaxed = true)
-    private val service = CurriculumImportService(versions, items, subjects, mockk(relaxed = true), mockk(relaxed = true), curriculum, components, schedule)
+    private val programs = mockk<ProgramRepository>()
+    private val service = CurriculumImportService(versions, items, subjects, mockk(relaxed = true), mockk(relaxed = true), curriculum,
+        components, schedule, programs)
 
     private val program = mockk<Program>(relaxed = true).also { every { it.id } returns 77 }
     private val version = mockk<ProgramCurriculumVersion>(relaxed = true).also {
@@ -171,6 +174,19 @@ class CurriculumImportServiceTest {
         assertEquals(listOf(STATE_ATTESTATION to 8), added.map { it.type to it.semester }) // semestr berilmasa — oxirgi
         assertEquals(listOf(1 to "FT,,A", 4 to "M,B"), weeks.map { it.course to it.weeks })
         verify { version.qualification = "Kompyuter tizimlari muhandisi" }
+    }
+
+    @Test
+    fun `yangi reja formasi uchun sarlavha va kodi bo'yicha yo'nalish topiladi`() {
+        val ki = Program(name = "Kompyuter injiniringi", code = "60610300").apply { id = 31 }
+        val old = Program(name = "Eski", code = "60610300").apply { id = 30; active = false }
+        every { programs.findAll() } returns listOf(old, ki)
+
+        val draft = service.draft(excel("Ta’lim yo‘nalishi: 60610300 - Kompyuter injiniringi\nTa’lim shakli - masofaviy\nO‘qish muddati - 4 yil"), null)
+
+        assertEquals(31L, draft.programId)
+        assertEquals(8, draft.semesterCount)
+        assertEquals("DISTANCE", draft.header?.educationForm)
     }
 
     @Test

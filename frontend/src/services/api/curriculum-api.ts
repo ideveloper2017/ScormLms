@@ -153,6 +153,15 @@ export interface CurriculumImportPreview {
   schedule?: CurriculumScheduleRow[];
 }
 
+/** Yangi reja formasini fayldan to'ldirish: sarlavha, kodi bo'yicha topilgan yo'nalish, semestrlar soni */
+export interface CurriculumImportDraft {
+  sheet?: string | null;
+  header?: CurriculumImportHeader | null;
+  programId?: number | null;
+  programName?: string | null;
+  semesterCount?: number | null;
+}
+
 /** Importda fanlar bilan birga: amaliyot/YaDA, o'quv jarayoni jadvali, kvalifikatsiya */
 export interface CurriculumImportExtras {
   components?: CurriculumImportComponent[];
@@ -375,6 +384,13 @@ export const curriculumApi = {
     form.append("file", file);
     if (sheet) form.append("sheet", sheet);
     return (await api.post<CurriculumImportPreview>(`/curricula/${id}/import/preview`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })).data;
+  },
+  importDraft: async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return (await api.post<CurriculumImportDraft>("/curricula/import/draft", form, {
       headers: { "Content-Type": "multipart/form-data" },
     })).data;
   },

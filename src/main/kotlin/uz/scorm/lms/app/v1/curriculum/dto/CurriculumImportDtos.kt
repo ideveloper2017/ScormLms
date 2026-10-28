@@ -49,6 +49,15 @@ data class CurriculumImportHeaderDto(
     val qualification: String? = null,
 )
 
+/** Yangi reja formasini fayldan to'ldirish: sarlavha, kodi bo'yicha topilgan yo'nalish, semestrlar soni (muddat × 2) */
+data class CurriculumImportDraftDto(
+    val sheet: String?,
+    val header: CurriculumImportHeaderDto?,
+    val programId: Long?,
+    val programName: String?,
+    val semesterCount: Int?,
+)
+
 /** Malakaviy amaliyot / YaDA: semestr kredit yoki o'quv jarayoni jadvalidan (topilmasa — oxirgi semestr) */
 data class CurriculumImportComponentDto(
     val type: CurriculumComponentType,

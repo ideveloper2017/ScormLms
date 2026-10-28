@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AlertTriangle, FileSpreadsheet, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { extractApiError } from "@/lib/academic-api";
 import {
-  courseWorkLabels, curriculumApi, type CurriculumImportAction, type CurriculumImportPreview, type CurriculumImportResult,
-  type CurriculumImportRow,
+  courseWorkLabels, curriculumApi, type CurriculumImportAction, type CurriculumImportDraft, type CurriculumImportPreview,
+  type CurriculumImportResult, type CurriculumImportRow,
 } from "@/services/api/curriculum-api";
 
 const selectClass = "h-9 w-full min-w-44 rounded-md border bg-background px-2 text-sm";
@@ -25,8 +25,10 @@ const hoursText = (r: CurriculumImportRow) => {
  * Ishchi o'quv rejani Excel'dan import qilish: fayl → ko'rib chiqish (varaq, fanlar, soatlar, katalogga moslik,
  * ogohlantirishlar; har qator uchun qaror) → rejaga qo'shish.
  */
-export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
+export function CurriculumImportDialog({ curriculumId, initialFile, onClose, onImported }: {
   curriculumId: number;
+  /** Reja Excel'dan yaratilganda — shu fayl darhol o'qiladi */
+  initialFile?: File | null;
   onClose: () => void;
   onImported: (result: CurriculumImportResult) => unknown;
 }) {
@@ -59,6 +61,15 @@ export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
       ? { ...row, action, createCode: action === "CREATE" ? row.createCode ?? row.code : row.createCode }
       : row));
 
+  const started = useRef(false);
+  useEffect(() => {
+    if (initialFile && !started.current) {
+      started.current = true;
+      chooseFile(initialFile);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- faqat birinchi ochilishda
+  }, []);
+
   const count = (action: CurriculumImportAction) => rows.filter((r) => r.action === action).length;
   const warnings = rows.filter((r) => r.issues.length > 0).length;
   const busy = load.isPending || apply.isPending;
@@ -81,6 +92,7 @@ export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
             <Label htmlFor="curriculum-file">Excel fayl (.xlsx)</Label>
             <Input id="curriculum-file" type="file" accept=".xlsx,.xls" disabled={busy}
               onChange={(e) => chooseFile(e.target.files?.[0] ?? null)} />
+            {file && initialFile === file && <p className="text-xs text-muted-foreground">Fayl: {file.name}</p>}
           </div>
           {preview && preview.sheets.length > 1 && (
             <div className="space-y-1.5">
@@ -210,5 +222,45 @@ export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Yangi reja formasini ishchi o'quv reja faylidan to'ldirish: yo'nalish (kodi bo'yicha), ta'lim shakli, semestrlar soni
+ * va kvalifikatsiya. Reja saqlangach, fanlar shu fayldan import qilinadi.
+ */
+export function CurriculumExcelPrefill({ onFilled }: { onFilled: (draft: CurriculumImportDraft, file: File) => unknown }) {
+  const [draft, setDraft] = useState<CurriculumImportDraft | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const read = useMutation({
+    mutationFn: (file: File) => curriculumApi.importDraft(file).then((result) => ({ result, file })),
+    onSuccess: ({ result, file }) => { setDraft(result); setError(null); void onFilled(result, file); },
+    onError: (e) => { setDraft(null); setError(extractApiError(e, "Faylni o'qib bo'lmadi").message); },
+  });
+  const header = draft?.header;
+
+  return (
+    <div className="space-y-2 rounded-md border border-dashed p-3" aria-label="Excel'dan to'ldirish">
+      <Label htmlFor="curriculum-prefill" className="flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" />Ishchi o'quv reja faylidan to'ldirish</Label>
+      <Input id="curriculum-prefill" type="file" accept=".xlsx,.xls" disabled={read.isPending}
+        onChange={(e) => { const file = e.target.files?.[0]; if (file) read.mutate(file); }} />
+      {read.isPending && <p className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Fayl o'qilmoqda...</p>}
+      {draft && !read.isPending && (
+        <div role="status" className="space-y-0.5 text-xs">
+          <p>
+            Fayldan olindi: {[draft.programName ?? (header?.programCode ? `${header.programCode} – ${header.programName ?? ""}` : null),
+              header?.educationFormText && `ta'lim shakli: ${header.educationFormText}`, draft.semesterCount && `${draft.semesterCount} semestr`,
+              header?.qualification && `kvalifikatsiya: ${header.qualification}`].filter(Boolean).join(" · ") || "sarlavha topilmadi"}
+          </p>
+          {header?.programCode && !draft.programId && (
+            <p className="flex items-center gap-1 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-3 w-3" />Yo'nalish {header.programCode} tizimda topilmadi — mutaxassislikni qo'lda tanlang.
+            </p>
+          )}
+          <p className="text-muted-foreground">Reja saqlangach, fanlar, amaliyot va o'quv jarayoni jadvali shu fayldan import qilinadi.</p>
+        </div>
+      )}
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+    </div>
   );
 }
