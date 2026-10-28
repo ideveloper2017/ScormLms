@@ -314,17 +314,17 @@ export interface ApproveCurriculumInput {
 
 export const curriculumInputError = (input: SaveCurriculumVersionInput): string | null => {
   const yearMatch = /^(\d{4})-(\d{4})$/.exec(input.academicYear);
-  if (input.name.trim().length < 2) return "O'quv reja nomi majburiy";
-  if (!input.programId || !input.versionCode.trim()) return "Dastur va versiya kodi majburiy";
+  if (!input.programId || !input.versionCode.trim()) return "Ta'lim yo'nalishini tanlang";
+  if (input.name.trim().length < 2) return "Reja nomini kiriting";
   if (!input.educationLanguage) return "O'quv reja tilini tanlang";
   if (!Number.isInteger(input.passingScore) || input.passingScore < 0 || input.passingScore > 100) return "O'tish bali 0-100 oralig'ida bo'lishi kerak";
   if (!Number.isInteger(input.baseCreditAmount) || input.baseCreditAmount < 0) return "Bazaviy kredit summasi manfiy bo'lmasligi kerak";
   if (!input.ratingSystemId) return "Kredit baholash tizimini tanlang";
   if (!Number.isInteger(input.semesterCount) || input.semesterCount < 1 || input.semesterCount > 15) return "Semestr soni 1-15 oralig'ida bo'lishi kerak";
-  if (!yearMatch || Number(yearMatch[2]) !== Number(yearMatch[1]) + 1) return "O'quv yili YYYY-YYYY ketma-ket formatida bo'lishi kerak";
+  if (!yearMatch || Number(yearMatch[2]) !== Number(yearMatch[1]) + 1) return "O'quv yilini tanlang";
   const academicFrom = `${yearMatch[1]}-09-01`;
   const academicUntil = `${yearMatch[2]}-08-31`;
-  if (!input.validFrom || !input.validUntil || input.validFrom > academicFrom || input.validUntil < academicUntil) return "Amal qilish davri butun o'quv yilini qoplashi kerak";
+  if (!input.validFrom || !input.validUntil || input.validFrom > academicFrom || input.validUntil < academicUntil) return "Amal qilish davri o'quv yilini to'liq qamrashi kerak — o'quv yilini qayta tanlang";
   if (input.credentialType === "STATE_DIPLOMA" && input.normativeBasisType !== "STATE_EDUCATION_STANDARD") return "Davlat diplomi davlat ta'lim standartiga asoslanadi";
   if (input.credentialType === "NON_STATE_CREDENTIAL" && input.normativeBasisType !== "PROFESSIONAL_STANDARD") return "Nodavlat hujjat kasbiy standartga asoslanadi";
   return null;

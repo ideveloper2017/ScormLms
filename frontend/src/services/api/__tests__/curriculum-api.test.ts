@@ -46,8 +46,8 @@ describe("decision 559 curriculum guards", () => {
   });
 
   it("requires validity to cover the full academic year", () => {
-    expect(curriculumInputError(input({ validFrom: "2026-09-02" }))).toContain("butun o'quv yilini");
-    expect(curriculumInputError(input({ validUntil: "2027-08-30" }))).toContain("butun o'quv yilini");
+    expect(curriculumInputError(input({ validFrom: "2026-09-02" }))).toContain("o'quv yilini to'liq qamrashi");
+    expect(curriculumInputError(input({ validUntil: "2027-08-30" }))).toContain("o'quv yilini to'liq qamrashi");
   });
 
   it("validates the reference-compatible curriculum fields", () => {

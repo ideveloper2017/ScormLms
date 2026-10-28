@@ -230,9 +230,10 @@ export function AdminStudyPlanEditor() {
     queryFn: () => academicPeriodApi.listSemesters(false),
   });
   const item = detail.data;
+  // Rejaga shu yo'nalish fanlari va umumiy (yo'nalishga bog'lanmagan) fanlar qo'shiladi
   const subjects = useQuery({
-    queryKey: ["subjects", form.programId],
-    queryFn: () => listSubjects(form.programId),
+    queryKey: ["subjects", "curriculum-options"],
+    queryFn: () => listSubjects(),
     enabled: !creating && form.programId > 0,
   });
 
@@ -378,8 +379,9 @@ export function AdminStudyPlanEditor() {
   const availableSubjects = (subjects.data ?? []).filter(
     (subject) =>
       subject.active &&
+      (subject.programId == null || subject.programId === form.programId) &&
       !item?.subjects.some((assigned) => assigned.subjectId === subject.id && assigned.semester === semester),
-  );
+  ).sort((a, b) => a.name.localeCompare(b.name));
   const semesterOptions = (semesterDefinitions.data ?? [])
     .filter((definition) => definition.active && definition.semesterNumber <= form.semesterCount)
     .sort((a, b) => a.semesterNumber - b.semesterNumber);
@@ -505,161 +507,79 @@ export function AdminStudyPlanEditor() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {creating && canWrite && <CurriculumExcelPrefill onFilled={applyDraft} />}
-                  <div className="flex justify-center">
-                    <div className="inline-flex overflow-hidden rounded-md border">
-                      <Button
-                        type="button"
-                        className="rounded-none"
-                        variant={form.active ? "default" : "ghost"}
-                        disabled={!editable || !canWrite}
-                        onClick={() => setForm((current) => ({ ...current, active: true }))}
-                      >
-                        Faol
-                      </Button>
-                      <Button
-                        type="button"
-                        className="rounded-none border-l"
-                        variant={!form.active ? "default" : "ghost"}
-                        disabled={!editable || !canWrite}
-                        onClick={() => setForm((current) => ({ ...current, active: false }))}
-                      >
-                        Faol emas
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="plan-name">
-                      <span className="text-destructive">*</span> Nomi
-                    </Label>
-                    <Input
-                      id="plan-name"
-                      disabled={!editable || !canWrite}
-                      value={form.name}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, name: event.target.value }))
-                      }
-                      placeholder="O'quv reja nomini kiriting"
-                    />
-                  </div>
 
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>
-                        <span className="text-destructive">*</span> O'quv reja tili
-                      </Label>
+                      <Label>Fakultet *</Label>
                       <Select
                         disabled={!editable || !canWrite}
-                        value={form.educationLanguage}
-                        onValueChange={(educationLanguage) =>
-                          setForm((current) => ({ ...current, educationLanguage }))
-                        }
+                        value={facultyId ? String(facultyId) : EMPTY}
+                        onValueChange={selectFaculty}
                       >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label="Fakultet"><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
                         <SelectContent>
-                          {languageOptions.map((language) => (
-                            <SelectItem key={language.value} value={language.value}>
-                              {language.label}
+                          <SelectItem value={EMPTY} disabled>Fakultetni tanlang</SelectItem>
+                          {(faculties.data ?? [])
+                            .filter((faculty) => faculty.active || faculty.id === facultyId)
+                            .map((faculty) => (
+                              <SelectItem key={faculty.id} value={String(faculty.id)}>
+                                {faculty.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Ta'lim yo'nalishi *</Label>
+                      <Select
+                        disabled={!editable || !canWrite || !facultyId}
+                        value={form.programId ? String(form.programId) : EMPTY}
+                        onValueChange={selectProgram}
+                      >
+                        <SelectTrigger aria-label="Ta'lim yo'nalishi">
+                          <SelectValue placeholder={facultyId ? "Yo'nalishni tanlang" : "Avval fakultetni tanlang"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={EMPTY} disabled>Yo'nalishni tanlang</SelectItem>
+                          {visiblePrograms.map((program) => (
+                            <SelectItem key={program.id} value={String(program.id)}>
+                              {program.code ? `${program.code} – ` : ""}{program.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {facultyId > 0 && programs.isSuccess && visiblePrograms.length === 0 && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          Bu fakultetda yo'nalish topilmadi. "Mutaxassisliklar" bo'limida yo'nalishni shu fakultet kafedrasiga biriktiring.
+                        </p>
+                      )}
+                      {item?.subjectCount && item.status === "DRAFT" ? (
+                        <p className="text-xs text-muted-foreground">
+                          Yo'nalish almashtirilsa, rejadagi fanlar yangi yo'nalishga mos bo'lishi kerak.
+                        </p>
+                      ) : null}
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="passing-score">
-                        <span className="text-destructive">*</span> O'tish bali
-                      </Label>
-                      <Input
-                        id="passing-score"
-                        type="number"
-                        min={0}
-                        max={100}
-                        disabled={!editable || !canWrite}
-                        value={form.passingScore}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            passingScore: Number(event.target.value),
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="base-credit">
-                      <span className="text-destructive">*</span> Bazaviy kredit summasi
-                    </Label>
-                    <Input
-                      id="base-credit"
-                      type="number"
-                      min={0}
-                      step={1000}
-                      disabled={!editable || !canWrite}
-                      value={form.baseCreditAmount}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          baseCreditAmount: Number(event.target.value),
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>
-                      <span className="text-destructive">*</span> Fakultet
-                    </Label>
-                    <Select
-                      disabled={!editable || !canWrite}
-                      value={facultyId ? String(facultyId) : EMPTY}
-                      onValueChange={selectFaculty}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={EMPTY} disabled>Fakultetni tanlang</SelectItem>
-                        {(faculties.data ?? [])
-                          .filter((faculty) => faculty.active || faculty.id === facultyId)
-                          .map((faculty) => (
-                            <SelectItem key={faculty.id} value={String(faculty.id)}>
-                              {faculty.name}
+                      <Label>O'quv yili *</Label>
+                      <Select disabled={!editable || !canWrite} value={form.academicYear} onValueChange={selectYear}>
+                        <SelectTrigger aria-label="O'quv yili"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(academicYears.data ?? []).map((year) => (
+                            <SelectItem key={year.id} value={year.code}>
+                              {year.code}{year.current ? " · joriy" : ""}
                             </SelectItem>
                           ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                          {!academicYears.data?.some((year) => year.code === form.academicYear) && (
+                            <SelectItem value={form.academicYear}>{form.academicYear}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label>
-                      <span className="text-destructive">*</span> Mutaxassislik
-                    </Label>
-                    <Select
-                      disabled={!editable || !canWrite || !facultyId}
-                      value={form.programId ? String(form.programId) : EMPTY}
-                      onValueChange={selectProgram}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Mutaxassislikni tanlang" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={EMPTY} disabled>Mutaxassislikni tanlang</SelectItem>
-                        {visiblePrograms.map((program) => (
-                          <SelectItem key={program.id} value={String(program.id)}>
-                            {program.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {item?.subjectCount && item.status === "DRAFT" ? (
-                      <p className="text-xs text-muted-foreground">
-                        Mutaxassislik almashtirilsa, mavjud fanlar yangi mutaxassislikka mos bo'lishi kerak.
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>
-                        <span className="text-destructive">*</span> Ta'lim shakli
-                      </Label>
+                      <Label>Ta'lim shakli *</Label>
                       <Select
                         disabled={!editable || !canWrite}
                         value={form.educationForm}
@@ -667,7 +587,7 @@ export function AdminStudyPlanEditor() {
                           setForm((current) => ({ ...current, educationForm }))
                         }
                       >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label="Ta'lim shakli"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {educationFormOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
@@ -677,43 +597,29 @@ export function AdminStudyPlanEditor() {
                         </SelectContent>
                       </Select>
                     </div>
+
                     <div className="space-y-2">
-                      <Label>
-                        <span className="text-destructive">*</span> Kredit baholash tizimi
-                      </Label>
+                      <Label>O'qitish tili *</Label>
                       <Select
                         disabled={!editable || !canWrite}
-                        value={form.ratingSystemId ? String(form.ratingSystemId) : EMPTY}
-                        onValueChange={(value) => {
-                          const ratingSystemId = Number(value);
-                          const rating = (ratings.data ?? []).find((entry) => entry.id === ratingSystemId);
-                          setForm((current) => ({
-                            ...current,
-                            ratingSystemId,
-                            passingScore: rating?.passScore ?? current.passingScore,
-                          }));
-                        }}
+                        value={form.educationLanguage}
+                        onValueChange={(educationLanguage) =>
+                          setForm((current) => ({ ...current, educationLanguage }))
+                        }
                       >
-                        <SelectTrigger><SelectValue placeholder="Baholash tizimini tanlang" /></SelectTrigger>
+                        <SelectTrigger aria-label="O'qitish tili"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={EMPTY} disabled>Baholash tizimini tanlang</SelectItem>
-                          {(ratings.data ?? [])
-                            .filter((rating) => rating.active || rating.id === form.ratingSystemId)
-                            .map((rating) => (
-                              <SelectItem key={rating.id} value={String(rating.id)}>
-                                {rating.name}
-                              </SelectItem>
-                            ))}
+                          {languageOptions.map((language) => (
+                            <SelectItem key={language.value} value={language.value}>
+                              {language.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
 
-                  <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="semester-count">
-                        <span className="text-destructive">*</span> Semestr soni (Maksimum 15)
-                      </Label>
+                      <Label htmlFor="semester-count">Semestrlar soni *</Label>
                       <Input
                         id="semester-count"
                         type="number"
@@ -722,36 +628,10 @@ export function AdminStudyPlanEditor() {
                         disabled={!editable || !canWrite}
                         value={form.semesterCount}
                         onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            semesterCount: Number(event.target.value),
-                          }))
+                          setForm((current) => ({ ...current, semesterCount: Number(event.target.value) }))
                         }
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>
-                        <span className="text-destructive">*</span> O'quv yilini boshlash
-                      </Label>
-                      <Select
-                        disabled={!editable || !canWrite}
-                        value={form.academicYear}
-                        onValueChange={selectYear}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {(academicYears.data ?? []).map((year) => (
-                            <SelectItem key={year.id} value={year.code}>
-                              {year.code.substring(0, 4)}{year.current ? " · joriy" : ""}
-                            </SelectItem>
-                          ))}
-                          {!academicYears.data?.some((year) => year.code === form.academicYear) && (
-                            <SelectItem value={form.academicYear}>
-                              {form.academicYear.substring(0, 4)}
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <p className="text-xs text-muted-foreground">Masalan: 4 yillik bakalavr — 8 semestr</p>
                     </div>
                   </div>
 
@@ -765,9 +645,110 @@ export function AdminStudyPlanEditor() {
                       onChange={(event) =>
                         setForm((current) => ({ ...current, qualification: event.target.value }))
                       }
-                      placeholder="Masalan: Kompyuter tizimlari muhandisi"
+                      placeholder="Masalan: Kompyuter tizimlari muhandisi (ixtiyoriy)"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="plan-name">Reja nomi *</Label>
+                    <Input
+                      id="plan-name"
+                      disabled={!editable || !canWrite}
+                      value={form.name}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, name: event.target.value }))
+                      }
+                      placeholder="Yo'nalish tanlanganda avtomatik to'ldiriladi"
+                    />
+                  </div>
+
+                  <details className="rounded-md border px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-medium">Qo'shimcha sozlamalar</summary>
+                    <p className="mt-1 text-xs text-muted-foreground">Odatda o'zgartirish shart emas — standart qiymatlar qo'yilgan.</p>
+                    <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Holati</Label>
+                        <div className="inline-flex overflow-hidden rounded-md border">
+                          <Button
+                            type="button"
+                            className="rounded-none"
+                            variant={form.active ? "default" : "ghost"}
+                            disabled={!editable || !canWrite}
+                            onClick={() => setForm((current) => ({ ...current, active: true }))}
+                          >
+                            Faol
+                          </Button>
+                          <Button
+                            type="button"
+                            className="rounded-none border-l"
+                            variant={!form.active ? "default" : "ghost"}
+                            disabled={!editable || !canWrite}
+                            onClick={() => setForm((current) => ({ ...current, active: false }))}
+                          >
+                            Faol emas
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Baholash tizimi</Label>
+                        <Select
+                          disabled={!editable || !canWrite}
+                          value={form.ratingSystemId ? String(form.ratingSystemId) : EMPTY}
+                          onValueChange={(value) => {
+                            const ratingSystemId = Number(value);
+                            const rating = (ratings.data ?? []).find((entry) => entry.id === ratingSystemId);
+                            setForm((current) => ({
+                              ...current,
+                              ratingSystemId,
+                              passingScore: rating?.passScore ?? current.passingScore,
+                            }));
+                          }}
+                        >
+                          <SelectTrigger aria-label="Baholash tizimi"><SelectValue placeholder="Baholash tizimini tanlang" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={EMPTY} disabled>Baholash tizimini tanlang</SelectItem>
+                            {(ratings.data ?? [])
+                              .filter((rating) => rating.active || rating.id === form.ratingSystemId)
+                              .map((rating) => (
+                                <SelectItem key={rating.id} value={String(rating.id)}>
+                                  {rating.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="passing-score">O'tish bali</Label>
+                        <Input
+                          id="passing-score"
+                          type="number"
+                          min={0}
+                          max={100}
+                          disabled={!editable || !canWrite}
+                          value={form.passingScore}
+                          onChange={(event) =>
+                            setForm((current) => ({ ...current, passingScore: Number(event.target.value) }))
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">Baholash tizimidan olinadi</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="base-credit">Bazaviy kredit summasi</Label>
+                        <Input
+                          id="base-credit"
+                          type="number"
+                          min={0}
+                          step={1000}
+                          disabled={!editable || !canWrite}
+                          value={form.baseCreditAmount}
+                          onChange={(event) =>
+                            setForm((current) => ({ ...current, baseCreditAmount: Number(event.target.value) }))
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">Majburiy emas — bilmasangiz 0 qoldiring</p>
+                      </div>
+                    </div>
+                  </details>
 
                   {saveAttempted && formError && (
                     <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
@@ -829,16 +810,21 @@ export function AdminStudyPlanEditor() {
                           value={subjectId ? String(subjectId) : EMPTY}
                           onValueChange={(value) => setSubjectId(Number(value))}
                         >
-                          <SelectTrigger><SelectValue placeholder="Fanni tanlang" /></SelectTrigger>
+                          <SelectTrigger aria-label="Fan"><SelectValue placeholder="Fanni tanlang" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value={EMPTY} disabled>Fanni tanlang</SelectItem>
                             {availableSubjects.map((subject) => (
                               <SelectItem key={subject.id} value={String(subject.id)}>
-                                {subject.name} · {subject.credits ?? 0} kredit
+                                {subject.code ? `${subject.code} · ` : ""}{subject.name} · {subject.credits ?? 0} kredit
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        {subjects.isSuccess && availableSubjects.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Qo'shiladigan fan yo'q. Fanni "Fanlar" bo'limida yarating yoki ishchi o'quv rejani Excel'dan yuklang.
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label>Semestr</Label>
@@ -923,16 +909,16 @@ export function AdminStudyPlanEditor() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <ShieldCheck className="h-5 w-5" />
-                    Huquqiy asos
+                    Tasdiqlash uchun hujjatlar
                   </CardTitle>
                   <CardDescription>
-                    Mahalliy tizimning normativ va audit talablari etalon formadan alohida saqlanadi.
+                    Reja qaysi standart va hujjatlar asosida tuzilgani. Rejani tasdiqlashdan oldin to'ldiriladi.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Bitiruv hujjati *</Label>
+                      <Label>Bitiruvchiga beriladigan hujjat</Label>
                       <Select
                         disabled={!editable || !canWrite}
                         value={form.credentialType}
@@ -955,18 +941,14 @@ export function AdminStudyPlanEditor() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Normativ asos</Label>
-                      <Input
-                        readOnly
-                        value={
-                          form.normativeBasisType === "STATE_EDUCATION_STANDARD"
-                            ? "Davlat ta'lim standarti"
-                            : "Kasbiy standart"
-                        }
-                      />
+                      <Label>Asos</Label>
+                      <p className="flex h-10 items-center text-sm text-muted-foreground">
+                        {form.normativeBasisType === "STATE_EDUCATION_STANDARD" ? "Davlat ta'lim standarti" : "Kasbiy standart"}
+                        {" "}· amal qilish: {form.validFrom} — {form.validUntil}
+                      </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="standard-reference">Standart rekviziti *</Label>
+                      <Label htmlFor="standard-reference">Ta'lim standarti (raqami va sanasi)</Label>
                       <Input
                         id="standard-reference"
                         disabled={!editable || !canWrite}
@@ -977,11 +959,11 @@ export function AdminStudyPlanEditor() {
                             standardReference: event.target.value,
                           }))
                         }
-                        placeholder="Standart raqami va sanasi"
+                        placeholder="Masalan: O'zDSt 3.1.1:2021, 10.08.2021"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="qualification-reference">Malaka talablari rekviziti *</Label>
+                      <Label htmlFor="qualification-reference">Malaka talablari hujjati (raqami va sanasi)</Label>
                       <Input
                         id="qualification-reference"
                         disabled={!editable || !canWrite}
@@ -992,31 +974,7 @@ export function AdminStudyPlanEditor() {
                             qualificationRequirementsReference: event.target.value,
                           }))
                         }
-                        placeholder="Hujjat raqami va sanasi"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="valid-from">Amal qilish boshlanishi *</Label>
-                      <Input
-                        id="valid-from"
-                        type="date"
-                        disabled={!editable || !canWrite}
-                        value={form.validFrom}
-                        onChange={(event) =>
-                          setForm((current) => ({ ...current, validFrom: event.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="valid-until">Amal qilish tugashi *</Label>
-                      <Input
-                        id="valid-until"
-                        type="date"
-                        disabled={!editable || !canWrite}
-                        value={form.validUntil}
-                        onChange={(event) =>
-                          setForm((current) => ({ ...current, validUntil: event.target.value }))
-                        }
+                        placeholder="Masalan: 123-son buyruq, 01.08.2025"
                       />
                     </div>
                   </div>
@@ -1028,7 +986,7 @@ export function AdminStudyPlanEditor() {
                         ) : (
                           <Save className="mr-2 h-4 w-4" />
                         )}
-                        Huquqiy ma'lumotlarni saqlash
+                        Saqlash
                       </Button>
                     </div>
                   )}
@@ -1050,7 +1008,7 @@ export function AdminStudyPlanEditor() {
                           { text: "Reja faol va asosiy maydonlar to'liq", done: item.active && !curriculumInputError(editForm(item)) },
                           { text: "Kamida bitta fan biriktirilgan", done: item.subjectCount > 0 },
                           {
-                            text: "Standart va malaka rekvizitlari kiritilgan",
+                            text: "Ta'lim standarti va malaka talablari hujjati kiritilgan",
                             done:
                               Boolean(item.standardReference.trim()) &&
                               Boolean(item.qualificationRequirementsReference.trim()),
