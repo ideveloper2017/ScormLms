@@ -10,6 +10,34 @@ export type CurriculumEducationForm = "FULL_TIME" | "PART_TIME" | "EVENING" | "D
 export type CurriculumCourseWorkType = "COURSE_WORK" | "COURSE_PROJECT";
 export const courseWorkLabels: Record<CurriculumCourseWorkType, string> = { COURSE_WORK: "Kurs ishi", COURSE_PROJECT: "Kurs loyihasi" };
 
+/** Rejadagi fan bo'lmagan qismlar: malakaviy amaliyot va yakuniy davlat attestatsiyasi */
+export type CurriculumComponentType = "PRACTICE" | "STATE_ATTESTATION";
+export const componentLabels: Record<CurriculumComponentType, string> = {
+  PRACTICE: "Malakaviy amaliyot", STATE_ATTESTATION: "Yakuniy davlat attestatsiyasi",
+};
+export interface CurriculumComponent {
+  id: number;
+  type: CurriculumComponentType;
+  name: string;
+  semester: number;
+  credits: number;
+  hours: number;
+  weeks?: number | null;
+}
+export interface SaveCurriculumComponentInput {
+  type: CurriculumComponentType;
+  name?: string | null;
+  semester: number;
+  credits: number;
+  hours: number;
+  weeks?: number | null;
+}
+/** "I. O'quv jarayoni jadvali": kurs haftalari kodlari (FT, A, T, M, B, G; "" — nazariy ta'lim) */
+export interface CurriculumScheduleRow {
+  course: number;
+  weeks: string[];
+}
+
 export interface CurriculumSubject {
   id: number;
   subjectId?: number | null;
@@ -104,6 +132,16 @@ export interface CurriculumImportHeader {
   qualification?: string | null;
 }
 
+/** Fayldagi malakaviy amaliyot / YaDA (semestr berilmasa — rejaning oxirgi semestri) */
+export interface CurriculumImportComponent {
+  type: CurriculumComponentType;
+  name: string;
+  semester?: number | null;
+  credits: number;
+  hours: number;
+  weeks?: number | null;
+}
+
 export interface CurriculumImportPreview {
   sheets: { name: string; rowCount: number }[];
   sheet?: string | null;
@@ -111,11 +149,21 @@ export interface CurriculumImportPreview {
   header?: CurriculumImportHeader | null;
   /** Fayl sarlavhasi rejaga mos kelmasa (yo'nalish, ta'lim shakli, o'qish muddati) */
   warnings?: string[];
+  components?: CurriculumImportComponent[];
+  schedule?: CurriculumScheduleRow[];
+}
+
+/** Importda fanlar bilan birga: amaliyot/YaDA, o'quv jarayoni jadvali, kvalifikatsiya */
+export interface CurriculumImportExtras {
+  components?: CurriculumImportComponent[];
+  schedule?: CurriculumScheduleRow[];
+  qualification?: string | null;
 }
 
 export interface CurriculumImportResult {
   subjectsCreated: number;
   itemsAdded: number;
+  componentsAdded?: number;
   itemsSkipped: number;
   curriculum: CurriculumVersion;
 }
@@ -154,6 +202,9 @@ export interface CurriculumVersion {
   approvedByName?: string | null;
   archivedAt?: string | null;
   createdByUserId?: number | null;
+  qualification?: string | null;
+  components?: CurriculumComponent[];
+  schedule?: CurriculumScheduleRow[];
 }
 
 export interface CurriculumStudent {
@@ -235,6 +286,7 @@ export interface SaveCurriculumVersionInput {
   qualificationRequirementsReference: string;
   validFrom: string;
   validUntil: string;
+  qualification?: string | null;
 }
 
 export interface AddCurriculumSubjectInput {
@@ -326,8 +378,15 @@ export const curriculumApi = {
       headers: { "Content-Type": "multipart/form-data" },
     })).data;
   },
-  importApply: async (id: number, rows: CurriculumImportRow[]) =>
-    (await api.post<CurriculumImportResult>(`/curricula/${id}/import`, { rows })).data,
+  importApply: async (id: number, rows: CurriculumImportRow[], extras: CurriculumImportExtras = {}) =>
+    (await api.post<CurriculumImportResult>(`/curricula/${id}/import`, { rows, ...extras })).data,
+  /** Malakaviy amaliyot / YaDA (faqat qoralama rejada) */
+  addComponent: async (id: number, input: SaveCurriculumComponentInput) =>
+    (await api.post<CurriculumVersion>(`/curricula/${id}/components`, input)).data,
+  updateComponent: async (id: number, componentId: number, input: SaveCurriculumComponentInput) =>
+    (await api.put<CurriculumVersion>(`/curricula/${id}/components/${componentId}`, input)).data,
+  removeComponent: async (id: number, componentId: number) =>
+    (await api.delete<CurriculumVersion>(`/curricula/${id}/components/${componentId}`)).data,
   approve: async (id: number, input: ApproveCurriculumInput) => (await api.post<CurriculumVersion>(`/curricula/${id}/approve`, input)).data,
   archive: async (id: number) => (await api.post<CurriculumVersion>(`/curricula/${id}/archive`)).data,
 };

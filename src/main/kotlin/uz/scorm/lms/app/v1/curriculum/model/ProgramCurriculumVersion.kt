@@ -114,6 +114,10 @@ class ProgramCurriculumVersion(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "archived_by_user_id")
     var archivedByUser: User? = null,
+
+    /** Kvalifikatsiya (masalan "Kompyuter tizimlari muhandisi") */
+    @Column(length = 255)
+    var qualification: String? = null,
 ) : BaseEntity()
 
 enum class CurriculumCredentialType {

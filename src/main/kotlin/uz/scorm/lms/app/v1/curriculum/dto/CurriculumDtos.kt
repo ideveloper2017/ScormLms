@@ -1,5 +1,6 @@
 package uz.scorm.lms.app.v1.curriculum.dto
 
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCourseWorkType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
@@ -27,7 +28,31 @@ data class SaveCurriculumVersionRequest(
     val qualificationRequirementsReference: String,
     val validFrom: LocalDate,
     val validUntil: LocalDate,
+    val qualification: String? = null,
 )
+
+/** Malakaviy amaliyot yoki yakuniy davlat attestatsiyasi; name berilmasa turi nomi olinadi */
+data class SaveCurriculumComponentRequest(
+    val type: CurriculumComponentType,
+    val name: String? = null,
+    val semester: Int,
+    val credits: Int = 0,
+    val hours: Int = 0,
+    val weeks: Int? = null,
+)
+
+data class CurriculumComponentDto(
+    val id: Long,
+    val type: CurriculumComponentType,
+    val name: String,
+    val semester: Int,
+    val credits: Int,
+    val hours: Int,
+    val weeks: Int?,
+)
+
+/** O'quv jarayoni jadvali: kursning haftalari kodlari (1-haftadan): FT, A, T, M, B, G; "" — nazariy ta'lim */
+data class CurriculumScheduleDto(val course: Int, val weeks: List<String>)
 
 data class AddCurriculumSubjectRequest(
     val subjectId: Long,
@@ -128,6 +153,7 @@ data class CurriculumVersionDto(
     val status: String,
     val subjects: List<CurriculumSubjectDto>,
     val subjectCount: Int,
+    /** Fanlar + malakaviy amaliyot va YaDA kreditlari */
     val totalCredits: Int,
     val approvalOrderNumber: String?,
     val approvalOrderDate: LocalDate?,
@@ -135,6 +161,9 @@ data class CurriculumVersionDto(
     val approvedByName: String?,
     val archivedAt: Instant?,
     val createdByUserId: Long? = null,
+    val qualification: String? = null,
+    val components: List<CurriculumComponentDto> = emptyList(),
+    val schedule: List<CurriculumScheduleDto> = emptyList(),
 )
 
 data class CurriculumStudentDto(

@@ -41,7 +41,9 @@ export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
     onError: (e) => setError(extractApiError(e, "Faylni o'qib bo'lmadi").message),
   });
   const apply = useMutation({
-    mutationFn: () => curriculumApi.importApply(curriculumId, rows),
+    mutationFn: () => curriculumApi.importApply(curriculumId, rows, {
+      components: preview?.components ?? [], schedule: preview?.schedule ?? [], qualification: preview?.header?.qualification ?? null,
+    }),
     onSuccess: async (result) => { await onImported(result); onClose(); },
     onError: (e) => setError(extractApiError(e, "Import qilinmadi").message),
   });
@@ -111,6 +113,20 @@ export function CurriculumImportDialog({ curriculumId, onClose, onImported }: {
                 preview.header.qualification && `kvalifikatsiya: ${preview.header.qualification}`,
               ].filter(Boolean).join(" · ")}
             </p>
+          </div>
+        )}
+        {!load.isPending && ((preview?.components?.length ?? 0) > 0 || (preview?.schedule?.length ?? 0) > 0) && (
+          <div className="space-y-0.5 rounded-md border p-3 text-sm" aria-label="Fan bo'lmagan qismlar">
+            <p className="font-medium">Fanlardan tashqari rejaga qo'shiladi:</p>
+            {preview!.components?.map((c) => (
+              <p key={`${c.type}-${c.semester}`} className="text-xs text-muted-foreground">
+                {c.name} — {[c.semester ? `${c.semester}-semestr` : "oxirgi semestr", c.credits ? `${c.credits} kredit` : null,
+                  c.hours ? `${c.hours} soat` : null, c.weeks ? `${c.weeks} hafta` : null].filter(Boolean).join(" · ")}
+              </p>
+            ))}
+            {(preview!.schedule?.length ?? 0) > 0 && (
+              <p className="text-xs text-muted-foreground">O'quv jarayoni jadvali — {preview!.schedule!.length} kurs bo'yicha haftalar</p>
+            )}
           </div>
         )}
         {!load.isPending && (preview?.warnings?.length ?? 0) > 0 && (

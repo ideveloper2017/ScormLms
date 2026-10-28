@@ -7,18 +7,24 @@ import uz.scorm.lms.app.v1.academicperiod.service.AcademicPeriodService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportAction
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportApplyRequest
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportComponentDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportHeaderDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportPreviewDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportResultDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportRowDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportSemesterCredit
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportSheetDto
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumScheduleDto
 import uz.scorm.lms.app.v1.curriculum.importer.CurriculumWorkbookParser
 import uz.scorm.lms.app.v1.curriculum.importer.ParsedHeader
 import uz.scorm.lms.app.v1.curriculum.importer.ParsedPlanRow
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
+import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumComponent
+import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumScheduleRow
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumSubject
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
+import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumComponentRepository
+import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumScheduleRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
 import uz.scorm.lms.app.v1.student.model.EducationForm
@@ -37,6 +43,8 @@ class CurriculumImportService(
     private val academicPeriodService: AcademicPeriodService,
     private val auditService: AuditService,
     private val curriculumService: ProgramCurriculumService,
+    private val components: ProgramCurriculumComponentRepository,
+    private val schedule: ProgramCurriculumScheduleRepository,
 ) {
     @Transactional(readOnly = true)
     fun preview(id: Long, file: MultipartFile, sheet: String?): CurriculumImportPreviewDto {
@@ -60,6 +68,8 @@ class CurriculumImportService(
                     it.durationYears, it.qualification)
             },
             warnings = header?.let { headerWarnings(version, it) }.orEmpty(),
+            components = workbook.components.map { CurriculumImportComponentDto(it.type, it.name, it.semester, it.credits, it.hours, it.weeks) },
+            schedule = workbook.schedule.map { CurriculumScheduleDto(it.course, it.weeks) },
         )
     }
 
@@ -123,8 +133,43 @@ class CurriculumImportService(
                 added++
             }
         }
-        auditService.logAction("CURRICULUM_IMPORTED", actorId, "curriculum=$id; subjectsCreated=$created; items=$added; skipped=$skipped")
-        return CurriculumImportResultDto(created, added, skipped, curriculumService.get(id))
+        val componentsAdded = addComponents(version, request.components)
+        if (request.schedule.isNotEmpty()) replaceSchedule(version, request.schedule)
+        request.qualification?.trim()?.take(255)?.ifBlank { null }?.takeIf { version.qualification.isNullOrBlank() }?.let {
+            version.qualification = it
+            versions.save(version)
+        }
+        auditService.logAction("CURRICULUM_IMPORTED", actorId,
+            "curriculum=$id; subjectsCreated=$created; items=$added; skipped=$skipped; components=$componentsAdded; schedule=${request.schedule.size}")
+        return CurriculumImportResultDto(created, added, skipped, curriculumService.get(id), componentsAdded)
+    }
+
+    /** Malakaviy amaliyot va YaDA: rejada shu tur va semestr bilan qism bo'lmasa qo'shiladi. */
+    private fun addComponents(version: ProgramCurriculumVersion, requested: List<CurriculumImportComponentDto>): Int {
+        val existing = components.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscTypeAsc(requireNotNull(version.id))
+        var added = 0
+        requested.forEach { c ->
+            val semester = c.semester ?: version.semesterCount
+            require(semester in 1..version.semesterCount) { "${c.name}: $semester-semestr reja chegarasidan tashqarida" }
+            if (existing.any { it.type == c.type && it.semester == semester }) return@forEach
+            components.save(ProgramCurriculumComponent(
+                curriculumVersion = version, type = c.type, name = c.name.trim().take(500).ifEmpty { c.type.name }, semester = semester,
+                credits = c.credits.coerceIn(0, 60), hours = c.hours.coerceIn(0, 5000), weeks = c.weeks?.coerceIn(0, 52),
+            ))
+            added++
+        }
+        return added
+    }
+
+    /** O'quv jarayoni jadvali fayldagisi bilan almashtiriladi (kurs qatorlari joyida yangilanadi). */
+    private fun replaceSchedule(version: ProgramCurriculumVersion, rows: List<CurriculumScheduleDto>) {
+        require(rows.map { it.course }.toSet().size == rows.size && rows.all { it.course in 1..6 }) { "O'quv jarayoni jadvalida kurslar noto'g'ri" }
+        require(rows.all { row -> row.weeks.size <= 53 && row.weeks.all { WEEK_CODE.matches(it) } }) { "O'quv jarayoni jadvalida noto'g'ri hafta kodi" }
+        val existing = schedule.findAllByCurriculumVersionIdAndDeletedFalseOrderByCourseAsc(requireNotNull(version.id)).associateBy { it.course }
+        rows.forEach { row ->
+            schedule.save((existing[row.course] ?: ProgramCurriculumScheduleRow(version, row.course, "")).apply { weeks = row.weeks.joinToString(",") })
+        }
+        schedule.deleteAll(existing.values.filter { old -> rows.none { it.course == old.course } })
     }
 
     /** Reja qatorini tizimdagi fanga moslash: kod+nom, so'ng nom; topilmasa yangi fan (band kodga qo'shimcha). */
@@ -202,6 +247,7 @@ class CurriculumImportService(
     private companion object {
         const val MAX_FILE_SIZE = 10L * 1024 * 1024
         const val MAX_ROWS = 500
+        val WEEK_CODE = Regex("[A-Z]{0,3}")
         val FORMS = mapOf(
             EducationForm.FULL_TIME to "kunduzgi", EducationForm.PART_TIME to "sirtqi",
             EducationForm.EVENING to "kechki", EducationForm.DISTANCE to "masofaviy",

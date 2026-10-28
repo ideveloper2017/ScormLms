@@ -79,6 +79,7 @@ import {
 import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 import { CurriculumSubjectsTable } from "@/components/admin/curriculum-subjects-table";
 import { CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
+import { CurriculumComponentsCard, CurriculumScheduleCard } from "@/components/admin/curriculum-components";
 
 const EMPTY = "__empty__";
 
@@ -126,6 +127,7 @@ const emptyForm = (): SaveCurriculumVersionInput => {
     normativeBasisType: "STATE_EDUCATION_STANDARD",
     standardReference: "",
     qualificationRequirementsReference: "",
+    qualification: "",
     ...yearDates(academicYear),
   };
 };
@@ -148,6 +150,7 @@ const editForm = (item: CurriculumVersion): SaveCurriculumVersionInput => ({
   qualificationRequirementsReference: item.qualificationRequirementsReference,
   validFrom: item.validFrom,
   validUntil: item.validUntil,
+  qualification: item.qualification ?? "",
 });
 
 const statusText: Record<CurriculumStatus, string> = {
@@ -355,6 +358,7 @@ export function AdminStudyPlanEditor() {
   });
 
   const formError = curriculumInputError(form);
+  const componentCredits = (item?.components ?? []).reduce((sum, c) => sum + c.credits, 0);
   const editable = creating || item?.status === "DRAFT";
   const busy = create.isPending || update.isPending;
   const availableSubjects = (subjects.data ?? []).filter(
@@ -720,6 +724,20 @@ export function AdminStudyPlanEditor() {
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="plan-qualification">Kvalifikatsiya</Label>
+                    <Input
+                      id="plan-qualification"
+                      maxLength={255}
+                      disabled={!editable || !canWrite}
+                      value={form.qualification ?? ""}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, qualification: event.target.value }))
+                      }
+                      placeholder="Masalan: Kompyuter tizimlari muhandisi"
+                    />
+                  </div>
+
                   {saveAttempted && formError && (
                     <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
                       {formError}
@@ -739,14 +757,15 @@ export function AdminStudyPlanEditor() {
                 toast({
                   title: "Ishchi o'quv reja import qilindi",
                   description: `${result.itemsAdded} ta fan qo'shildi, ${result.subjectsCreated} ta yangi fan yaratildi` +
-                    (result.itemsSkipped ? `, ${result.itemsSkipped} tasi rejada allaqachon bor edi` : ""),
+                    (result.itemsSkipped ? `, ${result.itemsSkipped} tasi rejada allaqachon bor edi` : "") +
+                    (result.componentsAdded ? `, amaliyot/YaDA: ${result.componentsAdded} ta` : ""),
                 });
               }}
             />
           )}
 
           {!creating && item && (
-            <TabsContent value="subjects">
+            <TabsContent value="subjects" className="space-y-5">
               <Card>
                 <CardHeader>
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -756,8 +775,9 @@ export function AdminStudyPlanEditor() {
                         Fanlarni biriktirish
                       </CardTitle>
                       <CardDescription>
-                        {item.subjectCount} ta fan · jami {item.totalCredits} kredit · {item.semesterCount} semestr ·
-                        soatlar ishchi o'quv reja bo'yicha
+                        {item.subjectCount} ta fan · jami {item.totalCredits} kredit
+                        {componentCredits > 0 && ` (fanlar ${item.totalCredits - componentCredits} + amaliyot va YaDA ${componentCredits})`}
+                        {" "}· {item.semesterCount} semestr · soatlar ishchi o'quv reja bo'yicha
                       </CardDescription>
                     </div>
                     {item.status === "DRAFT" && canWrite && (
@@ -848,6 +868,14 @@ export function AdminStudyPlanEditor() {
                   />
                 </CardContent>
               </Card>
+              <CurriculumComponentsCard
+                curriculumId={item.id}
+                components={item.components ?? []}
+                semesterCount={item.semesterCount}
+                editable={item.status === "DRAFT" && canWrite}
+                onChanged={refresh}
+              />
+              {(item.schedule?.length ?? 0) > 0 && <CurriculumScheduleCard schedule={item.schedule!} />}
             </TabsContent>
           )}
 

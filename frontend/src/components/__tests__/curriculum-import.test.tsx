@@ -30,6 +30,9 @@ describe("CurriculumImportDialog", () => {
       header: { programCode: "60610300", programName: "Kompyuter injiniringi", degree: "BAKALAVR", educationForm: "DISTANCE",
         educationFormText: "masofaviy", durationYears: 4, qualification: "Kompyuter tizimlari muhandisi" },
       warnings: ["Faylda ta'lim shakli masofaviy, rejada kunduzgi"],
+      components: [{ type: "PRACTICE", name: "Malakaviy amaliyot", semester: 8, credits: 30, hours: 900, weeks: 15 },
+        { type: "STATE_ATTESTATION", name: "Yakuniy davlat attestatsiyasi", semester: 8, credits: 0, hours: 0, weeks: 8 }],
+      schedule: [{ course: 1, weeks: ["FT", "", "A"] }],
     });
     vi.mocked(curriculumApi.importApply).mockResolvedValue({ subjectsCreated: 0, itemsAdded: 2, itemsSkipped: 0, curriculum: {} as never });
     const onImported = vi.fn();
@@ -45,6 +48,10 @@ describe("CurriculumImportDialog", () => {
     expect(screen.getByLabelText("Fayl sarlavhasi")).toHaveTextContent("ta'lim shakli: masofaviy · o'qish muddati: 4 yil · kvalifikatsiya: Kompyuter tizimlari muhandisi");
     expect(screen.getByLabelText("Fayl va reja farqi")).toHaveTextContent("Faylda ta'lim shakli masofaviy, rejada kunduzgi");
     expect(screen.getByText("Dasturlash 1,2").closest("tr")).toHaveTextContent("Kurs ishi");
+    const extras = screen.getByLabelText("Fan bo'lmagan qismlar");
+    expect(extras).toHaveTextContent("Malakaviy amaliyot — 8-semestr · 30 kredit · 900 soat · 15 hafta");
+    expect(extras).toHaveTextContent("Yakuniy davlat attestatsiyasi — 8-semestr · 8 hafta");
+    expect(extras).toHaveTextContent("O'quv jarayoni jadvali — 1 kurs bo'yicha haftalar");
     expect(screen.getByText("1: 6, 2: 4")).toBeInTheDocument();
     expect(screen.getAllByText("M 30 · A 45 · L 45 · MT 180")).toHaveLength(2);
     expect(screen.getByText(/PDT2504-A kodi bilan yaratiladi/)).toBeInTheDocument();
@@ -59,7 +66,12 @@ describe("CurriculumImportDialog", () => {
     await waitFor(() => expect(curriculumApi.importApply).toHaveBeenCalledWith(5, [
       expect.objectContaining({ code: "DAS1110", action: "USE_EXISTING" }),
       expect.objectContaining({ code: "PDT2504", action: "SKIP" }),
-    ]));
+    ], {
+      // Amaliyot/YaDA, o'quv jarayoni jadvali va kvalifikatsiya ham fayldan
+      components: [expect.objectContaining({ type: "PRACTICE" }), expect.objectContaining({ type: "STATE_ATTESTATION" })],
+      schedule: [{ course: 1, weeks: ["FT", "", "A"] }],
+      qualification: "Kompyuter tizimlari muhandisi",
+    }));
     await waitFor(() => expect(onImported).toHaveBeenCalled());
   });
 });
