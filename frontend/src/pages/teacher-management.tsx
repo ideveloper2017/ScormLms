@@ -184,19 +184,19 @@ export function TeacherManagement() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="teacher-degree">Ilmiy daraja</Label>
-                <Input id="teacher-degree" list="teacher-degrees" value={form.academicDegree} onChange={(e) => set({ academicDegree: e.target.value })} placeholder="Ro'yxatdan tanlang yoki yozing" />
+                <Input id="teacher-degree" list="teacher-degrees" value={form.academicDegree} onChange={(e) => set({ academicDegree: e.target.value })} placeholder="Tanlang yoki yozing" />
                 <datalist id="teacher-degrees">{ACADEMIC_DEGREES.map((value) => <option key={value} value={value} />)}</datalist>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="teacher-rank">Ilmiy unvon</Label>
-                <Input id="teacher-rank" list="teacher-ranks" value={form.academicRank} onChange={(e) => set({ academicRank: e.target.value })} placeholder="Ro'yxatdan tanlang yoki yozing" />
+                <Input id="teacher-rank" list="teacher-ranks" value={form.academicRank} onChange={(e) => set({ academicRank: e.target.value })} placeholder="Tanlang yoki yozing" />
                 <datalist id="teacher-ranks">{ACADEMIC_RANKS.map((value) => <option key={value} value={value} />)}</datalist>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="teacher-position">Lavozim</Label>
-                <Input id="teacher-position" list="teacher-positions" value={form.position} onChange={(e) => set({ position: e.target.value })} placeholder="Ro'yxatdan tanlang yoki yozing" />
+                <Input id="teacher-position" list="teacher-positions" value={form.position} onChange={(e) => set({ position: e.target.value })} placeholder="Tanlang yoki yozing" />
                 <datalist id="teacher-positions">{POSITIONS.map((value) => <option key={value} value={value} />)}</datalist>
               </div>
               <div className="space-y-1.5">

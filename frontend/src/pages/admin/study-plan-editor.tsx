@@ -516,7 +516,7 @@ export function AdminStudyPlanEditor() {
                         value={facultyId ? String(facultyId) : EMPTY}
                         onValueChange={selectFaculty}
                       >
-                        <SelectTrigger aria-label="Fakultet"><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
+                        <SelectTrigger className="w-full" aria-label="Fakultet"><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value={EMPTY} disabled>Fakultetni tanlang</SelectItem>
                           {(faculties.data ?? [])
@@ -537,7 +537,7 @@ export function AdminStudyPlanEditor() {
                         value={form.programId ? String(form.programId) : EMPTY}
                         onValueChange={selectProgram}
                       >
-                        <SelectTrigger aria-label="Ta'lim yo'nalishi">
+                        <SelectTrigger className="w-full" aria-label="Ta'lim yo'nalishi">
                           <SelectValue placeholder={facultyId ? "Yo'nalishni tanlang" : "Avval fakultetni tanlang"} />
                         </SelectTrigger>
                         <SelectContent>
@@ -564,7 +564,7 @@ export function AdminStudyPlanEditor() {
                     <div className="space-y-2">
                       <Label>O'quv yili *</Label>
                       <Select disabled={!editable || !canWrite} value={form.academicYear} onValueChange={selectYear}>
-                        <SelectTrigger aria-label="O'quv yili"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full" aria-label="O'quv yili"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {(academicYears.data ?? []).map((year) => (
                             <SelectItem key={year.id} value={year.code}>
@@ -587,7 +587,7 @@ export function AdminStudyPlanEditor() {
                           setForm((current) => ({ ...current, educationForm }))
                         }
                       >
-                        <SelectTrigger aria-label="Ta'lim shakli"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full" aria-label="Ta'lim shakli"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {educationFormOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
@@ -607,7 +607,7 @@ export function AdminStudyPlanEditor() {
                           setForm((current) => ({ ...current, educationLanguage }))
                         }
                       >
-                        <SelectTrigger aria-label="O'qitish tili"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full" aria-label="O'qitish tili"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {languageOptions.map((language) => (
                             <SelectItem key={language.value} value={language.value}>
@@ -704,7 +704,7 @@ export function AdminStudyPlanEditor() {
                             }));
                           }}
                         >
-                          <SelectTrigger aria-label="Baholash tizimi"><SelectValue placeholder="Baholash tizimini tanlang" /></SelectTrigger>
+                          <SelectTrigger className="w-full" aria-label="Baholash tizimi"><SelectValue placeholder="Baholash tizimini tanlang" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value={EMPTY} disabled>Baholash tizimini tanlang</SelectItem>
                             {(ratings.data ?? [])
