@@ -4,6 +4,9 @@ export type CurriculumCredentialType = "STATE_DIPLOMA" | "NON_STATE_CREDENTIAL";
 export type CurriculumNormativeBasisType = "STATE_EDUCATION_STANDARD" | "PROFESSIONAL_STANDARD";
 export type CurriculumPlanItemType = "REQUIRED" | "ELECTIVE";
 export type CurriculumStatus = "DRAFT" | "APPROVED" | "ARCHIVED";
+export const curriculumStatusLabels: Record<CurriculumStatus, string> = { DRAFT: "Qoralama", APPROVED: "Tasdiqlangan", ARCHIVED: "Arxivlangan" };
+export const educationFormLabels: Record<string, string> = { FULL_TIME: "Kunduzgi", DISTANCE: "Masofaviy", PART_TIME: "Sirtqi", EVENING: "Kechki" };
+export const educationLanguageLabels: Record<string, string> = { "uz-Latn": "O'zbekcha", uz: "O'zbekcha", "uz-Cyrl": "Ўзбекча", kaa: "Qaraqalpaqsha", ru: "Русский", en: "English" };
 export type CurriculumStudentStatus = "ACTIVE" | "SUSPENDED" | "EXPELLED" | "GRADUATED";
 export type CurriculumEducationForm = "FULL_TIME" | "PART_TIME" | "EVENING" | "DISTANCE";
 /** Ishchi o'quv rejadagi "Kurs ishi (loyihasi)" ustuni: KI — kurs ishi, KL — kurs loyihasi */
@@ -320,7 +323,7 @@ export const curriculumInputError = (input: SaveCurriculumVersionInput): string 
   if (!Number.isInteger(input.passingScore) || input.passingScore < 0 || input.passingScore > 100) return "O'tish bali 0-100 oralig'ida bo'lishi kerak";
   if (!Number.isInteger(input.baseCreditAmount) || input.baseCreditAmount < 0) return "Bazaviy kredit summasi manfiy bo'lmasligi kerak";
   if (!input.ratingSystemId) return "Kredit baholash tizimini tanlang";
-  if (!Number.isInteger(input.semesterCount) || input.semesterCount < 1 || input.semesterCount > 15) return "Semestr soni 1-15 oralig'ida bo'lishi kerak";
+  if (!Number.isInteger(input.semesterCount) || input.semesterCount < 1 || input.semesterCount > 12) return "Semestr soni 1-12 oralig'ida bo'lishi kerak";
   if (!yearMatch || Number(yearMatch[2]) !== Number(yearMatch[1]) + 1) return "O'quv yili YYYY-YYYY ketma-ket formatida bo'lishi kerak";
   const academicFrom = `${yearMatch[1]}-09-01`;
   const academicUntil = `${yearMatch[2]}-08-31`;

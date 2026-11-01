@@ -720,13 +720,13 @@ export function AdminStudyPlanEditor() {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="semester-count">
-                        <span className="text-destructive">*</span> Semestr soni (Maksimum 15)
+                        <span className="text-destructive">*</span> Semestr soni (Maksimum 12)
                       </Label>
                       <Input
                         id="semester-count"
                         type="number"
                         min={1}
-                        max={15}
+                        max={12}
                         disabled={!editable || !canWrite}
                         value={form.semesterCount}
                         onChange={(event) =>

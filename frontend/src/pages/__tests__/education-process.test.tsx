@@ -12,7 +12,7 @@ import { teacherPortalApi, type TeacherLearningSession } from '@/services/api/te
 vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { id: 1 } }) }));
 vi.mock('@/lib/rbac-api', () => ({ hasAuthority: () => true }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock('@/services/api/curriculum-api', () => ({ curriculumApi: { list: vi.fn(), listSemesterPeriods: vi.fn(), listStudentAssignments: vi.fn(), listStudents: vi.fn(), saveSemesterPeriod: vi.fn(), assignStudents: vi.fn(), removeStudentAssignment: vi.fn() } }));
+vi.mock('@/services/api/curriculum-api', async (importOriginal) => ({ ...await importOriginal<object>(), curriculumApi: { list: vi.fn(), listSemesterPeriods: vi.fn(), listStudentAssignments: vi.fn(), listStudents: vi.fn(), saveSemesterPeriod: vi.fn(), assignStudents: vi.fn(), removeStudentAssignment: vi.fn() } }));
 vi.mock('@/services/api/subject-group-api', () => ({ subjectGroupApi: { list: vi.fn(), members: vi.fn(), candidates: vi.fn(), teachers: vi.fn(), teacherCandidates: vi.fn(), assign: vi.fn() } }));
 vi.mock('@/services/api/teacher-portal-api', () => ({ teacherPortalApi: { getLearningSessions: vi.fn(), getCourses: vi.fn(), createLearningSession: vi.fn() } }));
 

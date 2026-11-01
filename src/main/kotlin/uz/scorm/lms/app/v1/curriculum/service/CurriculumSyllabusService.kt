@@ -69,10 +69,10 @@ class CurriculumSyllabusService(
 
     /** Reja fani va shu fanning rejadagi barcha semestr qatorlari. */
     private fun subjectRows(id: Long, itemId: Long): List<ProgramCurriculumSubject> {
-        val version = versions.findByIdAndDeletedFalse(id) ?: throw NoSuchElementException("Curriculum versiyasi topilmadi: $id")
+        val version = versions.findByIdAndDeletedFalse(id) ?: throw NoSuchElementException("O'quv reja topilmadi: $id")
         require(version.status != CurriculumStatus.ARCHIVED) { "Arxivlangan o'quv rejaga dastur biriktirilmaydi" }
-        val item = items.findByIdAndDeletedFalse(itemId) ?: throw NoSuchElementException("Curriculum fan bandi topilmadi: $itemId")
-        require(item.curriculumVersion.id == id) { "Fan bandi ushbu curriculumga tegishli emas" }
+        val item = items.findByIdAndDeletedFalse(itemId) ?: throw NoSuchElementException("O'quv rejadagi fan topilmadi: $itemId")
+        require(item.curriculumVersion.id == id) { "Fan bu o'quv rejaga tegishli emas" }
         val subjectId = requireNotNull(item.subject?.id) { "Reja fani katalogdagi fanga bog'lanmagan" }
         return items.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(id)
             .filter { it.subject?.id == subjectId }

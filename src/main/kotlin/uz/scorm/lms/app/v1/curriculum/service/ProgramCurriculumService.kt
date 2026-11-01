@@ -160,7 +160,7 @@ class ProgramCurriculumService(
     @Transactional
     fun update(id: Long, request: SaveCurriculumVersionRequest, actorId: Long): CurriculumVersionDto {
         val version = requireVersion(id)
-        require(version.status == CurriculumStatus.DRAFT) { "Faqat DRAFT curriculum tahrirlanadi" }
+        require(version.status == CurriculumStatus.DRAFT) { "Faqat qoralama o'quv reja tahrirlanadi" }
         val program = requireProgram(request.programId)
         val ratingSystem = requireRatingSystem(request.ratingSystemId)
         validate(request, ratingSystem)
@@ -204,14 +204,14 @@ class ProgramCurriculumService(
         val subject = subjectRepository.findById(request.subjectId).orElseThrow {
             NoSuchElementException("Fan topilmadi: ${request.subjectId}")
         }
-        require(!subject.deleted && subject.active) { "Faqat faol fan curriculumga qo'shiladi" }
+        require(!subject.deleted && subject.active) { "Faqat faol fan o'quv rejaga qo'shiladi" }
         require(subject.program == null || subject.program?.id == version.program.id) {
             "Fan curriculum dasturiga tegishli emas; faqat umumiy katalog yoki shu dastur fani qo'shiladi"
         }
         val code = subject.code?.trim()
-        require(!code.isNullOrBlank() && code.length <= 100) { "Curriculum fanining kodi majburiy" }
+        require(!code.isNullOrBlank() && code.length <= 100) { "Fanning kodi kiritilmagan: avval \"Fanlar\" bo'limida fan kodini kiriting" }
         val credits = request.credits ?: subject.credits
-        require(credits != null && credits in 1..60) { "Curriculum fanining krediti 1..60 oralig'ida bo'lishi kerak" }
+        require(credits != null && credits in 1..60) { "Fan krediti 1 dan 60 gacha bo'lishi kerak" }
         require(request.semester in 1..version.semesterCount) { "Semestr o'quv reja chegarasidan tashqarida" }
         academicPeriodService.requireActiveSemester(request.semester)
         require(!subjectItemRepository.existsByCurriculumVersionIdAndSubjectIdAndSemesterAndDeletedFalse(id, request.subjectId, request.semester)) {
@@ -235,9 +235,9 @@ class ProgramCurriculumService(
     fun updateSubject(id: Long, itemId: Long, request: UpdateCurriculumSubjectRequest, actorId: Long): CurriculumVersionDto {
         val version = requireDraft(id)
         val item = subjectItemRepository.findByIdAndDeletedFalse(itemId)
-            ?: throw NoSuchElementException("Curriculum fan bandi topilmadi: $itemId")
-        require(item.curriculumVersion.id == id) { "Fan bandi ushbu curriculumga tegishli emas" }
-        require(request.credits in 1..60) { "Curriculum fanining krediti 1..60 oralig'ida bo'lishi kerak" }
+            ?: throw NoSuchElementException("O'quv rejadagi fan topilmadi: $itemId")
+        require(item.curriculumVersion.id == id) { "Fan bu o'quv rejaga tegishli emas" }
+        require(request.credits in 1..60) { "Fan krediti 1 dan 60 gacha bo'lishi kerak" }
         item.creditsSnapshot = request.credits
         item.planItemType = request.planItemType
         item.courseWorkType = request.courseWorkType
@@ -252,8 +252,8 @@ class ProgramCurriculumService(
     fun moveSubject(id: Long, itemId: Long, request: MoveCurriculumSubjectRequest, actorId: Long): CurriculumVersionDto {
         val version = requireDraft(id)
         val item = subjectItemRepository.findByIdAndDeletedFalse(itemId)
-            ?: throw NoSuchElementException("Curriculum fan bandi topilmadi: $itemId")
-        require(item.curriculumVersion.id == id) { "Fan bandi ushbu curriculumga tegishli emas" }
+            ?: throw NoSuchElementException("O'quv rejadagi fan topilmadi: $itemId")
+        require(item.curriculumVersion.id == id) { "Fan bu o'quv rejaga tegishli emas" }
         if (item.semester == request.semester) return toDto(version)
         require(request.semester in 1..version.semesterCount) { "Semestr 1..${version.semesterCount} oralig'ida bo'lishi kerak" }
         academicPeriodService.requireActiveSemester(request.semester)
@@ -301,7 +301,7 @@ class ProgramCurriculumService(
 
     private fun requireComponent(id: Long, componentId: Long) = (componentRepository.findByIdAndDeletedFalse(componentId)
         ?: throw NoSuchElementException("Reja qismi topilmadi: $componentId")).also {
-        require(it.curriculumVersion.id == id) { "Reja qismi ushbu curriculumga tegishli emas" }
+        require(it.curriculumVersion.id == id) { "Reja qismi bu o'quv rejaga tegishli emas" }
     }
 
     private fun applyComponent(component: ProgramCurriculumComponent, version: ProgramCurriculumVersion, request: SaveCurriculumComponentRequest) {
@@ -327,8 +327,8 @@ class ProgramCurriculumService(
     fun removeSubject(id: Long, itemId: Long, actorId: Long): CurriculumVersionDto {
         val version = requireDraft(id)
         val item = subjectItemRepository.findByIdAndDeletedFalse(itemId)
-            ?: throw NoSuchElementException("Curriculum fan bandi topilmadi: $itemId")
-        require(item.curriculumVersion.id == id) { "Fan bandi ushbu curriculumga tegishli emas" }
+            ?: throw NoSuchElementException("O'quv rejadagi fan topilmadi: $itemId")
+        require(item.curriculumVersion.id == id) { "Fan bu o'quv rejaga tegishli emas" }
         item.deleted = true
         subjectItemRepository.save(item)
         auditService.logAction("CURRICULUM_SUBJECT_REMOVED", actorId, "curriculum=$id; item=$itemId")
@@ -353,7 +353,7 @@ class ProgramCurriculumService(
         require(version.standardReference.isNotBlank()) { "Standart rekvizitini kiriting" }
         require(version.qualificationRequirementsReference.isNotBlank()) { "Malaka talablari rekvizitini kiriting" }
         val items = subjectItemRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(id)
-        require(items.isNotEmpty()) { "Curriculum tasdiqlanishi uchun kamida bitta fan kerak" }
+        require(items.isNotEmpty()) { "O'quv reja tasdiqlanishi uchun kamida bitta fan kerak" }
         items.forEach { item ->
             val subject = item.subject
             require(subject != null && !subject.deleted && subject.active &&
@@ -383,7 +383,7 @@ class ProgramCurriculumService(
     @Transactional
     fun archive(id: Long, actorId: Long): CurriculumVersionDto {
         val version = requireVersion(id)
-        require(version.status == CurriculumStatus.APPROVED) { "Faqat APPROVED curriculum arxivlanadi" }
+        require(version.status == CurriculumStatus.APPROVED) { "Faqat tasdiqlangan o'quv reja arxivlanadi" }
         version.status = CurriculumStatus.ARCHIVED
         version.active = false
         version.archivedAt = Instant.now()
@@ -402,8 +402,9 @@ class ProgramCurriculumService(
             "O'tish bali tanlangan baholash tizimining ${ratingSystem.minScore}-${ratingSystem.maxScore} oralig'ida bo'lishi kerak"
         }
         require(request.baseCreditAmount in 0..1_000_000_000_000L) { "Bazaviy kredit summasi noto'g'ri" }
-        require(request.semesterCount in 1..15) { "Semestr soni 1-15 oralig'ida bo'lishi kerak" }
-        require(request.versionCode.isNotBlank() && request.versionCode.trim().length <= 100) { "Curriculum versiya kodi majburiy" }
+        // Semestrlar katalogi 1..12 (V54); undan ko'p semestrga fan va muddat kiritib bo'lmaydi
+        require(request.semesterCount in 1..12) { "Semestr soni 1-12 oralig'ida bo'lishi kerak" }
+        require(request.versionCode.isNotBlank() && request.versionCode.trim().length <= 100) { "O'quv reja versiya kodi majburiy" }
         require(request.academicYear.matches(Regex("\\d{4}-\\d{4}"))) { "O'quv yili YYYY-YYYY formatida bo'lishi kerak" }
         val (firstYear, secondYear) = request.academicYear.split("-").map(String::toInt)
         require(secondYear == firstYear + 1) { "O'quv yili ketma-ket ikki yildan iborat bo'lishi kerak" }
@@ -413,7 +414,7 @@ class ProgramCurriculumService(
         require(!request.validFrom.isAfter(academicFrom) && !request.validUntil.isBefore(academicUntil)) {
             "Curriculum amal qilish davri butun o'quv yilini qoplashi kerak"
         }
-        require(!request.validUntil.isBefore(request.validFrom)) { "Curriculum amal qilish muddati noto'g'ri" }
+        require(!request.validUntil.isBefore(request.validFrom)) { "O'quv reja amal qilish muddati noto'g'ri" }
         require(request.standardReference.trim().length <= 1000) { "Standart rekviziti 1000 belgidan oshmasligi kerak" }
         require(request.qualificationRequirementsReference.trim().length <= 1000) {
             "Malaka talablari rekviziti 1000 belgidan oshmasligi kerak"
@@ -448,7 +449,7 @@ class ProgramCurriculumService(
     private fun requireProgram(id: Long) = programRepository.findById(id).orElseThrow {
         NoSuchElementException("Ta'lim dasturi topilmadi: $id")
     }.also {
-        require(!it.deleted && it.active) { "Curriculum faqat faol ta'lim dasturiga yaratiladi" }
+        require(!it.deleted && it.active) { "O'quv reja faqat faol ta'lim dasturiga yaratiladi" }
     }
 
     private fun requireRatingSystem(id: Long?): RatingSystem {
@@ -460,11 +461,11 @@ class ProgramCurriculumService(
     }
 
     private fun requireDraft(id: Long) = requireVersion(id).also {
-        require(it.status == CurriculumStatus.DRAFT) { "Faqat DRAFT curriculum tarkibi o'zgartiriladi" }
+        require(it.status == CurriculumStatus.DRAFT) { "Faqat qoralama o'quv reja tarkibi o'zgartiriladi" }
     }
 
     private fun requireVersion(id: Long) = versionRepository.findByIdAndDeletedFalse(id)
-        ?: throw NoSuchElementException("Curriculum versiyasi topilmadi: $id")
+        ?: throw NoSuchElementException("O'quv reja topilmadi: $id")
 
     private fun requireUser(id: Long) = userRepository.findById(id)
         .orElseThrow { NoSuchElementException("Foydalanuvchi topilmadi: $id") }

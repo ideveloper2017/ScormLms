@@ -31,6 +31,19 @@ interface SubjectForm {
   active: boolean;
 }
 
+const subjectTypeLabel: Record<string, string> = {
+  PRACTICE: "Amaliyot", COURSE_WORK: "Kurs ishi", STATE_ATTESTATION: "Davlat attestatsiyasi", GRADUATION_WORK: "Bitiruv ishi",
+};
+
+// O'quv rejaga faqat kodi va krediti (1..60) bor fan qo'shiladi
+const validateSubject = (f: SubjectForm): string | null => {
+  if (!f.name.trim()) return "Fan nomi majburiy";
+  if (!f.code.trim()) return "Fan kodi majburiy (o'quv rejaga qo'shish uchun kerak)";
+  const credits = parseCredits(f.credits);
+  if (credits == null || credits < 1 || credits > 60) return "Kredit 1 dan 60 gacha bo'lishi kerak";
+  return null;
+};
+
 const parseCredits = (s: string): number | null => {
   const n = parseInt(s, 10);
   return Number.isFinite(n) ? n : null;
@@ -62,7 +75,7 @@ export function AdminSubjects() {
         <div>
           <div className="flex items-center gap-1.5 mb-1 text-muted-foreground">
             <NotebookText className="h-3.5 w-3.5" />
-            <span className="text-xs">Akademik tuzilma</span>
+            <span className="text-xs">Ta'lim jarayoni</span>
           </div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Fanlar</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -123,6 +136,7 @@ export function AdminSubjects() {
           },
           { header: "Yo'nalish", cell: (s) => s.programName ?? "—" },
           { header: "Fan guruhi", cell: (s) => s.subjectCategoryName ?? "—" },
+          { header: "Fan turi", cell: (s) => (s.subjectType ? subjectTypeLabel[s.subjectType] : "Oddiy fan") },
           {
             header: "Holat",
             cell: (s) => (
@@ -143,7 +157,7 @@ export function AdminSubjects() {
           subjectCategoryId: s.subjectCategoryId ?? null,
           active: s.active,
         })}
-        validate={(f) => (f.name.trim() ? null : "Fan nomi majburiy")}
+        validate={validateSubject}
         onCreate={(f) =>
           createSubject({
             name: f.name.trim(),

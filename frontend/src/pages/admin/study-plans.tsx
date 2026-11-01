@@ -7,6 +7,7 @@ import {
   BookOpenCheck,
   Eye,
   Layers3,
+  LayoutGrid,
   Pencil,
   Plus,
   Search,
@@ -30,6 +31,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
 import {
   curriculumApi,
+  educationFormLabels,
+  educationLanguageLabels,
   type CurriculumStatus,
   type CurriculumVersion,
 } from "@/services/api/curriculum-api";
@@ -66,6 +69,7 @@ export function AdminStudyPlans() {
       const matchesTerm =
         !term ||
         item.programName.toLocaleLowerCase("uz").includes(term) ||
+        (item.name ?? "").toLocaleLowerCase("uz").includes(term) ||
         item.versionCode.toLocaleLowerCase("uz").includes(term) ||
         item.academicYear.includes(term);
       return (
@@ -79,17 +83,40 @@ export function AdminStudyPlans() {
   const columns = useMemo<ColumnDef<CurriculumVersion>[]>(
     () => [
       {
-        id: "program",
-        header: "Ta'lim yo'nalishi va versiya",
-        accessorFn: (item) => item.programName + " " + item.versionCode,
+        id: "name",
+        header: "Nomi",
+        accessorFn: (item) => (item.name || item.programName) + " " + item.versionCode,
         cell: ({ row }) => (
-          <div className="min-w-[220px]">
-            <p className="font-medium">{row.original.programName}</p>
+          <div className="min-w-[200px]">
+            <p className="font-medium">{row.original.name || row.original.programName}</p>
             <p className="text-xs text-muted-foreground">Versiya: {row.original.versionCode}</p>
           </div>
         ),
       },
+      {
+        id: "program",
+        header: "Fakultet / mutaxassislik",
+        accessorFn: (item) => (item.facultyName ?? "") + " " + item.programName,
+        cell: ({ row }) => (
+          <div className="min-w-[180px]">
+            <p className="text-sm">{row.original.programName}</p>
+            <p className="text-xs text-muted-foreground">{row.original.facultyName ?? "Fakultet ko'rsatilmagan"}</p>
+          </div>
+        ),
+      },
+      { accessorKey: "semesterCount", header: "Semestr" },
       { accessorKey: "academicYear", header: "O'quv yili" },
+      {
+        id: "form",
+        header: "Ta'lim shakli / til",
+        accessorFn: (item) => item.educationForm,
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap text-sm">
+            <p>{educationFormLabels[row.original.educationForm] ?? row.original.educationForm}</p>
+            <p className="text-xs text-muted-foreground">{educationLanguageLabels[row.original.educationLanguage] ?? row.original.educationLanguage}</p>
+          </div>
+        ),
+      },
       {
         accessorKey: "status",
         header: "Holati",
@@ -104,16 +131,6 @@ export function AdminStudyPlans() {
             <p className="font-medium">{row.original.subjectCount} ta fan</p>
             <p className="text-xs text-muted-foreground">{row.original.totalCredits} kredit</p>
           </div>
-        ),
-      },
-      {
-        id: "validity",
-        header: "Amal qilish davri",
-        accessorFn: (item) => item.validFrom,
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap text-sm">
-            {row.original.validFrom} — {row.original.validUntil}
-          </span>
         ),
       },
       {
@@ -147,6 +164,17 @@ export function AdminStudyPlans() {
                 <Eye className="mr-2 h-4 w-4" />
               )}
               {row.original.status === "DRAFT" && canWrite ? "Davom ettirish" : "Ko'rish"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Fanlarni semestrlarga biriktirish"
+              aria-label="Fanlarni semestrlarga biriktirish"
+              onClick={() =>
+                navigate("/edu-process/curriculum/" + row.original.id + "?tab=subjects")
+              }
+            >
+              <LayoutGrid className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
