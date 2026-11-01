@@ -31,7 +31,8 @@ interface StudentLifecycleEventRepository : JpaRepository<StudentLifecycleEvent,
           )
           and (:academicYear is null or event.student.academicYear = :academicYear)
     """)
-    fun findLatestReinstatements(
+    /** Har bir talabaning shu turdagi oxirgi buyrug'i (tiklash, akademik ta'til, ...) */
+    fun findLatestByEventType(
         @Param("eventType") eventType: StudentLifecycleEventType,
         @Param("search") search: String,
         @Param("academicYear") academicYear: String?,

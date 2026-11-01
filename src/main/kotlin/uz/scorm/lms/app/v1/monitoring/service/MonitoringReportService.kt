@@ -14,9 +14,11 @@ import uz.scorm.lms.app.v1.monitoring.dto.LearningParticipationDto
 import uz.scorm.lms.app.v1.monitoring.dto.LessonCommentReportDto
 import uz.scorm.lms.app.v1.monitoring.dto.StudentIpReportDto
 import uz.scorm.lms.app.v1.monitoring.dto.StudentLoginMonitorDto
+import uz.scorm.lms.app.v1.monitoring.dto.TeacherLoginMonitorDto
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.student.model.StudentStatus
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
+import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import java.time.Duration
 import java.time.Instant
 
@@ -30,15 +32,41 @@ class MonitoringReportService(
     private val contents: CourseContentRepository,
     private val auditLogs: AuditLogRepository,
     private val forumPosts: CourseForumPostRepository,
+    private val teachers: TeacherRepository,
 ) {
     @Transactional(readOnly = true)
     fun inactiveStudents(inactiveDays: Int): List<StudentLoginMonitorDto> {
         require(inactiveDays in 1..3650) { "Faolsizlik kuni 1-3650 oralig'ida bo'lishi kerak" }
         val threshold = Instant.now().minus(Duration.ofDays(inactiveDays.toLong()))
+        return activeStudentLogins()
+            .filter { it.lastLoginAt == null || it.lastLoginAt.isBefore(threshold) }
+            .sortedWith(compareBy<StudentLoginMonitorDto> { it.lastLoginAt != null }.thenBy { it.lastLoginAt }.thenBy { it.fullName })
+    }
+
+    /** Barcha faol talabalarning oxirgi kirishi: yaqinda kirganlar avval, hech kirmaganlar oxirida */
+    @Transactional(readOnly = true)
+    fun studentLogins(): List<StudentLoginMonitorDto> =
+        activeStudentLogins().sortedWith(compareByDescending<StudentLoginMonitorDto, Instant?>(nullsFirst()) { it.lastLoginAt }.thenBy { it.fullName })
+
+    /** Faol o'qituvchilarning oxirgi kirishi: yaqinda kirganlar avval, hech kirmaganlar oxirida */
+    @Transactional(readOnly = true)
+    fun teacherLogins(): List<TeacherLoginMonitorDto> = teachers.findAllByActiveTrueOrderByFullNameAsc()
+        .map { teacher ->
+            val last = teacher.user?.lastLoginAt
+            TeacherLoginMonitorDto(
+                teacherId = requireNotNull(teacher.id),
+                fullName = teacher.fullName,
+                department = teacher.department?.name.orEmpty(),
+                lastLoginAt = last,
+                inactiveDays = daysSince(last),
+            )
+        }
+        .sortedWith(compareByDescending<TeacherLoginMonitorDto, Instant?>(nullsFirst()) { it.lastLoginAt }.thenBy { it.fullName })
+
+    private fun activeStudentLogins(): List<StudentLoginMonitorDto> {
         val groupNames = groupNames()
-        return students.findAll().asSequence()
+        return students.findAll()
             .filter { it.studentStatus == StudentStatus.ACTIVE }
-            .filter { it.user.lastLoginAt == null || it.user.lastLoginAt!!.isBefore(threshold) }
             .map { student ->
                 val last = student.user.lastLoginAt
                 StudentLoginMonitorDto(
@@ -47,12 +75,12 @@ class MonitoringReportService(
                     studentNumber = student.studentNumber,
                     group = student.groupId?.let(groupNames::get).orEmpty(),
                     lastLoginAt = last,
-                    inactiveDays = last?.let { Duration.between(it, Instant.now()).toDays().coerceAtLeast(0) },
+                    inactiveDays = daysSince(last),
                 )
             }
-            .sortedWith(compareBy<StudentLoginMonitorDto> { it.lastLoginAt != null }.thenBy { it.lastLoginAt }.thenBy { it.fullName })
-            .toList()
     }
+
+    private fun daysSince(last: Instant?) = last?.let { Duration.between(it, Instant.now()).toDays().coerceAtLeast(0) }
 
     @Transactional(readOnly = true)
     fun electiveExceptions(): List<ElectiveChoiceExceptionDto> {

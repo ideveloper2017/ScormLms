@@ -14,11 +14,14 @@ import {
   listLearningParticipation,
   listLessonComments,
   listStudentIps,
+  listStudentLogins,
+  listTeacherLogins,
   type ElectiveChoiceExceptionRow,
   type LearningParticipationRow,
   type LessonCommentReportRow,
   type StudentIpReportRow,
   type StudentLoginMonitorRow,
+  type TeacherLoginMonitorRow,
 } from "@/services/api/monitoring-reports-api";
 
 const ALL="__all__";
@@ -32,6 +35,18 @@ export function InactiveStudentMonitoring(){
   const [days,setDays]=useState("7");const query=useQuery({queryKey:["inactive-students",days],queryFn:()=>listInactiveStudents(Number(days)),staleTime:30_000});const rows=query.data??[];
   const columns:ColumnDef<StudentLoginMonitorRow>[]=[{accessorKey:"fullName",header:"F.I.O."},{accessorKey:"group",header:"Guruh"},{id:"login",header:"Login sanasi",cell:({row})=>date(row.original.lastLoginAt)},{id:"inactive",header:"Faol emas",cell:({row})=>row.original.inactiveDays==null?"Hech kirmagan":`${row.original.inactiveDays} kun`}];
   return <div className="space-y-6 p-3 sm:p-6"><Header title="Darsga qatnashmayotgan talabalar ro'yxati" description="Oxirgi login sanasi tanlangan muddatdan eski yoki hech kirmagan faol talabalar." onExport={()=>csv("inactive-students.csv",["F.I.O.","Guruh","Login","Faol emas kun"],rows.map(r=>[r.fullName,r.group,r.lastLoginAt,r.inactiveDays]))}/><div className="w-52 space-y-1"><Label className="text-xs">Faolsizlik muddati</Label><Select value={days} onValueChange={setDays}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{[7,14,30,60,90].map(v=><SelectItem key={v} value={String(v)}>{v} kun</SelectItem>)}</SelectContent></Select></div><State loading={query.isLoading} error={query.error} retry={()=>query.refetch()}/>{!query.isLoading&&!query.error&&<DataTable columns={columns} data={rows} searchPlaceholder="F.I.O. bo'yicha qidirish..." emptyText="Ma'lumot mavjud emas"/>}</div>;
+}
+
+export function StudentLoginMonitoring(){
+  const [group,setGroup]=useState(ALL);const query=useQuery({queryKey:["student-logins"],queryFn:listStudentLogins,staleTime:30_000});const rows=query.data??[];const groups=[...new Set(rows.map(r=>r.group).filter(Boolean))].sort();const filtered=rows.filter(r=>group===ALL||r.group===group);
+  const columns:ColumnDef<StudentLoginMonitorRow>[]=[{accessorKey:"fullName",header:"F.I.O."},{accessorKey:"group",header:"Guruh"},{id:"login",header:"Login sanasi",cell:({row})=>date(row.original.lastLoginAt)}];
+  return <div className="space-y-6 p-3 sm:p-6"><Header title="Talabalar" description="Faol talabalarning tizimga oxirgi kirishi: yaqinda kirganlar yuqorida, hech kirmaganlar oxirida." onExport={()=>csv("student-logins.csv",["F.I.O.","Guruh","Login"],filtered.map(r=>[r.fullName,r.group,r.lastLoginAt]))}/><div className="max-w-64"><Filter label="Guruh" value={group} values={groups} onChange={setGroup}/></div><State loading={query.isLoading} error={query.error} retry={()=>query.refetch()}/>{!query.isLoading&&!query.error&&<DataTable columns={columns} data={filtered} searchPlaceholder="F.I.O. bo'yicha qidirish..." emptyText="Ma'lumot mavjud emas"/>}</div>;
+}
+
+export function TeacherLoginMonitoring(){
+  const [department,setDepartment]=useState(ALL);const query=useQuery({queryKey:["teacher-logins"],queryFn:listTeacherLogins,staleTime:30_000});const rows=query.data??[];const departments=[...new Set(rows.map(r=>r.department).filter(Boolean))].sort();const filtered=rows.filter(r=>department===ALL||r.department===department);
+  const columns:ColumnDef<TeacherLoginMonitorRow>[]=[{accessorKey:"fullName",header:"F.I.O."},{accessorKey:"department",header:"Kafedra"},{id:"login",header:"Login sanasi",cell:({row})=>date(row.original.lastLoginAt)}];
+  return <div className="space-y-6 p-3 sm:p-6"><Header title="O'qituvchilar" description="Faol o'qituvchilarning tizimga oxirgi kirishi: yaqinda kirganlar yuqorida, hech kirmaganlar oxirida." onExport={()=>csv("teacher-logins.csv",["F.I.O.","Kafedra","Login"],filtered.map(r=>[r.fullName,r.department,r.lastLoginAt]))}/><div className="max-w-64"><Filter label="Kafedra" value={department} values={departments} onChange={setDepartment}/></div><State loading={query.isLoading} error={query.error} retry={()=>query.refetch()}/>{!query.isLoading&&!query.error&&<DataTable columns={columns} data={filtered} searchPlaceholder="F.I.O. bo'yicha qidirish..." emptyText="Ma'lumot mavjud emas"/>}</div>;
 }
 
 export function ElectiveChoiceMonitoring(){

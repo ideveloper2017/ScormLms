@@ -5,6 +5,10 @@ export interface StudentLoginMonitorRow {
   studentId: number; fullName: string; studentNumber: string; group: string;
   lastLoginAt?: string | null; inactiveDays?: number | null;
 }
+export interface TeacherLoginMonitorRow {
+  teacherId: number; fullName: string; department: string;
+  lastLoginAt?: string | null; inactiveDays?: number | null;
+}
 export interface ElectiveChoiceExceptionRow {
   studentId: number; fullName: string; curriculum: string; group: string; subject: string;
   academicYear: string; semester: number; status: string;
@@ -28,7 +32,9 @@ async function load<T>(path: string, fallback: string, params?: Record<string, u
 }
 
 export const listInactiveStudents = (inactiveDays = 7) => load<StudentLoginMonitorRow>("/monitoring/inactive-students", "Faol bo'lmagan talabalarni yuklab bo'lmadi", { inactiveDays });
-export const listElectiveExceptions = () => load<ElectiveChoiceExceptionRow>("/monitoring/elective-exceptions", "Tanlov fani istisnolarini yuklab bo'lmadi");
+export const listStudentLogins = () => load<StudentLoginMonitorRow>("/monitoring/student-logins", "Talabalar kirishlarini yuklab bo'lmadi");
+export const listTeacherLogins = () => load<TeacherLoginMonitorRow>("/monitoring/teacher-logins", "O'qituvchilar kirishlarini yuklab bo'lmadi");
+export const listElectiveExceptions =() => load<ElectiveChoiceExceptionRow>("/monitoring/elective-exceptions", "Tanlov fani istisnolarini yuklab bo'lmadi");
 export const listLearningParticipation = () => load<LearningParticipationRow>("/monitoring/learning-participation", "Fanlardagi ishtirokni yuklab bo'lmadi");
 export const listStudentIps = () => load<StudentIpReportRow>("/monitoring/student-ips", "IP hisobotini yuklab bo'lmadi");
 export const listLessonComments = () => load<LessonCommentReportRow>("/monitoring/lesson-comments", "Izohlarni yuklab bo'lmadi");

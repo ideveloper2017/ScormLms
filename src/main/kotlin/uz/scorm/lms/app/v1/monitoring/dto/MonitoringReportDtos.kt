@@ -11,6 +11,15 @@ data class StudentLoginMonitorDto(
     val inactiveDays: Long?,
 )
 
+/** O'qituvchining tizimga oxirgi kirishi (kafedra kesimida) */
+data class TeacherLoginMonitorDto(
+    val teacherId: Long,
+    val fullName: String,
+    val department: String,
+    val lastLoginAt: Instant?,
+    val inactiveDays: Long?,
+)
+
 data class ElectiveChoiceExceptionDto(
     val studentId: Long,
     val fullName: String,

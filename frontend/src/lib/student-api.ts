@@ -18,6 +18,8 @@ import {
     ReinstatementSubjectReportPageDto,
     ReinstatementSubjectReportQuery,
     StudentIdentityLookupResult,
+    StudentMovementPageDto,
+    StudentMovementQuery,
 } from "@/types/student.types";
 
 export async function listStudents(query: StudentRegistryQuery = {}): Promise<StudentRegistryPageDto> {
@@ -32,6 +34,12 @@ export async function listReinstatementSubjectReport(
         "/students/reinstatements/subjects-report",
         { params: query },
     );
+    return res.data;
+}
+
+/** Talabalar harakati buyruqlari: SUSPENSION — akademik ta'til, REINSTATEMENT — o'qishni tiklash */
+export async function listStudentMovements(query: StudentMovementQuery): Promise<StudentMovementPageDto> {
+    const res = await api.get<StudentMovementPageDto>("/students/movements", { params: query });
     return res.data;
 }
 

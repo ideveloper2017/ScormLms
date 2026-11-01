@@ -51,6 +51,7 @@ import { AdminStudentClassifiers } from "@/pages/admin/student-classifiers";
 import { AdminReinstatementSubjectReport } from "@/pages/admin/reinstatement-subject-report";
 import { AdminSubjects } from "@/pages/admin/subjects";
 import { AdminStudyPlans } from "@/pages/admin/study-plans";
+import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 import { AdminStudyPlanEditor } from "@/pages/admin/study-plan-editor";
 import { AdminAcademicPeriods } from "@/pages/admin/academic-periods";
 import { AdminSubjectGroups } from "@/pages/admin/subject-groups";
@@ -79,7 +80,9 @@ import { AdminNationalities, AdminReferenceLabels } from "@/pages/admin/referenc
 import { AdminSystemConfigs, AdminSystemLanguages, AdminTranslationMessages } from "@/pages/admin/system-settings";
 import { AcademicStatements, AcademicTestResults, AdminRatingSystems, StudentAcademicResultsView, StudentGpaRegistry } from "@/pages/admin/academic-results";
 import { AcademicStatisticsDashboard, AppropriationStatistics, FailedStudentsStatistics, GradeDistributionReport, StudentTaskStatisticsReport, SubjectStatisticsReport } from "@/pages/admin/statistics-reports";
-import { ElectiveChoiceMonitoring, InactiveStudentMonitoring, LearningParticipationMonitoring, LessonCommentMonitoring, StudentIpMonitoring } from "@/pages/admin/monitoring-reports";
+import { ElectiveChoiceMonitoring, InactiveStudentMonitoring, LearningParticipationMonitoring, LessonCommentMonitoring, StudentIpMonitoring, StudentLoginMonitoring, TeacherLoginMonitoring } from "@/pages/admin/monitoring-reports";
+import { StudentMovementRegistry } from "@/pages/admin/student-movements";
+import { ControlsOverview } from "@/pages/admin/controls-overview";
 import { FinalExamCallLetters, StudentTranscripts } from "@/pages/admin/academic-documents";
 import { ReReadingApplications, ReReadingPlans, ReReadingRecoveryResults, StudentReReadingReport, TeacherReReadingReport } from "@/pages/admin/re-reading";
 import { TutorGroups } from "@/pages/admin/tutor-groups";
@@ -276,6 +279,7 @@ function App() {
         <Route path="/edu-process/curriculum"        element={<P roles={STAFF_ROLES}><AdminStudyPlans /></P>} />
         <Route path="/edu-process/curriculum/new"    element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
         <Route path="/edu-process/curriculum/:id"    element={<P roles={STAFF_ROLES}><AdminStudyPlanEditor /></P>} />
+        <Route path="/edu-process/attached-students" element={<P roles={STAFF_ROLES}><AdminCurriculumStudents /></P>} />
         <Route path="/edu-process/syllabus"          element={<P roles={STAFF_ROLES}><AdminSyllabi /></P>} />
         <Route path="/edu-process/academic-years"    element={<P roles={STAFF_ROLES}><AdminAcademicPeriods view="years" /></P>} />
         <Route path="/edu-process/semesters"         element={<P roles={STAFF_ROLES}><AdminAcademicPeriods view="semesters" /></P>} />
@@ -284,7 +288,7 @@ function App() {
         <Route path="/edu-process/rating-systems"    element={<P roles={STAFF_ROLES}><AdminRatingSystems /></P>} />
         <Route path="/edu-process/statements"        element={<P roles={REPORTING_ROLES}><AcademicStatements finalStatement={false} /></P>} />
         <Route path="/edu-process/total-statements"  element={<P roles={REPORTING_ROLES}><AcademicStatements finalStatement /></P>} />
-        <Route path="/controls"                       element={<P roles={TEACHER_ROLES}><Exams /></P>} />
+        <Route path="/controls"                       element={<P roles={REPORTING_ROLES}><ControlsOverview /></P>} />
         <Route path="/edu-process/export-rating-to-hemis" element={<P roles={STAFF_ROLES}><StudentAcademicResultsView mode="hemis" /></P>} />
 
         <Route path="/re-reading-subject-groups" element={<P roles={STAFF_ROLES}><ReReadingApplications /></P>} />
@@ -301,8 +305,8 @@ function App() {
         <Route path="/students/student-groups" element={<P roles={STAFF_ROLES}><AdminGroups /></P>} />
         <Route path="/students/students" element={<P roles={STAFF_ROLES}><StudentManagement /></P>} />
         <Route path="/students/graduated" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="GRADUATED" title="Bitirgan talabalar" description="Bitiruvchi holatiga o'tkazilgan talabalar reyestri." allowCreate={false} /></P>} />
-        <Route path="/students/recovery" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="SUSPENDED" title="O'qishni tiklagan talabalar" description="O'qishni qayta tiklash amali mavjud talabalar reyestri." allowCreate={false} /></P>} />
-        <Route path="/students/academic-leave" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="SUSPENDED" title="Akademik ta'tildagi talabalar" description="O'qishi vaqtincha to'xtatilgan talabalar reyestri." allowCreate={false} /></P>} />
+        <Route path="/students/recovery" element={<P roles={STAFF_ROLES}><StudentMovementRegistry eventType="REINSTATEMENT" title="O'qishni tiklagan talabalar" description="O'qishni qayta tiklash buyrug'i rasmiylashtirilgan talabalar (har talabaning oxirgi buyrug'i)." /></P>} />
+        <Route path="/students/academic-leave" element={<P roles={STAFF_ROLES}><StudentMovementRegistry eventType="SUSPENSION" showReason title="Akademik ta'tildagi talabalar" description="Akademik ta'til (o'qishni to'xtatish) buyrug'i rasmiylashtirilgan talabalar va sababi." /></P>} />
         <Route path="/transfer-students" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="ACTIVE" title="Talabalarni ko'chirish" description="Faol talabalarni yangi dastur yoki guruhga yakka va ommaviy ko'chirish." allowCreate={false} /></P>} />
         <Route path="/students/expelled" element={<P roles={STAFF_ROLES}><StudentManagement initialStatus="EXPELLED" title="Chetlashtirilgan talabalar" description="Chetlashtirish buyrug'i rasmiylashtirilgan talabalar reyestri." allowCreate={false} /></P>} />
         <Route path="/student/recovery-study-subjects-info" element={<P roles={STAFF_ROLES}><AdminReinstatementSubjectReport /></P>} />
@@ -310,7 +314,8 @@ function App() {
         <Route path="/call-to-final-exam-letter" element={<P roles={STAFF_ROLES}><FinalExamCallLetters /></P>} />
         <Route path="/transcript-students" element={<P roles={TEACHER_ROLES}><StudentTranscripts /></P>} />
 
-        <Route path="/monitoring/students" element={<P roles={STAFF_ROLES}><StudentManagement allowCreate={false} /></P>} />
+        <Route path="/monitoring/students" element={<P roles={REPORTING_ROLES}><StudentLoginMonitoring /></P>} />
+        <Route path="/monitoring/teachers" element={<P roles={REPORTING_ROLES}><TeacherLoginMonitoring /></P>} />
         <Route path="/monitoring/students-login-date" element={<P roles={REPORTING_ROLES}><InactiveStudentMonitoring /></P>} />
         <Route path="/users/not-choose-subject-students" element={<P roles={REPORTING_ROLES}><ElectiveChoiceMonitoring /></P>} />
         <Route path="/students/use-syllabus" element={<P roles={REPORTING_ROLES}><LearningParticipationMonitoring /></P>} />

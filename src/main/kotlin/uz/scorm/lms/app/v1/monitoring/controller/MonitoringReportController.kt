@@ -14,6 +14,12 @@ class MonitoringReportController(private val service: MonitoringReportService) {
     @GetMapping("/inactive-students")
     fun inactiveStudents(@RequestParam(defaultValue = "7") inactiveDays: Int) = service.inactiveStudents(inactiveDays)
 
+    @GetMapping("/student-logins")
+    fun studentLogins() = service.studentLogins()
+
+    @GetMapping("/teacher-logins")
+    fun teacherLogins() = service.teacherLogins()
+
     @GetMapping("/elective-exceptions")
     fun electiveExceptions() = service.electiveExceptions()
 
