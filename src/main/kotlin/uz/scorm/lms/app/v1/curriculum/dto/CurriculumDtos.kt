@@ -29,6 +29,12 @@ data class SaveCurriculumVersionRequest(
     val validFrom: LocalDate,
     val validUntil: LocalDate,
     val qualification: String? = null,
+    /** Kuzgi semestr (toq semestrlar) sanalari */
+    val autumnStartsOn: LocalDate? = null,
+    val autumnEndsOn: LocalDate? = null,
+    /** Bahorgi semestr (juft semestrlar) sanalari */
+    val springStartsOn: LocalDate? = null,
+    val springEndsOn: LocalDate? = null,
 )
 
 /** Malakaviy amaliyot yoki yakuniy davlat attestatsiyasi; name berilmasa turi nomi olinadi */
@@ -167,6 +173,25 @@ data class CurriculumVersionDto(
     val qualification: String? = null,
     val components: List<CurriculumComponentDto> = emptyList(),
     val schedule: List<CurriculumScheduleDto> = emptyList(),
+    val autumnStartsOn: LocalDate? = null,
+    val autumnEndsOn: LocalDate? = null,
+    val springStartsOn: LocalDate? = null,
+    val springEndsOn: LocalDate? = null,
+)
+
+/** Semestrlar rejalar kesimida (Everest "Semestrlar"): har reja semestri va uning muddati (kiritilmagan bo'lsa null) */
+data class CurriculumSemesterOverviewDto(
+    val curriculumId: Long,
+    val curriculumName: String,
+    val versionCode: String,
+    val programName: String,
+    val curriculumStatus: String,
+    val academicYear: String,
+    val semesterNumber: Int,
+    val periodId: Long?,
+    val startsOn: LocalDate?,
+    val endsOn: LocalDate?,
+    val active: Boolean?,
 )
 
 data class CurriculumStudentDto(

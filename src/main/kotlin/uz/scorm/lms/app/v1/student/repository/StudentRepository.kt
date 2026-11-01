@@ -108,6 +108,7 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
           and student.user.deleted = false
           and (:status is null or student.studentStatus = :status)
           and (:semesterNumber is null or student.semesterNumber = :semesterNumber)
+          and (:groupId is null or student.groupId = :groupId)
           and (:unassignedCurriculumId is null or not exists (
             select assignment.id from CurriculumStudentAssignment assignment
             where assignment.curriculumVersion.id = :unassignedCurriculumId
@@ -129,6 +130,7 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
         @Param("search") search: String,
         @Param("semesterNumber") semesterNumber: Int?,
         @Param("unassignedCurriculumId") unassignedCurriculumId: Long?,
+        @Param("groupId") groupId: Long?,
         pageable: Pageable,
     ): Page<StudentProfile>
 
@@ -152,6 +154,13 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
             where membership.student.id = student.id
               and membership.curriculumSubject.id = :curriculumSubjectId
           )
+          and exists (
+            select assignment.id from CurriculumStudentAssignment assignment
+            where assignment.student.id = student.id
+              and assignment.curriculumVersion.id = :curriculumId
+              and assignment.semesterNumber = :semester
+              and assignment.deleted = false
+          )
     """)
     fun findAcademicSubjectGroupCandidates(
         @Param("programId") programId: Long,
@@ -159,6 +168,7 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
         @Param("semester") semester: Int,
         @Param("status") status: StudentStatus,
         @Param("curriculumSubjectId") curriculumSubjectId: Long,
+        @Param("curriculumId") curriculumId: Long,
         @Param("search") search: String,
         pageable: Pageable,
     ): Page<StudentProfile>

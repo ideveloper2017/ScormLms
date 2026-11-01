@@ -259,6 +259,47 @@ class ProgramCurriculumWorkflowIntegrationTest {
         assertThrows<IllegalArgumentException> { service.moveSubject(plan.id, first.id, MoveCurriculumSubjectRequest(1), requireNotNull(author.id)) }
     }
 
+    @Test
+    fun `tasdiqlashda kuzgi sanalar toq bahorgilar juft semestr muddatiga aylanadi va qoralama o'chiriladi`() {
+        val author = user("season-author")
+        val program = program("season-program")
+        val subject = subject(program, "SEASON", "Fizika", 6)
+        val plan = service.create(request(requireNotNull(program.id), versionSuffix = "season").copy(
+            semesterCount = 4,
+            autumnStartsOn = LocalDate.of(2026, 9, 15), autumnEndsOn = LocalDate.of(2027, 1, 31),
+            springStartsOn = LocalDate.of(2027, 2, 2), springEndsOn = LocalDate.of(2027, 6, 6),
+        ), requireNotNull(author.id))
+        assertEquals(LocalDate.of(2026, 9, 15), plan.autumnStartsOn)
+        // Bahorgi semestr kuzgidan oldin boshlanmaydi
+        assertThrows<IllegalArgumentException> {
+            service.update(plan.id, request(requireNotNull(program.id), versionSuffix = "season-bad").copy(
+                autumnStartsOn = LocalDate.of(2026, 9, 15), autumnEndsOn = LocalDate.of(2027, 1, 31),
+                springStartsOn = LocalDate.of(2027, 1, 10), springEndsOn = LocalDate.of(2027, 6, 6),
+            ), requireNotNull(author.id))
+        }
+        service.addSubject(plan.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 1, CurriculumPlanItemType.REQUIRED), requireNotNull(author.id))
+        // Qo'lda kiritilgan 3-semestr muddati tasdiqlashda o'zgarmaydi
+        operations.savePeriod(plan.id, CurriculumSemesterPeriodRequest(3, LocalDate.of(2026, 10, 1), LocalDate.of(2027, 1, 20), true))
+        service.approve(plan.id, approval(), requireNotNull(user("season-approver").id))
+
+        val periods = operations.periods(plan.id).associateBy { it.semesterNumber }
+        assertEquals(setOf(1, 2, 3, 4), periods.keys)
+        assertEquals(LocalDate.of(2026, 9, 15), periods.getValue(1).startsOn)
+        assertEquals(LocalDate.of(2027, 6, 6), periods.getValue(2).endsOn)
+        assertEquals(LocalDate.of(2026, 10, 1), periods.getValue(3).startsOn)
+        assertEquals(LocalDate.of(2027, 2, 2), periods.getValue(4).startsOn)
+        val overview = operations.semesterOverview().filter { it.curriculumId == plan.id }
+        assertEquals(4, overview.size)
+        assertTrue(overview.all { it.startsOn != null })
+
+        // Qoralama o'chiriladi, tasdiqlangan — yo'q; o'chirilgan rejaning kodi qayta ishlatiladi
+        val draft = service.create(request(requireNotNull(program.id), versionSuffix = "season-draft"), requireNotNull(author.id))
+        service.delete(draft.id, requireNotNull(author.id))
+        assertTrue(service.list().none { it.id == draft.id })
+        service.create(request(requireNotNull(program.id)).copy(versionCode = draft.versionCode), requireNotNull(author.id))
+        assertThrows<IllegalArgumentException> { service.delete(plan.id, requireNotNull(author.id)) }
+    }
+
     private fun request(
         programId: Long,
         basis: CurriculumNormativeBasisType = CurriculumNormativeBasisType.STATE_EDUCATION_STANDARD,

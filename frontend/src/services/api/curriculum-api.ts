@@ -4,6 +4,9 @@ export type CurriculumCredentialType = "STATE_DIPLOMA" | "NON_STATE_CREDENTIAL";
 export type CurriculumNormativeBasisType = "STATE_EDUCATION_STANDARD" | "PROFESSIONAL_STANDARD";
 export type CurriculumPlanItemType = "REQUIRED" | "ELECTIVE";
 export type CurriculumStatus = "DRAFT" | "APPROVED" | "ARCHIVED";
+export const curriculumStatusLabels: Record<CurriculumStatus, string> = { DRAFT: "Qoralama", APPROVED: "Tasdiqlangan", ARCHIVED: "Arxivlangan" };
+export const educationFormLabels: Record<string, string> = { FULL_TIME: "Kunduzgi", DISTANCE: "Masofaviy", PART_TIME: "Sirtqi", EVENING: "Kechki" };
+export const educationLanguageLabels: Record<string, string> = { "uz-Latn": "O'zbekcha", uz: "O'zbekcha", "uz-Cyrl": "Ўзбекча", kaa: "Qaraqalpaqsha", ru: "Русский", en: "English" };
 export type CurriculumStudentStatus = "ACTIVE" | "SUSPENDED" | "EXPELLED" | "GRADUATED";
 export type CurriculumEducationForm = "FULL_TIME" | "PART_TIME" | "EVENING" | "DISTANCE";
 /** Ishchi o'quv rejadagi "Kurs ishi (loyihasi)" ustuni: KI — kurs ishi, KL — kurs loyihasi */
@@ -214,6 +217,10 @@ export interface CurriculumVersion {
   qualification?: string | null;
   components?: CurriculumComponent[];
   schedule?: CurriculumScheduleRow[];
+  autumnStartsOn?: string | null;
+  autumnEndsOn?: string | null;
+  springStartsOn?: string | null;
+  springEndsOn?: string | null;
 }
 
 export interface CurriculumStudent {
@@ -244,6 +251,7 @@ export interface CurriculumStudentQuery {
   status?: CurriculumStudentStatus;
   page?: number;
   size?: number;
+  groupId?: number;
 }
 
 export interface CurriculumSemesterPeriod {
@@ -268,6 +276,15 @@ export interface CurriculumStudentAssignment {
   startsOn: string;
   endsOn: string;
   active: boolean;
+  groupName?: string | null;
+  curriculumName?: string | null;
+}
+
+export interface CurriculumAssignmentSearch {
+  academicYear?: string;
+  curriculumId?: number;
+  semester?: number;
+  groupId?: number;
 }
 
 export interface SaveCurriculumSemesterPeriodInput {
@@ -296,6 +313,26 @@ export interface SaveCurriculumVersionInput {
   validFrom: string;
   validUntil: string;
   qualification?: string | null;
+  /** Kuzgi (toq semestrlar) va bahorgi (juft semestrlar) semestr sanalari; tasdiqlashda semestr muddatlari shulardan */
+  autumnStartsOn?: string | null;
+  autumnEndsOn?: string | null;
+  springStartsOn?: string | null;
+  springEndsOn?: string | null;
+}
+
+/** "Semestrlar": har reja semestri va muddati (kiritilmagan bo'lsa startsOn = null) */
+export interface CurriculumSemesterOverview {
+  curriculumId: number;
+  curriculumName: string;
+  versionCode: string;
+  programName: string;
+  curriculumStatus: CurriculumStatus;
+  academicYear: string;
+  semesterNumber: number;
+  periodId?: number | null;
+  startsOn?: string | null;
+  endsOn?: string | null;
+  active?: boolean | null;
 }
 
 export interface AddCurriculumSubjectInput {
@@ -312,7 +349,19 @@ export interface ApproveCurriculumInput {
   approvalOrderDate: string;
 }
 
+const seasonError = (label: string, startsOn?: string | null, endsOn?: string | null): string | null => {
+  if (!startsOn && !endsOn) return null;
+  if (!startsOn || !endsOn) return `${label} semestrning boshlanish va tugash sanasini kiriting`;
+  return endsOn <= startsOn ? `${label} semestr tugash sanasi boshlanishidan keyin bo'lishi kerak` : null;
+};
+
 export const curriculumInputError = (input: SaveCurriculumVersionInput): string | null => {
+  const season = seasonError("Kuzgi", input.autumnStartsOn, input.autumnEndsOn)
+    ?? seasonError("Bahorgi", input.springStartsOn, input.springEndsOn);
+  if (season) return season;
+  if (input.autumnEndsOn && input.springStartsOn && input.springStartsOn <= input.autumnEndsOn) {
+    return "Bahorgi semestr kuzgi semestr tugagandan keyin boshlanishi kerak";
+  }
   const yearMatch = /^(\d{4})-(\d{4})$/.exec(input.academicYear);
   if (input.name.trim().length < 2) return "O'quv reja nomi majburiy";
   if (!input.programId || !input.versionCode.trim()) return "Dastur va versiya kodi majburiy";
@@ -320,7 +369,7 @@ export const curriculumInputError = (input: SaveCurriculumVersionInput): string 
   if (!Number.isInteger(input.passingScore) || input.passingScore < 0 || input.passingScore > 100) return "O'tish bali 0-100 oralig'ida bo'lishi kerak";
   if (!Number.isInteger(input.baseCreditAmount) || input.baseCreditAmount < 0) return "Bazaviy kredit summasi manfiy bo'lmasligi kerak";
   if (!input.ratingSystemId) return "Kredit baholash tizimini tanlang";
-  if (!Number.isInteger(input.semesterCount) || input.semesterCount < 1 || input.semesterCount > 15) return "Semestr soni 1-15 oralig'ida bo'lishi kerak";
+  if (!Number.isInteger(input.semesterCount) || input.semesterCount < 1 || input.semesterCount > 12) return "Semestr soni 1-12 oralig'ida bo'lishi kerak";
   if (!yearMatch || Number(yearMatch[2]) !== Number(yearMatch[1]) + 1) return "O'quv yili YYYY-YYYY ketma-ket formatida bo'lishi kerak";
   const academicFrom = `${yearMatch[1]}-09-01`;
   const academicUntil = `${yearMatch[2]}-08-31`;
@@ -343,6 +392,15 @@ export const canApproveCurriculum = (version: CurriculumVersion) =>
   Boolean(version.standardReference.trim()) &&
   Boolean(version.qualificationRequirementsReference.trim());
 
+/** Bo'sh sana maydonlari serverga null bo'lib boradi */
+const versionPayload = (input: SaveCurriculumVersionInput): SaveCurriculumVersionInput => ({
+  ...input,
+  autumnStartsOn: input.autumnStartsOn || null,
+  autumnEndsOn: input.autumnEndsOn || null,
+  springStartsOn: input.springStartsOn || null,
+  springEndsOn: input.springEndsOn || null,
+});
+
 export const curriculumApi = {
   list: async () => (await api.get<CurriculumVersion[]>("/curricula")).data,
   get: async (id: number) => (await api.get<CurriculumVersion>(`/curricula/${id}`)).data,
@@ -358,14 +416,22 @@ export const curriculumApi = {
   listStudentAssignments: async (id: number) => (
     await api.get<CurriculumStudentAssignment[]>(`/curricula/${id}/student-assignments`)
   ).data,
+  /** Barcha rejalar bo'yicha biriktirilgan talabalar */
+  searchStudentAssignments: async (query: CurriculumAssignmentSearch = {}) => (
+    await api.get<CurriculumStudentAssignment[]>("/curricula/student-assignments", { params: query })
+  ).data,
   assignStudents: async (id: number, studentIds: number[], semesterNumber: number) => (
     await api.post<CurriculumStudentAssignment[]>(`/curricula/${id}/student-assignments`, { studentIds, semesterNumber })
   ).data,
   removeStudentAssignment: async (id: number, assignmentId: number) => {
     await api.delete(`/curricula/${id}/student-assignments/${assignmentId}`);
   },
-  create: async (input: SaveCurriculumVersionInput) => (await api.post<CurriculumVersion>("/curricula", input)).data,
-  update: async (id: number, input: SaveCurriculumVersionInput) => (await api.put<CurriculumVersion>(`/curricula/${id}`, input)).data,
+  create: async (input: SaveCurriculumVersionInput) => (await api.post<CurriculumVersion>("/curricula", versionPayload(input))).data,
+  update: async (id: number, input: SaveCurriculumVersionInput) => (await api.put<CurriculumVersion>(`/curricula/${id}`, versionPayload(input))).data,
+  /** Faqat qoralama reja o'chiriladi */
+  remove: async (id: number) => { await api.delete(`/curricula/${id}`); },
+  /** Barcha rejalarning semestrlari va muddatlari */
+  semesterOverview: async () => (await api.get<CurriculumSemesterOverview[]>("/curricula/semester-periods")).data,
   addSubject: async (id: number, input: AddCurriculumSubjectInput) => (await api.post<CurriculumVersion>(`/curricula/${id}/subjects`, input)).data,
   removeSubject: async (id: number, itemId: number) => (await api.delete<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}`)).data,
   /** Reja faniga mavjud o'quv dasturini biriktirish (fanning barcha semestr qatorlariga) */

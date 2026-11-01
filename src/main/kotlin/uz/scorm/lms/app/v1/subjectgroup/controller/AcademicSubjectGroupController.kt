@@ -25,7 +25,10 @@ import uz.scorm.lms.app.v1.user.model.User
 class AcademicSubjectGroupController(private val service: AcademicSubjectGroupService) {
     @GetMapping("/teaching-options")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
-    fun teachingOptions(@CurrentUser user: User) = service.teachingOptions(requireNotNull(user.id))
+    // O'qituvchi bo'lmagan (admin, metodist) foydalanuvchi istalgan faol oqimga kurs ochadi — CourseController bilan bir xil
+    fun teachingOptions(@CurrentUser user: User) = service.teachingOptions(
+        requireNotNull(user.id), allGroups = !user.role?.name.equals("teacher", ignoreCase = true),
+    )
 
     @GetMapping
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")

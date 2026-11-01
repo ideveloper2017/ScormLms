@@ -130,6 +130,9 @@ class SubjectSyllabusService(
     fun delete(id: Long) {
         val value = lock(id)
         require(value.status == "DRAFT" && value.revisionNumber == 1) { "Tasdiqlash tarixi mavjud dastur o'chirilmaydi" }
+        // Bog'langan dastur o'chirilsa baza FK xatosi chiqardi — tushunarli xabar bilan to'xtatiladi
+        require(!syllabi.isUsedByCurriculum(id)) { "Dastur o'quv reja faniga biriktirilgan: avval rejadagi fandan uzing" }
+        require(!syllabi.isUsedByCourse(id)) { "Dastur kursga bog'langan, o'chirib bo'lmaydi" }
         syllabi.delete(value)
     }
 

@@ -5,6 +5,13 @@ import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
 
 interface SubjectSyllabusRepository : JpaRepository<SubjectSyllabus, Long> {
+    /** O'quv reja fani (o'chirilganlari ham — FK) shu dasturga bog'langanmi */
+    @org.springframework.data.jpa.repository.Query("select count(i) > 0 from ProgramCurriculumSubject i where i.syllabus.id = :id")
+    fun isUsedByCurriculum(@org.springframework.data.repository.query.Param("id") id: Long): Boolean
+
+    @org.springframework.data.jpa.repository.Query("select count(c) > 0 from Course c where c.syllabus.id = :id")
+    fun isUsedByCourse(@org.springframework.data.repository.query.Param("id") id: Long): Boolean
+
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select s from SubjectSyllabus s where s.id = :id and s.deleted = false")
     fun lockById(id: Long): SubjectSyllabus?

@@ -57,6 +57,14 @@ export function AdminSubjectCategories() {
       columns={[
         { header: "Nomi", cell: (category) => <span className="font-medium">{category.name}</span> },
         { header: "Kodi", cell: (category) => category.code ?? "—" },
+        {
+          header: "Tarjimalar",
+          cell: (category) => {
+            const langs = [["EN", category.nameEn], ["RU", category.nameRu], ["KAA", category.nameKaa], ["Кир", category.nameUzCyrillic]]
+              .filter(([, value]) => value && String(value).trim()).map(([label]) => label);
+            return langs.length ? <div className="flex flex-wrap gap-1">{langs.map((label) => <Badge key={label} variant="outline" className="px-1.5 py-0 text-[10px]">{label}</Badge>)}</div> : "—";
+          },
+        },
         { header: "Holat", cell: (category) => <Badge variant={category.active ? "default" : "secondary"}>{category.active ? "Faol" : "Nofaol"}</Badge> },
       ]}
       blankForm={() => ({ name: "", code: "", nameEn: "", nameRu: "", nameKaa: "", nameUzCyrillic: "", active: true })}

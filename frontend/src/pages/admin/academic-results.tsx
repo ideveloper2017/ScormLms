@@ -35,8 +35,8 @@ import {
 
 const ALL = "__all__";
 const matchesSearch = (row: object, search: string) => Object.values(row).filter(value => typeof value === "string" || typeof value === "number").join(" ").toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
-const number = (value?: number | null) => value == null ? "â€”" : value.toLocaleString("uz-Latn", { maximumFractionDigits: 2 });
-const date = (value?: string | null) => value ? new Date(value).toLocaleString("uz-Latn") : "â€”";
+const number = (value?: number | null) => value == null ? "—" : value.toLocaleString("uz-Latn", { maximumFractionDigits: 2 });
+const date = (value?: string | null) => value ? new Date(value).toLocaleString("uz-Latn") : "—";
 
 function Header({ title, description, onExport, action }: { title: string; description: string; onExport?: () => void; action?: React.ReactNode }) {
   return <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-bold">{title}</h1><p className="text-sm text-muted-foreground">{description}</p></div><div className="flex gap-2">{action}{onExport && <Button variant="outline" onClick={onExport}><Download className="mr-2 h-4 w-4" />Excel uchun CSV</Button>}</div></div>;
@@ -67,7 +67,7 @@ export function AdminRatingSystems() {
       columns={[
         { header: "Nomi", cell: (item) => <span className="font-medium">{item.name}</span> },
         { header: "Qisqacha nomi", cell: (item) => item.shortName },
-        { header: "Min-Max", cell: (item) => `${item.minScore} â€” ${item.maxScore}` },
+        { header: "Min-Max", cell: (item) => `${item.minScore} — ${item.maxScore}` },
         { header: "O'tish bali", cell: (item) => item.passScore },
         { header: "Holati", cell: (item) => <Badge variant={item.active ? "default" : "secondary"}>{item.active ? "Faol" : "Faol emas"}</Badge> },
       ]}
@@ -96,31 +96,40 @@ export function AcademicStatements({ finalStatement }: { finalStatement: boolean
   const [statementId, setStatementId] = useState<number | null>(null);
   const [year, setYear] = useState(ALL); const [subject, setSubject] = useState(ALL);
   const [semester, setSemester] = useState(ALL); const [group, setGroup] = useState(ALL);
+  // O'quv mavsumi: kuzgi — toq, bahorgi — juft semestrlar; sana oralig'i — qaydnoma qo'shilgan sana
+  const [season, setSeason] = useState(ALL); const [from, setFrom] = useState(""); const [to, setTo] = useState("");
+  const navigate = useNavigate();
   const query = useQuery({ queryKey: ["academic-statements", finalStatement], queryFn: () => listAcademicStatements(finalStatement), staleTime: 30_000 });
   const rows = query.data ?? [];
   const values = (selector: (row: AcademicStatementRow) => string) => [...new Set(rows.map(selector).filter(Boolean))].sort();
   const filtered = useMemo(() => rows.filter((row) =>
     (year === ALL || row.academicYear === year) && matchesSearch(row, search) && (subject === ALL || row.subject === subject)
     && (semester === ALL || String(row.semester ?? "") === semester) && (group === ALL || row.group === group)
-  ), [rows, year, subject, semester, group, search]);
+    && (season === ALL || (row.semester != null && (row.semester % 2 === 1 ? "Kuzgi" : "Bahorgi") === season))
+    && (!from || row.addedDate >= from) && (!to || row.addedDate <= to)
+  ), [rows, year, subject, semester, group, search, season, from, to]);
   const columns: ColumnDef<AcademicStatementRow>[] = [
     { id: "open", header: "Amal", cell: ({ row }) => <Button variant="outline" size="sm" onClick={() => setStatementId(row.original.id)}>Ochish</Button> },
     { accessorKey: "topic", header: "Mavzu" }, { accessorKey: "group", header: "Guruh" },
-    { accessorKey: "academicYear", header: "O'quv yili" }, { id: "semester", header: "Semestr", cell: ({ row }) => row.original.semester ?? "â€”" },
+    { accessorKey: "academicYear", header: "O'quv yili" }, { id: "semester", header: "Semestr", cell: ({ row }) => row.original.semester ?? "—" },
     ...(finalStatement ? [] : [{ accessorKey: "controlType", header: "Nazorat turi" } as ColumnDef<AcademicStatementRow>]),
     { accessorKey: "statement", header: "Vedmost" }, { accessorKey: "addedDate", header: "Qo'shilgan sana" },
     { id: "results", header: "Natijalar", cell: ({ row }) => `${row.original.passedCount}/${row.original.resultCount}` },
     { id: "average", header: "O'rtacha", cell: ({ row }) => number(row.original.averageScore) },
-    { id: "status", header: "Holati", cell: ({ row }) => <Badge variant={row.original.status === "COMPLETED" ? "default" : "secondary"}>{row.original.status}</Badge> },
+    { id: "status", header: "Holati", cell: ({ row }) => <Badge variant={row.original.status === "COMPLETED" ? "default" : "secondary"}>{sessionStatusLabel[row.original.status] ?? row.original.status}</Badge> },
   ];
   return <div className="space-y-6 p-3 sm:p-6">
     {statementId != null && <StatementDetails key={statementId} id={statementId} canWrite={hasAuthority(user, "ACADEMIC_WRITE")} close={() => setStatementId(null)} />}
-    <Header title={finalStatement ? "Yakuniy vedmost" : "Vedmost"} description="Mavjud nazorat sessiyalari va ularning auditli natijalaridan hosil qilingan qaydnomalar." onExport={() => downloadCsv(finalStatement ? "yakuniy-vedmost.csv" : "vedmost.csv", ["Mavzu","Guruh","O'quv yili","Semestr","Nazorat","Vedmost","Sana","Natijalar","O'rtacha"], filtered.map((row) => [row.topic,row.group,row.academicYear,row.semester,row.controlType,row.statement,row.addedDate,`${row.passedCount}/${row.resultCount}`,row.averageScore]))} />
+    <Header title={finalStatement ? "Yakuniy vedmost" : "Vedmost"} description={finalStatement ? "Yakuniy nazorat (YN) sessiyalari bo'yicha qaydnomalar va natijalar." : "Oraliq nazorat (ON) sessiyalari bo'yicha qaydnomalar va natijalar."}
+      action={<Button variant="outline" onClick={() => navigate("/teacher/exams")}>{finalStatement ? "Yakuniy nazorat yaratish" : "Oraliq nazorat yaratish"}</Button>} onExport={() => downloadCsv(finalStatement ? "yakuniy-vedmost.csv" : "vedmost.csv", ["Mavzu","Guruh","O'quv yili","Semestr","Nazorat","Vedmost","Sana","Natijalar","O'rtacha"], filtered.map((row) => [row.topic,row.group,row.academicYear,row.semester,row.controlType,row.statement,row.addedDate,`${row.passedCount}/${row.resultCount}`,row.averageScore]))} />
     <div className="flex flex-wrap gap-3 rounded-lg border p-4">
       <FilterSelect label="O'quv yili" value={year} values={values((row) => row.academicYear)} onChange={setYear} />
       <FilterSelect label="Fan" value={subject} values={values((row) => row.subject)} onChange={setSubject} />
       <FilterSelect label="Semestr" value={semester} values={values((row) => String(row.semester ?? ""))} onChange={setSemester} />
       <FilterSelect label="Guruh" value={group} values={values((row) => row.group)} onChange={setGroup} />
+      <FilterSelect label="O'quv mavsumi" value={season} values={["Kuzgi", "Bahorgi"]} onChange={setSeason} />
+      <div className="space-y-1"><Label className="text-xs">Sanadan</Label><Input type="date" aria-label="Sanadan" className="w-40" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+      <div className="space-y-1"><Label className="text-xs">Sanagacha</Label><Input type="date" aria-label="Sanagacha" className="w-40" value={to} onChange={(e) => setTo(e.target.value)} /></div>
     </div>
     <QueryState loading={query.isLoading} error={query.error} retry={() => query.refetch()} />
     {!query.isLoading && !query.error && <DataTable serverSearch={{ value: search, onChange: setSearch }} columns={columns} data={filtered} searchPlaceholder="Mavzu yoki fan bo'yicha qidirish..." emptyText="Ma'lumot mavjud emas" />}
@@ -128,11 +137,15 @@ export function AcademicStatements({ finalStatement }: { finalStatement: boolean
 }
 
 type ResultMode = "debtors" | "monitoring" | "average" | "hemis";
+const sessionStatusLabel: Record<string, string> = { DRAFT: "Qoralama", PUBLISHED: "E'lon qilingan", ONGOING: "O'tkazilmoqda", COMPLETED: "Yakunlangan" };
+// Talaba profili HEMIS bilan bog'langanmi (baholar HEMIS'ga hali avtomatik yuborilmaydi)
+const hemisStudentLabel: Record<StudentAcademicResult["hemisStatus"], string> = { SYNCED: "Bog'langan", PENDING: "Sinxronlanmagan", NOT_LINKED: "Bog'lanmagan" };
+
 const resultMeta: Record<ResultMode, { title: string; description: string }> = {
   debtors: { title: "Akademik qarzdorlar", description: "Talabaga biriktirilgan o‘quv rejaning o‘tish chegarasiga yetmagan natijalar." },
   monitoring: { title: "Reyting monitoringi", description: "Har bir talaba va fan kesimida oraliq, yakuniy va umumiy natija." },
   average: { title: "Talabalarning o'zlashtirish ko'rsatkichlari", description: "Talaba kesimida baholangan fanlar bo'yicha o'rtacha natija." },
-  hemis: { title: "Baholarini HEMIS ga yuborish", description: "HEMIS bilan bog'langan talabalar va yuborishga tayyor hisoblangan baholar." },
+  hemis: { title: "Baholarini HEMIS ga yuborish", description: "Yuborishga tayyor baholar va talabaning HEMIS bilan bog'langanligi. Baholarni HEMIS'ga avtomatik yuborish hali ulanmagan." },
 };
 
 interface AverageRow { studentId: number; fullName: string; studentNumber: string; group: string; program: string; academicYear: string; semester: number; average: number; subjects: number }
@@ -163,9 +176,9 @@ export function StudentAcademicResultsView({ mode }: { mode: ResultMode }) {
     { id: "interim", header: "Oraliq", cell: ({ row }) => number(row.original.interimScore) },
     { id: "final", header: "Yakuniy", cell: ({ row }) => number(row.original.finalScore) },
     { id: "total", header: "Jami ball", cell: ({ row }) => number(row.original.totalScore) },
-    { id: "mark", header: "Baho", cell: ({ row }) => row.original.mark ?? "â€”" },
+    { id: "mark", header: "Baho", cell: ({ row }) => row.original.mark ?? "—" },
   ];
-  const columns = mode === "debtors" ? standardColumns.slice(0, 5) : mode === "hemis" ? [...standardColumns, { id: "hemis", header: "HEMIS", cell: ({ row }: { row: { original: StudentAcademicResult } }) => <Badge variant={row.original.hemisStatus === "SYNCED" ? "default" : "secondary"}>{row.original.hemisStatus}</Badge> } as ColumnDef<StudentAcademicResult>] : standardColumns;
+  const columns = mode === "debtors" ? standardColumns.slice(0, 5) : mode === "hemis" ? [...standardColumns, { id: "hemis", header: "HEMIS'dagi talaba", cell: ({ row }: { row: { original: StudentAcademicResult } }) => <Badge variant={row.original.hemisStatus === "SYNCED" ? "default" : "secondary"} title="Talaba profili HEMIS bilan bog'langanmi (baho yuborilganini bildirmaydi)">{hemisStudentLabel[row.original.hemisStatus]}</Badge> } as ColumnDef<StudentAcademicResult>] : standardColumns;
   const averageColumns: ColumnDef<AverageRow>[] = [
     { accessorKey: "fullName", header: "F.I.O." }, { accessorKey: "group", header: "Guruh" },
     { accessorKey: "program", header: "O'quv dasturi" }, { accessorKey: "semester", header: "Semestr" },
@@ -173,7 +186,7 @@ export function StudentAcademicResultsView({ mode }: { mode: ResultMode }) {
     { accessorKey: "subjects", header: "Baholangan fanlar" },
   ];
   const visibleAverages = averages.filter(row => matchesSearch(row, search));
-  const exportRows = mode === "average" ? visibleAverages.map((row) => [row.fullName,row.group,row.program,row.semester,row.average,row.subjects]) : resultRows.map((row) => [row.fullName,row.group,row.academicYear,row.semester,row.subject,row.interimScore,row.finalScore,row.totalScore,row.mark,row.hemisStatus]);
+  const exportRows = mode === "average" ? visibleAverages.map((row) => [row.fullName,row.group,row.program,row.semester,row.average,row.subjects]) : resultRows.map((row) => [row.fullName,row.group,row.academicYear,row.semester,row.subject,row.interimScore,row.finalScore,row.totalScore,row.mark,hemisStudentLabel[row.hemisStatus]]);
   return <div className="space-y-6 p-3 sm:p-6">
     <Header title={resultMeta[mode].title} description={resultMeta[mode].description} action={mode === "hemis" ? <Button onClick={() => navigate("/admin/integrations")}>HEMIS integratsiyasi</Button> : undefined} onExport={() => downloadCsv(`${mode}.csv`, mode === "average" ? ["F.I.O.","Guruh","Dastur","Semestr","O'rtacha","Fanlar"] : ["F.I.O.","Guruh","Yil","Semestr","Fan","Oraliq","Yakuniy","Jami","Baho","HEMIS"], exportRows)} />
     <div className="flex flex-wrap gap-3 rounded-lg border p-4">

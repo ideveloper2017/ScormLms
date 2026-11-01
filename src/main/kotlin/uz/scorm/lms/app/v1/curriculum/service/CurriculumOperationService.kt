@@ -6,6 +6,7 @@ import uz.scorm.lms.app.v1.academicperiod.service.AcademicPeriodService
 import uz.scorm.lms.app.v1.curriculum.dto.*
 import uz.scorm.lms.app.v1.curriculum.model.*
 import uz.scorm.lms.app.v1.curriculum.repository.*
+import uz.scorm.lms.app.v1.group.repository.GroupRepository
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 import uz.scorm.lms.app.v1.student.model.StudentStatus
 
@@ -16,9 +17,36 @@ class CurriculumOperationService(
     private val assignments: CurriculumStudentAssignmentRepository,
     private val students: StudentRepository,
     private val academicPeriods: AcademicPeriodService,
+    private val groups: GroupRepository,
 ) {
     @Transactional(readOnly = true)
     fun periods(curriculumId: Long) = periods.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterNumberAsc(curriculumId).map(::periodDto)
+
+    /** Barcha rejalarning semestrlari va muddatlari (muddat kiritilmagan semestr ham chiqadi) */
+    @Transactional(readOnly = true)
+    fun semesterOverview(): List<CurriculumSemesterOverviewDto> {
+        val byCurriculum = periods.findAllByDeletedFalse().groupBy { requireNotNull(it.curriculumVersion.id) }
+        return curricula.findAllByDeletedFalseOrderByAcademicYearDescVersionCodeAsc().flatMap { curriculum ->
+            val curriculumId = requireNotNull(curriculum.id)
+            val bySemester = byCurriculum[curriculumId].orEmpty().associateBy { it.semesterNumber }
+            (1..curriculum.semesterCount).map { semester ->
+                val period = bySemester[semester]
+                CurriculumSemesterOverviewDto(
+                    curriculumId = curriculumId,
+                    curriculumName = curriculum.name.ifBlank { curriculum.program.name },
+                    versionCode = curriculum.versionCode,
+                    programName = curriculum.program.name,
+                    curriculumStatus = curriculum.status.name,
+                    academicYear = curriculum.academicYear,
+                    semesterNumber = semester,
+                    periodId = period?.id,
+                    startsOn = period?.startsOn,
+                    endsOn = period?.endsOn,
+                    active = period?.active,
+                )
+            }
+        }
+    }
 
     @Transactional
     fun savePeriod(curriculumId: Long, request: CurriculumSemesterPeriodRequest): CurriculumSemesterPeriodDto {
@@ -39,8 +67,24 @@ class CurriculumOperationService(
     }
 
     @Transactional(readOnly = true)
-    fun assignments(curriculumId: Long) = assignments
-        .findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterNumberAscStudentLastNameAsc(curriculumId).map(::assignmentDto)
+    fun assignments(curriculumId: Long) = withNames(assignments
+        .findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterNumberAscStudentLastNameAsc(curriculumId))
+
+    /** Barcha rejalar bo'yicha biriktirilgan talabalar: o'quv yili, reja, semestr va guruh bo'yicha filtr */
+    @Transactional(readOnly = true)
+    fun searchAssignments(academicYear: String?, curriculumId: Long?, semester: Int?, groupId: Long?) =
+        withNames(assignments.search(academicYear?.trim()?.ifBlank { null }, curriculumId, semester, groupId))
+
+    private fun withNames(values: List<CurriculumStudentAssignment>): List<CurriculumStudentAssignmentDto> {
+        val groupNames = groups.findAllById(values.mapNotNull { it.student.groupId }.distinct())
+            .associate { requireNotNull(it.id) to it.name }
+        return values.map { value ->
+            assignmentDto(value).copy(
+                groupName = value.student.groupId?.let(groupNames::get),
+                curriculumName = value.curriculumVersion.name.ifBlank { value.curriculumVersion.program.name },
+            )
+        }
+    }
 
     @Transactional
     fun assign(curriculumId: Long, request: AssignCurriculumStudentsRequest): List<CurriculumStudentAssignmentDto> {
@@ -81,7 +125,7 @@ class CurriculumOperationService(
                 it.active = true
                 it.deleted = false
             }
-        }).map(::assignmentDto)
+        }).let(::withNames)
     }
 
     @Transactional

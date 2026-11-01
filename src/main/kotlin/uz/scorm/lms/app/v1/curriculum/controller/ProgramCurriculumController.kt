@@ -51,7 +51,8 @@ class ProgramCurriculumController(
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) semesterNumber: Int?,
         @RequestParam(defaultValue = "false") unassignedOnly: Boolean,
-    ) = service.students(id, search, status, page, size, semesterNumber, unassignedOnly)
+        @RequestParam(required = false) groupId: Long?,
+    ) = service.students(id, search, status, page, size, semesterNumber, unassignedOnly, groupId)
 
     @PostMapping
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
@@ -62,6 +63,13 @@ class ProgramCurriculumController(
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
     fun update(@PathVariable id: Long, @RequestBody request: SaveCurriculumVersionRequest, @CurrentUser user: User) =
         service.update(id, request, requireNotNull(user.id))
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun delete(@PathVariable id: Long, @CurrentUser user: User): ResponseEntity<Void> {
+        service.delete(id, requireNotNull(user.id))
+        return ResponseEntity.noContent().build()
+    }
 
     @PostMapping("/{id}/subjects")
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")

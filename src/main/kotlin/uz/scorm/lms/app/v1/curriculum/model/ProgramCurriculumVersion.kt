@@ -118,7 +118,20 @@ class ProgramCurriculumVersion(
     /** Kvalifikatsiya (masalan "Kompyuter tizimlari muhandisi") */
     @Column(length = 255)
     var qualification: String? = null,
-) : BaseEntity()
+) : BaseEntity() {
+    // Kuzgi (toq) va bahorgi (juft) semestr sanalari; tasdiqlashda semestr muddatlari shulardan yaratiladi
+    @Column(name = "autumn_starts_on")
+    var autumnStartsOn: LocalDate? = null
+
+    @Column(name = "autumn_ends_on")
+    var autumnEndsOn: LocalDate? = null
+
+    @Column(name = "spring_starts_on")
+    var springStartsOn: LocalDate? = null
+
+    @Column(name = "spring_ends_on")
+    var springEndsOn: LocalDate? = null
+}
 
 enum class CurriculumCredentialType {
     STATE_DIPLOMA,

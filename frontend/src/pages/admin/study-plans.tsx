@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Archive,
@@ -7,12 +7,19 @@ import {
   BookOpenCheck,
   Eye,
   Layers3,
+  LayoutGrid,
   Pencil,
   Plus,
   Search,
+  Trash2,
   Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +37,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
 import {
   curriculumApi,
+  educationFormLabels,
+  educationLanguageLabels,
   type CurriculumStatus,
   type CurriculumVersion,
 } from "@/services/api/curriculum-api";
@@ -54,6 +63,21 @@ export function AdminStudyPlans() {
   const [status, setStatus] = useState<string>(ALL);
   const [academicYear, setAcademicYear] = useState<string>(ALL);
   const curricula = useQuery({ queryKey: ["curricula"], queryFn: curriculumApi.list });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [toDelete, setToDelete] = useState<CurriculumVersion | null>(null);
+  const remove = useMutation({
+    mutationFn: (id: number) => curriculumApi.remove(id),
+    onSuccess: async () => {
+      setToDelete(null);
+      await queryClient.invalidateQueries({ queryKey: ["curricula"] });
+      toast({ title: "O'quv reja o'chirildi" });
+    },
+    onError: (error) => toast({
+      title: "O'chirib bo'lmadi", variant: "destructive",
+      description: error instanceof Error ? error.message : "Xatolik",
+    }),
+  });
 
   const items = curricula.data ?? [];
   const years = useMemo(
@@ -66,6 +90,7 @@ export function AdminStudyPlans() {
       const matchesTerm =
         !term ||
         item.programName.toLocaleLowerCase("uz").includes(term) ||
+        (item.name ?? "").toLocaleLowerCase("uz").includes(term) ||
         item.versionCode.toLocaleLowerCase("uz").includes(term) ||
         item.academicYear.includes(term);
       return (
@@ -79,17 +104,40 @@ export function AdminStudyPlans() {
   const columns = useMemo<ColumnDef<CurriculumVersion>[]>(
     () => [
       {
-        id: "program",
-        header: "Ta'lim yo'nalishi va versiya",
-        accessorFn: (item) => item.programName + " " + item.versionCode,
+        id: "name",
+        header: "Nomi",
+        accessorFn: (item) => (item.name || item.programName) + " " + item.versionCode,
         cell: ({ row }) => (
-          <div className="min-w-[220px]">
-            <p className="font-medium">{row.original.programName}</p>
+          <div className="min-w-[200px]">
+            <p className="font-medium">{row.original.name || row.original.programName}</p>
             <p className="text-xs text-muted-foreground">Versiya: {row.original.versionCode}</p>
           </div>
         ),
       },
+      {
+        id: "program",
+        header: "Fakultet / mutaxassislik",
+        accessorFn: (item) => (item.facultyName ?? "") + " " + item.programName,
+        cell: ({ row }) => (
+          <div className="min-w-[180px]">
+            <p className="text-sm">{row.original.programName}</p>
+            <p className="text-xs text-muted-foreground">{row.original.facultyName ?? "Fakultet ko'rsatilmagan"}</p>
+          </div>
+        ),
+      },
+      { accessorKey: "semesterCount", header: "Semestr" },
       { accessorKey: "academicYear", header: "O'quv yili" },
+      {
+        id: "form",
+        header: "Ta'lim shakli / til",
+        accessorFn: (item) => item.educationForm,
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap text-sm">
+            <p>{educationFormLabels[row.original.educationForm] ?? row.original.educationForm}</p>
+            <p className="text-xs text-muted-foreground">{educationLanguageLabels[row.original.educationLanguage] ?? row.original.educationLanguage}</p>
+          </div>
+        ),
+      },
       {
         accessorKey: "status",
         header: "Holati",
@@ -104,16 +152,6 @@ export function AdminStudyPlans() {
             <p className="font-medium">{row.original.subjectCount} ta fan</p>
             <p className="text-xs text-muted-foreground">{row.original.totalCredits} kredit</p>
           </div>
-        ),
-      },
-      {
-        id: "validity",
-        header: "Amal qilish davri",
-        accessorFn: (item) => item.validFrom,
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap text-sm">
-            {row.original.validFrom} — {row.original.validUntil}
-          </span>
         ),
       },
       {
@@ -151,6 +189,17 @@ export function AdminStudyPlans() {
             <Button
               variant="ghost"
               size="icon"
+              title="Fanlarni semestrlarga biriktirish"
+              aria-label="Fanlarni semestrlarga biriktirish"
+              onClick={() =>
+                navigate("/edu-process/curriculum/" + row.original.id + "?tab=subjects")
+              }
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               title="Biriktirilgan talabalar"
               aria-label="Biriktirilgan talabalar"
               onClick={() =>
@@ -159,6 +208,18 @@ export function AdminStudyPlans() {
             >
               <Users className="h-4 w-4" />
             </Button>
+            {row.original.status === "DRAFT" && canWrite && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive"
+                title="Qoralama rejani o'chirish"
+                aria-label="Qoralama rejani o'chirish"
+                onClick={() => setToDelete(row.original)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         ),
       },
@@ -183,6 +244,27 @@ export function AdminStudyPlans() {
 
   return (
     <div className="space-y-6 p-3 sm:p-6">
+      <AlertDialog open={toDelete != null} onOpenChange={(open) => { if (!open && !remove.isPending) setToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Qoralama rejani o'chirasizmi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete ? `${toDelete.name || toDelete.programName} (${toDelete.versionCode})` : ""} va uning fanlari
+              ro'yxatdan olib tashlanadi. Tasdiqlangan rejalar o'chirilmaydi, ular arxivlanadi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Bekor qilish</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={remove.isPending}
+              onClick={(event) => { event.preventDefault(); if (toDelete) remove.mutate(toDelete.id); }}
+            >
+              O'chirish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">O'quv rejalar</h1>

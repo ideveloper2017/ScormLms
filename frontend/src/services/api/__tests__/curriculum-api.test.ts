@@ -55,7 +55,8 @@ describe("decision 559 curriculum guards", () => {
     expect(curriculumInputError(input({ passingScore: 101 }))).toContain("0-100");
     expect(curriculumInputError(input({ baseCreditAmount: -1 }))).toContain("manfiy");
     expect(curriculumInputError(input({ ratingSystemId: 0 }))).toContain("baholash tizimini");
-    expect(curriculumInputError(input({ semesterCount: 16 }))).toContain("1-15");
+    // Semestrlar katalogi 1..12
+    expect(curriculumInputError(input({ semesterCount: 13 }))).toContain("1-12");
   });
 
   it("allows approval only for a draft with at least one subject", () => {

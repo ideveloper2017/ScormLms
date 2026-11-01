@@ -54,6 +54,7 @@ import { AdminStudyPlans } from "@/pages/admin/study-plans";
 import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 import { AdminStudyPlanEditor } from "@/pages/admin/study-plan-editor";
 import { AdminAcademicPeriods } from "@/pages/admin/academic-periods";
+import { CurriculumSemesters } from "@/pages/admin/curriculum-semesters";
 import { AdminSubjectGroups } from "@/pages/admin/subject-groups";
 import { AdminSubjectCategories } from "@/pages/admin/subject-categories";
 import { AdminSyllabi } from "@/pages/admin/syllabi";
@@ -282,7 +283,7 @@ function App() {
         <Route path="/edu-process/attached-students" element={<P roles={STAFF_ROLES}><AdminCurriculumStudents /></P>} />
         <Route path="/edu-process/syllabus"          element={<P roles={STAFF_ROLES}><AdminSyllabi /></P>} />
         <Route path="/edu-process/academic-years"    element={<P roles={STAFF_ROLES}><AdminAcademicPeriods view="years" /></P>} />
-        <Route path="/edu-process/semesters"         element={<P roles={STAFF_ROLES}><AdminAcademicPeriods view="semesters" /></P>} />
+        <Route path="/edu-process/semesters"         element={<P roles={STAFF_ROLES}><CurriculumSemesters /></P>} />
         <Route path="/edu-process/subject-groups"    element={<P roles={STAFF_ROLES}><AdminSubjectCategories /></P>} />
         <Route path="/edu-process/subjects"          element={<P roles={STAFF_ROLES}><AdminSubjects /></P>} />
         <Route path="/edu-process/rating-systems"    element={<P roles={STAFF_ROLES}><AdminRatingSystems /></P>} />

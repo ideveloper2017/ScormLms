@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -12,7 +12,7 @@ import { teacherPortalApi, type TeacherLearningSession } from '@/services/api/te
 vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { id: 1 } }) }));
 vi.mock('@/lib/rbac-api', () => ({ hasAuthority: () => true }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock('@/services/api/curriculum-api', () => ({ curriculumApi: { list: vi.fn(), listSemesterPeriods: vi.fn(), listStudentAssignments: vi.fn(), listStudents: vi.fn(), saveSemesterPeriod: vi.fn(), assignStudents: vi.fn(), removeStudentAssignment: vi.fn() } }));
+vi.mock('@/services/api/curriculum-api', async (importOriginal) => ({ ...await importOriginal<object>(), curriculumApi: { list: vi.fn(), listSemesterPeriods: vi.fn(), listStudentAssignments: vi.fn(), listStudents: vi.fn(), saveSemesterPeriod: vi.fn(), assignStudents: vi.fn(), removeStudentAssignment: vi.fn() } }));
 vi.mock('@/services/api/subject-group-api', () => ({ subjectGroupApi: { list: vi.fn(), members: vi.fn(), candidates: vi.fn(), teachers: vi.fn(), teacherCandidates: vi.fn(), assign: vi.fn() } }));
 vi.mock('@/services/api/teacher-portal-api', () => ({ teacherPortalApi: { getLearningSessions: vi.fn(), getCourses: vi.fn(), createLearningSession: vi.fn() } }));
 
@@ -43,7 +43,8 @@ it('pages all eligible students and assigns a student from the second page', asy
 it('queries by semester and search and does not offer semesters outside the plan', async () => {
   mount(<AdminCurriculumStudents />);
   await screen.findByText('Talaba 1');
-  expect(screen.queryByRole('option', { name: '5-semestr' })).not.toBeInTheDocument();
+  // Biriktirish semestri faqat reja semestrlari (umumiy jadval filtri 1-12 — boshqa tanlov)
+  expect(within(screen.getByLabelText('Semestr')).queryByRole('option', { name: '5-semestr' })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Semestr'), { target: { value: '3' } });
   fireEvent.change(screen.getByLabelText('Talaba qidirish'), { target: { value: 'Ali' } });
   await waitFor(() => expect(curriculumApi.listStudents).toHaveBeenLastCalledWith(1, expect.objectContaining({ semesterNumber: 3, search: 'Ali', page: 0 })));

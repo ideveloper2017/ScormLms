@@ -266,8 +266,8 @@ class CurriculumImportService(
         CurriculumWorkbookParser.norm(CurriculumWorkbookParser.latinize(value)).replace(Regex("[^\\p{L}\\p{N}]"), "")
 
     private fun requireDraft(id: Long) = (versions.findByIdAndDeletedFalse(id)
-        ?: throw NoSuchElementException("Curriculum versiyasi topilmadi: $id")).also {
-        require(it.status == CurriculumStatus.DRAFT) { "Faqat DRAFT o'quv rejaga import qilinadi" }
+        ?: throw NoSuchElementException("O'quv reja topilmadi: $id")).also {
+        require(it.status == CurriculumStatus.DRAFT) { "Faqat qoralama o'quv rejaga import qilinadi" }
     }
 
     private companion object {
