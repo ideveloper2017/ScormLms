@@ -84,6 +84,9 @@ data class UpdateCurriculumSubjectRequest(
     val courseWorkType: CurriculumCourseWorkType? = null,
 )
 
+/** Reja fanini boshqa semestrga ko'chirish (semestrlar taxtasida sudrab tashlash) */
+data class MoveCurriculumSubjectRequest(val semester: Int)
+
 data class ApproveCurriculumRequest(
     val approvalOrderNumber: String,
     val approvalOrderDate: LocalDate,

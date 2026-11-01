@@ -130,7 +130,7 @@ const HOUR_FIELDS: { key: keyof CurriculumSubjectHours; label: string }[] = [
   { key: "selfStudy", label: "Mustaqil ta'lim" },
 ];
 
-function EditSubjectDialog({ curriculumId, subject, onClose, onSaved }: {
+export function EditSubjectDialog({ curriculumId, subject, onClose, onSaved }: {
   curriculumId: number;
   subject: CurriculumSubject;
   onClose: () => void;

@@ -11,6 +11,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.curriculum.dto.AddCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.ApproveCurriculumRequest
+import uz.scorm.lms.app.v1.curriculum.dto.MoveCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
@@ -232,6 +233,30 @@ class ProgramCurriculumWorkflowIntegrationTest {
         userRepository.save(deleted.user)
         assertEquals(0, service.students(plan.id, null, StudentStatus.ACTIVE, 0, 10, 3, true).totalElements)
         assertThrows<IllegalArgumentException> { operations.assign(plan.id, AssignCurriculumStudentsRequest(setOf(requireNotNull(deleted.id)), 3)) }
+    }
+
+    @Test
+    fun `reja fani boshqa semestrga ko'chiriladi kredit saqlanadi takror va chegaradan tashqari rad etiladi`() {
+        val author = user("move-author")
+        val program = program("move-program")
+        val subject = subject(program, "MOVE", "Fizika", 6)
+        val plan = service.create(request(requireNotNull(program.id), versionSuffix = "move").copy(semesterCount = 4), requireNotNull(author.id))
+        val first = service.addSubject(plan.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 1, CurriculumPlanItemType.REQUIRED), requireNotNull(author.id))
+            .subjects.single()
+
+        val moved = service.moveSubject(plan.id, first.id, MoveCurriculumSubjectRequest(2), requireNotNull(author.id)).subjects.single()
+        assertEquals(2, moved.semester)
+        assertEquals(6, moved.credits)
+
+        service.addSubject(plan.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 3, CurriculumPlanItemType.REQUIRED), requireNotNull(author.id))
+        val duplicate = assertThrows<IllegalArgumentException> {
+            service.moveSubject(plan.id, first.id, MoveCurriculumSubjectRequest(3), requireNotNull(author.id))
+        }
+        assertTrue(duplicate.message.orEmpty().contains("allaqachon bor"))
+        assertThrows<IllegalArgumentException> { service.moveSubject(plan.id, first.id, MoveCurriculumSubjectRequest(5), requireNotNull(author.id)) }
+
+        service.approve(plan.id, approval(), requireNotNull(user("move-approver").id))
+        assertThrows<IllegalArgumentException> { service.moveSubject(plan.id, first.id, MoveCurriculumSubjectRequest(1), requireNotNull(author.id)) }
     }
 
     private fun request(

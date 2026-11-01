@@ -378,6 +378,9 @@ export const curriculumApi = {
     (await api.delete<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/syllabus`)).data,
   updateSubject: async (id: number, itemId: number, input: UpdateCurriculumSubjectInput) =>
     (await api.put<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}`, input)).data,
+  /** Reja fanini boshqa semestrga ko'chirish (kredit, soat va dastur o'zgarmaydi) */
+  moveSubject: async (id: number, itemId: number, semester: number) =>
+    (await api.put<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/semester`, { semester })).data,
   /** Ishchi o'quv reja Excel faylini o'qiydi (hech narsa saqlanmaydi) */
   importPreview: async (id: number, file: File, sheet?: string | null) => {
     const form = new FormData();
