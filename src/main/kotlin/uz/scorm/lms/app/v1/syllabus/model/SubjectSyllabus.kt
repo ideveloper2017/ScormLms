@@ -60,6 +60,12 @@ class SubjectSyllabus(
     @OrderBy("type ASC, sortOrder ASC")
     @org.hibernate.annotations.BatchSize(size = 50)
     var topics: MutableList<SubjectSyllabusTopic> = mutableListOf()
+
+    /** Dastur tuzilmasi: modullar (darslari — topics, module orqali) */
+    @OneToMany(mappedBy = "syllabus", cascade = [CascadeType.ALL], orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    @org.hibernate.annotations.BatchSize(size = 50)
+    var modules: MutableList<SubjectSyllabusModule> = mutableListOf()
 }
 
 enum class SyllabusLanguage { UZ, EN, RU, KAA, UZ_CYRILLIC }

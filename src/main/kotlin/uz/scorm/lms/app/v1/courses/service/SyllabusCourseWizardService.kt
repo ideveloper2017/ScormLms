@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.courses.dto.CourseCreateRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseDto
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusDto
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusModuleRequest
 import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
 import uz.scorm.lms.app.v1.syllabus.service.SubjectModelProgramService
@@ -72,6 +73,13 @@ class SyllabusCourseWizardService(
     @Transactional
     fun updateTopics(syllabusId: Long, topics: List<SyllabusTopicRequest>): SyllabusTopicsWithCoursesDto {
         val syllabus = syllabusService.updateTopics(syllabusId, topics)
+        return SyllabusTopicsWithCoursesDto(syllabus, courseSyllabusService.syncDraftCourses(syllabusId))
+    }
+
+    /** Modullar va darslarni saqlaydi va shu dasturga bog'langan qoralama kurslarning bo'limlarini moslaydi. */
+    @Transactional
+    fun updateModules(syllabusId: Long, modules: List<SyllabusModuleRequest>): SyllabusTopicsWithCoursesDto {
+        val syllabus = syllabusService.updateModules(syllabusId, modules)
         return SyllabusTopicsWithCoursesDto(syllabus, courseSyllabusService.syncDraftCourses(syllabusId))
     }
 

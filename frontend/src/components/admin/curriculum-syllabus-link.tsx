@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SyllabusTopicsDialog } from "@/components/admin/syllabus-topics";
+import { SyllabusDrawer } from "@/components/admin/syllabus-drawer";
 import { SyllabusWorkflow, syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { extractApiError } from "@/lib/academic-api";
 import { curriculumLabel, groupBySubject, planOf, syllabusLanguageOf } from "@/lib/curriculum-subjects";
@@ -163,7 +163,7 @@ export function CreateSyllabusDialog({ curricula, curriculumId: initialCurriculu
           <Button variant="outline" onClick={onClose} disabled={busy}>Bekor qilish</Button>
           <Button onClick={() => save.mutate()} disabled={busy || !first || Boolean(first.syllabusId)}>
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {selected === "new" ? "Yaratish va mavzularni kiritish" : "Biriktirish va mavzularni ochish"}
+            {selected === "new" ? "Yaratish va dasturni kiritish" : "Biriktirish va dasturni ochish"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -171,7 +171,10 @@ export function CreateSyllabusDialog({ curricula, curriculumId: initialCurriculu
   );
 }
 
-/** Rejadagi fan dasturining mavzulari: har bir tur alohida ro'yxat, soatlar reja soatlari bilan solishtiriladi. */
+/**
+ * Rejadagi fan dasturi (Everest kabi drawer): "Dasturlar" — modullar va darslar, darslar rejadagi soatlar (turlar,
+ * qismlar) bilan solishtiriladi; "Ma'lumot" — dastur ta'riflari.
+ */
 export function CurriculumTopicsDialog({ rows, canWrite, onClose, onSaved }: {
   /** Fanning rejadagi barcha semestr qatorlari */
   rows: CurriculumSubject[];
@@ -182,8 +185,7 @@ export function CurriculumTopicsDialog({ rows, canWrite, onClose, onSaved }: {
   const syllabus = useSubjectSyllabus(rows[0]);
   if (!syllabus.item) return null;
   return (
-    <SyllabusTopicsDialog key={syllabus.item.id} item={syllabus.item} canWrite={canWrite} plan={planOf(rows)}
-      title={`${rows[0].subjectName} — mavzular`}
+    <SyllabusDrawer key={syllabus.item.id} item={syllabus.item} canWrite={canWrite} plan={planOf(rows)} initialTab="program"
       onSaved={() => { void syllabus.refetch(); void onSaved(); }} onClose={onClose} />
   );
 }

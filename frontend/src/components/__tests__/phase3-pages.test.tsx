@@ -13,7 +13,7 @@ vi.mock("@/services/api/curriculum-api", async (importOriginal) => ({
 }));
 vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  syllabusApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  syllabusApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), updateModulesWithCourses: vi.fn(), linkedCourses: vi.fn(async () => []) },
 }));
 vi.mock("@/lib/academic-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
@@ -57,14 +57,15 @@ describe("SyllabusCatalog", () => {
   });
   beforeEach(() => vi.clearAllMocks());
 
-  it("katalog: holat va til, tasdiqlangan dastur tahrirlanmaydi/o'chirilmaydi, qoralama o'chiriladi", async () => {
+  it("katalog: holat va til, tasdiqlangan dastur faqat ochiladi/o'chirilmaydi, qoralama o'chiriladi", async () => {
     vi.mocked(syllabusApi.list).mockResolvedValue([item(1, "DRAFT"), item(2, "APPROVED", 2)]);
     vi.mocked(syllabusApi.delete).mockResolvedValue();
     wrap(<SyllabusCatalog canWrite />);
 
     const approved = (await screen.findByText("Fizika dasturi 2")).closest("tr") as HTMLElement;
     expect(within(approved).getByText("Tasdiqlangan")).toBeInTheDocument();
-    expect(within(approved).getByRole("button", { name: /tahrirlash/ })).toBeDisabled();
+    // Tasdiqlangan dastur drawer'da faqat ko'rish uchun ochiladi
+    expect(within(approved).getByRole("button", { name: /dasturni ochish/ })).toBeEnabled();
     expect(within(approved).getByRole("button", { name: /o'chirish/ })).toBeDisabled();
     expect(screen.getByText("Umumiy soni: 2")).toBeInTheDocument();
 
@@ -73,7 +74,7 @@ describe("SyllabusCatalog", () => {
     await waitFor(() => expect(syllabusApi.delete).toHaveBeenCalledWith(1));
   });
 
-  it("yangi dastur: qisqa ta'rif, talablar va to'liq ta'rif alohida yuboriladi", async () => {
+  it("yangi dastur (drawer): qisqa ta'rif, talablar va to'liq ta'rif alohida yuboriladi, keyin Dasturlar ochiladi", async () => {
     vi.mocked(syllabusApi.list).mockResolvedValue([]);
     vi.mocked(syllabusApi.create).mockResolvedValue(item(3, "DRAFT"));
     wrap(<SyllabusCatalog canWrite />);
@@ -84,9 +85,10 @@ describe("SyllabusCatalog", () => {
     fireEvent.change(screen.getByLabelText("Qisqa ta'rif *"), { target: { value: "Mexanika asoslari" } });
     fireEvent.change(screen.getByLabelText("Talablar"), { target: { value: "Matematika" } });
     fireEvent.change(screen.getByLabelText("To'liq ta'rif *"), { target: { value: "Kinematika va dinamika" } });
-    fireEvent.click(screen.getByRole("button", { name: "Saqlash" }));
+    fireEvent.click(screen.getByRole("button", { name: "Saqlash va davom etish" }));
     await waitFor(() => expect(syllabusApi.create).toHaveBeenCalledWith(expect.objectContaining({
       subjectId: 9, language: "UZ", shortDescription: "Mexanika asoslari", requirements: "Matematika", fullDescription: "Kinematika va dinamika",
     })));
+    expect(await screen.findByRole("tab", { name: "Dasturlar", selected: true })).toBeInTheDocument();
   });
 });

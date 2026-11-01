@@ -5,10 +5,13 @@ import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.subject.service.SubjectService
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusDto
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusRequest
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusModuleDto
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusModuleRequest
 import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicDto
 import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
 import uz.scorm.lms.app.v1.syllabus.model.SubjectModelProgram
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
+import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusModule
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType
 import uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRepository
@@ -118,6 +121,15 @@ class SubjectSyllabusService(
     }
 
     /** Dastur yaratilgandan keyin mavzular alohida kiritiladi: ro'yxat to'liq almashtiriladi (faqat qoralamada). */
+    /** Modullar va darslar (Everest "Dasturlar" tabi) — faqat qoralamada */
+    @Transactional
+    fun updateModules(id: Long, modules: List<SyllabusModuleRequest>): SubjectSyllabusDto {
+        val value = lock(id)
+        require(value.status == "DRAFT") { "Dastur tuzilmasi faqat qoralamada tahrirlanadi. Avval yangi versiya oching." }
+        replaceModules(value, modules)
+        return dto(syllabi.saveAndFlush(value))
+    }
+
     @Transactional
     fun updateTopics(id: Long, topics: List<SyllabusTopicRequest>): SubjectSyllabusDto {
         val value = lock(id)
@@ -176,36 +188,71 @@ class SubjectSyllabusService(
         return dto(syllabi.save(value))
     }
 
-    private fun replaceTopics(value: SubjectSyllabus, requests: List<SyllabusTopicRequest>) {
+    /**
+     * Mavzular ro'yxatini to'liq almashtiradi; qaytgan ro'yxat so'rov tartibida. sortOrder — har mashg'ulot turi
+     * ichidagi tartib (kurs bo'limlari shu bo'yicha), modul va undagi tartib o'zgarmaydi (replaceModules belgilaydi).
+     */
+    private fun replaceTopics(value: SubjectSyllabus, requests: List<SyllabusTopicRequest>): List<SubjectSyllabusTopic> {
         require(requests.size <= MAX_TOPICS) { "Mavzular soni $MAX_TOPICS tadan oshmasligi kerak" }
         val ids = requests.mapNotNull { it.id }
         require(ids.size == ids.toSet().size) { "Bir mavzu ro'yxatda ikki marta berilgan" }
         // id berilgan mavzu joyida yangilanadi (kurs bo'limlari unga bog'langan), qolganlari yangi yaratiladi
         val existing = value.topics.filter { it.id != null }.associateBy { requireNotNull(it.id) }
-        val topics = requests.groupBy { it.type }.flatMap { (type, items) ->
-            items.mapIndexed { index, item ->
-                val title = item.title.trim()
-                require(title.length in 2..500) { "Mavzu nomi 2-500 belgi bo'lishi kerak" }
-                require(item.hours == null || item.hours in 1..MAX_TOPIC_HOURS) { "\"$title\" mavzusi soati 1-$MAX_TOPIC_HOURS oralig'ida bo'lishi kerak" }
-                val description = item.description?.trim()?.takeIf(String::isNotEmpty)
-                require(item.part == null || item.part in 1..12) { "\"$title\" mavzusining qismi 1-12 oralig'ida bo'lishi kerak" }
-                item.id?.let { id ->
-                    val topic = existing[id] ?: throw IllegalArgumentException("Mavzu ushbu dasturga tegishli emas: $id")
-                    topic.type = type
-                    topic.sortOrder = index + 1
-                    topic.title = title
-                    topic.description = description
-                    topic.hours = item.hours
-                    topic.part = item.part
-                    topic
-                } ?: SubjectSyllabusTopic(
-                    syllabus = value, type = type, sortOrder = index + 1, title = title,
-                    description = description, hours = item.hours,
-                ).apply { part = item.part }
-            }
+        val counters = mutableMapOf<SyllabusTopicType, Int>()
+        val topics = requests.map { item ->
+            val order = counters.merge(item.type, 1, Int::plus)!!
+            val title = item.title.trim()
+            require(title.length in 2..500) { "Mavzu nomi 2-500 belgi bo'lishi kerak" }
+            require(item.hours == null || item.hours in 1..MAX_TOPIC_HOURS) { "\"$title\" mavzusi soati 1-$MAX_TOPIC_HOURS oralig'ida bo'lishi kerak" }
+            val description = item.description?.trim()?.takeIf(String::isNotEmpty)
+            require(item.part == null || item.part in 1..12) { "\"$title\" mavzusining qismi 1-12 oralig'ida bo'lishi kerak" }
+            item.id?.let { id ->
+                val topic = existing[id] ?: throw IllegalArgumentException("Mavzu ushbu dasturga tegishli emas: $id")
+                topic.type = item.type
+                topic.sortOrder = order
+                topic.title = title
+                topic.description = description
+                topic.hours = item.hours
+                topic.part = item.part
+                topic
+            } ?: SubjectSyllabusTopic(
+                syllabus = value, type = item.type, sortOrder = order, title = title,
+                description = description, hours = item.hours,
+            ).apply { part = item.part }
         }
         value.topics.removeIf { old -> topics.none { it === old } }
         topics.filter { new -> value.topics.none { it === new } }.forEach(value.topics::add)
+        return topics
+    }
+
+    /** Dastur tuzilmasini (modullar va darslari) to'liq almashtiradi; dars id'si berilsa kursdagi bog'lanish saqlanadi */
+    private fun replaceModules(value: SubjectSyllabus, requests: List<SyllabusModuleRequest>) {
+        require(requests.size <= MAX_MODULES) { "Modullar soni $MAX_MODULES tadan oshmasligi kerak" }
+        val moduleIds = requests.mapNotNull { it.id }
+        require(moduleIds.size == moduleIds.toSet().size) { "Bir modul ro'yxatda ikki marta berilgan" }
+        val existing = value.modules.filter { it.id != null }.associateBy { requireNotNull(it.id) }
+        val modules = requests.mapIndexed { index, item ->
+            val name = item.name.trim()
+            require(name.length in 3..255) { "Modul nomi 3-255 belgi bo'lishi kerak" }
+            val description = item.description?.trim()?.takeIf(String::isNotEmpty)
+            require(description == null || description.length <= 500) { "\"$name\" modulining ma'lumoti 500 belgidan oshmasligi kerak" }
+            val module = item.id?.let { id ->
+                existing[id] ?: throw IllegalArgumentException("Modul ushbu dasturga tegishli emas: $id")
+            } ?: SubjectSyllabusModule(syllabus = value, sortOrder = index + 1, name = name)
+            module.sortOrder = index + 1
+            module.name = name
+            module.description = description
+            module
+        }
+        val lessons = replaceTopics(value, requests.flatMap { it.lessons })
+        var position = 0
+        requests.forEachIndexed { index, item ->
+            item.lessons.forEachIndexed { lessonIndex, _ ->
+                lessons[position++].apply { module = modules[index]; lessonOrder = lessonIndex + 1 }
+            }
+        }
+        value.modules.removeIf { old -> modules.none { it === old } }
+        modules.filter { new -> value.modules.none { it === new } }.forEach(value.modules::add)
     }
 
     private fun lock(id: Long) = syllabi.lockById(id) ?: throw NoSuchElementException("O'quv dasturi topilmadi: $id")
@@ -226,7 +273,13 @@ class SubjectSyllabusService(
 
     private fun dto(value: SubjectSyllabus): SubjectSyllabusDto {
         val topics = value.topics.sortedWith(compareBy({ it.type }, { it.sortOrder })).map {
-            SyllabusTopicDto(it.id, it.type, it.sortOrder, it.title, it.description, it.hours, it.part)
+            SyllabusTopicDto(it.id, it.type, it.sortOrder, it.title, it.description, it.hours, it.part, it.module?.id, it.lessonOrder)
+        }
+        val modules = value.modules.sortedBy { it.sortOrder }.map { module ->
+            SyllabusModuleDto(
+                id = requireNotNull(module.id), sortOrder = module.sortOrder, name = module.name, description = module.description,
+                lessons = topics.filter { it.moduleId == module.id }.sortedWith(compareBy({ it.lessonOrder ?: Int.MAX_VALUE }, { it.type }, { it.sortOrder })),
+            )
         }
         return SubjectSyllabusDto(
             id = requireNotNull(value.id), subjectId = requireNotNull(value.subject.id), subjectCode = value.subject.code,
@@ -243,10 +296,12 @@ class SubjectSyllabusService(
             modelProgramId = value.modelProgram?.id,
             academicYear = value.academicYear,
             semester = value.semester,
+            modules = modules,
         )
     }
 
     private companion object {
+        const val MAX_MODULES = 50
         const val MAX_TOPICS = 300
         const val MAX_TOPIC_HOURS = 200
         const val DUPLICATE_MESSAGE = "Ushbu fan va til uchun o'quv dasturi allaqachon mavjud — uni tahrirlang yoki yangi versiya oching"

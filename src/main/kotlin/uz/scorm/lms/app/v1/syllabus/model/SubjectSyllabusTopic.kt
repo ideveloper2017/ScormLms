@@ -37,6 +37,15 @@ class SubjectSyllabusTopic(
     /** Ko'p semestrli fanda mavzu qaysi qismga tegishli (1-qism — birinchi semestr); bir semestrli fanda null */
     @Column
     var part: Int? = null
+
+    /** Mavzu — modul ichidagi dars; null — modulga biriktirilmagan (eski yo'l bilan kiritilgan) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "module_id")
+    var module: SubjectSyllabusModule? = null
+
+    /** Modul ichidagi tartib raqami */
+    @Column(name = "lesson_order")
+    var lessonOrder: Int? = null
 }
 
 /**

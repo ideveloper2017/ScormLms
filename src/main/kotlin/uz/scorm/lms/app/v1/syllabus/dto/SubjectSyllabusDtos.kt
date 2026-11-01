@@ -27,6 +27,8 @@ data class SubjectSyllabusDto(
     val modelProgramId: Long? = null,
     val academicYear: String? = null,
     val semester: Int? = null,
+    /** Dastur tuzilmasi: modullar va ularning darslari (eski revision JSON'larida bo'lmaydi) */
+    val modules: List<SyllabusModuleDto> = emptyList(),
 )
 
 data class SyllabusTopicDto(
@@ -37,6 +39,25 @@ data class SyllabusTopicDto(
     val description: String? = null,
     val hours: Int? = null,
     val part: Int? = null,
+    val moduleId: Long? = null,
+    val lessonOrder: Int? = null,
+)
+
+/** Modul: nomi, ma'lumoti va darslari (dars — mavzu, mashg'ulot turi bilan) */
+data class SyllabusModuleDto(
+    val id: Long,
+    val sortOrder: Int,
+    val name: String,
+    val description: String? = null,
+    val lessons: List<SyllabusTopicDto> = emptyList(),
+)
+
+/** Modulni saqlash: id berilsa joyida yangilanadi; darslar ro'yxati modul darslarini to'liq almashtiradi */
+data class SyllabusModuleRequest(
+    val id: Long? = null,
+    val name: String,
+    val description: String? = null,
+    val lessons: List<SyllabusTopicRequest> = emptyList(),
 )
 
 data class SyllabusWorkflowRequest(val action: String)

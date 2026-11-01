@@ -8,6 +8,7 @@ import org.junit.jupiter.api.assertThrows
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.service.SubjectService
 import uz.scorm.lms.app.v1.syllabus.dto.SubjectSyllabusRequest
+import uz.scorm.lms.app.v1.syllabus.dto.SyllabusModuleRequest
 import uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
@@ -106,6 +107,52 @@ class SubjectSyllabusServiceTest {
 
         syllabus.status = "APPROVED"
         assertThrows<IllegalArgumentException> { service.updateTopics(40, emptyList()) }
+    }
+
+    @Test
+    fun `dastur modullar va darslardan tuziladi dars turi saqlanadi va id bilan joyida yangilanadi`() {
+        val subject = Subject(name = "Fizika", code = "FIZ").apply { id = 8 }
+        val syllabus = SubjectSyllabus(subject, "Fizika", SyllabusLanguage.UZ, "Qisqa", null, "To'liq").apply { id = 42 }
+        var nextId = 900L
+        every { repository.lockById(42) } returns syllabus
+        // saveAndFlush yangi modul va darslarga id beradi (IDENTITY kabi)
+        every { repository.saveAndFlush(any<SubjectSyllabus>()) } answers {
+            firstArg<SubjectSyllabus>().apply {
+                modules.filter { it.id == null }.forEach { it.id = nextId++ }
+                topics.filter { it.id == null }.forEach { it.id = nextId++ }
+            }
+        }
+
+        val result = service.updateModules(42, listOf(
+            SyllabusModuleRequest(name = " Mexanika ", description = "Kinematika va dinamika", lessons = listOf(
+                SyllabusTopicRequest(THEORETICAL, "Kinematika"),
+                SyllabusTopicRequest(THEORETICAL, "Dinamika"),
+                SyllabusTopicRequest(PRACTICAL, "Tezlik masalalari"),
+            )),
+            SyllabusModuleRequest(name = "Termodinamika", lessons = listOf(SyllabusTopicRequest(THEORETICAL, "Issiqlik"))),
+        ))
+
+        assertEquals(listOf("Mexanika", "Termodinamika"), result.modules.map { it.name })
+        assertEquals(listOf("Kinematika", "Dinamika", "Tezlik masalalari"), result.modules[0].lessons.map { it.title })
+        assertEquals(listOf(1, 2, 3), result.modules[0].lessons.map { it.lessonOrder })
+        // Mashg'ulot turi ichidagi tartib modul tartibiga mos: kurs bo'limlari shunday tartiblanadi
+        assertEquals(listOf(1, 2, 3), result.topics.filter { it.type == THEORETICAL }.map { it.sortOrder })
+        assertEquals(listOf("Kinematika", "Dinamika", "Issiqlik"), result.topics.filter { it.type == THEORETICAL }.map { it.title })
+
+        // Dars boshqa modulga ko'chadi, id saqlanadi; berilmagan modul va dars o'chadi
+        val mechanicsId = result.modules[0].id
+        val kinematicsId = requireNotNull(result.modules[0].lessons[0].id)
+        val moved = service.updateModules(42, listOf(
+            SyllabusModuleRequest(id = mechanicsId, name = "Mexanika", lessons = listOf(SyllabusTopicRequest(PRACTICAL, "Kinematika amaliyoti", id = kinematicsId))),
+        ))
+        assertEquals(1, moved.modules.size)
+        assertEquals(kinematicsId, moved.modules.single().lessons.single().id)
+        assertEquals(PRACTICAL, moved.modules.single().lessons.single().type)
+        assertEquals(1, syllabus.topics.size)
+
+        assertThrows<IllegalArgumentException> { service.updateModules(42, listOf(SyllabusModuleRequest(name = "Ab"))) }
+        syllabus.status = "APPROVED"
+        assertThrows<IllegalArgumentException> { service.updateModules(42, emptyList()) }
     }
 
     @Test

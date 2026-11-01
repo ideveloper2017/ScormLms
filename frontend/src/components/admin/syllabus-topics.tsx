@@ -123,12 +123,12 @@ export function SyllabusTopicsDialog({ item, canWrite, plan, title, onClose, onS
  * Rejada soati bor tur uchun kamida bitta mavzu bo'lishi kerak; ko'p semestrli fanda qismlar bo'yicha ham.
  * Masofaviy shaklda (turlarga bo'linmagan) auditoriya jami ko'rsatiladi.
  */
-export function PlanTopicsCheck({ topics, plan }: { topics: Pick<SyllabusTopicInput, "type" | "part">[]; plan: PlanPart[] }) {
+export function PlanTopicsCheck({ topics, plan, noun = "mavzu" }: { topics: Pick<SyllabusTopicInput, "type" | "part">[]; plan: PlanPart[]; noun?: string }) {
   const chip = (label: string, hours: number, count: number) => (
     <li key={label} className={cn("rounded-full border px-2 py-0.5 tabular-nums", count > 0
       ? "border-green-300 text-green-700 dark:border-green-800 dark:text-green-400"
       : "border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400")}>
-      <span>{label}</span> <span>{hours} soat · {count > 0 ? `${count} mavzu ✓` : "mavzu yo'q"}</span>
+      <span>{label}</span> <span>{hours} soat · {count > 0 ? `${count} ${noun} ✓` : `${noun} yo'q`}</span>
     </li>
   );
   const chips = (parts: PlanPart[], filter: (t: Pick<SyllabusTopicInput, "part">) => boolean) => {
