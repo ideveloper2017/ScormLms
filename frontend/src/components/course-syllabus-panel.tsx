@@ -5,6 +5,7 @@ import { TopicTypeBadge } from "@/components/topic-type-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { groupBySyllabusModule } from "@/lib/syllabus-modules";
 import { teacherPortalApi, type CourseSyllabusTopic } from "@/services/api/teacher-portal-api";
 
 /**
@@ -35,7 +36,8 @@ export function CourseSyllabusPanel({ courseId, onChanged }: { courseId: string;
       await Promise.all([statusQuery.refetch(), onChanged()]);
       toast({
         title: "Kurs dastur bilan moslandi",
-        description: `${result.added} ta yangi bo'lim qo'shildi, ${result.updated} ta bo'lim yangilandi`,
+        description: `${result.added} ta yangi bo'lim qo'shildi, ${result.updated} ta bo'lim yangilandi` +
+          (result.removed ? `, dasturdan o'chirilgan ${result.removed} ta bo'sh bo'lim olib tashlandi` : ""),
       });
     },
     onError: fail("Sinxronlanmadi"),
@@ -62,8 +64,8 @@ export function CourseSyllabusPanel({ courseId, onChanged }: { courseId: string;
         <div>
           <CardTitle className="text-base">O'quv dasturi mavzulari</CardTitle>
           <CardDescription>
-            {status.syllabusName} · {status.syllabusRevision}-versiya. Har bir mavzu kursda bo'lim bo'ladi —
-            darslar va materiallarni shu bo'limlar ichiga qo'shing.
+            {status.syllabusName} · {status.syllabusRevision}-versiya. Dasturning har bir darsi kursda bo'lim
+            bo'ladi va dastur modullari bo'yicha guruhlanadi — video, matn va materiallarni shu bo'limlar ichiga qo'shing.
           </CardDescription>
         </div>
         {status.pendingCount > 0 ? (
@@ -87,11 +89,14 @@ export function CourseSyllabusPanel({ courseId, onChanged }: { courseId: string;
           </p>
         )}
         {status.topics.length === 0 && <p className="text-sm text-muted-foreground">Dasturda mavzular kiritilmagan.</p>}
-        <ul className="divide-y rounded-md border">
-          {status.topics.map((topic) => (
+        {groupBySyllabusModule(status.topics, (topic) => topic.syllabusModuleName, "Modulga biriktirilmagan darslar").map((group, groupIndex) => (
+        <div key={`${groupIndex}-${group.name ?? ""}`} className="space-y-1">
+        {group.name && <p className="pt-1 text-sm font-medium">{group.name}</p>}
+        <ul className="divide-y rounded-md border" aria-label={group.name ?? undefined}>
+          {group.items.map((topic, lessonIndex) => (
             <li key={topic.topicId} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
               <TopicTypeBadge type={topic.type} hours={topic.hours} />
-              <span className="min-w-0 flex-1">{topic.sortOrder}. {topic.title}</span>
+              <span className="min-w-0 flex-1">{group.name ? lessonIndex + 1 : topic.sortOrder}. {topic.title}</span>
               {topic.moduleId == null ? (
                 <Button size="sm" variant="outline" className="h-7 gap-1" disabled={busy}
                   onClick={() => addTopic.mutate(topic)} aria-label={`${topic.title} — bo'lim qilib qo'shish`}>
@@ -107,6 +112,8 @@ export function CourseSyllabusPanel({ courseId, onChanged }: { courseId: string;
             </li>
           ))}
         </ul>
+        </div>
+        ))}
       </CardContent>
     </Card>
   );

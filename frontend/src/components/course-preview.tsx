@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { LessonContentViewer } from '@/components/learning/lesson-content-viewer';
 import { RichTextContent } from '@/components/editor/rich-text-content';
 import { type TeacherCourse, type CourseModule, type CourseContent } from '@/services/api/teacher-portal-api';
+import { groupBySyllabusModule } from '@/lib/syllabus-modules';
 
 interface Props {
   mode: 'overview' | 'player';
@@ -19,7 +20,9 @@ interface Props {
 }
 
 export function CoursePreview({ mode, course, modules, contents, onClose, onDownload, downloadingId, initialContentId }: Props) {
-  const lessons = [...modules].sort((a, b) => a.position - b.position)
+  const sortedModules = [...modules].sort((a, b) => a.position - b.position);
+  const moduleById = new Map(modules.map(module => [module.id, module]));
+  const lessons = sortedModules
     .flatMap(module => contents.filter(item => item.moduleId === module.id).sort((a, b) => a.position - b.position));
   const [selectedId, setSelectedId] = useState<number | undefined>(initialContentId ?? lessons[0]?.id);
   const index = Math.max(0, lessons.findIndex(item => item.id === selectedId));
@@ -35,13 +38,19 @@ export function CoursePreview({ mode, course, modules, contents, onClose, onDown
         <div className="flex flex-wrap gap-2"><Badge variant="outline">{course.subjectName || 'Fan belgilanmagan'}</Badge><Badge variant="outline">{course.language || 'Til belgilanmagan'}</Badge><Badge variant="outline">{lessons.length} ta dars</Badge></div>
         {course.description && <RichTextContent value={course.description} />}
         {modules.length === 0 && <p>Hali section qo'shilmagan.</p>}
-        {[...modules].sort((a, b) => a.position - b.position).map(module => <section key={module.id} className="rounded-lg border p-4">
-          <h2 className="font-semibold">{module.title} <Badge variant="outline">{module.status === 'published' ? 'Nashrda' : 'Qoralama'}</Badge></h2>
-          <ul className="mt-3 space-y-2">{lessons.filter(item => item.moduleId === module.id).map(item => <li key={item.id}>{item.title} <span className="text-muted-foreground">· {item.durationMinutes ?? 0} daqiqa · {item.status === 'published' ? 'Nashrda' : 'Qoralama'}</span></li>)}</ul>
-        </section>)}
+        {groupBySyllabusModule(sortedModules, module => module.syllabusModuleName, "Qo'shimcha bo'limlar").map((group, groupIndex) => <div key={`${groupIndex}-${group.name ?? ''}`} className="space-y-3">
+          {group.name && <h3 className="font-semibold text-primary">{group.name}</h3>}
+          {group.items.map(module => <section key={module.id} className="rounded-lg border p-4">
+            <h2 className="font-semibold">{module.title} <Badge variant="outline">{module.status === 'published' ? 'Nashrda' : 'Qoralama'}</Badge></h2>
+            <ul className="mt-3 space-y-2">{lessons.filter(item => item.moduleId === module.id).map(item => <li key={item.id}>{item.title} <span className="text-muted-foreground">· {item.durationMinutes ?? 0} daqiqa · {item.status === 'published' ? 'Nashrda' : 'Qoralama'}</span></li>)}</ul>
+          </section>)}
+        </div>)}
       </div> : <div className="grid min-w-0 gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
         <nav aria-label="Kurs darslari" className="max-h-52 space-y-2 overflow-y-auto md:max-h-[65vh]">
-          {lessons.map(item => <Button key={item.id} variant={selected?.id === item.id ? 'secondary' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" aria-current={selected?.id === item.id ? 'step' : undefined} onClick={() => setSelectedId(item.id)}>{item.title}</Button>)}
+          {groupBySyllabusModule(lessons, item => moduleById.get(item.moduleId)?.syllabusModuleName, "Qo'shimcha bo'limlar").map((group, groupIndex) => <div key={`${groupIndex}-${group.name ?? ''}`} className="space-y-1">
+            {group.name && <p className="px-2 pt-1 text-xs font-semibold text-muted-foreground">{group.name}</p>}
+            {group.items.map(item => <Button key={item.id} variant={selected?.id === item.id ? 'secondary' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" aria-current={selected?.id === item.id ? 'step' : undefined} onClick={() => setSelectedId(item.id)}>{item.title}</Button>)}
+          </div>)}
         </nav>
         {selected ? <section className="min-w-0 space-y-4">
           <h2 className="text-lg font-semibold">{selected.title}</h2>

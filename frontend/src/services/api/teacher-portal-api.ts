@@ -132,6 +132,10 @@ export interface CourseModule {
   plannedHours?: number | null;
   /** Bo'lim yaratilgan o'quv dasturi mavzusi */
   syllabusTopicId?: number | null;
+  /** Bo'lim darsi o'quv dasturining qaysi modulida (kontent sahifasida guruhlash uchun) */
+  syllabusModuleId?: number | null;
+  syllabusModuleName?: string | null;
+  syllabusModuleOrder?: number | null;
 }
 
 export interface CourseSyllabusTopic {
@@ -144,6 +148,8 @@ export interface CourseSyllabusTopic {
   moduleTitle?: string | null;
   /** Bo'lim bor, lekin nomi/turi/soati dasturdagidan farq qiladi */
   outdated: boolean;
+  /** Dars dasturning qaysi modulida */
+  syllabusModuleName?: string | null;
 }
 
 export interface CourseSyllabusStatus {
@@ -155,6 +161,9 @@ export interface CourseSyllabusStatus {
   topics: CourseSyllabusTopic[];
   pendingCount: number;
 }
+
+/** removed — dasturdan o'chirilgan darslarning bo'sh bo'limlari (kontentli bo'limlar saqlanadi) */
+export interface CourseSyllabusSyncResult { added: number; updated: number; removed?: number; status: CourseSyllabusStatus }
 
 export interface CourseContent {
   id: number;
@@ -184,6 +193,8 @@ export interface CourseContent {
   reviewStatus: 'draft' | 'in_review' | 'approved' | 'changes_requested';
   approvedRevisionNumber?: number | null;
   compatibility: ContentCompatibility;
+  /** Kontent bo'limi (dars) o'quv dasturining qaysi modulida */
+  syllabusModuleName?: string | null;
 }
 
 export interface CourseContentAsset {
@@ -699,8 +710,8 @@ export const teacherPortalApi = {
     return dataOf(await api.get<ApiResponse<CourseSyllabusStatus>>(`/courses/${courseId}/syllabus`), 'Dastur mavzulari yuklanmadi');
   },
   /** Qo'shilmagan mavzularni bo'lim sifatida qo'shadi, o'zgarganlarini yangilaydi */
-  syncCourseSyllabus: async (courseId: string): Promise<{ added: number; updated: number; status: CourseSyllabusStatus }> => {
-    return dataOf(await api.post<ApiResponse<{ added: number; updated: number; status: CourseSyllabusStatus }>>(`/courses/${courseId}/syllabus/sync`), 'Dastur bilan sinxronlanmadi');
+  syncCourseSyllabus: async (courseId: string): Promise<CourseSyllabusSyncResult> => {
+    return dataOf(await api.post<ApiResponse<CourseSyllabusSyncResult>>(`/courses/${courseId}/syllabus/sync`), 'Dastur bilan sinxronlanmadi');
   },
   updateModule: async (courseId: string, moduleId: number, payload: { title: string; description?: string }): Promise<CourseModule> => {
     return dataOf(await api.put<ApiResponse<CourseModule>>(`/courses/${courseId}/modules/${moduleId}`, payload), 'Modul yangilanmadi');

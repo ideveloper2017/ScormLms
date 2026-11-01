@@ -9,12 +9,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.courses.model.CourseModule
+import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
 import uz.scorm.lms.app.v1.courses.service.CourseSyllabusService
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
+import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusModule
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.PRACTICAL
@@ -24,7 +26,8 @@ class CourseSyllabusSyncTest {
     private val access = mockk<CourseAccessService>()
     private val courses = mockk<CourseRepository>()
     private val modules = mockk<CourseModuleRepository>()
-    private val service = CourseSyllabusService(access, courses, modules)
+    private val contents = mockk<CourseContentRepository>()
+    private val service = CourseSyllabusService(access, courses, modules, contents)
 
     private val syllabus = SubjectSyllabus(Subject(name = "Fizika", code = "FIZ").apply { id = 3 }, "Fizika dasturi",
         SyllabusLanguage.UZ, "Qisqa", null, "To'liq", status = "APPROVED", revisionNumber = 3).apply {
@@ -48,6 +51,7 @@ class CourseSyllabusSyncTest {
             firstArg<CourseModule>().also { if (it.id == null) { it.id = 200L + existing.size; existing += it } }
         }
         every { courses.save(any()) } answers { firstArg() }
+        every { contents.countByModuleIdAndDeletedFalse(any()) } returns 0
     }
 
     @Test
@@ -69,11 +73,38 @@ class CourseSyllabusSyncTest {
         assertEquals(4, existing[1].plannedHours)
         val added = existing.last()
         assertEquals("Tajriba", added.title)
-        assertEquals(4, added.position)
+        // Dastur darslari dastur tartibida, qo'lda qo'shilgan bo'lim ulardan keyin
+        assertEquals(3, added.position)
+        assertEquals(4, existing.first { it.title == "Qo'shimcha" }.position)
         assertEquals("PRACTICAL", added.topicType)
         assertEquals(3L, added.syllabusTopicId)
+        assertTrue(added.fromSyllabus)
         assertEquals(3, course.syllabusRevision)
         assertTrue(existing.none { it.deleted })
+    }
+
+    @Test
+    fun `bolimlar dastur modullari tartibida, ochirilgan darsning bosh bolimi olib tashlanadi kontentlisi qoladi`() {
+        // Dastur: 2-modul (Termodinamika) 1-modul (Mexanika) dan keyin, Tajriba Mexanikada birinchi dars
+        val mechanics = SubjectSyllabusModule(syllabus, 1, "Mexanika").apply { id = 61 }
+        val thermo = SubjectSyllabusModule(syllabus, 2, "Termodinamika").apply { id = 62 }
+        syllabus.modules += listOf(mechanics, thermo)
+        syllabus.topics.first { it.id == 3L }.apply { module = mechanics; lessonOrder = 1 }
+        syllabus.topics.first { it.id == 2L }.apply { module = mechanics; lessonOrder = 2 }
+        syllabus.topics.first { it.id == 1L }.apply { module = thermo; lessonOrder = 1 }
+        // Dasturdan o'chirilgan darslarning bo'limlari: biri bo'sh, birida kontent bor
+        existing += CourseModule(course, "Eski bo'sh", position = 4, topicType = "THEORETICAL", fromSyllabus = true).apply { id = 104 }
+        existing += CourseModule(course, "Eski kontentli", position = 5, topicType = "THEORETICAL", fromSyllabus = true).apply { id = 105 }
+        every { contents.countByModuleIdAndDeletedFalse(105) } returns 2
+
+        val result = service.sync(9, 1, false)
+
+        assertEquals(1, result.removed)
+        assertTrue(existing.first { it.id == 104L }.deleted)
+        assertTrue(!existing.first { it.id == 105L }.deleted)
+        val order = existing.filter { !it.deleted }.sortedBy { it.position }.map { it.title }
+        assertEquals(listOf("Tajriba", "Kinematika", "Kirish", "Qo'shimcha", "Eski kontentli"), order)
+        assertEquals(listOf("Mexanika", "Mexanika", "Termodinamika"), result.status.topics.map { it.syllabusModuleName })
     }
 
     @Test

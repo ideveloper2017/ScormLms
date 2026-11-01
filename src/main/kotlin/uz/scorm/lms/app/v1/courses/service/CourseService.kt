@@ -125,9 +125,9 @@ class CourseService(
         return syllabus
     }
 
-    /** Dastur mavzulari kurs modullariga aylanadi: avval nazariy, keyin amaliy mashg'ulotlar (qoralama holatda). */
+    /** Dastur darslari kurs bo'limlariga aylanadi: dastur modullari va darslari tartibida (qoralama holatda). */
     private fun createModulesFromSyllabus(course: Course, syllabus: SubjectSyllabus) {
-        syllabus.topics.sortedWith(compareBy({ it.type }, { it.sortOrder })).forEachIndexed { index, topic ->
+        syllabus.orderedLessons().forEachIndexed { index, topic ->
             moduleRepository.save(CourseModule(
                 course = course,
                 title = topic.title.take(255),

@@ -40,6 +40,7 @@ class CourseContentService(
         val mayEdit = mayManageAll || course.userId == userId
         val contents = contentRepository.findAllByModuleCourseIdAndDeletedFalseOrderByModulePositionAscPositionAsc(courseId)
         val compatibility = compatibilityService.evaluateAll(course, contents.map { it.languageCode })
+        val groups = moduleService.lessonGroups(course)
         return contents
             .filter { !it.module.deleted }
             .filter { mayEdit || (
@@ -49,7 +50,10 @@ class CourseContentService(
                     it.isEffective() &&
                     compatibility.getValue(it.languageCode).compatible
                 ) }
-            .map { toDto(it, compatibility.getValue(it.languageCode)) }
+            .map { content ->
+                toDto(content, compatibility.getValue(content.languageCode))
+                    .copy(syllabusModuleName = content.module.syllabusTopicId?.let(groups::get)?.name)
+            }
     }
 
     @Transactional

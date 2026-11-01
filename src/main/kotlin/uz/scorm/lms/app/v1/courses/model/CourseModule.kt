@@ -45,6 +45,10 @@ class CourseModule(
     // Bo'lim yaratilgan o'quv dasturi mavzusi (sinxronlash uchun); mavzu o'chirilsa null bo'ladi
     @Column(name = "syllabus_topic_id")
     var syllabusTopicId: Long? = null,
+
+    /** Bo'lim o'quv dasturi darsidan yaratilgan (dars o'chsa, bo'sh bo'lim sinxronlashda olib tashlanadi) */
+    @Column(name = "from_syllabus", nullable = false)
+    var fromSyllabus: Boolean = syllabusTopicId != null,
 ) : BaseEntity()
 
 enum class LearningItemStatus {

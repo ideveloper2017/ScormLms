@@ -151,9 +151,13 @@ data class CourseModuleDto(
     val topicType: String? = null,
     val plannedHours: Int? = null,
     val syllabusTopicId: Long? = null,
+    /** Bo'lim darsi o'quv dasturining qaysi modulida (kontent sahifasida guruhlash uchun) */
+    val syllabusModuleId: Long? = null,
+    val syllabusModuleName: String? = null,
+    val syllabusModuleOrder: Int? = null,
 )
 
-/** Kurs bog'langan o'quv dasturi mavzusi va uning kursdagi bo'limi (bo'lsa). */
+/** Kurs bog'langan o'quv dasturi darsi va uning kursdagi bo'limi (bo'lsa). */
 data class CourseSyllabusTopicDto(
     val topicId: Long,
     val type: String,
@@ -164,6 +168,8 @@ data class CourseSyllabusTopicDto(
     val moduleTitle: String?,
     /** Bo'lim bor, lekin nomi/turi/soati dasturdagidan farq qiladi */
     val outdated: Boolean,
+    /** Dars dasturning qaysi modulida */
+    val syllabusModuleName: String? = null,
 )
 
 data class CourseSyllabusStatusDto(
@@ -177,7 +183,8 @@ data class CourseSyllabusStatusDto(
     val pendingCount: Int,
 )
 
-data class CourseSyllabusSyncResult(val added: Int, val updated: Int, val status: CourseSyllabusStatusDto)
+/** removed — dasturdan o'chirilgan darslarning bo'sh bo'limlari (kontentli bo'limlar saqlanadi) */
+data class CourseSyllabusSyncResult(val added: Int, val updated: Int, val status: CourseSyllabusStatusDto, val removed: Int = 0)
 
 data class CourseModuleRequest(
     val title: String,
@@ -218,6 +225,8 @@ data class CourseContentDto(
     val reviewStatus: String,
     val approvedRevisionNumber: Int?,
     val compatibility: ContentCompatibilityDto,
+    /** Kontent bo'limi (dars) o'quv dasturining qaysi modulida — talaba ko'rinishida guruhlash uchun */
+    val syllabusModuleName: String? = null,
 )
 
 data class ContentCompatibilityIssueDto(

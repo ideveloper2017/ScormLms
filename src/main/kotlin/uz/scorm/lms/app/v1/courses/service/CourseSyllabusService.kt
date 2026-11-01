@@ -8,6 +8,7 @@ import uz.scorm.lms.app.v1.courses.dto.CourseSyllabusTopicDto
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.courses.model.CourseModule
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
+import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
@@ -22,6 +23,8 @@ data class SyllabusLinkedCourseDto(
     val autoSync: Boolean,
     val added: Int = 0,
     val updated: Int = 0,
+    /** Dasturdan o'chirilgan darslarning bo'sh bo'limlari olib tashlandi */
+    val removed: Int = 0,
 )
 
 /**
@@ -33,6 +36,7 @@ class CourseSyllabusService(
     private val accessService: CourseAccessService,
     private val courseRepository: CourseRepository,
     private val moduleRepository: CourseModuleRepository,
+    private val contentRepository: CourseContentRepository,
 ) {
     @Transactional(readOnly = true)
     fun status(courseId: Long, userId: Long, mayManageAll: Boolean): CourseSyllabusStatusDto {
@@ -41,8 +45,8 @@ class CourseSyllabusService(
     }
 
     /**
-     * Qo'shilmagan mavzular kurs oxiriga yangi bo'lim (qoralama) sifatida qo'shiladi, bog'langan bo'limlarning
-     * nomi, turi va soati dasturdagiga moslanadi. Bo'limlar va ulardagi darslar o'chirilmaydi.
+     * Qo'shilmagan darslar yangi bo'lim (qoralama) sifatida dastur tartibida qo'shiladi, bog'langan bo'limlarning
+     * nomi, turi va soati dasturdagiga moslanadi. Kontent kiritilgan bo'lim hech qachon o'chirilmaydi.
      */
     @Transactional
     fun sync(courseId: Long, userId: Long, mayManageAll: Boolean): CourseSyllabusSyncResult {
@@ -51,8 +55,8 @@ class CourseSyllabusService(
         require(syllabus.status == "APPROVED") {
             "O'quv dasturining yangi versiyasi hali tasdiqlanmagan — tasdiqlangandan keyin sinxronlang"
         }
-        val (added, updated) = applySync(course, syllabus)
-        return CourseSyllabusSyncResult(added, updated, status(course, syllabus))
+        val counts = applySync(course, syllabus)
+        return CourseSyllabusSyncResult(counts.added, counts.updated, status(course, syllabus), counts.removed)
     }
 
     /** Dasturga bog'langan kurslar (dastur mavzulari oynasida ko'rsatiladi). */
@@ -68,52 +72,77 @@ class CourseSyllabusService(
     fun syncDraftCourses(syllabusId: Long): List<SyllabusLinkedCourseDto> =
         courseRepository.findAllBySyllabusIdAndDeletedFalseOrderByCreatedAtDesc(syllabusId).map { course ->
             if (course.status == CourseStatus.DRAFT.name) {
-                val (added, updated) = applySync(course, requireSyllabus(course))
-                linked(course, added, updated)
+                val counts = applySync(course, requireSyllabus(course))
+                linked(course, counts.added, counts.updated, counts.removed)
             } else linked(course)
         }
 
-    private fun applySync(course: Course, syllabus: SubjectSyllabus): Pair<Int, Int> {
+    /**
+     * Kurs bo'limlarini dastur tuzilmasiga moslaydi: har dars — bitta bo'lim, dastur modullari va darslari tartibida;
+     * o'qituvchi qo'lda qo'shgan bo'limlar ulardan keyin. Dasturdan o'chirilgan darsning bo'sh bo'limi olib
+     * tashlanadi, kontent kiritilgan bo'lim (o'qituvchi ishi) saqlanadi.
+     */
+    private fun applySync(course: Course, syllabus: SubjectSyllabus): SyncCounts {
         val modules = moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(requireNotNull(course.id))
-        val linked = modules.filter { it.syllabusTopicId != null }.associateBy { it.syllabusTopicId }
-        var position = modules.maxOfOrNull { it.position } ?: 0
+        val lessons = syllabus.orderedLessons()
+        val lessonIds = lessons.mapNotNull { it.id }.toSet()
+        var removed = 0
+        val kept = modules.filter { module ->
+            val orphan = module.fromSyllabus && (module.syllabusTopicId == null || module.syllabusTopicId !in lessonIds)
+            if (orphan && contentRepository.countByModuleIdAndDeletedFalse(requireNotNull(module.id)) == 0L) {
+                module.deleted = true
+                moduleRepository.save(module)
+                removed++
+                false
+            } else true
+        }
+        val linked = kept.filter { it.syllabusTopicId != null }.associateBy { it.syllabusTopicId }
         var added = 0
         var updated = 0
-        for (topic in ordered(syllabus)) {
-            val module = linked[topic.id]
-            if (module == null) {
-                moduleRepository.save(CourseModule(
-                    course = course, title = topic.title.take(255), description = topic.description,
-                    position = ++position, topicType = topic.type.name, plannedHours = topic.hours, syllabusTopicId = topic.id,
-                ))
-                added++
-            } else if (outdated(module, topic)) {
-                module.title = topic.title.take(255)
-                module.topicType = topic.type.name
-                module.plannedHours = topic.hours
-                moduleRepository.save(module)
-                updated++
+        val changed = mutableSetOf<CourseModule>()
+        val lessonSections = lessons.map { topic ->
+            linked[topic.id]?.also { module ->
+                if (outdated(module, topic)) {
+                    module.title = topic.title.take(255)
+                    module.topicType = topic.type.name
+                    module.plannedHours = topic.hours
+                    changed += module
+                    updated++
+                }
+            } ?: CourseModule(
+                course = course, title = topic.title.take(255), description = topic.description,
+                position = 0, topicType = topic.type.name, plannedHours = topic.hours, syllabusTopicId = topic.id,
+            ).also { changed += it; added++ }
+        }
+        val others = kept.filter { module -> lessonSections.none { it === module } }
+        (lessonSections + others).forEachIndexed { index, module ->
+            if (module.position != index + 1) {
+                module.position = index + 1
+                changed += module
             }
         }
+        changed.forEach(moduleRepository::save)
         course.syllabusRevision = syllabus.revisionNumber
         courseRepository.save(course)
-        return added to updated
+        return SyncCounts(added, updated, removed)
     }
 
-    private fun linked(course: Course, added: Int = 0, updated: Int = 0) = SyllabusLinkedCourseDto(
+    private data class SyncCounts(val added: Int, val updated: Int, val removed: Int)
+
+    private fun linked(course: Course, added: Int = 0, updated: Int = 0, removed: Int = 0) = SyllabusLinkedCourseDto(
         id = requireNotNull(course.id), title = course.title.orEmpty(), status = course.status.orEmpty().lowercase(),
-        autoSync = course.status == CourseStatus.DRAFT.name, added = added, updated = updated,
+        autoSync = course.status == CourseStatus.DRAFT.name, added = added, updated = updated, removed = removed,
     )
 
     private fun status(course: Course, syllabus: SubjectSyllabus): CourseSyllabusStatusDto {
         val modules = moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(requireNotNull(course.id))
             .filter { it.syllabusTopicId != null }.associateBy { it.syllabusTopicId }
-        val topics = ordered(syllabus).map { topic ->
+        val topics = syllabus.orderedLessons().map { topic ->
             val module = modules[topic.id]
             CourseSyllabusTopicDto(
                 topicId = requireNotNull(topic.id), type = topic.type.name, sortOrder = topic.sortOrder,
                 title = topic.title, hours = topic.hours, moduleId = module?.id, moduleTitle = module?.title,
-                outdated = module != null && outdated(module, topic),
+                outdated = module != null && outdated(module, topic), syllabusModuleName = topic.module?.name,
             )
         }
         return CourseSyllabusStatusDto(
@@ -124,8 +153,6 @@ class CourseSyllabusService(
     }
 
     private fun requireSyllabus(course: Course) = requireNotNull(course.syllabus) { "Kurs o'quv dasturiga bog'lanmagan" }
-
-    private fun ordered(syllabus: SubjectSyllabus) = syllabus.topics.sortedWith(compareBy({ it.type }, { it.sortOrder }))
 
     private fun outdated(module: CourseModule, topic: SubjectSyllabusTopic) =
         module.title != topic.title.take(255) || module.topicType != topic.type.name || module.plannedHours != topic.hours

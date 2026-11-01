@@ -66,6 +66,14 @@ class SubjectSyllabus(
     @OrderBy("sortOrder ASC")
     @org.hibernate.annotations.BatchSize(size = 50)
     var modules: MutableList<SubjectSyllabusModule> = mutableListOf()
+
+    /**
+     * Darslar o'qitish tartibida: dastur modullari tartibi, modul ichida dars tartibi; modulga biriktirilmagan (eski)
+     * darslar oxirida — mashg'ulot turi va tur ichidagi tartib bo'yicha. Kurs bo'limlari shu tartibda bo'ladi.
+     */
+    fun orderedLessons(): List<SubjectSyllabusTopic> = topics.sortedWith(
+        compareBy<SubjectSyllabusTopic>({ it.module == null }, { it.module?.sortOrder ?: 0 }, { it.lessonOrder ?: Int.MAX_VALUE }, { it.type }, { it.sortOrder }),
+    )
 }
 
 enum class SyllabusLanguage { UZ, EN, RU, KAA, UZ_CYRILLIC }
