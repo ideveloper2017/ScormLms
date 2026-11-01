@@ -193,6 +193,8 @@ export interface CourseContent {
   reviewStatus: 'draft' | 'in_review' | 'approved' | 'changes_requested';
   approvedRevisionNumber?: number | null;
   compatibility: ContentCompatibility;
+  /** Kontent bo'limi (dars) o'quv dasturining qaysi modulida */
+  syllabusModuleName?: string | null;
 }
 
 export interface CourseContentAsset {

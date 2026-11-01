@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { expect, it, vi } from 'vitest';
@@ -34,5 +34,26 @@ it('opens the linked lesson, changes one lesson at a time, and preserves complet
   expect(screen.getByRole('button', { name: 'Dars bajarilgan' })).toBeDisabled();
   await waitFor(() => expect(workspaceApi.viewed).toHaveBeenCalledWith(3, 9));
   unmount();
+  client.clear();
+});
+
+it('groups lessons by syllabus module and course section', async () => {
+  vi.mocked(studyPlanApi.getCourseContents).mockResolvedValue([
+    { id: 1, moduleId: 41, moduleTitle: 'Kinematika', syllabusModuleName: 'Mexanika', title: 'Video', contentBody: 'a' },
+    { id: 2, moduleId: 41, moduleTitle: 'Kinematika', syllabusModuleName: 'Mexanika', title: 'Konspekt', contentBody: 'b' },
+    { id: 3, moduleId: 42, moduleTitle: 'Issiqlik', syllabusModuleName: 'Termodinamika', title: 'Taqdimot', contentBody: 'c' },
+    { id: 4, moduleId: 43, moduleTitle: 'Takrorlash', title: 'Savollar', contentBody: 'd' },
+  ] as Awaited<ReturnType<typeof studyPlanApi.getCourseContents>>);
+  vi.mocked(studyPlanApi.getCourseProgress).mockResolvedValue({ courseId: 3, progress: 0, completedContents: 0,
+    totalContents: 4, completedContentIds: [], completedScormPackages: 0, totalScormPackages: 0, status: 'active' });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/student/courses/3/learn']}>
+    <Routes><Route path="/student/courses/:id/learn" element={<StudentCourseLearning />} /></Routes>
+  </MemoryRouter></QueryClientProvider>);
+  const mechanics = await screen.findByRole('region', { name: 'Mexanika' });
+  const section = within(mechanics).getByRole('group', { name: 'Kinematika' });
+  expect(within(section).getAllByRole('button').map((button) => button.textContent)).toEqual(['1.Video', '2.Konspekt']);
+  expect(within(screen.getByRole('region', { name: 'Termodinamika' })).getByText('Taqdimot')).toBeInTheDocument();
+  expect(within(screen.getByRole('region', { name: "Qo'shimcha bo'limlar" })).getByRole('group', { name: 'Takrorlash' })).toBeInTheDocument();
   client.clear();
 });

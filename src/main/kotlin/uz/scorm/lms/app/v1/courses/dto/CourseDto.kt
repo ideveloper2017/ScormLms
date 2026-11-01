@@ -225,6 +225,8 @@ data class CourseContentDto(
     val reviewStatus: String,
     val approvedRevisionNumber: Int?,
     val compatibility: ContentCompatibilityDto,
+    /** Kontent bo'limi (dars) o'quv dasturining qaysi modulida — talaba ko'rinishida guruhlash uchun */
+    val syllabusModuleName: String? = null,
 )
 
 data class ContentCompatibilityIssueDto(

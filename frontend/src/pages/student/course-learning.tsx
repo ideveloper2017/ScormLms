@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  Layers,
   Loader2,
   PlayCircle,
   RefreshCw,
@@ -25,10 +26,22 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { scormApi } from "@/services/api/scorm-api";
-import { studyPlanApi } from "@/services/api/study-plan-api";
+import { studyPlanApi, type LearningContent } from "@/services/api/study-plan-api";
+import { groupBySyllabusModule } from "@/lib/syllabus-modules";
 import { teacherPortalApi, type CourseContentAsset } from "@/services/api/teacher-portal-api";
 import { CourseForum } from "@/components/course-forum";
 import { LessonContentViewer } from "@/components/learning/lesson-content-viewer";
+
+/** Kontentlar kurs bo'limi (dars) bo'yicha — backend ularni bo'lim tartibida qaytaradi */
+function sectionsOf(contents: LearningContent[]) {
+  const sections: { moduleId: number; title: string; items: LearningContent[] }[] = [];
+  for (const content of contents) {
+    const last = sections[sections.length - 1];
+    if (last && last.moduleId === content.moduleId) last.items.push(content);
+    else sections.push({ moduleId: content.moduleId, title: content.moduleTitle, items: [content] });
+  }
+  return sections;
+}
 
 export function StudentCourseLearning() {
   const { id } = useParams<{ id: string }>();
@@ -205,14 +218,29 @@ export function StudentCourseLearning() {
             </CardContent>
           </Card>
         )}
-        {contents.length > 0 && <nav aria-label="Darslar" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {contents.map((content, index) => <button key={content.id} type="button"
-            aria-current={content.id === activeContent?.id ? 'step' : undefined}
-            onClick={() => selectLesson(index)}
-            className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm ${content.id === activeContent?.id ? 'border-primary bg-primary/5 font-medium' : 'hover:bg-muted/50'}`}>
-            {progress?.completedContentIds?.includes(content.id) ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" aria-label="Bajarilgan" /> : <span className="text-muted-foreground">{index + 1}.</span>}
-            <span>{content.title}</span>
-          </button>)}
+        {contents.length > 0 && <nav aria-label="Darslar" className="space-y-4">
+          {groupBySyllabusModule(contents, (content) => content.syllabusModuleName, "Qo'shimcha bo'limlar").map((group, groupIndex) => (
+            <section key={`${groupIndex}-${group.name ?? ""}`} aria-label={group.name ?? undefined} className="space-y-2">
+              {group.name && <h3 className="flex items-center gap-2 font-semibold"><Layers className="h-4 w-4 text-primary" />{group.name}</h3>}
+              {sectionsOf(group.items).map((section) => (
+                <div key={section.moduleId} role="group" aria-label={section.title} className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">{section.title}</p>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {section.items.map((content) => {
+                      const index = contents.indexOf(content);
+                      return <button key={content.id} type="button"
+                        aria-current={content.id === activeContent?.id ? 'step' : undefined}
+                        onClick={() => selectLesson(index)}
+                        className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm ${content.id === activeContent?.id ? 'border-primary bg-primary/5 font-medium' : 'hover:bg-muted/50'}`}>
+                        {progress?.completedContentIds?.includes(content.id) ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" aria-label="Bajarilgan" /> : <span className="text-muted-foreground">{index + 1}.</span>}
+                        <span>{content.title}</span>
+                      </button>;
+                    })}
+                  </div>
+                </div>
+              ))}
+            </section>
+          ))}
         </nav>}
         {(activeContent ? [activeContent] : []).map((content) => (
           <Card key={content.id} id={`content-${content.id}`} className={selectedContentId === content.id ? 'scroll-mt-4 border-primary ring-1 ring-primary' : 'scroll-mt-4'}>

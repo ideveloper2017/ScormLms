@@ -110,7 +110,7 @@ class CourseModuleService(
     }
 
     /** Dastur darsi -> uning moduli (kurs bo'limlarini o'quv dasturi modullari bo'yicha guruhlash uchun) */
-    private fun lessonGroups(course: Course): Map<Long, SubjectSyllabusModule> =
+    fun lessonGroups(course: Course): Map<Long, SubjectSyllabusModule> =
         course.syllabus?.topics.orEmpty().mapNotNull { topic -> topic.module?.let { requireNotNull(topic.id) to it } }.toMap()
 
     private fun toDto(module: CourseModule, groups: Map<Long, SubjectSyllabusModule>) = CourseModuleDto(
