@@ -2,6 +2,9 @@ import api from '@/lib/api';
 
 export type ExamSessionStatus = 'DRAFT' | 'PUBLISHED' | 'ONGOING' | 'COMPLETED';
 export type ExamAttendanceStatus = 'EXPECTED' | 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED';
+/** MIDTERM — oraliq nazorat (ON), FINAL — yakuniy nazorat (YN) */
+export type ExamControlType = 'MIDTERM' | 'FINAL';
+export const controlTypeLabels: Record<ExamControlType, string> = { MIDTERM: 'Oraliq nazorat (ON)', FINAL: 'Yakuniy nazorat (YN)' };
 
 export interface TeacherExamSession {
   id: string; courseId: string; courseTitle: string; title: string; description?: string;
@@ -11,6 +14,7 @@ export interface TeacherExamSession {
   /** false when the course isn't linked to an approved curriculum's subject group (fan oqimi) --
    *  this exam can't be checked against the 559-decision teaching plan. Informational only. */
   curriculumLinked: boolean;
+  controlType: ExamControlType;
 }
 
 export interface AttendanceRecord {
@@ -37,7 +41,7 @@ export interface ExamAppeal {
 
 export interface CreateExamSessionPayload {
   courseId: number; title: string; description?: string; examDate: string; examTime: string; location: string;
-  maxCapacity?: number; examType: TeacherExamSession['examType']; durationMinutes: number;
+  maxCapacity?: number; examType: TeacherExamSession['examType']; durationMinutes: number; controlType: ExamControlType;
 }
 
 export const teacherExamApi = {

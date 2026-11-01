@@ -1,5 +1,6 @@
 package uz.scorm.lms.app.v1.exam.dto
 
+import uz.scorm.lms.app.v1.exam.model.ExamControlType
 import uz.scorm.lms.app.v1.exam.model.ExamSessionStatus
 import uz.scorm.lms.app.v1.exam.model.ExamType
 import java.time.Instant
@@ -19,6 +20,7 @@ data class CreateExamSessionRequest(
     val secondaryExaminerId: Long? = null,
     val examType: ExamType = ExamType.WRITTEN,
     val durationMinutes: Int = 120,
+    val controlType: ExamControlType = ExamControlType.FINAL,
 )
 
 data class UpdateExamSessionRequest(
@@ -30,6 +32,7 @@ data class UpdateExamSessionRequest(
     val maxCapacity: Int? = null,
     val secondaryExaminerId: Long? = null,
     val durationMinutes: Int? = null,
+    val controlType: ExamControlType? = null,
 )
 
 data class PublishExamSessionRequest(val publishAt: Instant? = null)
@@ -64,6 +67,8 @@ data class TeacherExamSessionDto(
      *  the exam can't be checked against the 559-decision teaching plan. Warning only,
      *  does not block creation (legacy, non-curriculum-backed courses still work). */
     val curriculumLinked: Boolean,
+    /** MIDTERM — oraliq nazorat (ON), FINAL — yakuniy nazorat (YN) */
+    val controlType: String = ExamControlType.FINAL.name,
 )
 
 data class StudentExamSessionDto(
@@ -83,6 +88,7 @@ data class StudentExamSessionDto(
     val myScore: Double?,
     val myGrade: String?,
     val resultPublished: Boolean = false,
+    val controlType: String = ExamControlType.FINAL.name,
 )
 
 data class ExamSessionDetailDto(
@@ -112,4 +118,5 @@ data class ExamSessionDetailDto(
     val heldAt: Instant?,
     /** false when the course isn't linked to an approved curriculum's subject group. */
     val curriculumLinked: Boolean,
+    val controlType: String = ExamControlType.FINAL.name,
 )

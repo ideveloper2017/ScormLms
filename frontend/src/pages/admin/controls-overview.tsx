@@ -9,20 +9,23 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listAcademicStatements, type AcademicStatementRow } from "@/services/api/academic-results-api";
 
-interface SubjectControl { subject: string; sessions: number; completed: number }
+interface ControlCount { total: number; done: number }
+/** on — oraliq nazorat, yn — yakuniy nazorat sessiyalari (done — yakunlanganlari) */
+interface SubjectControl { subject: string; on: ControlCount; yn: ControlCount }
 interface GroupControls { key: string; group: string; academicYear: string; semester: number | null; subjects: SubjectControl[] }
 
-/** Imtihon sessiyalari (qaydnomalar) guruh + o'quv yili + semestr bo'yicha; har fanda nechta nazorat va nechtasi o'tkazilgan */
-const groupControls =(rows: AcademicStatementRow[]): GroupControls[] => {
+/** Nazorat sessiyalari (qaydnomalar) guruh + o'quv yili + semestr bo'yicha; har fanda ON va YN: nechta va nechtasi o'tkazilgan */
+const groupControls = (rows: AcademicStatementRow[]): GroupControls[] => {
   const groups = new Map<string, GroupControls & { bySubject: Map<string, SubjectControl> }>();
   for (const row of rows) {
     const key = `${row.academicYear}|${row.semester ?? ""}|${row.group}`;
     const entry = groups.get(key) ?? {
       key, group: row.group, academicYear: row.academicYear, semester: row.semester ?? null, subjects: [], bySubject: new Map(),
     };
-    const subject = entry.bySubject.get(row.subject) ?? { subject: row.subject, sessions: 0, completed: 0 };
-    subject.sessions += 1;
-    if (row.finalStatement) subject.completed += 1;
+    const subject = entry.bySubject.get(row.subject) ?? { subject: row.subject, on: { total: 0, done: 0 }, yn: { total: 0, done: 0 } };
+    const count = row.finalStatement ? subject.yn : subject.on;
+    count.total += 1;
+    if (row.status === "COMPLETED") count.done += 1;
     entry.bySubject.set(row.subject, subject);
     groups.set(key, entry);
   }
@@ -34,7 +37,7 @@ const groupControls =(rows: AcademicStatementRow[]): GroupControls[] => {
 const ALL = "";
 
 /**
- * "Nazoratlar": guruhlar kesimida fanlar bo'yicha nazorat (imtihon) sessiyalari holati — o'tkazilgan / rejalashtirilgan.
+ * "Nazoratlar": guruhlar kesimida fanlar bo'yicha oraliq (ON) va yakuniy (YN) nazorat sessiyalari — o'tkazilgan / jami.
  * Sessiyalarni yaratish va o'tkazish "Imtihonlar" sahifasida.
  */
 export function ControlsOverview() {
@@ -54,7 +57,7 @@ export function ControlsOverview() {
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="text-2xl font-bold">Nazoratlar</h1>
-        <p className="text-sm text-muted-foreground">Guruhlar kesimida fanlar bo'yicha nazorat (imtihon) sessiyalari: nechtasi o'tkazilgan va nechtasi rejalashtirilgan.</p>
+        <p className="text-sm text-muted-foreground">Guruhlar kesimida fanlar bo'yicha oraliq (ON) va yakuniy (YN) nazoratlar: nechtasi o'tkazilgan va jami nechta.</p>
       </div>
       <Button variant="outline" onClick={() => navigate("/exams")}><ClipboardList className="mr-2 h-4 w-4" />Imtihonlarni boshqarish</Button>
     </div>
@@ -86,7 +89,7 @@ export function ControlsOverview() {
           <TableHead>Guruh</TableHead>
           <TableHead>O'quv yili</TableHead>
           <TableHead>Semestr</TableHead>
-          <TableHead>Fanlar (o'tkazilgan / jami nazorat)</TableHead>
+          <TableHead>Fanlar [ON/YN] (o'tkazilgan / jami)</TableHead>
         </TableRow></TableHeader>
         <TableBody>
           {visible.map((row, index) => <TableRow key={row.key}>
@@ -95,10 +98,11 @@ export function ControlsOverview() {
             <TableCell>{row.academicYear || "—"}</TableCell>
             <TableCell>{row.semester ?? "—"}</TableCell>
             <TableCell><div className="flex flex-wrap gap-1.5">{row.subjects.map((s) => {
-              const done = s.completed === s.sessions;
-              return <Badge key={s.subject} variant={done ? "default" : "outline"}
-                title={done ? "Barcha nazoratlar o'tkazilgan" : `${s.sessions - s.completed} ta nazorat hali o'tkazilmagan`}>
-                {s.subject} · {s.completed}/{s.sessions}
+              const pending = s.on.total - s.on.done + s.yn.total - s.yn.done;
+              const part = (label: string, c: ControlCount) => c.total ? `${label} ${c.done}/${c.total}` : `${label} —`;
+              return <Badge key={s.subject} variant={pending === 0 && s.yn.total > 0 ? "default" : "outline"}
+                title={`Oraliq nazorat: ${s.on.done}/${s.on.total} o'tkazilgan · Yakuniy nazorat: ${s.yn.done}/${s.yn.total} o'tkazilgan`}>
+                {s.subject} · {part("ON", s.on)} · {part("YN", s.yn)}
               </Badge>;
             })}</div></TableCell>
           </TableRow>)}

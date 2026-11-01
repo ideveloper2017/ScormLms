@@ -76,6 +76,7 @@ class ExamSessionService(
             secondaryExaminer = secondaryExaminer,
             examType = request.examType,
             durationMinutes = request.durationMinutes,
+            controlType = request.controlType,
         )
 
         val saved = examSessionRepository.save(examSession)
@@ -114,6 +115,7 @@ class ExamSessionService(
             require(it in 1..480) { "Imtihon davomiyligi 1 dan 480 daqiqagacha bo'lishi kerak" }
             session.durationMinutes = it
         }
+        request.controlType?.let { session.controlType = it }
 
         val updated = examSessionRepository.save(session)
         auditService.logAction("EXAM_SESSION_UPDATED", userId, "Imtihon sessiyasi yangilandi: ${session.title}")
@@ -264,7 +266,7 @@ class ExamSessionService(
                         examDate = session.examDate,
                         examTime = session.examTime,
                         location = session.location,
-                        examType = session.examType.name,
+                        examType = session.examType.name, controlType = session.controlType.name,
                         durationMinutes = session.durationMinutes,
                         examinerName = session.examiner.fullName ?: session.examiner.username,
                         status = session.status.name,
@@ -309,7 +311,7 @@ class ExamSessionService(
             examDate = session.examDate,
             examTime = session.examTime,
             location = session.location,
-            examType = session.examType.name,
+            examType = session.examType.name, controlType = session.controlType.name,
             durationMinutes = session.durationMinutes,
             examinerId = session.examiner.id.toString(),
             examinerName = session.examiner.fullName ?: session.examiner.username,
@@ -351,7 +353,7 @@ class ExamSessionService(
             examDate = session.examDate,
             examTime = session.examTime,
             location = session.location,
-            examType = session.examType.name,
+            examType = session.examType.name, controlType = session.controlType.name,
             durationMinutes = session.durationMinutes,
             examinerName = session.examiner.fullName ?: session.examiner.username,
             secondaryExaminerName = session.secondaryExaminer?.fullName ?: session.secondaryExaminer?.username,

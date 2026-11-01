@@ -22,7 +22,7 @@ import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
-import uz.scorm.lms.app.v1.exam.model.ExamSessionStatus
+import uz.scorm.lms.app.v1.exam.model.ExamControlType
 import uz.scorm.lms.app.v1.exam.repository.ExamResultRepository
 import uz.scorm.lms.app.v1.exam.repository.ExamSessionRepository
 import uz.scorm.lms.app.v1.group.repository.GroupRepository
@@ -70,7 +70,8 @@ class AcademicAnalyticsService(
 
         return examSessions.findAllByDeletedFalseOrderByExamDateDesc().asSequence()
             .map { session ->
-                val isFinal = session.status == ExamSessionStatus.COMPLETED
+                // Oraliq (ON) yoki yakuniy (YN) — sessiyada belgilangan nazorat turi; tugaganligi status'da
+                val isFinal = session.controlType == ExamControlType.FINAL
                 val course = session.course
                 val courseEnrollments = byCourse[requireNotNull(course.id)].orEmpty()
                 val results = resultsBySession[requireNotNull(session.id)].orEmpty()
@@ -83,7 +84,7 @@ class AcademicAnalyticsService(
                     academicYear = courseEnrollments.firstOrNull()?.academicYear.orEmpty(),
                     semester = courseEnrollments.firstOrNull()?.semester ?: session.semesterId?.toInt(),
                     controlType = if (isFinal) "YAKUNIY" else "ORALIQ",
-                    statement = if (isFinal) "Yakuniy qaydnoma" else "1-qaydnoma",
+                    statement = if (isFinal) "Yakuniy qaydnoma" else "Oraliq qaydnoma",
                     status = session.status.name,
                     finalStatement = isFinal,
                     addedDate = (session.createdAt?.atZone(zone)?.toLocalDate() ?: session.examDate),
