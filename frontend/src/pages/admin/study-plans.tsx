@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Archive,
@@ -11,9 +11,15 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
   Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +63,21 @@ export function AdminStudyPlans() {
   const [status, setStatus] = useState<string>(ALL);
   const [academicYear, setAcademicYear] = useState<string>(ALL);
   const curricula = useQuery({ queryKey: ["curricula"], queryFn: curriculumApi.list });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [toDelete, setToDelete] = useState<CurriculumVersion | null>(null);
+  const remove = useMutation({
+    mutationFn: (id: number) => curriculumApi.remove(id),
+    onSuccess: async () => {
+      setToDelete(null);
+      await queryClient.invalidateQueries({ queryKey: ["curricula"] });
+      toast({ title: "O'quv reja o'chirildi" });
+    },
+    onError: (error) => toast({
+      title: "O'chirib bo'lmadi", variant: "destructive",
+      description: error instanceof Error ? error.message : "Xatolik",
+    }),
+  });
 
   const items = curricula.data ?? [];
   const years = useMemo(
@@ -187,6 +208,18 @@ export function AdminStudyPlans() {
             >
               <Users className="h-4 w-4" />
             </Button>
+            {row.original.status === "DRAFT" && canWrite && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive"
+                title="Qoralama rejani o'chirish"
+                aria-label="Qoralama rejani o'chirish"
+                onClick={() => setToDelete(row.original)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         ),
       },
@@ -211,6 +244,27 @@ export function AdminStudyPlans() {
 
   return (
     <div className="space-y-6 p-3 sm:p-6">
+      <AlertDialog open={toDelete != null} onOpenChange={(open) => { if (!open && !remove.isPending) setToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Qoralama rejani o'chirasizmi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete ? `${toDelete.name || toDelete.programName} (${toDelete.versionCode})` : ""} va uning fanlari
+              ro'yxatdan olib tashlanadi. Tasdiqlangan rejalar o'chirilmaydi, ular arxivlanadi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Bekor qilish</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={remove.isPending}
+              onClick={(event) => { event.preventDefault(); if (toDelete) remove.mutate(toDelete.id); }}
+            >
+              O'chirish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">O'quv rejalar</h1>

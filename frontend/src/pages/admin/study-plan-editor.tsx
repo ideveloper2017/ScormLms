@@ -93,11 +93,16 @@ const VALID_TABS = ["details", "subjects", "students", "approval"] as const;
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
 
+// Amal qilish davri va standart semestr sanalari (kuzgi 15.09–31.01, bahorgi 02.02–06.06); foydalanuvchi o'zgartiradi
 const yearDates = (academicYear: string) => {
   const parts = academicYear.split("-");
   return {
     validFrom: parts[0] ? parts[0] + "-09-01" : "",
     validUntil: parts[1] ? parts[1] + "-08-31" : "",
+    autumnStartsOn: parts[0] ? parts[0] + "-09-15" : "",
+    autumnEndsOn: parts[1] ? parts[1] + "-01-31" : "",
+    springStartsOn: parts[1] ? parts[1] + "-02-02" : "",
+    springEndsOn: parts[1] ? parts[1] + "-06-06" : "",
   };
 };
 
@@ -155,6 +160,10 @@ const editForm = (item: CurriculumVersion): SaveCurriculumVersionInput => ({
   validFrom: item.validFrom,
   validUntil: item.validUntil,
   qualification: item.qualification ?? "",
+  autumnStartsOn: item.autumnStartsOn ?? "",
+  autumnEndsOn: item.autumnEndsOn ?? "",
+  springStartsOn: item.springStartsOn ?? "",
+  springEndsOn: item.springEndsOn ?? "",
 });
 
 const statusText: Record<CurriculumStatus, string> = {
@@ -761,6 +770,41 @@ export function AdminStudyPlanEditor() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {([
+                      ["autumn", "Kuzgi semestr (1, 3, 5, 7)", "autumnStartsOn", "autumnEndsOn"],
+                      ["spring", "Bahorgi semestr (2, 4, 6, 8)", "springStartsOn", "springEndsOn"],
+                    ] as const).map(([key, label, startKey, endKey]) => (
+                      <fieldset key={key} className="space-y-2">
+                        <legend className="text-sm font-medium">{label}</legend>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="date"
+                            aria-label={`${label} boshlanishi`}
+                            disabled={!editable || !canWrite}
+                            min={form.validFrom}
+                            max={form.validUntil}
+                            value={form[startKey] ?? ""}
+                            onChange={(event) => setForm((current) => ({ ...current, [startKey]: event.target.value }))}
+                          />
+                          <Input
+                            type="date"
+                            aria-label={`${label} tugashi`}
+                            disabled={!editable || !canWrite}
+                            min={form.validFrom}
+                            max={form.validUntil}
+                            value={form[endKey] ?? ""}
+                            onChange={(event) => setForm((current) => ({ ...current, [endKey]: event.target.value }))}
+                          />
+                        </div>
+                      </fieldset>
+                    ))}
+                    <p className="text-xs text-muted-foreground sm:col-span-2">
+                      Reja tasdiqlanganda har bir semestr muddati shu sanalardan avtomatik yaratiladi (toq semestrlar kuzgi,
+                      juft semestrlar bahorgi). Muddatni keyin "Semestrlar" bo'limida alohida o'zgartirish mumkin.
+                    </p>
                   </div>
 
                   <div className="space-y-2">

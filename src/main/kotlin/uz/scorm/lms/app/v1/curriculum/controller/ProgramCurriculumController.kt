@@ -63,6 +63,13 @@ class ProgramCurriculumController(
     fun update(@PathVariable id: Long, @RequestBody request: SaveCurriculumVersionRequest, @CurrentUser user: User) =
         service.update(id, request, requireNotNull(user.id))
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun delete(@PathVariable id: Long, @CurrentUser user: User): ResponseEntity<Void> {
+        service.delete(id, requireNotNull(user.id))
+        return ResponseEntity.noContent().build()
+    }
+
     @PostMapping("/{id}/subjects")
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
     fun addSubject(@PathVariable id: Long, @RequestBody request: AddCurriculumSubjectRequest, @CurrentUser user: User) =

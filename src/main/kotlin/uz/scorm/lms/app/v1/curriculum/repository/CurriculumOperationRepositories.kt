@@ -7,6 +7,7 @@ import uz.scorm.lms.app.v1.curriculum.model.CurriculumStudentAssignment
 interface CurriculumSemesterPeriodRepository : JpaRepository<CurriculumSemesterPeriod, Long> {
     fun findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterNumberAsc(curriculumId: Long): List<CurriculumSemesterPeriod>
     fun findByCurriculumVersionIdAndSemesterNumberAndDeletedFalse(curriculumId: Long, semesterNumber: Int): CurriculumSemesterPeriod?
+    fun findAllByDeletedFalse(): List<CurriculumSemesterPeriod>
 }
 
 interface CurriculumStudentAssignmentRepository : JpaRepository<CurriculumStudentAssignment, Long> {

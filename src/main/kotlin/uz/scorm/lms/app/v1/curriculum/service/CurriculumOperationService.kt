@@ -20,6 +20,32 @@ class CurriculumOperationService(
     @Transactional(readOnly = true)
     fun periods(curriculumId: Long) = periods.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterNumberAsc(curriculumId).map(::periodDto)
 
+    /** Barcha rejalarning semestrlari va muddatlari (muddat kiritilmagan semestr ham chiqadi) */
+    @Transactional(readOnly = true)
+    fun semesterOverview(): List<CurriculumSemesterOverviewDto> {
+        val byCurriculum = periods.findAllByDeletedFalse().groupBy { requireNotNull(it.curriculumVersion.id) }
+        return curricula.findAllByDeletedFalseOrderByAcademicYearDescVersionCodeAsc().flatMap { curriculum ->
+            val curriculumId = requireNotNull(curriculum.id)
+            val bySemester = byCurriculum[curriculumId].orEmpty().associateBy { it.semesterNumber }
+            (1..curriculum.semesterCount).map { semester ->
+                val period = bySemester[semester]
+                CurriculumSemesterOverviewDto(
+                    curriculumId = curriculumId,
+                    curriculumName = curriculum.name.ifBlank { curriculum.program.name },
+                    versionCode = curriculum.versionCode,
+                    programName = curriculum.program.name,
+                    curriculumStatus = curriculum.status.name,
+                    academicYear = curriculum.academicYear,
+                    semesterNumber = semester,
+                    periodId = period?.id,
+                    startsOn = period?.startsOn,
+                    endsOn = period?.endsOn,
+                    active = period?.active,
+                )
+            }
+        }
+    }
+
     @Transactional
     fun savePeriod(curriculumId: Long, request: CurriculumSemesterPeriodRequest): CurriculumSemesterPeriodDto {
         val curriculum = requireCurriculum(curriculumId)

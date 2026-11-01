@@ -152,6 +152,13 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
             where membership.student.id = student.id
               and membership.curriculumSubject.id = :curriculumSubjectId
           )
+          and exists (
+            select assignment.id from CurriculumStudentAssignment assignment
+            where assignment.student.id = student.id
+              and assignment.curriculumVersion.id = :curriculumId
+              and assignment.semesterNumber = :semester
+              and assignment.deleted = false
+          )
     """)
     fun findAcademicSubjectGroupCandidates(
         @Param("programId") programId: Long,
@@ -159,6 +166,7 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
         @Param("semester") semester: Int,
         @Param("status") status: StudentStatus,
         @Param("curriculumSubjectId") curriculumSubjectId: Long,
+        @Param("curriculumId") curriculumId: Long,
         @Param("search") search: String,
         pageable: Pageable,
     ): Page<StudentProfile>

@@ -7,6 +7,14 @@ import uz.scorm.lms.app.v1.curriculum.dto.AssignCurriculumStudentsRequest
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSemesterPeriodRequest
 import uz.scorm.lms.app.v1.curriculum.service.CurriculumOperationService
 
+/** "Semestrlar" sahifasi: barcha rejalarning semestrlari va muddatlari */
+@RestController
+@RequestMapping("/api/v1/curricula/semester-periods")
+class CurriculumSemesterOverviewController(private val service: CurriculumOperationService) {
+    @GetMapping @PreAuthorize("hasAuthority('ACADEMIC_READ')")
+    fun overview() = service.semesterOverview()
+}
+
 @RestController
 @RequestMapping("/api/v1/curricula/{curriculumId}")
 class CurriculumOperationController(private val service: CurriculumOperationService) {

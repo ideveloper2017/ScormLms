@@ -10,10 +10,13 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.curriculum.dto.AddCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.ApproveCurriculumRequest
+import uz.scorm.lms.app.v1.curriculum.dto.AssignCurriculumStudentsRequest
+import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSemesterPeriodRequest
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumNormativeBasisType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumPlanItemType
+import uz.scorm.lms.app.v1.curriculum.service.CurriculumOperationService
 import uz.scorm.lms.app.v1.curriculum.service.ProgramCurriculumService
 import uz.scorm.lms.app.v1.courses.dto.CourseCreateRequest
 import uz.scorm.lms.app.v1.courses.dto.CourseEnrollmentRequest
@@ -46,6 +49,7 @@ import java.time.LocalDate
 class AcademicSubjectGroupServiceIntegrationTest {
     @Autowired private lateinit var service: AcademicSubjectGroupService
     @Autowired private lateinit var curricula: ProgramCurriculumService
+    @Autowired private lateinit var operations: CurriculumOperationService
     @Autowired private lateinit var programs: ProgramRepository
     @Autowired private lateinit var subjects: SubjectRepository
     @Autowired private lateinit var students: StudentRepository
@@ -84,7 +88,15 @@ class AcademicSubjectGroupServiceIntegrationTest {
         ), fixture.authorId)
         val eligible = student(fixture.program, "Mos", semester = 3)
         val wrongSemester = student(fixture.program, "Boshqa semestr", semester = 4)
+        val notAttached = student(fixture.program, "Rejaga biriktirilmagan", semester = 3)
 
+        // Rejaning 3-semestriga biriktirilmagan talaba nomzod emas va oqimga qo'shilmaydi
+        assertEquals(0, service.candidates(first.id, null, 0, 10).totalElements)
+        val unattached = assertThrows<IllegalArgumentException> {
+            service.assign(first.id, AssignAcademicSubjectGroupStudentsRequest(setOf(requireNotNull(notAttached.id))), fixture.authorId)
+        }
+        assertTrue(unattached.message.orEmpty().contains("o'quv rejaga"))
+        attach(fixture, eligible)
         assertEquals(1, service.candidates(first.id, null, 0, 10).totalElements)
         val assigned = service.assign(first.id, AssignAcademicSubjectGroupStudentsRequest(setOf(requireNotNull(eligible.id))), fixture.authorId)
         assertEquals(1, assigned.memberCount)
@@ -178,6 +190,7 @@ class AcademicSubjectGroupServiceIntegrationTest {
         assertEquals("DAST-T", course.groupName)
 
         val eligible = student(fixture.program, "Kurs talabasi", semester = 3)
+        attach(fixture, eligible)
         service.assign(group.id, AssignAcademicSubjectGroupStudentsRequest(setOf(requireNotNull(eligible.id))), fixture.authorId)
         val enrollment = enrollments.enroll(
             course.id,
@@ -218,7 +231,13 @@ class AcademicSubjectGroupServiceIntegrationTest {
             requireNotNull(subject.id), 3, CurriculumPlanItemType.REQUIRED,
         ), requireNotNull(author.id))
         curricula.approve(draft.id, ApproveCurriculumRequest("BUYRUQ-${System.nanoTime()}", LocalDate.now()), requireNotNull(approver.id))
-        return Fixture(program, subject, withSubject.subjects.single().id, requireNotNull(author.id))
+        operations.savePeriod(draft.id, CurriculumSemesterPeriodRequest(3, LocalDate.of(2026, 9, 1), LocalDate.of(2027, 1, 25), true))
+        return Fixture(program, subject, withSubject.subjects.single().id, requireNotNull(author.id), draft.id)
+    }
+
+    /** Talabani o'quv rejaning o'z semestriga biriktirish (fan oqimidan oldingi qadam) */
+    private fun attach(fixture: Fixture, student: StudentProfile) {
+        operations.assign(fixture.curriculumId, AssignCurriculumStudentsRequest(setOf(requireNotNull(student.id)), requireNotNull(student.semesterNumber)))
     }
 
     private fun curriculumRequest(programId: Long) = SaveCurriculumVersionRequest(
@@ -281,5 +300,6 @@ class AcademicSubjectGroupServiceIntegrationTest {
         val subject: Subject,
         val curriculumSubjectId: Long,
         val authorId: Long,
+        val curriculumId: Long,
     )
 }

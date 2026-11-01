@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.academicperiod.service.AcademicPeriodService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
+import uz.scorm.lms.app.v1.curriculum.repository.CurriculumStudentAssignmentRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.model.StudentStatus
@@ -38,6 +39,7 @@ class AcademicSubjectGroupService(
     private val teachers: TeacherRepository,
     private val academicPeriods: AcademicPeriodService,
     private val auditService: AuditService,
+    private val curriculumAssignments: CurriculumStudentAssignmentRepository,
 ) {
     @Transactional(readOnly = true)
     fun list(
@@ -53,12 +55,13 @@ class AcademicSubjectGroupService(
     @Transactional(readOnly = true)
     fun get(id: Long): AcademicSubjectGroupDto = toDto(requireGroup(id))
 
+    /** Kurs ochish mumkin bo'lgan fan oqimlari: o'qituvchiga — o'ziga biriktirilganlari, admin/metodistga — barcha faollari */
     @Transactional(readOnly = true)
-    fun teachingOptions(userId: Long): List<AcademicSubjectGroupDto> = teacherAssignments
-        .findAllByTeacherUserIdAndActiveTrueOrderBySubjectGroupCodeAsc(userId)
-        .map { it.subjectGroup }
-        .filter { it.active && runCatching { requireOperational(it) }.isSuccess }
-        .map(::toDto)
+    fun teachingOptions(userId: Long, allGroups: Boolean = false): List<AcademicSubjectGroupDto> {
+        val options = if (allGroups) groups.search(null, null, null, null, true)
+        else teacherAssignments.findAllByTeacherUserIdAndActiveTrueOrderBySubjectGroupCodeAsc(userId).map { it.subjectGroup }
+        return options.filter { it.active && runCatching { requireOperational(it) }.isSuccess }.map(::toDto)
+    }
 
     @Transactional(readOnly = true)
     fun requireTeachingAssignment(groupId: Long, userId: Long): AcademicSubjectGroup {
@@ -152,6 +155,7 @@ class AcademicSubjectGroupService(
             semester = item.semester,
             status = StudentStatus.ACTIVE,
             curriculumSubjectId = requireNotNull(item.id),
+            curriculumId = requireNotNull(curriculum.id),
             search = normalizedSearch,
             pageable = PageRequest.of(page, size, Sort.by("lastName", "firstName", "id")),
         )
@@ -261,7 +265,11 @@ class AcademicSubjectGroupService(
         require(student.semesterNumber == item.semester) { "Talaba semestri fan guruhiga mos emas: ${student.studentNumber}" }
         require(!memberships.existsByStudentIdAndCurriculumSubjectId(
             requireNotNull(student.id), requireNotNull(item.id),
-        )) { "Talaba ushbu curriculum fani bo'yicha boshqa guruhga biriktirilgan: ${student.studentNumber}" }
+        )) { "Talaba ushbu o'quv reja fani bo'yicha boshqa guruhga biriktirilgan: ${student.studentNumber}" }
+        // Zanjir: talaba avval o'quv rejaning shu semestriga biriktiriladi, keyin fan oqimiga
+        require(curriculumAssignments.existsByCurriculumVersionIdAndStudentIdAndSemesterNumberAndDeletedFalse(
+            requireNotNull(curriculum.id), requireNotNull(student.id), item.semester,
+        )) { "Talaba avval o'quv rejaga (${item.semester}-semestr) biriktirilishi kerak: ${student.studentNumber}" }
     }
 
     private fun requireOperational(group: AcademicSubjectGroup) {

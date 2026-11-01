@@ -23,7 +23,9 @@ class CourseEnrollmentCandidateService(private val em: EntityManager, private va
         require(page in 0..10000) { "Sahifa raqami noto'g'ri" }
         require(groupId == null || groupId > 0) { "Guruh identifikatori noto'g'ri" }
         val course = access.requireManage(courseId, actorId, manageAll)
-        val programId = course.subject?.program?.id
+        // Fan oqimiga bog'langan kursda dastur — o'quv rejadan (umumiy katalog fanining o'z dasturi yo'q)
+        val programId = course.subjectGroup?.curriculumSubject?.curriculumVersion?.program?.id
+            ?: course.subject?.program?.id
             ?: return EnrollmentCandidates(emptyList(), emptyList(), page, 0, false)
         val groups = em.createQuery("select g from Group g where g.deleted = false and g.active = true and g.program.id = :programId order by g.name", Group::class.java)
             .setParameter("programId", programId).resultList

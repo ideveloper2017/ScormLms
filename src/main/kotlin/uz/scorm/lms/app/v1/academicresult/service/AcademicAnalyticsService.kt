@@ -75,21 +75,24 @@ class AcademicAnalyticsService(
                 val course = session.course
                 val courseEnrollments = byCourse[requireNotNull(course.id)].orEmpty()
                 val results = resultsBySession[requireNotNull(session.id)].orEmpty()
+                // Yil va semestr — fan oqimi orqali o'quv rejadan; rejasiz (eski) kursda — talaba yozilishidan
+                val planItem = course.subjectGroup?.curriculumSubject
                 AcademicStatementRowDto(
                     id = requireNotNull(session.id),
                     topic = session.title,
                     subjectId = course.subject?.id,
                     subject = course.subject?.name ?: course.subjectName ?: course.title.orEmpty(),
                     group = course.groupName ?: course.subjectGroup?.name.orEmpty(),
-                    academicYear = courseEnrollments.firstOrNull()?.academicYear.orEmpty(),
-                    semester = courseEnrollments.firstOrNull()?.semester ?: session.semesterId?.toInt(),
+                    academicYear = planItem?.curriculumVersion?.academicYear ?: courseEnrollments.firstOrNull()?.academicYear.orEmpty(),
+                    semester = planItem?.semester ?: courseEnrollments.firstOrNull()?.semester,
                     controlType = if (isFinal) "YAKUNIY" else "ORALIQ",
                     statement = if (isFinal) "Yakuniy qaydnoma" else "Oraliq qaydnoma",
                     status = session.status.name,
                     finalStatement = isFinal,
                     addedDate = (session.createdAt?.atZone(zone)?.toLocalDate() ?: session.examDate),
                     resultCount = results.size,
-                    passedCount = results.count { passingPolicy.passed(it.enrollment, it.percentage) },
+                    // Bitta talabadagi reja ziddiyati butun ro'yxatni yiqitmasin: bunday natija "o'tmagan" sanaladi
+                    passedCount = results.count { runCatching { passingPolicy.passed(it.enrollment, it.percentage) }.getOrDefault(false) },
                     averageScore = results.map { it.percentage }.averageOrNull()?.let(::twoDecimals),
                 )
             }
@@ -128,8 +131,9 @@ class AcademicAnalyticsService(
             val assessed = total != null
             val student = enrollment.student
             val course = enrollment.course
-            val threshold = passingPolicy.threshold(enrollment)
-            val mark = total?.let { if (it < threshold) 2 else mark(it).coerceAtLeast(3) }
+            // Talabaga turli o'tish balli rejalar biriktirilgan bo'lsa — baho chiqarilmaydi (ro'yxat yiqilmaydi)
+            val threshold = runCatching { passingPolicy.threshold(enrollment) }.getOrNull()
+            val mark = total?.let { t -> threshold?.let { if (t < it) 2 else mark(t).coerceAtLeast(3) } }
             val lastQuiz = attempts.mapNotNull { it.submittedAt ?: it.startedAt }.maxOrNull()
             val assessedAt = listOfNotNull(exam?.gradingDate, lastQuiz).maxOrNull()
             StudentAcademicResultDto(
@@ -151,9 +155,9 @@ class AcademicAnalyticsService(
                 finalScore = final,
                 totalScore = total,
                 mark = mark,
-                letterGrade = total?.let { GradeCalculation.letterGrade(it, threshold) },
-                gpaPoint = total?.let { GradeCalculation.gpaPoint(it, threshold) },
-                passed = assessed && requireNotNull(total) >= threshold,
+                letterGrade = total?.let { t -> threshold?.let { GradeCalculation.letterGrade(t, it) } },
+                gpaPoint = total?.let { t -> threshold?.let { GradeCalculation.gpaPoint(t, it) } },
+                passed = assessed && threshold != null && requireNotNull(total) >= threshold,
                 hemisStatus = when {
                     student.hemisId == null -> "NOT_LINKED"
                     student.hemisSyncedAt == null -> "PENDING"

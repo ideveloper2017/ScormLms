@@ -32,7 +32,11 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
     const value = Number(searchParams.get("curriculumId"));
     return Number.isInteger(value) && value > 0 ? value : 0;
   });
-  const [semester, setSemester] = useState(1);
+  // "Semestrlar" sahifasidan ?semester=N bilan kelinsa, shu semestr ochiladi
+  const [semester, setSemester] = useState(() => {
+    const value = Number(searchParams.get("semester"));
+    return Number.isInteger(value) && value > 0 ? value : 1;
+  });
   const [startsOn, setStartsOn] = useState("");
   const [endsOn, setEndsOn] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);

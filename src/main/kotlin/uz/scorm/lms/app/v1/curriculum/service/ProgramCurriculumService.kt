@@ -28,6 +28,8 @@ import uz.scorm.lms.app.v1.curriculum.model.CurriculumStatus
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumComponent
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumSubject
 import uz.scorm.lms.app.v1.curriculum.model.ProgramCurriculumVersion
+import uz.scorm.lms.app.v1.curriculum.model.CurriculumSemesterPeriod
+import uz.scorm.lms.app.v1.curriculum.repository.CurriculumSemesterPeriodRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumComponentRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumScheduleRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
@@ -57,6 +59,7 @@ class ProgramCurriculumService(
     private val auditService: AuditService,
     private val componentRepository: ProgramCurriculumComponentRepository,
     private val scheduleRepository: ProgramCurriculumScheduleRepository,
+    private val periodRepository: CurriculumSemesterPeriodRepository,
 ) {
     @Transactional(readOnly = true)
     fun list(): List<CurriculumVersionDto> =
@@ -148,7 +151,7 @@ class ProgramCurriculumService(
             validUntil = request.validUntil,
             createdByUser = requireUser(actorId),
             qualification = qualificationOf(request.qualification),
-        ))
+        ).also { applySeasons(it, request) })
         auditService.logAction(
             "CURRICULUM_VERSION_CREATED",
             actorId,
@@ -173,7 +176,7 @@ class ProgramCurriculumService(
         }
         if (request.versionCode.trim() != version.versionCode) {
             require(!versionRepository.existsByProgramIdAndVersionCodeAndDeletedFalse(request.programId, request.versionCode.trim())) {
-                "Ushbu dasturda curriculum versiya kodi allaqachon mavjud"
+                "Ushbu dasturda o'quv reja versiya kodi allaqachon mavjud"
             }
         }
         version.versionCode = request.versionCode.trim()
@@ -193,9 +196,24 @@ class ProgramCurriculumService(
         version.validFrom = request.validFrom
         version.validUntil = request.validUntil
         version.qualification = qualificationOf(request.qualification)
+        applySeasons(version, request)
         versionRepository.save(version)
         auditService.logAction("CURRICULUM_VERSION_UPDATED", actorId, "curriculum=$id; version=${version.versionCode}")
         return toDto(version)
+    }
+
+    /**
+     * Qoralama o'quv rejani o'chirish (yumshoq). Qoralamaga talaba ham, fan oqimi ham biriktirilmaydi, shuning uchun
+     * bog'liq ma'lumot yo'q. Versiya kodi bo'shatiladi — shu kod bilan reja qayta yaratilishi mumkin.
+     */
+    @Transactional
+    fun delete(id: Long, actorId: Long) {
+        val version = requireDraft(id)
+        val code = version.versionCode
+        version.versionCode = "$code~o'chirilgan-$id".take(100)
+        version.deleted = true
+        versionRepository.save(version)
+        auditService.logAction("CURRICULUM_VERSION_DELETED", actorId, "curriculum=$id; version=$code")
     }
 
     @Transactional
@@ -372,6 +390,7 @@ class ProgramCurriculumService(
         version.approvedAt = Instant.now()
         version.approvedByUser = actor
         versionRepository.save(version)
+        createSemesterPeriods(version)
         auditService.logAction(
             "CURRICULUM_VERSION_APPROVED",
             actorId,
@@ -393,6 +412,35 @@ class ProgramCurriculumService(
         return toDto(version)
     }
 
+    private fun validateSeason(label: String, startsOn: LocalDate?, endsOn: LocalDate?, request: SaveCurriculumVersionRequest) {
+        if (startsOn == null && endsOn == null) return
+        require(startsOn != null && endsOn != null) { "$label semestrning boshlanish va tugash sanasi birga kiritiladi" }
+        require(endsOn.isAfter(startsOn)) { "$label semestr tugash sanasi boshlanishidan keyin bo'lishi kerak" }
+        require(!startsOn.isBefore(request.validFrom) && !endsOn.isAfter(request.validUntil)) {
+            "$label semestr sanalari o'quv reja amal qilish muddatida bo'lishi kerak"
+        }
+    }
+
+    private fun applySeasons(version: ProgramCurriculumVersion, request: SaveCurriculumVersionRequest) {
+        version.autumnStartsOn = request.autumnStartsOn
+        version.autumnEndsOn = request.autumnEndsOn
+        version.springStartsOn = request.springStartsOn
+        version.springEndsOn = request.springEndsOn
+    }
+
+    /** Tasdiqlashda: kuzgi sanalar toq, bahorgi — juft semestrlarga; qo'lda kiritilgan muddat o'zgartirilmaydi */
+    private fun createSemesterPeriods(version: ProgramCurriculumVersion) {
+        val existing = periodRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterNumberAsc(requireNotNull(version.id))
+            .map { it.semesterNumber }.toSet()
+        (1..version.semesterCount).filter { it !in existing }.forEach { semester ->
+            val (startsOn, endsOn) = if (semester % 2 == 1) version.autumnStartsOn to version.autumnEndsOn
+            else version.springStartsOn to version.springEndsOn
+            if (startsOn == null || endsOn == null) return@forEach
+            if (runCatching { academicPeriodService.requireActiveSemester(semester) }.isFailure) return@forEach
+            periodRepository.save(CurriculumSemesterPeriod(version, semester, version.academicYear, startsOn, endsOn))
+        }
+    }
+
     private fun validate(request: SaveCurriculumVersionRequest, ratingSystem: RatingSystem) {
         require(request.name.trim().length in 2..500) { "O'quv reja nomi 2-500 belgi bo'lishi kerak" }
         require(request.educationLanguage in setOf("uz", "uz-Latn", "uz-Cyrl", "kaa", "ru", "en")) {
@@ -412,9 +460,14 @@ class ProgramCurriculumService(
         val academicFrom = LocalDate.of(firstYear, 9, 1)
         val academicUntil = LocalDate.of(secondYear, 8, 31)
         require(!request.validFrom.isAfter(academicFrom) && !request.validUntil.isBefore(academicUntil)) {
-            "Curriculum amal qilish davri butun o'quv yilini qoplashi kerak"
+            "O'quv reja amal qilish davri butun o'quv yilini qoplashi kerak"
         }
         require(!request.validUntil.isBefore(request.validFrom)) { "O'quv reja amal qilish muddati noto'g'ri" }
+        validateSeason("Kuzgi", request.autumnStartsOn, request.autumnEndsOn, request)
+        validateSeason("Bahorgi", request.springStartsOn, request.springEndsOn, request)
+        if (request.autumnEndsOn != null && request.springStartsOn != null) {
+            require(request.springStartsOn.isAfter(request.autumnEndsOn)) { "Bahorgi semestr kuzgi semestr tugagandan keyin boshlanishi kerak" }
+        }
         require(request.standardReference.trim().length <= 1000) { "Standart rekviziti 1000 belgidan oshmasligi kerak" }
         require(request.qualificationRequirementsReference.trim().length <= 1000) {
             "Malaka talablari rekviziti 1000 belgidan oshmasligi kerak"
@@ -509,6 +562,8 @@ class ProgramCurriculumService(
             archivedAt = version.archivedAt,
             createdByUserId = version.createdByUser.id,
             qualification = version.qualification, components = components, schedule = schedule,
+            autumnStartsOn = version.autumnStartsOn, autumnEndsOn = version.autumnEndsOn,
+            springStartsOn = version.springStartsOn, springEndsOn = version.springEndsOn,
         )
     }
 
