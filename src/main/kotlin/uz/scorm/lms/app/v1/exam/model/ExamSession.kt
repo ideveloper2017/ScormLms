@@ -66,6 +66,11 @@ class ExamSession(
     @Column(name = "duration_minutes", nullable = false)
     var durationMinutes: Int = 120,
 
+    /** Oraliq (ON) yoki yakuniy (YN) nazorat; qaydnomalar shu bo'yicha ajratiladi */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "control_type", nullable = false, length = 20)
+    var controlType: ExamControlType = ExamControlType.FINAL,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     var status: ExamSessionStatus = ExamSessionStatus.DRAFT,
@@ -79,6 +84,11 @@ class ExamSession(
 
 enum class ExamType {
     WRITTEN, ORAL, PRACTICAL, HYBRID
+}
+
+/** MIDTERM — oraliq nazorat (ON), FINAL — yakuniy nazorat (YN) */
+enum class ExamControlType {
+    MIDTERM, FINAL
 }
 
 enum class ExamSessionStatus {

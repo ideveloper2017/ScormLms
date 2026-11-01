@@ -18,6 +18,7 @@ import uz.scorm.lms.app.v1.courses.service.CourseService
 import uz.scorm.lms.app.v1.exam.dto.*
 import uz.scorm.lms.app.v1.exam.model.AppealStatus
 import uz.scorm.lms.app.v1.exam.model.AttendanceStatus
+import uz.scorm.lms.app.v1.exam.model.ExamControlType
 import uz.scorm.lms.app.v1.exam.model.ExamType
 import uz.scorm.lms.app.v1.exam.service.ExamAttendanceService
 import uz.scorm.lms.app.v1.exam.service.ExamResultService
@@ -37,6 +38,7 @@ import java.time.LocalTime
 @Transactional
 class ExamWorkflowIntegrationTest {
     @Autowired private lateinit var statements: uz.scorm.lms.app.v1.academicresult.service.AcademicStatementService
+    @Autowired private lateinit var analytics: uz.scorm.lms.app.v1.academicresult.service.AcademicAnalyticsService
     @Autowired private lateinit var sessions: ExamSessionService
     @Autowired private lateinit var attendance: ExamAttendanceService
     @Autowired private lateinit var results: ExamResultService
@@ -146,6 +148,33 @@ class ExamWorkflowIntegrationTest {
         attendance.record(session.id.toLong(), enrollment.id!!, RecordAttendanceRequest(AttendanceStatus.ABSENT), teacher.id!!, false)
         assertThrows(IllegalArgumentException::class.java) {
             results.record(session.id.toLong(), enrollment.id!!, RecordExamResultRequest(enrollment.id!!, BigDecimal("80")), teacher.id!!, false)
+        }
+    }
+
+    @Test
+    fun `oraliq va yakuniy nazorat qaydnomalarda nazorat turi bo'yicha ajratiladi`() {
+        val teacher = user("exam-control-teacher")
+        val student = student("50000000000003", "ST-EX-003", "exam-control-student")
+        val course = publishedCourse(teacher, "Nazorat turi kursi")
+        enrollmentService.enroll(course.id, CourseEnrollmentRequest(setOf(student.id!!)), teacher.id!!, false)
+        val midterm = sessions.createExamSession(CreateExamSessionRequest(course.id, title = "1-oraliq nazorat",
+            examDate = LocalDate.now(), examTime = LocalTime.NOON, location = "301-xona", controlType = ExamControlType.MIDTERM), teacher.id!!, false)
+        val finalSession = sessions.createExamSession(CreateExamSessionRequest(course.id, title = "Yakuniy nazorat",
+            examDate = LocalDate.now(), examTime = LocalTime.NOON, location = "302-xona"), teacher.id!!, false)
+        assertEquals("MIDTERM", midterm.controlType)
+        assertEquals("FINAL", finalSession.controlType)
+
+        val oraliq = analytics.statements(false).single { it.id == midterm.id.toLong() }
+        assertEquals("ORALIQ", oraliq.controlType)
+        assertEquals("Oraliq qaydnoma", oraliq.statement)
+        assertTrue(analytics.statements(true).any { it.id == finalSession.id.toLong() && it.controlType == "YAKUNIY" })
+        assertTrue(analytics.statements(true).none { it.id == midterm.id.toLong() })
+
+        val changed = sessions.updateExamSession(midterm.id.toLong(), UpdateExamSessionRequest(controlType = ExamControlType.FINAL), teacher.id!!, false)
+        assertEquals("FINAL", changed.controlType)
+        sessions.publishExamSession(finalSession.id.toLong(), null, teacher.id!!, false)
+        assertThrows(IllegalArgumentException::class.java) {
+            sessions.updateExamSession(finalSession.id.toLong(), UpdateExamSessionRequest(controlType = ExamControlType.MIDTERM), teacher.id!!, false)
         }
     }
 

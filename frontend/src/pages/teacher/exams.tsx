@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { qk } from '@/lib/query-keys';
 import { teacherPortalApi } from '@/services/api/teacher-portal-api';
-import { teacherExamApi, type ExamAttendanceStatus, type ExamAppeal } from '@/services/api/teacher-exam-api';
+import { controlTypeLabels, teacherExamApi, type ExamAttendanceStatus, type ExamAppeal, type ExamControlType } from '@/services/api/teacher-exam-api';
 
 const today = new Date().toISOString().slice(0, 10);
 const statusLabel: Record<string, string> = { DRAFT: 'Draft', PUBLISHED: "E'lon qilingan", ONGOING: 'Davom etmoqda', COMPLETED: 'Yakunlangan' };
@@ -42,6 +42,7 @@ export function TeacherExams() {
   const [location, setLocation] = useState('');
   const [examType, setExamType] = useState<'WRITTEN' | 'ORAL' | 'PRACTICAL' | 'HYBRID'>('WRITTEN');
   const [duration, setDuration] = useState('120');
+  const [controlType, setControlType] = useState<ExamControlType>('FINAL');
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, ExamAttendanceStatus>>({});
   const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
 
@@ -58,8 +59,8 @@ export function TeacherExams() {
   const notifyError = (error: Error) => toast({ variant: 'destructive', title: 'Amal bajarilmadi', description: error.message });
   const action = useMutation({ mutationFn: async ({ id, kind }: { id: string; kind: 'publish' | 'start' | 'complete' | 'remove' }) => { if (kind === 'remove') await teacherExamApi.remove(id); else await teacherExamApi[kind](id); }, onSuccess: refresh, onError: notifyError });
   const create = useMutation({
-    mutationFn: () => teacherExamApi.create({ courseId: Number(courseId), title: title.trim(), description: description.trim() || undefined, examDate, examTime, location: location.trim(), examType, durationMinutes: Number(duration) }),
-    onSuccess: async () => { setTitle(''); setDescription(''); setLocation(''); await refresh(); toast({ title: 'Yakuniy nazorat sessiyasi yaratildi' }); }, onError: notifyError,
+    mutationFn: () => teacherExamApi.create({ courseId: Number(courseId), title: title.trim(), description: description.trim() || undefined, examDate, examTime, location: location.trim(), examType, durationMinutes: Number(duration), controlType }),
+    onSuccess: async () => { setTitle(''); setDescription(''); setLocation(''); await refresh(); toast({ title: `${controlTypeLabels[controlType]} sessiyasi yaratildi` }); }, onError: notifyError,
   });
   const mark = useMutation({ mutationFn: ({ enrollmentId, status }: { enrollmentId: string; status: ExamAttendanceStatus }) => teacherExamApi.recordAttendance(selectedId, enrollmentId, status), onSuccess: refresh, onError: notifyError });
   const grade = useMutation({ mutationFn: ({ enrollmentId, score }: { enrollmentId: string; score: number }) => teacherExamApi.recordResult(selectedId, enrollmentId, score), onSuccess: refresh, onError: notifyError });
@@ -69,8 +70,9 @@ export function TeacherExams() {
   const selected = sessions.data?.find(item => item.id === selectedId);
   const resultByEnrollment = new Map((results.data ?? []).map(item => [item.enrollmentId, item]));
   return <div className="p-3 sm:p-6 space-y-6">
-    <div><h1 className="text-2xl font-bold">Yakuniy nazorat</h1><p className="text-muted-foreground">Auditoriya, vaqt, tasdiqlangan davomat, baho va apellyatsiyani bitta oqimda boshqaring.</p></div>
+    <div><h1 className="text-2xl font-bold">Oraliq va yakuniy nazorat</h1><p className="text-muted-foreground">Auditoriya, vaqt, tasdiqlangan davomat, baho va apellyatsiyani bitta oqimda boshqaring.</p></div>
     <Card><CardHeader><CardTitle className="text-base flex gap-2"><Plus className="h-4 w-4" />Yangi sessiya</CardTitle><CardDescription>Sessiya e'lon qilinganda kursdagi talabalar ro'yxati avtomatik muzlatiladi.</CardDescription></CardHeader><CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <Select value={controlType} onValueChange={value => setControlType(value as ExamControlType)}><SelectTrigger aria-label="Nazorat turi"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="MIDTERM">{controlTypeLabels.MIDTERM}</SelectItem><SelectItem value="FINAL">{controlTypeLabels.FINAL}</SelectItem></SelectContent></Select>
       <Select value={courseId} onValueChange={setCourseId}><SelectTrigger><SelectValue placeholder="Kurs" /></SelectTrigger><SelectContent>{(courses.data ?? []).filter(c => c.status !== 'archived').map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select>
       <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Nazorat nomi" /><Input value={location} onChange={e => setLocation(e.target.value)} placeholder="Bino va auditoriya" />
       <Input type="date" min={today} value={examDate} onChange={e => setExamDate(e.target.value)} /><Input type="time" value={examTime} onChange={e => setExamTime(e.target.value)} /><Input type="number" min="1" max="480" value={duration} onChange={e => setDuration(e.target.value)} placeholder="Daqiqa" />
@@ -79,7 +81,7 @@ export function TeacherExams() {
       <Button disabled={!courseId || !title.trim() || !location.trim() || !examDate || !examTime || create.isPending} onClick={() => create.mutate()}><Plus className="h-4 w-4 mr-2" />Yaratish</Button>
     </CardContent></Card>
     <div className="grid lg:grid-cols-2 gap-4">{(sessions.data ?? []).map(session => <Card key={session.id} className={selectedId === session.id ? 'border-primary' : ''}><CardContent className="p-4 space-y-3">
-      <div className="flex justify-between gap-3"><div><div className="font-semibold">{session.title}</div><div className="text-sm text-muted-foreground">{session.courseTitle} · {session.examDate} {session.examTime} · {session.location}</div>{!session.curriculumLinked && <div className="flex items-center gap-1 text-xs text-amber-600 mt-1"><AlertTriangle className="h-3 w-3" />Kurs tasdiqlangan o'quv rejaga bog'lanmagan (fan oqimi yo'q)</div>}</div><Badge>{statusLabel[session.status]}</Badge></div>
+      <div className="flex justify-between gap-3"><div><div className="font-semibold">{session.title}</div><div className="text-sm text-muted-foreground">{session.courseTitle} · {session.examDate} {session.examTime} · {session.location}</div>{!session.curriculumLinked && <div className="flex items-center gap-1 text-xs text-amber-600 mt-1"><AlertTriangle className="h-3 w-3" />Kurs tasdiqlangan o'quv rejaga bog'lanmagan (fan oqimi yo'q)</div>}</div><div className="flex shrink-0 flex-col items-end gap-1"><Badge>{statusLabel[session.status]}</Badge><Badge variant="outline" title={controlTypeLabels[session.controlType ?? 'FINAL']}>{session.controlType === 'MIDTERM' ? 'ON' : 'YN'}</Badge></div></div>
       <div className="flex gap-3 text-sm"><span><Users className="inline h-4 w-4" /> {session.registeredCount}</span><span className="text-green-600">Kelgan: {session.presentCount}</span><span className="text-red-600">Kelmagan: {session.absentCount}</span></div>
       <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedId(session.id)}><ClipboardCheck className="h-4 w-4 mr-1" />Ro'yxat</Button>{session.status === 'DRAFT' && <><Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'publish' })}><CalendarCheck className="h-4 w-4 mr-1" />E'lon qilish</Button><Button size="icon" variant="ghost" className="text-destructive" onClick={() => action.mutate({ id: session.id, kind: 'remove' })}><Trash2 className="h-4 w-4" /></Button></>}{session.status === 'PUBLISHED' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'start' })}><Play className="h-4 w-4 mr-1" />Boshlash</Button>}{session.status === 'ONGOING' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'complete' })}><CheckCircle2 className="h-4 w-4 mr-1" />Yakunlash</Button>}</div>
     </CardContent></Card>)}</div>

@@ -54,20 +54,21 @@ describe("Everest referensidagi sahifalar", () => {
     expect(listStudentMovements).toHaveBeenCalledWith(expect.objectContaining({ eventType: "REINSTATEMENT" }));
   });
 
-  it("nazoratlar guruh, yil va semestr bo'yicha fanlarga yig'iladi", async () => {
-    const row = (id: number, group: string, subject: string, finalStatement: boolean): AcademicStatementRow => ({
-      id, topic: "t", subject, group, academicYear: "2026-2027", semester: 1, controlType: "", statement: "",
-      status: finalStatement ? "COMPLETED" : "PUBLISHED", finalStatement, addedDate: "2026-10-01", resultCount: 0, passedCount: 0,
+  it("nazoratlar guruh, yil va semestr bo'yicha fanlarga ON/YN kesimida yig'iladi", async () => {
+    const row = (id: number, group: string, subject: string, finalStatement: boolean, completed: boolean): AcademicStatementRow => ({
+      id, topic: "t", subject, group, academicYear: "2026-2027", semester: 1, controlType: finalStatement ? "YAKUNIY" : "ORALIQ",
+      statement: "", status: completed ? "COMPLETED" : "PUBLISHED", finalStatement, addedDate: "2026-10-01", resultCount: 0, passedCount: 0,
     });
     vi.mocked(listAcademicStatements).mockResolvedValue([
-      row(1, "KI-26", "Fizika", true), row(2, "KI-26", "Fizika", false), row(3, "KI-26", "Dasturlash", true), row(4, "DI-26", "Fizika", true),
+      row(1, "KI-26", "Fizika", false, true), row(2, "KI-26", "Fizika", false, false), row(3, "KI-26", "Fizika", true, false),
+      row(4, "KI-26", "Dasturlash", true, true), row(5, "DI-26", "Fizika", false, true),
     ]);
     wrap(<ControlsOverview />);
 
     const ki = (await screen.findByText("KI-26")).closest("tr") as HTMLElement;
-    expect(within(ki).getByText("Fizika · 1/2")).toBeInTheDocument();
-    expect(within(ki).getByText("Dasturlash · 1/1")).toBeInTheDocument();
-    expect(within(screen.getByText("DI-26").closest("tr") as HTMLElement).getByText("Fizika · 1/1")).toBeInTheDocument();
+    expect(within(ki).getByText("Fizika · ON 1/2 · YN 0/1")).toBeInTheDocument();
+    expect(within(ki).getByText("Dasturlash · ON — · YN 1/1")).toBeInTheDocument();
+    expect(within(screen.getByText("DI-26").closest("tr") as HTMLElement).getByText("Fizika · ON 1/1 · YN —")).toBeInTheDocument();
     expect(listAcademicStatements).toHaveBeenCalledWith();
   });
 
