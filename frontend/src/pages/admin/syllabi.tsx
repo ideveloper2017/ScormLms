@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SyllabusCatalog } from "@/components/admin/syllabus-catalog";
 import {
   CreateSyllabusDialog, CurriculumSyllabusWorkflow, CurriculumTopicsDialog, LinkSyllabusDialog,
 } from "@/components/admin/curriculum-syllabus-link";
@@ -20,10 +22,30 @@ import { curriculumApi, type CurriculumSubject } from "@/services/api/curriculum
 const selectClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 
 /**
- * O'quv dasturi: o'quv reja tanlanadi, uning har bir faniga o'quv dasturi yaratiladi (yoki mavjudi biriktiriladi)
- * va mavzulari kiritiladi. O'quv rejaning o'zi (fanlar, kredit, soatlar) "O'quv reja" bo'limida.
+ * O'quv dasturi: "Rejalar bo'yicha" — reja fanlariga dastur va mavzular; "Barcha dasturlar" — katalog (Everest kabi).
  */
 export function AdminSyllabi() {
+  const { user } = useAuth();
+  const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
+  return (
+    <div className="space-y-4 p-3 sm:p-6">
+      <Tabs defaultValue="plans">
+        <TabsList>
+          <TabsTrigger value="plans">Rejalar bo'yicha</TabsTrigger>
+          <TabsTrigger value="catalog">Barcha dasturlar</TabsTrigger>
+        </TabsList>
+        <TabsContent value="plans" className="mt-4"><PlanSyllabi /></TabsContent>
+        <TabsContent value="catalog" className="mt-4"><SyllabusCatalog canWrite={canWrite} /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/**
+ * O'quv reja tanlanadi, uning har bir faniga o'quv dasturi yaratiladi (yoki mavjudi biriktiriladi) va mavzulari
+ * kiritiladi. O'quv rejaning o'zi (fanlar, kredit, soatlar) "O'quv reja" bo'limida.
+ */
+function PlanSyllabi() {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
   const queryClient = useQueryClient();
@@ -48,7 +70,7 @@ export function AdminSyllabi() {
   const reload = () => queryClient.invalidateQueries({ queryKey: ["curricula", curriculumId] });
 
   return (
-    <div className="space-y-6 p-3 sm:p-6">
+    <div className="space-y-6">
       {creating && curriculumId != null && (
         <CreateSyllabusDialog curricula={options} curriculumId={curriculumId} itemId={creating.itemId}
           onClose={() => setCreating(null)}

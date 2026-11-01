@@ -251,6 +251,7 @@ export interface CurriculumStudentQuery {
   status?: CurriculumStudentStatus;
   page?: number;
   size?: number;
+  groupId?: number;
 }
 
 export interface CurriculumSemesterPeriod {
@@ -275,6 +276,15 @@ export interface CurriculumStudentAssignment {
   startsOn: string;
   endsOn: string;
   active: boolean;
+  groupName?: string | null;
+  curriculumName?: string | null;
+}
+
+export interface CurriculumAssignmentSearch {
+  academicYear?: string;
+  curriculumId?: number;
+  semester?: number;
+  groupId?: number;
 }
 
 export interface SaveCurriculumSemesterPeriodInput {
@@ -405,6 +415,10 @@ export const curriculumApi = {
   ).data,
   listStudentAssignments: async (id: number) => (
     await api.get<CurriculumStudentAssignment[]>(`/curricula/${id}/student-assignments`)
+  ).data,
+  /** Barcha rejalar bo'yicha biriktirilgan talabalar */
+  searchStudentAssignments: async (query: CurriculumAssignmentSearch = {}) => (
+    await api.get<CurriculumStudentAssignment[]>("/curricula/student-assignments", { params: query })
   ).data,
   assignStudents: async (id: number, studentIds: number[], semesterNumber: number) => (
     await api.post<CurriculumStudentAssignment[]>(`/curricula/${id}/student-assignments`, { studentIds, semesterNumber })

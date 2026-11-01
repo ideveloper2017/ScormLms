@@ -12,6 +12,7 @@ import uz.scorm.lms.app.v1.curriculum.repository.CurriculumSemesterPeriodReposit
 import uz.scorm.lms.app.v1.curriculum.repository.CurriculumStudentAssignmentRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
 import uz.scorm.lms.app.v1.curriculum.service.CurriculumOperationService
+import uz.scorm.lms.app.v1.group.repository.GroupRepository
 import uz.scorm.lms.app.v1.student.repository.StudentRepository
 
 class CurriculumOperationServiceTest {
@@ -20,7 +21,8 @@ class CurriculumOperationServiceTest {
     private val assignments = mockk<CurriculumStudentAssignmentRepository>()
     private val students = mockk<StudentRepository>()
     private val academicPeriods = mockk<AcademicPeriodService>()
-    private val service = CurriculumOperationService(curricula, periods, assignments, students, academicPeriods)
+    private val groups = mockk<GroupRepository>()
+    private val service = CurriculumOperationService(curricula, periods, assignments, students, academicPeriods, groups)
 
     @Test
     fun `talaba faqat tasdiqlangan oquv rejaga biriktiriladi`() {

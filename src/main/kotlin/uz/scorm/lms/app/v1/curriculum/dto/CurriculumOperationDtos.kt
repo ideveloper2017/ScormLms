@@ -36,4 +36,6 @@ data class CurriculumStudentAssignmentDto(
     val startsOn: LocalDate,
     val endsOn: LocalDate,
     val active: Boolean,
+    val groupName: String? = null,
+    val curriculumName: String? = null,
 )

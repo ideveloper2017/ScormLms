@@ -59,7 +59,7 @@ export function ControlsOverview() {
         <h1 className="text-2xl font-bold">Nazoratlar</h1>
         <p className="text-sm text-muted-foreground">Guruhlar kesimida fanlar bo'yicha oraliq (ON) va yakuniy (YN) nazoratlar: nechtasi o'tkazilgan va jami nechta.</p>
       </div>
-      <Button variant="outline" onClick={() => navigate("/exams")}><ClipboardList className="mr-2 h-4 w-4" />Imtihonlarni boshqarish</Button>
+      <Button variant="outline" onClick={() => navigate("/teacher/exams")}><ClipboardList className="mr-2 h-4 w-4" />Nazoratlarni boshqarish</Button>
     </div>
 
     <div className="flex flex-wrap items-end gap-3 rounded-lg border p-4">

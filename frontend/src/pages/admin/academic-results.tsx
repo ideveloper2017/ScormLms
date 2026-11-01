@@ -96,13 +96,18 @@ export function AcademicStatements({ finalStatement }: { finalStatement: boolean
   const [statementId, setStatementId] = useState<number | null>(null);
   const [year, setYear] = useState(ALL); const [subject, setSubject] = useState(ALL);
   const [semester, setSemester] = useState(ALL); const [group, setGroup] = useState(ALL);
+  // O'quv mavsumi: kuzgi — toq, bahorgi — juft semestrlar; sana oralig'i — qaydnoma qo'shilgan sana
+  const [season, setSeason] = useState(ALL); const [from, setFrom] = useState(""); const [to, setTo] = useState("");
+  const navigate = useNavigate();
   const query = useQuery({ queryKey: ["academic-statements", finalStatement], queryFn: () => listAcademicStatements(finalStatement), staleTime: 30_000 });
   const rows = query.data ?? [];
   const values = (selector: (row: AcademicStatementRow) => string) => [...new Set(rows.map(selector).filter(Boolean))].sort();
   const filtered = useMemo(() => rows.filter((row) =>
     (year === ALL || row.academicYear === year) && matchesSearch(row, search) && (subject === ALL || row.subject === subject)
     && (semester === ALL || String(row.semester ?? "") === semester) && (group === ALL || row.group === group)
-  ), [rows, year, subject, semester, group, search]);
+    && (season === ALL || (row.semester != null && (row.semester % 2 === 1 ? "Kuzgi" : "Bahorgi") === season))
+    && (!from || row.addedDate >= from) && (!to || row.addedDate <= to)
+  ), [rows, year, subject, semester, group, search, season, from, to]);
   const columns: ColumnDef<AcademicStatementRow>[] = [
     { id: "open", header: "Amal", cell: ({ row }) => <Button variant="outline" size="sm" onClick={() => setStatementId(row.original.id)}>Ochish</Button> },
     { accessorKey: "topic", header: "Mavzu" }, { accessorKey: "group", header: "Guruh" },
@@ -115,12 +120,16 @@ export function AcademicStatements({ finalStatement }: { finalStatement: boolean
   ];
   return <div className="space-y-6 p-3 sm:p-6">
     {statementId != null && <StatementDetails key={statementId} id={statementId} canWrite={hasAuthority(user, "ACADEMIC_WRITE")} close={() => setStatementId(null)} />}
-    <Header title={finalStatement ? "Yakuniy vedmost" : "Vedmost"} description="Mavjud nazorat sessiyalari va ularning auditli natijalaridan hosil qilingan qaydnomalar." onExport={() => downloadCsv(finalStatement ? "yakuniy-vedmost.csv" : "vedmost.csv", ["Mavzu","Guruh","O'quv yili","Semestr","Nazorat","Vedmost","Sana","Natijalar","O'rtacha"], filtered.map((row) => [row.topic,row.group,row.academicYear,row.semester,row.controlType,row.statement,row.addedDate,`${row.passedCount}/${row.resultCount}`,row.averageScore]))} />
+    <Header title={finalStatement ? "Yakuniy vedmost" : "Vedmost"} description={finalStatement ? "Yakuniy nazorat (YN) sessiyalari bo'yicha qaydnomalar va natijalar." : "Oraliq nazorat (ON) sessiyalari bo'yicha qaydnomalar va natijalar."}
+      action={<Button variant="outline" onClick={() => navigate("/teacher/exams")}>{finalStatement ? "Yakuniy nazorat yaratish" : "Oraliq nazorat yaratish"}</Button>} onExport={() => downloadCsv(finalStatement ? "yakuniy-vedmost.csv" : "vedmost.csv", ["Mavzu","Guruh","O'quv yili","Semestr","Nazorat","Vedmost","Sana","Natijalar","O'rtacha"], filtered.map((row) => [row.topic,row.group,row.academicYear,row.semester,row.controlType,row.statement,row.addedDate,`${row.passedCount}/${row.resultCount}`,row.averageScore]))} />
     <div className="flex flex-wrap gap-3 rounded-lg border p-4">
       <FilterSelect label="O'quv yili" value={year} values={values((row) => row.academicYear)} onChange={setYear} />
       <FilterSelect label="Fan" value={subject} values={values((row) => row.subject)} onChange={setSubject} />
       <FilterSelect label="Semestr" value={semester} values={values((row) => String(row.semester ?? ""))} onChange={setSemester} />
       <FilterSelect label="Guruh" value={group} values={values((row) => row.group)} onChange={setGroup} />
+      <FilterSelect label="O'quv mavsumi" value={season} values={["Kuzgi", "Bahorgi"]} onChange={setSeason} />
+      <div className="space-y-1"><Label className="text-xs">Sanadan</Label><Input type="date" aria-label="Sanadan" className="w-40" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+      <div className="space-y-1"><Label className="text-xs">Sanagacha</Label><Input type="date" aria-label="Sanagacha" className="w-40" value={to} onChange={(e) => setTo(e.target.value)} /></div>
     </div>
     <QueryState loading={query.isLoading} error={query.error} retry={() => query.refetch()} />
     {!query.isLoading && !query.error && <DataTable serverSearch={{ value: search, onChange: setSearch }} columns={columns} data={filtered} searchPlaceholder="Mavzu yoki fan bo'yicha qidirish..." emptyText="Ma'lumot mavjud emas" />}

@@ -51,7 +51,8 @@ class ProgramCurriculumController(
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) semesterNumber: Int?,
         @RequestParam(defaultValue = "false") unassignedOnly: Boolean,
-    ) = service.students(id, search, status, page, size, semesterNumber, unassignedOnly)
+        @RequestParam(required = false) groupId: Long?,
+    ) = service.students(id, search, status, page, size, semesterNumber, unassignedOnly, groupId)
 
     @PostMapping
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")

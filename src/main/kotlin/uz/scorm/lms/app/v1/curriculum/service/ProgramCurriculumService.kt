@@ -77,6 +77,7 @@ class ProgramCurriculumService(
         size: Int,
         semesterNumber: Int? = null,
         unassignedOnly: Boolean = false,
+        groupId: Long? = null,
     ): CurriculumStudentPageDto {
         require(page >= 0) { "Sahifa manfiy bo'lishi mumkin emas" }
         require(size in 10..100) { "Sahifa hajmi 10-100 oralig'ida bo'lishi shart" }
@@ -95,6 +96,7 @@ class ProgramCurriculumService(
             search = normalizedSearch.replace("!", "!!").replace("%", "!%").replace("_", "!_"),
             semesterNumber = semesterNumber,
             unassignedCurriculumId = if (unassignedOnly) id else null,
+            groupId = groupId,
             pageable = PageRequest.of(
                 page,
                 size,

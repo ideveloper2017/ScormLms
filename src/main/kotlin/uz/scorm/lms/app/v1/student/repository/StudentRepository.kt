@@ -108,6 +108,7 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
           and student.user.deleted = false
           and (:status is null or student.studentStatus = :status)
           and (:semesterNumber is null or student.semesterNumber = :semesterNumber)
+          and (:groupId is null or student.groupId = :groupId)
           and (:unassignedCurriculumId is null or not exists (
             select assignment.id from CurriculumStudentAssignment assignment
             where assignment.curriculumVersion.id = :unassignedCurriculumId
@@ -129,6 +130,7 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
         @Param("search") search: String,
         @Param("semesterNumber") semesterNumber: Int?,
         @Param("unassignedCurriculumId") unassignedCurriculumId: Long?,
+        @Param("groupId") groupId: Long?,
         pageable: Pageable,
     ): Page<StudentProfile>
 

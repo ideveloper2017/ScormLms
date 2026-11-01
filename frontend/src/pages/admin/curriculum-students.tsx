@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
 import { curriculumApi, curriculumStatusLabels } from "@/services/api/curriculum-api";
+import { listGroups } from "@/lib/academic-api";
+import { AttachedStudentsRegistry } from "@/components/admin/attached-students-registry";
 
 const message = (error: unknown) => error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
 
@@ -49,13 +51,17 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
     setCurriculumId(Number.isInteger(value) && value > 0 ? value : 0);
   }, [searchParams, embedded]);
   useEffect(() => { if (search.trim() === term) return; const timer = setTimeout(() => { setTerm(search.trim()); setPage(0); }, 300); return () => clearTimeout(timer); }, [search, term]);
-  useEffect(() => { setSelectedIds([]); setPage(0); }, [curriculumId, semester]);
+  // Nomzodlarni guruh bo'yicha ko'rsatish: guruh tanlansa bir sahifada 100 tagacha (guruhni birdan biriktirish uchun)
+  const [candidateGroup, setCandidateGroup] = useState(0);
+  useEffect(() => { setSelectedIds([]); setPage(0); }, [curriculumId, semester, candidateGroup]);
+  useEffect(() => { setCandidateGroup(0); }, [curriculumId]);
 
   const curricula = useQuery({ queryKey: ["curricula"], queryFn: curriculumApi.list });
   const selected = curricula.data?.find((item) => item.id === curriculumId);
+  const planGroups = useQuery({ queryKey: ["groups", selected?.programId], queryFn: () => listGroups(selected?.programId), enabled: !!selected });
   const periods = useQuery({ queryKey: ["curricula", curriculumId, "semesters"], queryFn: () => curriculumApi.listSemesterPeriods(curriculumId), enabled: curriculumId > 0 });
   const assignments = useQuery({ queryKey: ["curricula", curriculumId, "student-assignments"], queryFn: () => curriculumApi.listStudentAssignments(curriculumId), enabled: curriculumId > 0 });
-  const candidates = useQuery({ queryKey: ["curricula", curriculumId, "candidates", semester, term, page], queryFn: () => curriculumApi.listStudents(curriculumId, { status: "ACTIVE", semesterNumber: semester, unassignedOnly: true, search: term || undefined, page, size: 20 }), enabled: !!selected && semester <= selected.semesterCount && selected.status === "APPROVED" && selected.active });
+  const candidates = useQuery({ queryKey: ["curricula", curriculumId, "candidates", semester, term, page, candidateGroup], queryFn: () => curriculumApi.listStudents(curriculumId, { status: "ACTIVE", semesterNumber: semester, unassignedOnly: true, search: term || undefined, page, size: candidateGroup ? 100 : 20, groupId: candidateGroup || undefined }), enabled: !!selected && semester <= selected.semesterCount && selected.status === "APPROVED" && selected.active });
   useEffect(() => { if (selected && semester > selected.semesterCount) setSemester(1); }, [selected, semester]);
   useEffect(() => { if (candidates.data && page > 0 && page >= candidates.data.totalPages) setPage(Math.max(0, candidates.data.totalPages - 1)); }, [candidates.data, page]);
   const period = periods.data?.find((item) => item.semesterNumber === semester);
@@ -108,6 +114,7 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
   return <div className={embedded ? "space-y-6" : "space-y-6 p-3 sm:p-6"}>
     {!embedded && <div><h1 className="text-2xl font-bold">O'quv rejaga biriktirilgan talabalar</h1><p className="text-sm text-muted-foreground">ELMS zanjiri: tasdiqlangan o'quv reja → semestr muddati → mos talabalarni biriktirish.</p></div>}
     {!embedded && curricula.isSuccess && curricula.data.length === 0 && <Card><CardContent className="space-y-3 py-10 text-center"><p className="text-muted-foreground">Talaba biriktirish uchun avval o'quv reja yarating va kamida bitta fan bilan tasdiqlang.</p><Button onClick={() => navigate("/edu-process/curriculum")}>O'quv rejaga o'tish</Button></CardContent></Card>}
+    {!embedded && curricula.isSuccess && curricula.data.length > 0 && <AttachedStudentsRegistry curricula={curricula.data} canWrite={canWrite} />}
     {curricula.isPending && <p role="status">O'quv rejalar yuklanmoqda...</p>}
     {curricula.isError && <div role="alert" className="rounded border p-3 text-destructive">Rejalarni yuklab bo'lmadi. <Button variant="outline" onClick={() => void curricula.refetch()}>Qayta urinish</Button></div>}
     <Card><CardHeader><CardTitle>Semestr muddati</CardTitle><CardDescription>Talabaning yo'nalishi, o'quv yili va semestri rejaga mos bo'lishi shart.</CardDescription></CardHeader><CardContent className={embedded ? "grid gap-4 md:grid-cols-3" : "grid gap-4 md:grid-cols-4"}>
@@ -124,8 +131,14 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
       <Card><CardHeader><CardTitle>Biriktirish mumkin bo'lgan talabalar</CardTitle><CardDescription>Faqat tanlangan semestrdagi, hali biriktirilmagan talabalar ko'rsatiladi.</CardDescription></CardHeader><CardContent className="space-y-3">
         {failed && <div role="alert">Ma'lumotlarni yuklab bo'lmadi. <Button variant="outline" onClick={() => void refresh()}>Qayta urinish</Button></div>}
         {blocked && <p role="status" className="rounded bg-muted p-3 text-sm">{blocked}</p>}
-        <Input aria-label="Talaba qidirish" placeholder="F.I.O. yoki talaba raqami" maxLength={100} value={search} disabled={busy} onChange={event => setSearch(event.target.value)} />
-        <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={!canWrite || !!blocked || busy || failed || !visibleCandidates.length} onClick={() => setSelectedIds(current => [...new Set([...current, ...visibleCandidates.map(item => item.studentId)])].slice(0, 200))}>Sahifadagilarni tanlash</Button><Button variant="ghost" size="sm" disabled={busy || !selectedIds.length} onClick={() => setSelectedIds([])}>Tanlovni tozalash</Button></div>
+        <div className="grid gap-2 sm:grid-cols-[1fr_200px]">
+          <Input aria-label="Talaba qidirish" placeholder="F.I.O. yoki talaba raqami" maxLength={100} value={search} disabled={busy} onChange={event => setSearch(event.target.value)} />
+          <select aria-label="Nomzodlar guruhi" className="h-10 rounded-md border bg-background px-3 text-sm" disabled={!selected || busy} value={candidateGroup} onChange={(event) => setCandidateGroup(Number(event.target.value))}>
+            <option value={0}>Barcha guruhlar</option>
+            {(planGroups.data ?? []).filter((group) => group.active).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={!canWrite || !!blocked || busy || failed || !visibleCandidates.length} onClick={() => setSelectedIds(current => [...new Set([...current, ...visibleCandidates.map(item => item.studentId)])].slice(0, 200))}>{candidateGroup ? "Guruhdagi hammasini tanlash" : "Sahifadagilarni tanlash"}</Button><Button variant="ghost" size="sm" disabled={busy || !selectedIds.length} onClick={() => setSelectedIds([])}>Tanlovni tozalash</Button></div>
         {candidates.isFetching && <p role="status">Talabalar yuklanmoqda...</p>}
         {visibleCandidates.map((student) => <label key={student.studentId} className="flex cursor-pointer items-center gap-3 rounded-md border p-3"><input type="checkbox" disabled={!canWrite || !!blocked || busy || failed || (!selectedIds.includes(student.studentId) && selectedIds.length >= 200)} checked={selectedIds.includes(student.studentId)} onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, student.studentId] : current.filter((id) => id !== student.studentId))} /><span className="min-w-0 flex-1"><span className="block font-medium">{student.fullName}</span><span className="text-xs text-muted-foreground">{student.studentNumber} · {student.groupName ?? "Guruhsiz"}</span></span></label>)}
         {candidates.isSuccess && !failed && visibleCandidates.length === 0 && <div className="space-y-2 py-8 text-center text-muted-foreground"><p>Qidiruvga mos, hali biriktirilmagan faol talaba topilmadi.</p><Button variant="outline" size="sm" onClick={() => navigate("/students/students")}>Talabalarni tekshirish</Button></div>}
@@ -133,7 +146,7 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
         <Button disabled={!canWrite || !!blocked || failed || selectedIds.length === 0 || candidates.isFetching || busy} onClick={() => assign.mutate()}><UserPlus className="mr-2 h-4 w-4" />Tanlanganlarni biriktirish ({selectedIds.length})</Button>
       </CardContent></Card>
       <Card><CardHeader><CardTitle>Biriktirilgan talabalar</CardTitle><CardDescription>{semester}-semestr bo'yicha amaldagi ro'yxat.</CardDescription></CardHeader><CardContent className="space-y-3">
-        {(assignments.data ?? []).filter((item) => item.semesterNumber === semester).map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-md border p-3"><div><p className="font-medium">{item.fullName}</p><p className="text-xs text-muted-foreground">{item.studentNumber} · {item.startsOn} — {item.endsOn}</p></div>{canWrite && <Button size="icon" variant="ghost" disabled={busy} onClick={() => remove.mutate(item.id)} aria-label="Biriktirishni olib tashlash"><Trash2 className="h-4 w-4" /></Button>}</div>)}
+        {(assignments.data ?? []).filter((item) => item.semesterNumber === semester).map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-md border p-3"><div><p className="font-medium">{item.fullName}</p><p className="text-xs text-muted-foreground">{item.studentNumber} · {item.groupName ?? "Guruhsiz"} · {item.startsOn} — {item.endsOn}</p></div>{canWrite && <Button size="icon" variant="ghost" disabled={busy} onClick={() => remove.mutate(item.id)} aria-label="Biriktirishni olib tashlash"><Trash2 className="h-4 w-4" /></Button>}</div>)}
         {assignments.isSuccess && !(assignments.data ?? []).some((item) => item.semesterNumber === semester) && <p className="py-8 text-center text-muted-foreground">Hali talaba biriktirilmagan.</p>}
       </CardContent></Card>
     </div>
