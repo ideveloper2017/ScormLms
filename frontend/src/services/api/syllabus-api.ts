@@ -8,7 +8,11 @@ export const syllabusTopicTypes: Record<SyllabusTopicType, string> = {
   LABORATORY: "Laboratoriya mashg'ulotlari", SEMINAR: "Seminar mashg'ulotlari",
 };
 /** part — ko'p semestrli fanda qism (1-qism — birinchi semestr); hours — eski ma'lumot, soatlar fan bo'yicha o'quv rejada */
-export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours?: number | null; part?: number | null }
+export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours?: number | null; part?: number | null; moduleId?: number | null; lessonOrder?: number | null }
+/** Dastur moduli (Everest "Dasturlar"): darslari — mavzular, har birida mashg'ulot turi */
+export interface SyllabusModule { id: number; sortOrder: number; name: string; description?: string | null; lessons: SyllabusTopic[] }
+/** Modulni saqlash: id berilsa joyida yangilanadi; lessons — modul darslari tartibda */
+export interface SyllabusModuleInput { id?: number | null; name: string; description?: string | null; lessons: SyllabusTopicInput[] }
 /** id — mavjud mavzu (joyida yangilanadi, kurs bo'limlari bilan bog'lanish saqlanadi) */
 export interface SyllabusTopicInput { id?: number | null; type: SyllabusTopicType; title: string; description?: string | null; part?: number | null }
 export interface SubjectSyllabus {
@@ -17,6 +21,7 @@ export interface SubjectSyllabus {
   requirements?: string | null; fullDescription: string; active: boolean;
   status: "DRAFT" | "IN_REVIEW" | "APPROVED"; revisionNumber: number;
   topics?: SyllabusTopic[]; theoreticalHours?: number; practicalHours?: number; laboratoryHours?: number; seminarHours?: number;
+  modules?: SyllabusModule[];
   /** Fan dasturi (ishchi dastur) qaysi o'quv dasturidan va qaysi davr uchun */
   modelProgramId?: number | null; academicYear?: string | null; semester?: number | null;
 }
@@ -43,6 +48,9 @@ export const syllabusApi = {
   /** Mavzularni saqlaydi va bog'langan qoralama kurslar bo'limlarini moslaydi */
   updateTopicsWithCourses: async (syllabusId: number, topics: SyllabusTopicInput[]) =>
     (await api.put<{ success: boolean; data: { syllabus: SubjectSyllabus; courses: SyllabusLinkedCourse[] } }>(`/syllabus-courses/${syllabusId}/topics`, topics)).data.data,
+  /** Modullar va darslarni saqlaydi (to'liq almashtiriladi, faqat qoralamada) va bog'langan qoralama kurslarni moslaydi */
+  updateModulesWithCourses: async (syllabusId: number, modules: SyllabusModuleInput[]) =>
+    (await api.put<{ success: boolean; data: { syllabus: SubjectSyllabus; courses: SyllabusLinkedCourse[] } }>(`/syllabus-courses/${syllabusId}/modules`, modules)).data.data,
   /** Mavzular dastur yaratilgandan keyin alohida saqlanadi (ro'yxat to'liq almashtiriladi, faqat qoralamada). */
   updateTopics: async (id: number, topics: SyllabusTopicInput[]) => (await api.put<SubjectSyllabus>(`/syllabi/${id}/topics`, topics)).data,
 };

@@ -44,4 +44,12 @@ class SyllabusCourseWizardController(private val service: SyllabusCourseWizardSe
         @PathVariable syllabusId: Long,
         @RequestBody topics: List<SyllabusTopicRequest>,
     ): ApiResponse<SyllabusTopicsWithCoursesDto> = ApiResponse.success(service.updateTopics(syllabusId, topics))
+
+    /** Modullar va darslarni saqlash (Everest "Dasturlar"): qoralama kurslar bo'limlari ham moslanadi. */
+    @PutMapping("/{syllabusId}/modules")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun updateModules(
+        @PathVariable syllabusId: Long,
+        @RequestBody modules: List<uz.scorm.lms.app.v1.syllabus.dto.SyllabusModuleRequest>,
+    ): ApiResponse<SyllabusTopicsWithCoursesDto> = ApiResponse.success(service.updateModules(syllabusId, modules))
 }

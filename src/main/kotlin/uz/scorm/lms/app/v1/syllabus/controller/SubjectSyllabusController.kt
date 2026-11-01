@@ -36,6 +36,12 @@ class SubjectSyllabusController(private val service: SubjectSyllabusService) {
     fun updateTopics(@PathVariable id: Long, @RequestBody topics: List<uz.scorm.lms.app.v1.syllabus.dto.SyllabusTopicRequest>) =
         service.updateTopics(id, topics)
 
+    /** Dastur tuzilmasi: modullar va darslar (to'liq almashtiriladi, faqat qoralamada) */
+    @PutMapping("/{id}/modules")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun updateModules(@PathVariable id: Long, @RequestBody modules: List<uz.scorm.lms.app.v1.syllabus.dto.SyllabusModuleRequest>) =
+        service.updateModules(id, modules)
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
     fun delete(@PathVariable id: Long): ResponseEntity<Void> { service.delete(id); return ResponseEntity.noContent().build() }

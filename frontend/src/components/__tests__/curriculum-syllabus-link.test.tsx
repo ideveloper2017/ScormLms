@@ -12,7 +12,7 @@ vi.mock("@/services/api/curriculum-api", async (importOriginal) => ({
 }));
 vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  syllabusApi: { list: vi.fn(), linkedCourses: vi.fn(async () => []), updateTopicsWithCourses: vi.fn() },
+  syllabusApi: { list: vi.fn(), linkedCourses: vi.fn(async () => []), updateTopicsWithCourses: vi.fn(), updateModulesWithCourses: vi.fn() },
 }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 
@@ -33,24 +33,32 @@ describe("CurriculumTopicsDialog", () => {
     vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({}), syllabus({ id: 41, name: "Dasturlash (RU)", language: "RU", status: "APPROVED" })]);
   });
 
-  it("rejadagi fan dasturi mavzularini ixcham ko'rinishda, reja limitlari bilan ochadi", async () => {
+  it("rejadagi fan dasturini drawer'da, modullar va darslar bilan, reja limitlari bilan ochadi", async () => {
+    vi.mocked(syllabusApi.updateModulesWithCourses).mockResolvedValue({ syllabus: syllabus({}), courses: [] });
     render(<QueryClientProvider client={client()}>
       <CurriculumTopicsDialog rows={[{ ...sem1, syllabusId: 40 }, { ...sem2, syllabusId: 40 }]} canWrite onClose={vi.fn()} onSaved={vi.fn()} />
     </QueryClientProvider>);
 
-    expect(await screen.findByRole("dialog", { name: "Dasturlash 1,2 — mavzular" })).toBeInTheDocument();
+    // Everest kabi: "Ma'lumot" va "Dasturlar" tablari, rejadan ochilganda — "Dasturlar"
+    expect(await screen.findByRole("tab", { name: "Dasturlar", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Ma'lumot" })).toBeInTheDocument();
     expect(syllabusApi.list).toHaveBeenCalledWith(1);
-
-    // Faqat rejada soati bor turlar (seminar yo'q); mavzuda nom va qism, soat yo'q (soat fan bo'yicha rejada)
-    expect(screen.getAllByRole("tab").map((t) => t.textContent?.replace(/\d.*$/, "").trim())).toEqual(["Nazariy", "Amaliy", "Laboratoriya"]);
     const check = screen.getByLabelText("Reja bilan solishtirish");
-    expect(within(check).getAllByText("Nazariy")[0].parentElement).toHaveTextContent("Nazariy 30 soat · mavzu yo'q");
+    expect(within(check).getAllByText("Nazariy")[0].parentElement).toHaveTextContent("Nazariy 30 soat · dars yo'q");
     expect(within(check).getByText("2-qism (2-semestr):")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Mavzu qo'shish/ }));
-    expect(screen.getByLabelText("1-mavzu qismi")).toHaveValue("1");
-    expect(screen.queryByLabelText("1-mavzu soati")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("1-mavzu mazmuni")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Yuqoriga" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Yangi modul/ }));
+    fireEvent.change(screen.getByLabelText("1-modul nomi"), { target: { value: "Asoslar" } });
+    fireEvent.click(screen.getByRole("button", { name: /Dars qo'shish/ }));
+    fireEvent.change(screen.getByLabelText("1-modul 1-dars nomi"), { target: { value: "O'zgaruvchilar" } });
+    // Faqat rejada soati bor turlar (seminar yo'q), ko'p semestrli fanda qism tanlanadi
+    expect(within(screen.getByLabelText("1-modul 1-dars turi")).getAllByRole("option").map((o) => o.textContent)).toEqual(["Nazariy", "Amaliy", "Laboratoriya"]);
+    fireEvent.change(screen.getByLabelText("1-modul 1-dars qismi"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Dasturni saqlash" }));
+    await waitFor(() => expect(syllabusApi.updateModulesWithCourses).toHaveBeenCalledWith(40, [{
+      id: null, name: "Asoslar", description: null,
+      lessons: [{ id: null, type: "THEORETICAL", title: "O'zgaruvchilar", description: null, part: 2 }],
+    }]));
   });
 });
 

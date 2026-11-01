@@ -143,7 +143,7 @@ function PlanSyllabi() {
                     <TableHead>Semestr</TableHead>
                     <TableHead>Rejadagi soatlar</TableHead>
                     <TableHead>O'quv dasturi</TableHead>
-                    <TableHead>Mavzular</TableHead>
+                    <TableHead>Modullar va darslar</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -175,11 +175,11 @@ function PlanSyllabi() {
                         <TableCell>
                           {first.syllabusId ? (
                             <Button size="sm" variant="outline" className="h-8" onClick={() => setTopicsItemId(first.id)}
-                              title={first.syllabusComplete ? "Rejadagi barcha mashg'ulot turlariga mavzu kiritilgan" : "Ba'zi mashg'ulot turlariga hali mavzu kiritilmagan"}>
+                              title={first.syllabusComplete ? "Rejadagi barcha mashg'ulot turlariga dars kiritilgan" : "Ba'zi mashg'ulot turlariga hali dars kiritilmagan"}>
                               {first.syllabusComplete
                                 ? <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-green-600" />
                                 : <AlertTriangle className="mr-1 h-3.5 w-3.5 text-amber-600" />}
-                              {first.syllabusTopicCount ?? 0} mavzu
+                              {first.syllabusTopicCount ?? 0} dars
                             </Button>
                           ) : canWrite ? (
                             <Button size="sm" variant="secondary" className="h-8" onClick={() => setCreating({ itemId: first.id })}>
