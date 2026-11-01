@@ -47,7 +47,7 @@ describe("superadmin sidebar navigation", () => {
       "Akademik arxiv": 2,
       "559-son qaror": 10,
       "Monitoring": 8,
-      "Yangiliklar": 2,
+      "Yangiliklar": 3,
       "Akkauntlar": 2,
       "Statistika": 10,
       "Asosiy ma'lumot": 5,
@@ -67,7 +67,11 @@ describe("superadmin sidebar navigation", () => {
     expect(links["O'quv reja"]).toBe("/edu-process/curriculum");
     expect(links["Fan oqimlari"]).toBe("/admin/subject-groups");
     expect(links["Kurslar"]).toBe("/admin/courses");
-    expect(links["Dars jadvali"]).toBe("/admin/schedule");
+    expect(links["Dars jadvali"]).toBe("/content/schedule");
+    expect(links["O'quv rejaga biriktirilgan talabalar"]).toBe("/edu-process/attached-students");
+    const monitoring = sections.find((section) => section.label === "Monitoring")?.items ?? [];
+    expect(monitoring.find((item) => item.name === "Talabalar")?.href).toBe("/monitoring/students");
+    expect(monitoring.find((item) => item.name === "O'qituvchilar")?.href).toBe("/monitoring/teachers");
     expect(links["Semestrlar"]).toBe("/edu-process/semesters");
     expect(links["Bitirgan talabalar"]).toBe("/students/graduated");
     expect(links["Ko'chirish"]).toBe("/transfer-students");

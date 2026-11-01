@@ -410,6 +410,36 @@ export interface ReinstatementSubjectReportQuery {
     size?: number;
 }
 
+/** Talabalar harakati buyrug'i (har talabaning shu turdagi oxirgisi) */
+export interface StudentMovementItemDto {
+    eventId: number;
+    eventType: StudentLifecycleEventType;
+    studentId: number;
+    studentNumber: string;
+    studentName: string;
+    studentStatus: StudentStatus;
+    groupName?: string | null;
+    orderNumber: string;
+    orderDate: string;
+    effectiveDate: string;
+    reason: string;
+}
+
+export interface StudentMovementPageDto {
+    items: StudentMovementItemDto[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+}
+
+export interface StudentMovementQuery {
+    eventType: StudentLifecycleEventType;
+    search?: string;
+    page?: number;
+    size?: number;
+}
+
 export interface StudentUpdateRequest {
     lastName?: string | null;
     firstName?: string | null;

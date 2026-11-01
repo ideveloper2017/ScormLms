@@ -1,6 +1,7 @@
 package uz.scorm.lms.app.v1.student.dto
 
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
+import uz.scorm.lms.app.v1.student.model.StudentLifecycleEventType
 import uz.scorm.lms.app.v1.student.model.StudentStatus
 import java.time.Instant
 import java.time.LocalDate
@@ -38,6 +39,29 @@ data class ReinstatementSubjectReportItemDto(
     val effectiveDate: LocalDate,
     val reason: String,
     val subjects: List<ReinstatementSubjectDto>,
+)
+
+/** Talabalar harakati buyrug'i (masalan akademik ta'til yoki o'qishni tiklash) — har talabaning oxirgisi */
+data class StudentMovementItemDto(
+    val eventId: Long,
+    val eventType: StudentLifecycleEventType,
+    val studentId: Long,
+    val studentNumber: String,
+    val studentName: String,
+    val studentStatus: StudentStatus,
+    val groupName: String?,
+    val orderNumber: String,
+    val orderDate: LocalDate,
+    val effectiveDate: LocalDate,
+    val reason: String,
+)
+
+data class StudentMovementPageDto(
+    val items: List<StudentMovementItemDto>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
 )
 
 data class ReinstatementSubjectReportPageDto(

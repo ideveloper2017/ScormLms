@@ -111,7 +111,9 @@ export const createRatingSystem = (body: SaveRatingSystemRequest) => create<Rati
 export const updateRatingSystem = (id: number, body: SaveRatingSystemRequest) => update<RatingSystemRecord, SaveRatingSystemRequest>(`/academic-results/rating-systems/${id}`, body, "Baholash tizimini yangilab bo'lmadi");
 export const deleteRatingSystem = (id: number) => remove(`/academic-results/rating-systems/${id}`, "Baholash tizimini o'chirib bo'lmadi");
 
-export const listAcademicStatements = (finalStatement: boolean) => load<AcademicStatementRow[]>("/academic-results/statements", "Qaydnomalarni yuklab bo'lmadi", { final: finalStatement });
+/** finalStatement berilmasa — barcha sessiyalar (oraliq va yakuniy) */
+export const listAcademicStatements = (finalStatement?: boolean) => load<AcademicStatementRow[]>("/academic-results/statements", "Qaydnomalarni yuklab bo'lmadi",
+  finalStatement === undefined ? undefined : { final: finalStatement });
 export const listStudentAcademicResults = () => load<StudentAcademicResult[]>("/academic-results/student-results", "Akademik natijalarni yuklab bo'lmadi");
 export const listStudentGpa = () => load<StudentGpaRow[]>("/academic-results/gpa", "GPA natijalarini yuklab bo'lmadi");
 export const listAcademicTestResults = () => load<TestResultRow[]>("/academic-results/test-results", "Test natijalarini yuklab bo'lmadi");

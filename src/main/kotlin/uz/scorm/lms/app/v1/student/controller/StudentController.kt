@@ -15,6 +15,7 @@ import uz.scorm.lms.app.v1.student.service.StudentAccountService
 import uz.scorm.lms.app.v1.student.service.StudentBulkTransferService
 import uz.scorm.lms.app.v1.student.service.StudentMovementReportService
 import uz.scorm.lms.app.v1.student.service.StudentIdentityLookupService
+import uz.scorm.lms.app.v1.student.model.StudentLifecycleEventType
 import uz.scorm.lms.app.v1.student.model.StudentStatus
 import uz.scorm.lms.app.v1.user.model.User
 
@@ -63,6 +64,16 @@ class StudentController(
         @RequestParam(defaultValue = "20") size: Int,
     ): ReinstatementSubjectReportPageDto =
         movementReportService.reinstatementSubjects(search, academicYear, page, size)
+
+    /** Talabalar harakati buyruqlari reyestri: SUSPENSION — akademik ta'til, REINSTATEMENT — o'qishni tiklash */
+    @GetMapping("/movements")
+    @PreAuthorize("hasAuthority('USER_READ')")
+    fun movements(
+        @RequestParam eventType: StudentLifecycleEventType,
+        @RequestParam(required = false) search: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): StudentMovementPageDto = movementReportService.movements(eventType, search, page, size)
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_READ')")

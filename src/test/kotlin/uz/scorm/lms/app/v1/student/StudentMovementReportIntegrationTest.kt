@@ -97,6 +97,34 @@ class StudentMovementReportIntegrationTest {
         }
     }
 
+    @Test
+    fun `movements registry separates academic leave from reinstatement`() {
+        val fixture = fixture()
+        val actor = userRepository.save(User(username = "leave-actor-${System.nanoTime()}", password = "encoded-password", fullName = "Registrator"))
+        eventRepository.save(StudentLifecycleEvent(
+            student = fixture.student,
+            eventType = StudentLifecycleEventType.SUSPENSION,
+            fromStatus = StudentStatus.ACTIVE,
+            toStatus = StudentStatus.SUSPENDED,
+            orderNumber = "AT-12/2026",
+            orderDate = LocalDate.now().minusDays(10),
+            effectiveDate = LocalDate.now().minusDays(9),
+            legalBasis = "Talabalar harakati reglamenti",
+            reason = "Sog'lig'i sababli akademik ta'til",
+            recordedBy = actor,
+            recordedAt = Instant.now(),
+        ))
+
+        val leave = reportService.movements(StudentLifecycleEventType.SUSPENSION, fixture.student.studentNumber, 0, 10)
+        assertEquals("AT-12/2026", leave.items.single().orderNumber)
+        assertEquals("Sog'lig'i sababli akademik ta'til", leave.items.single().reason)
+        assertEquals("KI-26", leave.items.single().groupName)
+
+        val reinstated = reportService.movements(StudentLifecycleEventType.REINSTATEMENT, fixture.student.studentNumber, 0, 10)
+        assertEquals("TIK-NEW/2026", reinstated.items.single().orderNumber)
+        assertEquals(StudentStatus.ACTIVE, reinstated.items.single().studentStatus)
+    }
+
     private fun fixture(): Fixture {
         val suffix = System.nanoTime().toString()
         val actor = userRepository.save(User(
