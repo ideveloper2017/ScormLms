@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CourseSyllabusPanel } from "@/components/course-syllabus-panel";
@@ -55,6 +55,24 @@ describe("CourseSyllabusPanel", () => {
     await waitFor(() => expect(teacherPortalApi.syncCourseSyllabus).toHaveBeenCalledWith("9"));
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({
       description: "1 ta yangi bo'lim qo'shildi, 1 ta bo'lim yangilandi" })));
+  });
+
+  it("darslarni dastur modullari bo'yicha guruhlaydi va o'chirilgan bo'sh bo'limlar sonini aytadi", async () => {
+    const grouped = { ...status, topics: [
+      { ...status.topics[2], syllabusModuleName: "Mexanika" },
+      { ...status.topics[1], syllabusModuleName: "Mexanika" },
+      { ...status.topics[0], syllabusModuleName: "Termodinamika" },
+    ] };
+    vi.mocked(teacherPortalApi.getCourseSyllabus).mockResolvedValue(grouped);
+    vi.mocked(teacherPortalApi.syncCourseSyllabus).mockResolvedValue({ added: 0, updated: 0, removed: 2, status: { ...grouped, pendingCount: 0 } });
+    mount();
+    const mechanics = await screen.findByRole("list", { name: "Mexanika" });
+    expect(within(mechanics).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      expect.stringContaining("1. Tajriba"), expect.stringContaining("2. Kinematika")]);
+    expect(within(screen.getByRole("list", { name: "Termodinamika" })).getByText("1. Kirish")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Dastur bilan sinxronlash/ }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({
+      description: expect.stringContaining("dasturdan o'chirilgan 2 ta bo'sh bo'lim olib tashlandi") })));
   });
 
   it("tasdiqlanmagan yangi versiyada sinxronlashni bloklaydi", async () => {

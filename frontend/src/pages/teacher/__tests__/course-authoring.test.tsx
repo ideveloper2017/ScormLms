@@ -100,6 +100,21 @@ describe('course authoring', () => {
     expect(await screen.findByText('Nazariy · 2 soat')).toBeInTheDocument();
   });
 
+  it('groups course sections under their syllabus modules', async () => {
+    vi.mocked(teacherPortalApi.getCourse).mockResolvedValue({ ...course, syllabusId: 31, syllabusName: 'Mexanika dasturi', syllabusRevision: 2 });
+    vi.mocked(teacherPortalApi.getModules).mockResolvedValue([
+      { ...module, syllabusTopicId: 1, syllabusModuleId: 61, syllabusModuleName: 'Kinematika moduli' },
+      { ...module, id: 6, title: 'Tezlik', position: 2, syllabusTopicId: 2, syllabusModuleId: 61, syllabusModuleName: 'Kinematika moduli' },
+      { ...module, id: 7, title: 'Takrorlash', position: 3 },
+    ]);
+    mountDetail();
+    const group = await screen.findByRole('region', { name: 'Kinematika moduli' });
+    expect(within(group).getByText('2 ta bo\'lim')).toBeInTheDocument();
+    expect(within(group).getByText('Tezlik')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: "Qo'shimcha bo'limlar" })).getByText('Takrorlash')).toBeInTheDocument();
+    expect(screen.getByText(/Dasturda yo'q bo'lim kerak bo'lsa/)).toBeInTheDocument();
+  });
+
   it('keeps a created course when its thumbnail upload fails and navigates away from create', async () => {
     vi.mocked(teacherPortalApi.uploadCourseThumbnail).mockRejectedValue(new Error('Upload failed'));
     mount();

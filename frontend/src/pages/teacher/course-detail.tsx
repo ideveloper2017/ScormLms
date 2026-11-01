@@ -17,6 +17,7 @@ import {
   FlaskConical,
   Image as ImageIcon,
   Info,
+  Layers,
   Link as LinkIcon,
   History,
   Loader2,
@@ -68,6 +69,7 @@ import { useSessionDraft, useUnloadWarning } from "@/hooks/use-session-draft";
 import { CoursePreview } from "@/components/course-preview";
 import { CourseSyllabusPanel } from "@/components/course-syllabus-panel";
 import { TopicTypeBadge } from "@/components/topic-type-badge";
+import { groupBySyllabusModule } from "@/lib/syllabus-modules";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -877,10 +879,11 @@ export function TeacherCourseDetail({
           {course?.syllabusId && <CourseSyllabusPanel courseId={courseId} onChanged={refreshLearningItems} />}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Fan darslari</CardTitle>
+              <CardTitle className="text-base">{course?.syllabusId ? "Qo'shimcha bo'lim" : "Fan darslari"}</CardTitle>
               <CardDescription>
-                Avval section yarating, keyin uning ichiga video, matn yoki
-                hujjat ko'rinishidagi darslarni qo'shing.
+                {course?.syllabusId
+                  ? "Bo'limlar o'quv dasturi modullari va darslaridan olinadi. Dasturda yo'q bo'lim kerak bo'lsa (masalan, takrorlash) shu yerda qo'shing."
+                  : "Avval section yarating, keyin uning ichiga video, matn yoki hujjat ko'rinishidagi darslarni qo'shing."}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2 sm:flex-row">
@@ -988,7 +991,17 @@ export function TeacherCourseDetail({
           {!modulesQuery.isLoading && modules.length === 0 && (
             <Empty text="Dars qo'shish uchun avval section yarating" />
           )}
-          {modules.map((module, sectionIndex) => {
+          {groupBySyllabusModule(modules, (module) => module.syllabusModuleName, "Qo'shimcha bo'limlar").map((group, groupIndex) => (
+            <section key={`${groupIndex}-${group.name ?? ""}`} className="space-y-3" aria-label={group.name ?? undefined}>
+              {group.name && (
+                <div className="flex items-center gap-2 pt-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold">{group.name}</h3>
+                  <span className="text-xs text-muted-foreground">{group.items.length} ta bo'lim</span>
+                </div>
+              )}
+          {group.items.map((module) => {
+            const sectionIndex = modules.indexOf(module);
             const sectionLessons = contents.filter(
               (content) => content.moduleId === module.id,
             );
@@ -1286,6 +1299,8 @@ export function TeacherCourseDetail({
               </Collapsible>
             );
           })}
+            </section>
+          ))}
         </TabsContent>
 
         <TabsContent value="students" className="mt-4 space-y-3">
