@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   FileCheck2,
   FileSpreadsheet,
+  LayoutGrid,
+  List,
   Loader2,
   Plus,
   Save,
@@ -79,6 +81,7 @@ import {
 } from "@/services/api/curriculum-api";
 import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 import { CurriculumSubjectsTable } from "@/components/admin/curriculum-subjects-table";
+import { CurriculumSubjectBoard } from "@/components/admin/curriculum-subject-board";
 import { CurriculumExcelPrefill, CurriculumImportDialog } from "@/components/admin/curriculum-import-dialog";
 import { CurriculumComponentsCard, CurriculumScheduleCard } from "@/components/admin/curriculum-components";
 
@@ -206,6 +209,8 @@ export function AdminStudyPlanEditor() {
   const [semester, setSemester] = useState(1);
   const [planItemType, setPlanItemType] = useState<"REQUIRED" | "ELECTIVE">("REQUIRED");
   const [subjectToRemove, setSubjectToRemove] = useState<CurriculumSubject | null>(null);
+  // Fanlar: semestrlar taxtasi (sudrab biriktirish) yoki ixcham jadval
+  const [subjectsView, setSubjectsView] = useState<"board" | "table">("board");
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [approvalOrderNumber, setApprovalOrderNumber] = useState("");
@@ -383,6 +388,9 @@ export function AdminStudyPlanEditor() {
   const semesterOptions = (semesterDefinitions.data ?? [])
     .filter((definition) => definition.active && definition.semesterNumber <= form.semesterCount)
     .sort((a, b) => a.semesterNumber - b.semesterNumber);
+  const semesterNumbers = semesterOptions.length
+    ? semesterOptions.map((definition) => definition.semesterNumber)
+    : Array.from({ length: Math.min(form.semesterCount, 12) }, (_, index) => index + 1);
 
   const selectYear = (academicYear: string) =>
     setForm((current) => ({ ...current, academicYear, ...yearDates(academicYear) }));
@@ -812,16 +820,40 @@ export function AdminStudyPlanEditor() {
                         {" "}· {item.semesterCount} semestr · soatlar ishchi o'quv reja bo'yicha
                       </CardDescription>
                     </div>
-                    {item.status === "DRAFT" && canWrite && (
-                      <Button variant="outline" onClick={() => setImportOpen(true)}>
-                        <FileSpreadsheet className="mr-2 h-4 w-4" />
-                        Excel'dan import
-                      </Button>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div role="group" aria-label="Ko'rinish" className="inline-flex rounded-md border p-0.5">
+                        <Button size="sm" variant={subjectsView === "board" ? "secondary" : "ghost"} aria-pressed={subjectsView === "board"}
+                          onClick={() => setSubjectsView("board")}>
+                          <LayoutGrid className="mr-1.5 h-4 w-4" />Semestrlar
+                        </Button>
+                        <Button size="sm" variant={subjectsView === "table" ? "secondary" : "ghost"} aria-pressed={subjectsView === "table"}
+                          onClick={() => setSubjectsView("table")}>
+                          <List className="mr-1.5 h-4 w-4" />Jadval
+                        </Button>
+                      </div>
+                      {item.status === "DRAFT" && canWrite && (
+                        <Button variant="outline" onClick={() => setImportOpen(true)}>
+                          <FileSpreadsheet className="mr-2 h-4 w-4" />
+                          Excel'dan import
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  {item.status === "DRAFT" && canWrite && (
+                  {subjectsView === "board" && (
+                    <CurriculumSubjectBoard
+                      curriculumId={item.id}
+                      subjects={item.subjects}
+                      components={item.components ?? []}
+                      catalog={subjects.data ?? []}
+                      semesters={semesterNumbers}
+                      editable={item.status === "DRAFT" && canWrite}
+                      onRemove={setSubjectToRemove}
+                      onChanged={refresh}
+                    />
+                  )}
+                  {subjectsView === "table" && item.status === "DRAFT" && canWrite && (
                     <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto] md:items-end">
                       <div className="space-y-2">
                         <Label>Fan</Label>
@@ -848,13 +880,7 @@ export function AdminStudyPlanEditor() {
                         >
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {(semesterOptions.length
-                              ? semesterOptions.map((definition) => definition.semesterNumber)
-                              : Array.from(
-                                  { length: Math.min(form.semesterCount, 12) },
-                                  (_, index) => index + 1,
-                                )
-                            ).map((value) => (
+                            {semesterNumbers.map((value) => (
                               <SelectItem key={value} value={String(value)}>
                                 {value}-semestr
                               </SelectItem>
@@ -891,13 +917,15 @@ export function AdminStudyPlanEditor() {
                     </div>
                   )}
 
-                  <CurriculumSubjectsTable
-                    curriculumId={item.id}
-                    subjects={item.subjects}
-                    editable={item.status === "DRAFT" && canWrite}
-                    onRemove={setSubjectToRemove}
-                    onChanged={refresh}
-                  />
+                  {subjectsView === "table" && (
+                    <CurriculumSubjectsTable
+                      curriculumId={item.id}
+                      subjects={item.subjects}
+                      editable={item.status === "DRAFT" && canWrite}
+                      onRemove={setSubjectToRemove}
+                      onChanged={refresh}
+                    />
+                  )}
                 </CardContent>
               </Card>
               <CurriculumComponentsCard

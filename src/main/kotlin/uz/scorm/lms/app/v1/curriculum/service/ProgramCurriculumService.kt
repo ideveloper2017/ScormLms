@@ -19,6 +19,7 @@ import uz.scorm.lms.app.v1.curriculum.dto.CurriculumStudentPageDto
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumVersionDto
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumSubjectHours
+import uz.scorm.lms.app.v1.curriculum.dto.MoveCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.UpdateCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumComponentType
 import uz.scorm.lms.app.v1.curriculum.model.CurriculumCredentialType
@@ -243,6 +244,27 @@ class ProgramCurriculumService(
         applyPlanDetails(item, request.planRowNumber, request.hours)
         subjectItemRepository.save(item)
         auditService.logAction("CURRICULUM_SUBJECT_UPDATED", actorId, "curriculum=$id; item=$itemId")
+        return toDto(version)
+    }
+
+    /** Reja fanini boshqa semestrga ko'chirish; kredit, soat va dastur o'zgarmaydi (faqat DRAFT rejada). */
+    @Transactional
+    fun moveSubject(id: Long, itemId: Long, request: MoveCurriculumSubjectRequest, actorId: Long): CurriculumVersionDto {
+        val version = requireDraft(id)
+        val item = subjectItemRepository.findByIdAndDeletedFalse(itemId)
+            ?: throw NoSuchElementException("Curriculum fan bandi topilmadi: $itemId")
+        require(item.curriculumVersion.id == id) { "Fan bandi ushbu curriculumga tegishli emas" }
+        if (item.semester == request.semester) return toDto(version)
+        require(request.semester in 1..version.semesterCount) { "Semestr 1..${version.semesterCount} oralig'ida bo'lishi kerak" }
+        academicPeriodService.requireActiveSemester(request.semester)
+        val subjectId = item.subject?.id
+        require(subjectId == null || !subjectItemRepository.existsByCurriculumVersionIdAndSubjectIdAndSemesterAndDeletedFalse(id, subjectId, request.semester)) {
+            "${item.subjectNameSnapshot} ${request.semester}-semestrda allaqachon bor"
+        }
+        val from = item.semester
+        item.semester = request.semester
+        subjectItemRepository.save(item)
+        auditService.logAction("CURRICULUM_SUBJECT_MOVED", actorId, "curriculum=$id; item=$itemId; semester=$from->${request.semester}")
         return toDto(version)
     }
 

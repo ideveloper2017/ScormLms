@@ -18,6 +18,7 @@ import uz.scorm.lms.app.security.CurrentUser
 import uz.scorm.lms.app.v1.curriculum.dto.AddCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.ApproveCurriculumRequest
 import uz.scorm.lms.app.v1.curriculum.dto.CurriculumImportApplyRequest
+import uz.scorm.lms.app.v1.curriculum.dto.MoveCurriculumSubjectRequest
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumComponentRequest
 import uz.scorm.lms.app.v1.curriculum.dto.SaveCurriculumVersionRequest
 import uz.scorm.lms.app.v1.curriculum.dto.UpdateCurriculumSubjectRequest
@@ -71,6 +72,11 @@ class ProgramCurriculumController(
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
     fun updateSubject(@PathVariable id: Long, @PathVariable itemId: Long, @RequestBody request: UpdateCurriculumSubjectRequest, @CurrentUser user: User) =
         service.updateSubject(id, itemId, request, requireNotNull(user.id))
+
+    @PutMapping("/{id}/subjects/{itemId}/semester")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun moveSubject(@PathVariable id: Long, @PathVariable itemId: Long, @RequestBody request: MoveCurriculumSubjectRequest, @CurrentUser user: User) =
+        service.moveSubject(id, itemId, request, requireNotNull(user.id))
 
     @DeleteMapping("/{id}/subjects/{itemId}")
     @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
