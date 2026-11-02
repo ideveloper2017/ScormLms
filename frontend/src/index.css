@@ -62,6 +62,17 @@
   min-height: 18rem;
 }
 
+/* "∑ Formula" (KaTeX) muharrirda: matn ichida yoki alohida qatorda */
+.ckeditor-shell .ck-formula {
+  display: inline-block;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.ckeditor-shell .ck-formula_display {
+  display: block;
+  text-align: center;
+}
+
 .ck-content img.Wirisformula {
   display: inline-block;
   max-width: 100%;
