@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  ClipboardCheck,
   Download,
   FileText,
   Layers,
@@ -32,6 +33,7 @@ import { UNASSIGNED_UNIT_TITLE } from "@/lib/course-units";
 import { teacherPortalApi, type CourseContentAsset } from "@/services/api/teacher-portal-api";
 import { CourseForum } from "@/components/course-forum";
 import { LessonContentViewer } from "@/components/learning/lesson-content-viewer";
+import { fetchTests } from "@/services/test-api";
 
 /** Kontentlar kurs bo'limi (dars) bo'yicha — backend ularni bo'lim tartibida qaytaradi */
 function sectionsOf(contents: LearningContent[]) {
@@ -69,6 +71,13 @@ export function StudentCourseLearning() {
     queryFn: () => studyPlanApi.getCourseProgress(courseId),
     enabled,
   });
+  // Dars testlari (Test va Savol/Javob) — dars ostida, ishlash testlar sahifasida (proktoring ham o'sha yerda)
+  const testsQuery = useQuery({
+    queryKey: ["student", "course", courseId, "tests"],
+    queryFn: () => fetchTests({ courseId: String(courseId) }),
+    enabled,
+  });
+  const lessonTests = (lessonId: number) => (testsQuery.data ?? []).filter((test) => test.lessonId === String(lessonId));
   const completeMutation = useMutation({
     mutationFn: (contentId: number) =>
       studyPlanApi.recordContentProgress(courseId, contentId, 100),
@@ -237,6 +246,16 @@ export function StudentCourseLearning() {
                         <span>{content.title}</span>
                       </button>;
                     })}
+                    {lessonTests(section.moduleId).map((test) => (
+                      <button key={`test-${test.id}`} type="button" onClick={() => navigate("/student/tests")}
+                        className="flex items-center gap-2 rounded-lg border border-dashed p-3 text-left text-sm hover:bg-muted/50">
+                        <ClipboardCheck className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="flex-1">{test.title}</span>
+                        <Badge variant={test.status === "completed" ? "default" : "outline"}>
+                          {test.status === "completed" ? `${test.score ?? 0}%` : `Test · ${test.questionCount} savol`}
+                        </Badge>
+                      </button>
+                    ))}
                   </div>
                 </div>
               ))}

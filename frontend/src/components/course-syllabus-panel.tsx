@@ -38,7 +38,8 @@ export function CourseSyllabusPanel({ courseId, onChanged }: { courseId: string;
         title: "Kurs dastur bilan moslandi",
         description: `${result.added} ta yangi bo'lim qo'shildi, ${result.updated} ta bo'lim yangilandi` +
           (result.removed ? `, dasturdan o'chirilgan ${result.removed} ta bo'sh bo'lim olib tashlandi` : "") +
-          (result.materials ? `, dars kontenti: ${result.materials} ta material moslandi` : ""),
+          (result.materials ? `, dars kontenti: ${result.materials} ta material moslandi` : "") +
+          (result.quizzes ? `, ${result.quizzes} ta dars testi moslandi` : ""),
       });
     },
     onError: fail("Sinxronlanmadi"),

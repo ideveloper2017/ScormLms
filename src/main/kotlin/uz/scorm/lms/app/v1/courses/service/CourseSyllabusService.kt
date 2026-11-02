@@ -37,6 +37,8 @@ data class SyllabusLinkedCourseDto(
     val removed: Int = 0,
     /** Dars kontenti (dastur materiallari) bo'yicha o'zgarishlar */
     val materials: Int = 0,
+    /** Dars testlari (Test va Savol/Javob) bo'yicha o'zgarishlar */
+    val quizzes: Int = 0,
 )
 
 /**
@@ -53,6 +55,7 @@ class CourseSyllabusService(
     private val unitService: CourseUnitService,
     private val materialRepository: SubjectMaterialRepository,
     private val revisionRepository: CourseContentRevisionRepository,
+    private val quizSync: SyllabusQuizSync,
 ) {
     @Transactional(readOnly = true)
     fun status(courseId: Long, userId: Long, mayManageAll: Boolean): CourseSyllabusStatusDto {
@@ -72,7 +75,7 @@ class CourseSyllabusService(
             "O'quv dasturining yangi versiyasi hali tasdiqlanmagan — tasdiqlangandan keyin sinxronlang"
         }
         val counts = applySync(course, syllabus)
-        return CourseSyllabusSyncResult(counts.added, counts.updated, status(course, syllabus), counts.removed, counts.materials)
+        return CourseSyllabusSyncResult(counts.added, counts.updated, status(course, syllabus), counts.removed, counts.materials, counts.quizzes)
     }
 
     /** Dasturga bog'langan kurslar (dastur mavzulari oynasida ko'rsatiladi). */
@@ -148,12 +151,13 @@ class CourseSyllabusService(
         }
         changed.forEach(moduleRepository::save)
         val materials = syncMaterials(lessonSections + others, contents, lessonIds)
+        val quizzes = quizSync.sync(course, lessonSections + others, lessonIds)
         removeEmptyOrphanUnits(courseId, units.values)
         // Umumiy tartib: modullar tartibida, har modul ichida dastur darslari, keyin qo'shimchalari
         unitService.normalize(courseId)
         course.syllabusRevision = syllabus.revisionNumber
         courseRepository.save(course)
-        return SyncCounts(added, updated, removed, materials)
+        return SyncCounts(added, updated, removed, materials, quizzes)
     }
 
     /**
@@ -260,13 +264,13 @@ class CourseSyllabusService(
             }
     }
 
-    /** materials — kurs darslariga qo'shilgan, yangilangan yoki olib tashlangan dastur materiallari */
-    data class SyncCounts(val added: Int, val updated: Int, val removed: Int, val materials: Int = 0)
+    /** materials va quizzes — kurs darslariga qo'shilgan, yangilangan yoki olib tashlangan dastur materiallari va testlari */
+    data class SyncCounts(val added: Int, val updated: Int, val removed: Int, val materials: Int = 0, val quizzes: Int = 0)
 
     private fun linked(course: Course, counts: SyncCounts = SyncCounts(0, 0, 0)) = SyllabusLinkedCourseDto(
         id = requireNotNull(course.id), title = course.title.orEmpty(), status = course.status.orEmpty().lowercase(),
         autoSync = course.status == CourseStatus.DRAFT.name, added = counts.added, updated = counts.updated,
-        removed = counts.removed, materials = counts.materials,
+        removed = counts.removed, materials = counts.materials, quizzes = counts.quizzes,
     )
 
     private fun status(course: Course, syllabus: SubjectSyllabus): CourseSyllabusStatusDto {

@@ -42,7 +42,7 @@ class CourseSyllabusSyncTest {
     private val materialRepo = mockk<SubjectMaterialRepository>()
     private val revisions = mockk<CourseContentRevisionRepository>()
     private val service = CourseSyllabusService(access, courses, modules, contents, unitRepo, CourseUnitService(unitRepo, modules, access),
-        materialRepo, revisions)
+        materialRepo, revisions, mockk(relaxed = true))
     private val units = mutableListOf<CourseUnit>()
     private val contentList = mutableListOf<CourseContent>()
     private val materials = mutableListOf<SubjectMaterial>()

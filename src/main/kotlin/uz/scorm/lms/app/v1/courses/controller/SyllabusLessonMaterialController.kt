@@ -21,12 +21,19 @@ import uz.scorm.lms.app.v1.courses.dto.SubjectMaterialDto
 import uz.scorm.lms.app.v1.courses.service.SyllabusLessonMaterialRequest
 import uz.scorm.lms.app.v1.courses.service.SyllabusLessonMaterialService
 import uz.scorm.lms.app.v1.courses.service.SyllabusLessonMaterialsDto
+import uz.scorm.lms.app.v1.courses.service.SyllabusLessonQuizDto
+import uz.scorm.lms.app.v1.courses.service.SyllabusLessonQuizRequest
+import uz.scorm.lms.app.v1.courses.service.SyllabusLessonQuizService
+import uz.scorm.lms.app.v1.courses.service.SyllabusLessonQuizzesDto
 import uz.scorm.lms.app.v1.user.model.User
 
 /** O'quv dasturi darsining kontenti (Everest: dars -> resurslar); bog'langan qoralama kurslar avtomatik moslanadi. */
 @RestController
 @RequestMapping("/api/v1/syllabus-courses/{syllabusId}")
-class SyllabusLessonMaterialController(private val service: SyllabusLessonMaterialService) {
+class SyllabusLessonMaterialController(
+    private val service: SyllabusLessonMaterialService,
+    private val quizzes: SyllabusLessonQuizService,
+) {
     @GetMapping("/lessons/{topicId}/materials")
     @PreAuthorize("hasAuthority('ACADEMIC_READ')")
     fun list(@PathVariable syllabusId: Long, @PathVariable topicId: Long): ApiResponse<List<SubjectMaterialDto>> =
@@ -75,4 +82,36 @@ class SyllabusLessonMaterialController(private val service: SyllabusLessonMateri
         @PathVariable topicId: Long,
         @PathVariable materialId: Long,
     ): ApiResponse<SyllabusLessonMaterialsDto> = ApiResponse.success(service.delete(syllabusId, topicId, materialId))
+
+    /** Dars resurslari: Test va Savol/Javob (kursga test sifatida tushadi) */
+    @GetMapping("/lessons/{topicId}/quizzes")
+    @PreAuthorize("hasAuthority('ACADEMIC_READ')")
+    fun quizzes(@PathVariable syllabusId: Long, @PathVariable topicId: Long): ApiResponse<List<SyllabusLessonQuizDto>> =
+        ApiResponse.success(quizzes.list(syllabusId, topicId))
+
+    @PostMapping("/lessons/{topicId}/quizzes")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun createQuiz(
+        @PathVariable syllabusId: Long,
+        @PathVariable topicId: Long,
+        @RequestBody request: SyllabusLessonQuizRequest,
+    ): ResponseEntity<ApiResponse<SyllabusLessonQuizzesDto>> =
+        ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(quizzes.create(syllabusId, topicId, request)))
+
+    @PutMapping("/lessons/{topicId}/quizzes/{quizId}")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun updateQuiz(
+        @PathVariable syllabusId: Long,
+        @PathVariable topicId: Long,
+        @PathVariable quizId: Long,
+        @RequestBody request: SyllabusLessonQuizRequest,
+    ): ApiResponse<SyllabusLessonQuizzesDto> = ApiResponse.success(quizzes.update(syllabusId, topicId, quizId, request))
+
+    @DeleteMapping("/lessons/{topicId}/quizzes/{quizId}")
+    @PreAuthorize("hasAuthority('ACADEMIC_WRITE')")
+    fun deleteQuiz(
+        @PathVariable syllabusId: Long,
+        @PathVariable topicId: Long,
+        @PathVariable quizId: Long,
+    ): ApiResponse<SyllabusLessonQuizzesDto> = ApiResponse.success(quizzes.delete(syllabusId, topicId, quizId))
 }

@@ -551,6 +551,8 @@ class QuizService(
             },
             avgScore = attempts.takeIf { it.isNotEmpty() }?.map { it.percentage }?.average()?.roundToInt(),
             participants = attempts.map { it.enrollment.id }.distinct().size,
+            lessonId = quiz.module?.id?.toString(),
+            fromSyllabus = quiz.syllabusQuizId != null,
         )
     }
 
@@ -590,6 +592,7 @@ class QuizService(
                 else -> "upcoming"
             },
             score = latest?.takeIf { it.status != QuizAttemptStatus.IN_PROGRESS }?.percentage?.roundToInt(),
+            lessonId = quiz.module?.id?.toString(),
         )
     }
 

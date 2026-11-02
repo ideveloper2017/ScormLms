@@ -43,6 +43,8 @@ data class SyllabusTopicDto(
     val lessonOrder: Int? = null,
     /** Dars kontenti: darsga kiritilgan materiallar soni */
     val materialCount: Int = 0,
+    /** Darsning Test va Savol/Javob resurslari soni */
+    val quizCount: Int = 0,
 )
 
 /** Modul: nomi, ma'lumoti va darslari (dars — mavzu, mashg'ulot turi bilan) */

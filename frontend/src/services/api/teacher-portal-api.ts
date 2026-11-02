@@ -174,7 +174,7 @@ export interface CourseSyllabusStatus {
 }
 
 /** removed — dasturdan o'chirilgan darslarning bo'sh bo'limlari (kontentli bo'limlar saqlanadi) */
-export interface CourseSyllabusSyncResult { added: number; updated: number; removed?: number; materials?: number; status: CourseSyllabusStatus }
+export interface CourseSyllabusSyncResult { added: number; updated: number; removed?: number; materials?: number; quizzes?: number; status: CourseSyllabusStatus }
 
 export interface CourseContent {
   id: number;
@@ -429,6 +429,9 @@ export interface TeacherTest {
   passingPercentage: number;
   proctoring: boolean;
   proctorIds: string[];
+  /** Test qaysi kurs darsida; fromSyllabus — o'quv dasturi darsidan kelgan (Test yoki Savol/Javob) */
+  lessonId?: string | null;
+  fromSyllabus?: boolean;
 }
 
 export interface TeacherQuizPayload {

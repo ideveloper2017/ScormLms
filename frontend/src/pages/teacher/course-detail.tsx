@@ -8,6 +8,7 @@ import {
   BarChart3,
   BookOpen,
   CheckCircle2 as CheckCircleIcon,
+  ClipboardCheck,
   ClipboardList,
   ChevronDown,
   CalendarDays,
@@ -216,6 +217,14 @@ export function TeacherCourseDetail({
     queryFn: () => teacherPortalApi.getContents(courseId),
     enabled: Boolean(courseId),
   });
+  // Dars testlari (o'quv dasturi darsidagi Test va Savol/Javob shu yerga tushadi)
+  const testsQuery = useQuery({
+    queryKey: ["teacher", "tests"],
+    queryFn: teacherPortalApi.getTests,
+    enabled: Boolean(courseId),
+  });
+  const lessonTests = (lessonId: number) =>
+    (testsQuery.data ?? []).filter((test) => test.courseId === String(courseId) && test.lessonId === String(lessonId));
   const subjectMaterialsQuery = useQuery({
     queryKey: ["teacher", "subject-materials"],
     queryFn: teacherPortalApi.getSubjectMaterials,
@@ -270,6 +279,7 @@ export function TeacherCourseDetail({
       queryClient.invalidateQueries({
         queryKey: ["teacher", "course", courseId, "units"],
       }),
+      queryClient.invalidateQueries({ queryKey: ["teacher", "tests"] }),
       queryClient.invalidateQueries({
         queryKey: ["teacher", "course", courseId, "contents"],
       }),
@@ -1415,6 +1425,17 @@ export function TeacherCourseDetail({
               </Card>
                     );
                   })}
+                  {lessonTests(module.id).map((test) => (
+                    <div key={test.id} role="group" aria-label={`Dars testi: ${test.title}`}
+                      className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-3 text-sm">
+                      <ClipboardCheck className="h-4 w-4 text-primary" />
+                      <span className="font-medium">{test.title}</span>
+                      <span className="text-xs text-muted-foreground">{test.questions} ta savol · {test.duration} daqiqa</span>
+                      {test.fromSyllabus && <Badge variant="outline">O'quv dasturidan</Badge>}
+                      <Badge variant={test.status === "draft" ? "secondary" : "default"}>{test.status === "draft" ? "Qoralama" : "Nashrda"}</Badge>
+                      <Button variant="link" size="sm" className="ml-auto h-auto p-0" onClick={() => navigate("/teacher/tests")}>Testlar sahifasida ochish</Button>
+                    </div>
+                  ))}
                 </CardContent>
                 </CollapsibleContent>
               </Card>

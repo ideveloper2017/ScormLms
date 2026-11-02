@@ -12,8 +12,10 @@ import { isRichTextEmpty, richTextToPlainText } from "@/components/editor/rich-t
 import { useToast } from "@/hooks/use-toast";
 import { extractApiError } from "@/lib/academic-api";
 import { topicTypeMeta } from "@/lib/syllabus";
+import { LessonQuizzes } from "@/components/admin/syllabus-lesson-quizzes";
 import {
-  syllabusApi, type LessonMaterialInput, type LessonMaterialType, type LessonMaterialsResult, type SyllabusTopicType,
+  syllabusApi, type LessonMaterialInput, type LessonMaterialType, type LessonMaterialsResult, type LessonQuiz,
+  type SyllabusLinkedCourse, type SyllabusTopicType,
 } from "@/services/api/syllabus-api";
 import type { SubjectMaterial } from "@/services/api/teacher-portal-api";
 
@@ -29,7 +31,8 @@ const MATERIAL_TYPES: { value: LessonMaterialType; label: string; icon: ElementT
 const typeOf = (value: string) => MATERIAL_TYPES.find((t) => t.value === value.toUpperCase()) ?? MATERIAL_TYPES[3];
 
 /**
- * Dars kontenti (Everest: Dasturlar -> modul -> dars -> resurslar): matn, video, hujjat, fayl yoki havola.
+ * Dars kontenti (Everest: Dasturlar -> modul -> dars -> resurslar): matn, video, hujjat, fayl yoki havola,
+ * hamda Test va Savol/Javob (kursga test bo'lib tushadi).
  * Materiallar fan bankida saqlanadi; dasturdan yaratilgan kurslarning shu darsiga avtomatik ko'chadi
  * (qoralama kurslarga darhol, nashr qilinganiga — kursdagi "Dastur bilan sinxronlash" orqali).
  */
@@ -48,16 +51,20 @@ export function LessonContentSheet({ syllabusId, lesson, editable, onClose, onCh
   const [editing, setEditing] = useState<SubjectMaterial | "new" | null>(null);
   const list = materials.data ?? [];
 
-  const applied = (result: LessonMaterialsResult, title: string) => {
-    queryClient.setQueryData(key, result.materials);
-    onChanged(result.materials.length);
-    const synced = result.courses.filter((c) => (c.materials ?? 0) > 0);
-    const published = result.courses.filter((c) => !c.autoSync);
+  const quizKey = ["syllabus", syllabusId, "lesson", lesson.id, "quizzes"];
+  const notify = (title: string, courses: SyllabusLinkedCourse[], field: "materials" | "quizzes") => {
+    const synced = courses.filter((c) => (c[field] ?? 0) > 0);
+    const published = courses.filter((c) => !c.autoSync);
     const description = [
       synced.length ? `Kursga ham tushdi: ${synced.map((c) => `«${c.title}»`).join(", ")}` : null,
       published.length ? `Nashr qilingan ${published.map((c) => `«${c.title}»`).join(", ")} kursiga dastur tasdiqlangach "Dastur bilan sinxronlash" orqali tushadi` : null,
     ].filter(Boolean).join(". ");
     toast({ title, description: description || undefined });
+  };
+  const applied = (result: LessonMaterialsResult, title: string) => {
+    queryClient.setQueryData(key, result.materials);
+    onChanged(result.materials.length + (queryClient.getQueryData<LessonQuiz[]>(quizKey)?.length ?? 0));
+    notify(title, result.courses, "materials");
   };
   const failed = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: extractApiError(e, title).message });
   const remove = useMutation({
@@ -117,6 +124,14 @@ export function LessonContentSheet({ syllabusId, lesson, editable, onClose, onCh
         {editing === "new" && <MaterialForm syllabusId={syllabusId} lessonId={lesson.id}
           onCancel={() => setEditing(null)} onSaved={(result) => { setEditing(null); applied(result, "Material qo'shildi"); }} />}
         {editable && editing == null && <Button variant="outline" onClick={() => setEditing("new")}><Plus className="mr-2 h-4 w-4" />Kontent qo'shish</Button>}
+        <section aria-label="Test va Savol / Javob" className="space-y-2 border-t pt-4">
+          <h3 className="text-sm font-semibold">Test va Savol / Javob</h3>
+          <p className="text-xs text-muted-foreground">Kursning shu darsiga test bo'lib tushadi (qoralama) — o'qituvchi muddatini tekshirib nashr qiladi.</p>
+          <LessonQuizzes syllabusId={syllabusId} lessonId={lesson.id} editable={editable} onChanged={(count, title, courses) => {
+            onChanged(count + (queryClient.getQueryData<SubjectMaterial[]>(key)?.length ?? 0));
+            notify(title, courses, "quizzes");
+          }} />
+        </section>
         {!editable && <p className="text-xs text-muted-foreground">Kontent faqat qoralama dasturda tahrirlanadi — dasturning yangi versiyasini oching.</p>}
       </div>
     </SheetContent>

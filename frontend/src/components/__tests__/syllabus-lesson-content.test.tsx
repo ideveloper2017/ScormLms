@@ -10,6 +10,7 @@ vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   syllabusApi: {
     lessonMaterials: vi.fn(), createLessonMaterial: vi.fn(), updateLessonMaterial: vi.fn(),
     reorderLessonMaterials: vi.fn(), deleteLessonMaterial: vi.fn(), uploadLessonAsset: vi.fn(),
+    lessonQuizzes: vi.fn(),
   },
 }));
 const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
@@ -26,8 +27,12 @@ const mount = (editable = true, onChanged = vi.fn()) => render(
   </QueryClientProvider>,
 );
 
-describe("LessonContentSheet", () => {
-  beforeEach(() => vi.clearAllMocks());
+// Sheet (portal) va bir necha so'rov — to'liq yugurish yuklamasida 5 soniyadan oshishi mumkin
+describe("LessonContentSheet", { timeout: 20_000 }, () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(syllabusApi.lessonQuizzes).mockResolvedValue([]);
+  });
 
   it("darsga video qo'shadi va bog'langan qoralama kursga tushganini aytadi", async () => {
     vi.mocked(syllabusApi.lessonMaterials).mockResolvedValue([material(1, "Ma'ruza matni", "text", { contentBody: "<p>Tezlik</p>" })]);

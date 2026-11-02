@@ -20,7 +20,7 @@ vi.mock('@/services/api/teacher-portal-api', () => ({ teacherPortalApi: {
   getProfile: vi.fn(), getSubjectMaterialSubjects: vi.fn(), createCourse: vi.fn(), updateCourse: vi.fn(),
   uploadCourseThumbnail: vi.fn(), getCourse: vi.fn(), getEnrollments: vi.fn(), getModules: vi.fn(),
   getContents: vi.fn(), getSubjectMaterials: vi.fn(), deleteModule: vi.fn(), deleteContent: vi.fn(),
-  getUnits: vi.fn(), createModule: vi.fn(), updateUnitStatus: vi.fn(),
+  getUnits: vi.fn(), createModule: vi.fn(), updateUnitStatus: vi.fn(), getTests: vi.fn(),
 } }));
 
 const course: TeacherCourse = { id: '9', title: 'Mexanika', subjectId: 3, subjectName: 'Fizika',
@@ -53,6 +53,7 @@ beforeEach(() => {
   vi.mocked(teacherPortalApi.getUnits).mockResolvedValue([]);
   vi.mocked(teacherPortalApi.getContents).mockResolvedValue([content]);
   vi.mocked(teacherPortalApi.getSubjectMaterials).mockResolvedValue([]);
+  vi.mocked(teacherPortalApi.getTests).mockResolvedValue([]);
   vi.mocked(syllabusApi.list).mockResolvedValue([]);
 });
 
@@ -100,6 +101,19 @@ describe('course authoring', () => {
     vi.mocked(teacherPortalApi.getModules).mockResolvedValue([{ ...module, topicType: 'THEORETICAL', plannedHours: 2 }]);
     mountDetail();
     expect(await screen.findByText('Nazariy · 2 soat')).toBeInTheDocument();
+  });
+
+  it('shows the syllabus lesson test under its lesson', async () => {
+    const test = { id: '70', title: 'Kirish testi', courseTitle: 'Mexanika', courseId: '9', date: '2026-09-01', duration: 20,
+      questions: 3, status: 'draft' as const, totalPoints: 3, allowedAttempts: 1, passingPercentage: 60, proctoring: false,
+      proctorIds: [], lessonId: '4', fromSyllabus: true };
+    vi.mocked(teacherPortalApi.getTests).mockResolvedValue([test, { ...test, id: '71', title: 'Boshqa kurs testi', courseId: '10' }]);
+    mountDetail();
+    const row = await screen.findByRole('group', { name: 'Dars testi: Kirish testi' });
+    expect(row).toHaveTextContent("3 ta savol · 20 daqiqa");
+    expect(row).toHaveTextContent("O'quv dasturidan");
+    expect(row).toHaveTextContent('Qoralama');
+    expect(screen.queryByText('Boshqa kurs testi')).not.toBeInTheDocument();
   });
 
   it('shows the course as modules with lessons and lets the teacher add an extra module and lesson', async () => {

@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.courses.model.Course
+import uz.scorm.lms.app.v1.courses.model.CourseModule
 import java.time.Instant
 
 @Entity
@@ -66,6 +67,18 @@ class CourseQuiz(
      */
     @Column(name = "questions_per_attempt")
     var questionsPerAttempt: Int? = null,
-) : BaseEntity()
+) : BaseEntity() {
+    /** Test qaysi darsda (o'quv dasturi darsidan kelgan testlar uchun) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "module_id")
+    var module: CourseModule? = null
+
+    /** O'quv dasturi darsining Test yoki Savol/Javob resursi va kursga ko'chirilgan versiyasi */
+    @Column(name = "syllabus_quiz_id")
+    var syllabusQuizId: Long? = null
+
+    @Column(name = "syllabus_quiz_version")
+    var syllabusQuizVersion: Int? = null
+}
 
 enum class QuizStatus { DRAFT, PUBLISHED, CLOSED }

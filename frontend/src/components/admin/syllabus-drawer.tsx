@@ -127,7 +127,10 @@ function ProgramEditor({ item, editable, plan, onSaved }: { item: SubjectSyllabu
   // Dars kontenti oynasi (Everest: dars ochilganda resurslar) va undagi o'zgarishdan keyingi material soni
   const [contentOf, setContentOf] = useState<{ id: number; title: string; type: SyllabusTopicType; moduleName: string } | null>(null);
   const [counts, setCounts] = useState<Record<number, number>>({});
-  const materialCount = (id: number) => counts[id] ?? item.topics?.find((t) => t.id === id)?.materialCount ?? 0;
+  const materialCount = (id: number) => {
+    const topic = item.topics?.find((t) => t.id === id);
+    return counts[id] ?? (topic?.materialCount ?? 0) + (topic?.quizCount ?? 0);
+  };
   const lessons = modules.flatMap((m) => m.lessons);
   const parts = Math.max(plan?.length ?? 0, ...lessons.map((l) => l.part ?? 1), 1);
   // Rejadan ochilganda: faqat rejada soati bor turlar (turlarga bo'linmagan rejada — barchasi)

@@ -201,6 +201,8 @@ data class CourseSyllabusSyncResult(
     val added: Int, val updated: Int, val status: CourseSyllabusStatusDto, val removed: Int = 0,
     /** Dars kontenti: dastur materiallari bo'yicha qo'shilgan, yangilangan yoki olib tashlanganlar */
     val materials: Int = 0,
+    /** Dars testlari (Test va Savol/Javob) bo'yicha o'zgarishlar */
+    val quizzes: Int = 0,
 )
 
 data class CourseModuleRequest(

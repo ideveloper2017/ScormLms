@@ -39,7 +39,7 @@ class CourseFromSyllabusTest {
     private val units = mutableListOf<CourseUnit>()
     private val created = mutableListOf<CourseModule>()
     private val structure = CourseSyllabusService(mockk(), courses, modules, mockk(relaxed = true), unitRepo, CourseUnitService(unitRepo, modules, mockk()),
-        mockk(relaxed = true), mockk(relaxed = true))
+        mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
     private val service = CourseService(courses, mockk(relaxed = true), mockk(), subjects, mockk(relaxed = true), mockk(), teachers, syllabi, structure)
 
     private val subject = Subject(name = "Algoritmlar", code = "ALG101").apply { id = 8 }

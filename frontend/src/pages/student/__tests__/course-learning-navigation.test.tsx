@@ -5,12 +5,14 @@ import { expect, it, vi } from 'vitest';
 import { StudentCourseLearning } from '../course-learning';
 import { studyPlanApi } from '@/services/api/study-plan-api';
 import { workspaceApi } from '@/services/api/workspace-api';
+import { fetchTests } from '@/services/test-api';
 
 vi.mock('@/services/api/study-plan-api', () => ({ studyPlanApi: {
   getCourseContents: vi.fn(), getCourseProgress: vi.fn(), recordContentProgress: vi.fn(),
 } }));
 vi.mock('@/services/api/workspace-api', () => ({ workspaceApi: { viewed: vi.fn().mockResolvedValue(undefined) } }));
 vi.mock('@/services/api/scorm-api', () => ({ scormApi: { listPackages: vi.fn().mockResolvedValue([]) } }));
+vi.mock('@/services/test-api', () => ({ fetchTests: vi.fn().mockResolvedValue([]) }));
 vi.mock('@/components/course-forum', () => ({ CourseForum: () => null }));
 vi.mock('@/components/editor/rich-text-content', () => ({ RichTextContent: ({ value }: { value: string }) => <p>{value}</p> }));
 
@@ -55,5 +57,34 @@ it('groups materials by course module and lesson', async () => {
   expect(within(section).getAllByRole('button').map((button) => button.textContent)).toEqual(['1.Video', '2.Konspekt']);
   expect(within(screen.getByRole('region', { name: 'Termodinamika' })).getByText('Taqdimot')).toBeInTheDocument();
   expect(within(screen.getByRole('region', { name: 'Modulga biriktirilmagan darslar' })).getByRole('group', { name: 'Takrorlash' })).toBeInTheDocument();
+  client.clear();
+});
+
+it('shows the lesson test under its lesson and opens the tests page', async () => {
+  vi.mocked(studyPlanApi.getCourseContents).mockResolvedValue([
+    { id: 1, moduleId: 41, moduleTitle: 'Kinematika', unitId: 1, unitTitle: 'Mexanika', title: 'Video', contentBody: 'a' },
+  ] as Awaited<ReturnType<typeof studyPlanApi.getCourseContents>>);
+  vi.mocked(studyPlanApi.getCourseProgress).mockResolvedValue({ courseId: 3, progress: 0, completedContents: 0,
+    totalContents: 1, completedContentIds: [], completedScormPackages: 0, totalScormPackages: 0, status: 'active' });
+  vi.mocked(fetchTests).mockResolvedValue([
+    { id: '70', title: 'Kinematika testi', courseId: '3', courseName: 'Fizika', date: new Date(), startTime: '09:00', endTime: '11:00',
+      duration: 20, questionCount: 5, totalPoints: 5, proctoring: false, status: 'upcoming', lessonId: '41' },
+    { id: '71', title: 'Boshqa dars testi', courseId: '3', courseName: 'Fizika', date: new Date(), startTime: '09:00', endTime: '11:00',
+      duration: 20, questionCount: 5, totalPoints: 5, proctoring: false, status: 'upcoming', lessonId: '99' },
+  ]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/student/courses/3/learn']}>
+    <Routes>
+      <Route path="/student/courses/:id/learn" element={<StudentCourseLearning />} />
+      <Route path="/student/tests" element={<p>Testlar sahifasi</p>} />
+    </Routes>
+  </MemoryRouter></QueryClientProvider>);
+  const section = await screen.findByRole('group', { name: 'Kinematika' });
+  const test = await within(section).findByRole('button', { name: /Kinematika testi/ });
+  expect(test).toHaveTextContent('Test · 5 savol');
+  expect(fetchTests).toHaveBeenCalledWith({ courseId: '3' });
+  expect(screen.queryByText('Boshqa dars testi')).not.toBeInTheDocument();
+  fireEvent.click(test);
+  expect(await screen.findByText('Testlar sahifasi')).toBeInTheDocument();
   client.clear();
 });
