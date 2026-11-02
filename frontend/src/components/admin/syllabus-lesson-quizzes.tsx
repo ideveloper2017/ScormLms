@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, Loader2, MessageCircleQuestion, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ClipboardCheck, FileUp, Loader2, MessageCircleQuestion, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { extractApiError } from "@/lib/academic-api";
+import { QUIZ_DOCX_TEMPLATE, importQuizDocx } from "@/lib/quiz-docx";
 import {
   syllabusApi, type LessonQuestionType, type LessonQuiz, type LessonQuizInput, type LessonQuizKind, type LessonQuizQuestion,
   type LessonQuizzesResult, type SyllabusLinkedCourse,
@@ -124,6 +125,19 @@ function QuizForm({ syllabusId, lessonId, kind, quiz, onCancel, onSaved }: {
     ...q, options: q.type === "SINGLE_CHOICE" ? q.options : ["", ""], explanation: q.explanation ?? "",
   })) ?? [emptyQuestion()]);
   const [error, setError] = useState<string | null>(null);
+  // Everest kabi: savollar .docx fayldan (HEMIS formati) — formaga qo'shiladi, saqlashdan oldin tekshiriladi
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [importNote, setImportNote] = useState<string | null>(null);
+  const importDocx = useMutation({
+    mutationFn: importQuizDocx,
+    onSuccess: (list) => {
+      if (!list.length) { setImportNote("Faylda savol topilmadi — namuna fayldagi formatga qarang"); return; }
+      setQuestions((current) => (current.length === 1 && !current[0].text.trim() ? list : [...current, ...list]));
+      const problems = list.filter((q, i) => questionProblem(q, i)).length;
+      setImportNote(`${list.length} ta savol yuklandi${problems ? `, ${problems} tasini to'g'rilang` : ""}`);
+    },
+    onError: () => setImportNote("Faylni o'qib bo'lmadi — .docx formatidagi fayl tanlang"),
+  });
   const change = (index: number, value: Partial<LessonQuizQuestion>) =>
     setQuestions((list) => list.map((q, i) => (i === index ? { ...q, ...value } : q)));
   const invalid = title.trim().length < 2 ? "Nomi kamida 2 belgi"
@@ -166,6 +180,16 @@ function QuizForm({ syllabusId, lessonId, kind, quiz, onCancel, onSaved }: {
     </div>
     {isTest && <div className="space-y-1.5"><Label htmlFor="lq-instructions">Ko'rsatma</Label>
       <Textarea id="lq-instructions" rows={2} value={instructions} onChange={(e) => setInstructions(e.target.value)} /></div>}
+    {isTest && <div className="flex flex-wrap items-center gap-3 rounded-md border border-dashed bg-background p-3 text-sm">
+      <input ref={fileInput} type="file" accept=".docx" className="hidden" aria-label="Test fayli (.docx)"
+        onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) importDocx.mutate(file); }} />
+      <Button variant="outline" size="sm" disabled={importDocx.isPending} onClick={() => fileInput.current?.click()}>
+        {importDocx.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileUp className="mr-1.5 h-3.5 w-3.5" />}.DOCX fayldan yuklash
+      </Button>
+      <span className="text-xs text-muted-foreground">Savollar <b>++++</b>, variantlar <b>====</b> bilan ajratiladi, to'g'ri javob oldiga <b>#</b>.{" "}
+        <a className="underline" href={QUIZ_DOCX_TEMPLATE} download>Namuna fayl</a></span>
+      {importNote && <span role="status" className="w-full text-xs font-medium">{importNote}</span>}
+    </div>}
     <ol className="space-y-3">
       {questions.map((question, index) => <li key={index} aria-label={`${index + 1}-savol`} className="space-y-2 rounded-md border bg-background p-3">
         <div className="flex items-center gap-2">

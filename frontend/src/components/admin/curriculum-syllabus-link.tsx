@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SyllabusDrawer } from "@/components/admin/syllabus-drawer";
+import { SyllabusPage } from "@/components/admin/syllabus-page";
 import { SyllabusWorkflow, syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { extractApiError } from "@/lib/academic-api";
 import { curriculumLabel, groupBySubject, planOf, syllabusLanguageOf } from "@/lib/curriculum-subjects";
@@ -172,10 +172,10 @@ export function CreateSyllabusDialog({ curricula, curriculumId: initialCurriculu
 }
 
 /**
- * Rejadagi fan dasturi (Everest kabi drawer): "Dasturlar" — modullar va darslar, darslar rejadagi soatlar (turlar,
+ * Rejadagi fan dasturi (to'liq sahifa): "Dasturlar" — modullar va darslar, darslar rejadagi soatlar (turlar,
  * qismlar) bilan solishtiriladi; "Ma'lumot" — dastur ta'riflari.
  */
-export function CurriculumTopicsDialog({ rows, canWrite, onClose, onSaved }: {
+export function CurriculumSyllabusPage({ rows, canWrite, onClose, onSaved }: {
   /** Fanning rejadagi barcha semestr qatorlari */
   rows: CurriculumSubject[];
   canWrite: boolean;
@@ -183,9 +183,14 @@ export function CurriculumTopicsDialog({ rows, canWrite, onClose, onSaved }: {
   onSaved: () => unknown;
 }) {
   const syllabus = useSubjectSyllabus(rows[0]);
-  if (!syllabus.item) return null;
+  if (!syllabus.item) {
+    return syllabus.isLoading ? <div className="flex justify-center p-10"><Loader2 className="animate-spin" aria-label="Yuklanmoqda" /></div>
+      : <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md border p-4 text-sm">
+        O'quv dasturi yuklanmadi.<Button variant="outline" size="sm" onClick={onClose}>Orqaga</Button>
+      </div>;
+  }
   return (
-    <SyllabusDrawer key={syllabus.item.id} item={syllabus.item} canWrite={canWrite} plan={planOf(rows)} initialTab="program"
+    <SyllabusPage key={syllabus.item.id} item={syllabus.item} canWrite={canWrite} plan={planOf(rows)} initialTab="program"
       onSaved={() => { void syllabus.refetch(); void onSaved(); }} onClose={onClose} />
   );
 }

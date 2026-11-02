@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LessonContentSheet } from "@/components/admin/syllabus-lesson-content";
+import { LessonContentPage } from "@/components/admin/syllabus-lesson-page";
 import { syllabusApi } from "@/services/api/syllabus-api";
 import type { SubjectMaterial } from "@/services/api/teacher-portal-api";
 
@@ -23,12 +23,12 @@ const material = (id: number, title: string, contentType: SubjectMaterial["conte
 const lesson = { id: 11, title: "Kinematika", type: "THEORETICAL" as const, moduleName: "Mexanika" };
 const mount = (editable = true, onChanged = vi.fn()) => render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-    <LessonContentSheet syllabusId={40} lesson={lesson} editable={editable} onClose={vi.fn()} onChanged={onChanged} />
+    <LessonContentPage syllabusId={40} lesson={lesson} editable={editable} onChanged={onChanged} />
   </QueryClientProvider>,
 );
 
-// Sheet (portal) va bir necha so'rov — to'liq yugurish yuklamasida 5 soniyadan oshishi mumkin
-describe("LessonContentSheet", { timeout: 20_000 }, () => {
+// Bir necha so'rov — to'liq yugurish yuklamasida 5 soniyadan oshishi mumkin
+describe("LessonContentPage", { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(syllabusApi.lessonQuizzes).mockResolvedValue([]);

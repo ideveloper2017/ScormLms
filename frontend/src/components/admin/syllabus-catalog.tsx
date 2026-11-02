@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SyllabusWorkflow, syllabusStatuses } from "@/components/admin/syllabus-workflow";
-import { SyllabusDrawer } from "@/components/admin/syllabus-drawer";
+import { SyllabusPage } from "@/components/admin/syllabus-page";
 import { useToast } from "@/hooks/use-toast";
 import { extractApiError } from "@/lib/academic-api";
 import { languageLabel, syllabusLanguages } from "@/lib/syllabus";
@@ -47,10 +47,12 @@ export function SyllabusCatalog({ canWrite }: { canWrite: boolean }) {
     && (!year || (year === "none" ? !r.academicYear : r.academicYear === year))
     && (!needle || r.name.toLowerCase().includes(needle) || r.subjectName.toLowerCase().includes(needle) || (r.subjectCode ?? "").toLowerCase().includes(needle)));
 
+  // Dastur ro'yxat o'rnida to'liq sahifa bo'lib ochiladi
+  if (editing) return <SyllabusPage item={editing === "new" ? null : editing} canWrite={canWrite} onClose={() => setEditing(null)}
+    onSaved={() => reload()} />;
+
   return <div className="space-y-4">
     {viewing && <SyllabusWorkflow item={viewing} canWrite={canWrite} reload={reload} close={() => setViewing(null)} />}
-    {editing && <SyllabusDrawer item={editing === "new" ? null : editing} canWrite={canWrite} onClose={() => setEditing(null)}
-      onSaved={() => reload()} />}
     <AlertDialog open={toDelete != null} onOpenChange={(open) => { if (!open && !remove.isPending) setToDelete(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>

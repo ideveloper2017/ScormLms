@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { LazyRichTextEditor } from "@/components/editor/lazy-rich-text-editor";
 import { isRichTextEmpty, richTextToPlainText } from "@/components/editor/rich-text-utils";
@@ -35,12 +34,14 @@ const typeOf = (value: string) => MATERIAL_TYPES.find((t) => t.value === value.t
  * hamda Test va Savol/Javob (kursga test bo'lib tushadi).
  * Materiallar fan bankida saqlanadi; dasturdan yaratilgan kurslarning shu darsiga avtomatik ko'chadi
  * (qoralama kurslarga darhol, nashr qilinganiga — kursdagi "Dastur bilan sinxronlash" orqali).
+ * Dastur sahifasi ichida to'liq sahifa bo'lib ochiladi (orqaga qaytish — dastur sahifasining yo'lida).
  */
-export function LessonContentSheet({ syllabusId, lesson, editable, onClose, onChanged }: {
+export interface OpenLesson { id: number; title: string; type: SyllabusTopicType; moduleName: string }
+
+export function LessonContentPage({ syllabusId, lesson, editable, onChanged }: {
   syllabusId: number;
-  lesson: { id: number; title: string; type: SyllabusTopicType; moduleName: string };
+  lesson: OpenLesson;
   editable: boolean;
-  onClose: () => void;
   /** Material soni o'zgarganda (dastur ro'yxatidagi hisoblagich uchun) */
   onChanged: (count: number) => void;
 }) {
@@ -84,58 +85,57 @@ export function LessonContentSheet({ syllabusId, lesson, editable, onClose, onCh
     reorder.mutate(ids);
   };
 
-  return <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
-    <SheetContent side="right" className="w-full overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-2xl">
-      <SheetHeader>
-        <SheetTitle>{lesson.title}</SheetTitle>
-        <SheetDescription>{lesson.moduleName} · {topicTypeMeta[lesson.type].short} mashg'ulot · dars kontenti</SheetDescription>
-      </SheetHeader>
-      <div className="space-y-3 px-4 pb-6">
-        {materials.isLoading && <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>}
-        {!materials.isLoading && list.length === 0 && editing == null &&
-          <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">Darsda hali kontent yo'q. Matn, video, hujjat yoki havola qo'shing.</p>}
-        <ol className="space-y-2">
-          {list.map((material, index) => {
-            const meta = typeOf(material.contentType);
-            const Icon = meta.icon;
-            return editing !== "new" && editing?.id === material.id
-              ? <li key={material.id}><MaterialForm syllabusId={syllabusId} lessonId={lesson.id} material={material}
-                  onCancel={() => setEditing(null)} onSaved={(result) => { setEditing(null); applied(result, "Material saqlandi"); }} /></li>
-              : <li key={material.id} aria-label={`${index + 1}-material`} className="flex items-start gap-3 rounded-lg border p-3">
-                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">{index + 1}. {material.title}</p>
-                  {material.description && <p className="text-xs text-muted-foreground">{material.description}</p>}
-                  {material.asset && <p className="truncate text-xs text-muted-foreground">{material.asset.originalFileName}</p>}
-                  {material.contentBody && <p className="mt-1 line-clamp-2 text-sm">{richTextToPlainText(material.contentBody)}</p>}
-                </div>
-                <Badge variant="outline">{meta.label}</Badge>
-                {material.contentUrl && <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                  <a href={material.contentUrl} target="_blank" rel="noreferrer" aria-label="Havolani ochish"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}
-                {editable && <>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Materialni yuqoriga" disabled={index === 0 || reorder.isPending} onClick={() => move(index, index - 1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Materialni pastga" disabled={index === list.length - 1 || reorder.isPending} onClick={() => move(index, index + 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`${material.title} — tahrirlash`} onClick={() => setEditing(material)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={`${material.title} — o'chirish`} disabled={remove.isPending} onClick={() => remove.mutate(material.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                </>}
-              </li>;
-          })}
-        </ol>
-        {editing === "new" && <MaterialForm syllabusId={syllabusId} lessonId={lesson.id}
-          onCancel={() => setEditing(null)} onSaved={(result) => { setEditing(null); applied(result, "Material qo'shildi"); }} />}
-        {editable && editing == null && <Button variant="outline" onClick={() => setEditing("new")}><Plus className="mr-2 h-4 w-4" />Kontent qo'shish</Button>}
-        <section aria-label="Test va Savol / Javob" className="space-y-2 border-t pt-4">
-          <h3 className="text-sm font-semibold">Test va Savol / Javob</h3>
-          <p className="text-xs text-muted-foreground">Kursning shu darsiga test bo'lib tushadi (qoralama) — o'qituvchi muddatini tekshirib nashr qiladi.</p>
-          <LessonQuizzes syllabusId={syllabusId} lessonId={lesson.id} editable={editable} onChanged={(count, title, courses) => {
-            onChanged(count + (queryClient.getQueryData<SubjectMaterial[]>(key)?.length ?? 0));
-            notify(title, courses, "quizzes");
-          }} />
-        </section>
-        {!editable && <p className="text-xs text-muted-foreground">Kontent faqat qoralama dasturda tahrirlanadi — dasturning yangi versiyasini oching.</p>}
-      </div>
-    </SheetContent>
-  </Sheet>;
+  return <div className="max-w-5xl space-y-6">
+    <div>
+      <h1 className="text-2xl font-bold">{lesson.title}</h1>
+      <p className="text-sm text-muted-foreground">{lesson.moduleName} · {topicTypeMeta[lesson.type].short} mashg'ulot · dars kontenti</p>
+    </div>
+    <section aria-label="Dars materiallari" className="space-y-3 rounded-lg border p-4 shadow-sm">
+      <h2 className="text-base font-semibold">Materiallar</h2>
+      {materials.isLoading && <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+      {!materials.isLoading && list.length === 0 && editing == null &&
+        <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">Darsda hali kontent yo'q. Matn, video, hujjat yoki havola qo'shing.</p>}
+      <ol className="space-y-2">
+        {list.map((material, index) => {
+          const meta = typeOf(material.contentType);
+          const Icon = meta.icon;
+          return editing !== "new" && editing?.id === material.id
+            ? <li key={material.id}><MaterialForm syllabusId={syllabusId} lessonId={lesson.id} material={material}
+                onCancel={() => setEditing(null)} onSaved={(result) => { setEditing(null); applied(result, "Material saqlandi"); }} /></li>
+            : <li key={material.id} aria-label={`${index + 1}-material`} className="flex items-start gap-3 rounded-lg border p-3">
+              <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{index + 1}. {material.title}</p>
+                {material.description && <p className="text-xs text-muted-foreground">{material.description}</p>}
+                {material.asset && <p className="truncate text-xs text-muted-foreground">{material.asset.originalFileName}</p>}
+                {material.contentBody && <p className="mt-1 line-clamp-2 text-sm">{richTextToPlainText(material.contentBody)}</p>}
+              </div>
+              <Badge variant="outline">{meta.label}</Badge>
+              {material.contentUrl && <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                <a href={material.contentUrl} target="_blank" rel="noreferrer" aria-label="Havolani ochish"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}
+              {editable && <>
+                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Materialni yuqoriga" disabled={index === 0 || reorder.isPending} onClick={() => move(index, index - 1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Materialni pastga" disabled={index === list.length - 1 || reorder.isPending} onClick={() => move(index, index + 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`${material.title} — tahrirlash`} onClick={() => setEditing(material)}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={`${material.title} — o'chirish`} disabled={remove.isPending} onClick={() => remove.mutate(material.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              </>}
+            </li>;
+        })}
+      </ol>
+      {editing === "new" && <MaterialForm syllabusId={syllabusId} lessonId={lesson.id}
+        onCancel={() => setEditing(null)} onSaved={(result) => { setEditing(null); applied(result, "Material qo'shildi"); }} />}
+      {editable && editing == null && <Button variant="outline" onClick={() => setEditing("new")}><Plus className="mr-2 h-4 w-4" />Kontent qo'shish</Button>}
+    </section>
+    <section aria-label="Test va Savol / Javob" className="space-y-2 rounded-lg border p-4 shadow-sm">
+      <h2 className="text-base font-semibold">Test va Savol / Javob</h2>
+      <p className="text-xs text-muted-foreground">Kursning shu darsiga test bo'lib tushadi (qoralama) — o'qituvchi muddatini tekshirib nashr qiladi.</p>
+      <LessonQuizzes syllabusId={syllabusId} lessonId={lesson.id} editable={editable} onChanged={(count, title, courses) => {
+        onChanged(count + (queryClient.getQueryData<SubjectMaterial[]>(key)?.length ?? 0));
+        notify(title, courses, "quizzes");
+      }} />
+    </section>
+    {!editable && <p className="text-xs text-muted-foreground">Kontent faqat qoralama dasturda tahrirlanadi — dasturning yangi versiyasini oching.</p>}
+  </div>;
 }
 
 function MaterialForm({ syllabusId, lessonId, material, onCancel, onSaved }: {

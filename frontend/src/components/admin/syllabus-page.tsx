@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Layers, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, ChevronRight, Layers, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { LessonContentSheet } from "@/components/admin/syllabus-lesson-content";
+import { LessonContentPage, type OpenLesson } from "@/components/admin/syllabus-lesson-page";
 import { PlanTopicsCheck } from "@/components/admin/syllabus-topics";
 import { syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { useToast } from "@/hooks/use-toast";
@@ -25,8 +24,9 @@ const select = "h-10 rounded-md border bg-background px-3 text-sm";
  * (har darsga mashg'ulot turi) va dars kontenti (matn, video, hujjat, havola — kurs darsiga ko'chadi).
  * Rejadan ochilganda darslar rejadagi soatlar bilan solishtiriladi.
  * Faqat qoralama tahrirlanadi; tasdiqlangan dastur ko'rish rejimida ochiladi.
+ * Ro'yxat o'rnida to'liq sahifa bo'lib ochiladi; dars kontenti ham shu sahifa ichida (yo'l: dastur › modul › dars).
  */
-export function SyllabusDrawer({ item, canWrite, plan, initialTab = "info", onClose, onSaved }: {
+export function SyllabusPage({ item, canWrite, plan, initialTab = "info", onClose, onSaved }: {
   /** null — yangi dastur (avval "Ma'lumot" saqlanadi, keyin "Dasturlar" ochiladi) */
   item: SubjectSyllabus | null;
   canWrite: boolean;
@@ -39,31 +39,55 @@ export function SyllabusDrawer({ item, canWrite, plan, initialTab = "info", onCl
   const [tab, setTab] = useState<"info" | "program">(item ? initialTab : "info");
   const editable = canWrite && (current == null || current.status === "DRAFT");
   const saved = async (value: SubjectSyllabus) => { setCurrent(value); await onSaved(value); };
+  const title = current ? current.name : "O'quv dasturi qo'shish";
+  // Ochilgan dars kontenti; dastur muharriri yashiriladi, lekin saqlanmagan o'zgarishlari yo'qolmaydi
+  const [lesson, setLesson] = useState<OpenLesson | null>(null);
+  const [counts, setCounts] = useState<Record<number, number>>({});
+  const top = useRef<HTMLElement>(null);
+  useEffect(() => { top.current?.scrollIntoView?.({ block: "start" }); }, [lesson]);
 
-  return <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
-    <SheetContent side="right" className="w-full overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-3xl">
-      <SheetHeader>
-        <SheetTitle>{current ? current.name : "O'quv dasturi qo'shish"}</SheetTitle>
-        <SheetDescription>
+  return <section ref={top} aria-label={title} className="space-y-4">
+    <div className="flex flex-wrap items-center gap-3 border-b pb-3">
+      <Button variant="outline" size="sm" onClick={lesson ? () => setLesson(null) : onClose}>
+        <ArrowLeft className="mr-1.5 h-4 w-4" />{lesson ? "Dasturga qaytish" : "Orqaga"}
+      </Button>
+      <nav aria-label="Sahifa yo'li" className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted-foreground">
+        <button type="button" className="hover:text-foreground hover:underline" onClick={onClose}>O'quv dasturlari</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        {lesson ? <button type="button" className="hover:text-foreground hover:underline" onClick={() => setLesson(null)}>{title}</button>
+          : <span className="font-medium text-foreground">{title}</span>}
+        {lesson && <>
+          <ChevronRight className="h-3.5 w-3.5" /><span>{lesson.moduleName}</span>
+          <ChevronRight className="h-3.5 w-3.5" /><span className="font-medium text-foreground">{lesson.title}</span>
+        </>}
+      </nav>
+    </div>
+    {lesson && current && <LessonContentPage key={lesson.id} syllabusId={current.id} lesson={lesson} editable={editable}
+      onChanged={(count) => setCounts((value) => ({ ...value, [lesson.id]: count }))} />}
+    <div hidden={lesson != null} className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold">{title}</h1>
+        <p className="text-sm text-muted-foreground">
           {current ? `${current.subjectName} · ${syllabusStatuses[current.status]}` : "Avval ma'lumotlarni saqlang, keyin modullar va darslarni kiriting."}
           {current && !editable && " — tahrirlash uchun dasturning yangi versiyasini oching."}
-        </SheetDescription>
-      </SheetHeader>
-      <Tabs value={tab} onValueChange={(value) => setTab(value as "info" | "program")} className="px-4 pb-6">
+        </p>
+      </div>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as "info" | "program")}>
         <TabsList>
           <TabsTrigger value="info">Ma'lumot</TabsTrigger>
           <TabsTrigger value="program" disabled={!current}>Dasturlar</TabsTrigger>
         </TabsList>
-        <TabsContent value="info" className="mt-4">
+        <TabsContent value="info" className="mt-4 max-w-4xl">
           <InfoForm key={current?.id ?? "new"} item={current} editable={editable}
             onSaved={async (value) => { await saved(value); if (!item) setTab("program"); }} />
         </TabsContent>
         <TabsContent value="program" className="mt-4">
-          {current && <ProgramEditor key={current.id} item={current} editable={editable} plan={plan} onSaved={saved} />}
+          {current && <ProgramEditor key={current.id} item={current} editable={editable} plan={plan} onSaved={saved}
+            counts={counts} onOpenLesson={setLesson} />}
         </TabsContent>
       </Tabs>
-    </SheetContent>
-  </Sheet>;
+    </div>
+  </section>;
 }
 
 function InfoForm({ item, editable, onSaved }: { item: SubjectSyllabus | null; editable: boolean; onSaved: (value: SubjectSyllabus) => unknown }) {
@@ -120,13 +144,19 @@ function InfoForm({ item, editable, onSaved }: { item: SubjectSyllabus | null; e
   </div>;
 }
 
-function ProgramEditor({ item, editable, plan, onSaved }: { item: SubjectSyllabus; editable: boolean; plan?: PlanPart[]; onSaved: (value: SubjectSyllabus) => unknown }) {
+function ProgramEditor({ item, editable, plan, onSaved, counts, onOpenLesson }: {
+  item: SubjectSyllabus;
+  editable: boolean;
+  plan?: PlanPart[];
+  onSaved: (value: SubjectSyllabus) => unknown;
+  /** Dars kontenti sahifasidagi o'zgarishdan keyingi material + test soni */
+  counts: Record<number, number>;
+  /** Dars kontenti (Everest: dars ochilganda resurslar) */
+  onOpenLesson: (lesson: OpenLesson) => void;
+}) {
   const { toast } = useToast();
   const [modules, setModules] = useState<SyllabusModuleInput[]>(() => modulesOf(item));
   const [error, setError] = useState<string | null>(null);
-  // Dars kontenti oynasi (Everest: dars ochilganda resurslar) va undagi o'zgarishdan keyingi material soni
-  const [contentOf, setContentOf] = useState<{ id: number; title: string; type: SyllabusTopicType; moduleName: string } | null>(null);
-  const [counts, setCounts] = useState<Record<number, number>>({});
   const materialCount = (id: number) => {
     const topic = item.topics?.find((t) => t.id === id);
     return counts[id] ?? (topic?.materialCount ?? 0) + (topic?.quizCount ?? 0);
@@ -196,7 +226,7 @@ function ProgramEditor({ item, editable, plan, onSaved }: { item: SubjectSyllabu
                 {Array.from({ length: parts }, (_, i) => i + 1).map((p) => <option key={p} value={p}>{p}-qism</option>)}
               </select>}
               {lesson.id ? <Button variant="outline" size="sm" className="h-8" aria-label={`${index + 1}-modul ${lessonIndex + 1}-dars kontenti`}
-                onClick={() => setContentOf({ id: lesson.id!, title: lesson.title, type: lesson.type, moduleName: module.name })}>
+                onClick={() => onOpenLesson({ id: lesson.id!, title: lesson.title, type: lesson.type, moduleName: module.name })}>
                 <Layers className="mr-1.5 h-3.5 w-3.5" />Kontent ({materialCount(lesson.id)})
               </Button> : editable && <span className="text-xs text-muted-foreground" title="Kontent dastur saqlangandan keyin qo'shiladi">saqlang → kontent</span>}
               {editable && <>
@@ -227,7 +257,5 @@ function ProgramEditor({ item, editable, plan, onSaved }: { item: SubjectSyllabu
         {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Dasturni saqlash
       </Button>
     </div>}
-    {contentOf && <LessonContentSheet syllabusId={item.id} lesson={contentOf} editable={editable} onClose={() => setContentOf(null)}
-      onChanged={(count) => setCounts((value) => ({ ...value, [contentOf.id]: count }))} />}
   </div>;
 }

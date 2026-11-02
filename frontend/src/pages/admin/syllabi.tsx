@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SyllabusCatalog } from "@/components/admin/syllabus-catalog";
 import {
-  CreateSyllabusDialog, CurriculumSyllabusWorkflow, CurriculumTopicsDialog, LinkSyllabusDialog,
+  CreateSyllabusDialog, CurriculumSyllabusPage, CurriculumSyllabusWorkflow, LinkSyllabusDialog,
 } from "@/components/admin/curriculum-syllabus-link";
 import { syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { useAuth } from "@/contexts/auth-context";
@@ -69,6 +69,11 @@ function PlanSyllabi() {
   const topicsRows = groups.find((rows) => rows.some((r) => r.id === topicsItemId));
   const reload = () => queryClient.invalidateQueries({ queryKey: ["curricula", curriculumId] });
 
+  // Fan dasturi ro'yxat o'rnida to'liq sahifa bo'lib ochiladi
+  if (topicsRows?.[0].syllabusId) {
+    return <CurriculumSyllabusPage rows={topicsRows} canWrite={canWrite} onSaved={reload} onClose={() => setTopicsItemId(null)} />;
+  }
+
   return (
     <div className="space-y-6">
       {creating && curriculumId != null && (
@@ -84,9 +89,6 @@ function PlanSyllabi() {
             setCreating(null);
             setTopicsItemId(itemId);
           }} />
-      )}
-      {topicsRows?.[0].syllabusId && (
-        <CurriculumTopicsDialog rows={topicsRows} canWrite={canWrite} onSaved={reload} onClose={() => setTopicsItemId(null)} />
       )}
       {workflow && <CurriculumSyllabusWorkflow subject={workflow} canWrite={canWrite} onChanged={reload} onClose={() => setWorkflow(null)} />}
       {linking && curriculumId != null && (
