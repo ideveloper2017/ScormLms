@@ -17,6 +17,16 @@ describe("parseQuizText", () => {
     ]);
   });
 
+  it("namuna .docx fayl to'g'ri o'qiladi (izoh qatorlari tashlanadi)", async () => {
+    const { extractRawText } = await import("mammoth");
+    const { value } = await extractRawText({ path: "public/templates/test-namuna.docx" });
+    expect(parseQuizText(value).map((q) => [q.text, q.type, q.correctAnswer, q.options.length])).toEqual([
+      ["Tezlik birligi qaysi?", "SINGLE_CHOICE", "m/s", 4],
+      ["Tezlanish vektor kattalikmi?", "SINGLE_CHOICE", "Ha", 2],
+      ["1 km necha metr?", "SHORT_ANSWER", "1000|1000 m", 0],
+    ]);
+  });
+
   it("bir nechta to'g'ri belgisi bo'lsa javob tanlanmaydi, bo'sh matn savol bermaydi", () => {
     expect(parseQuizText("S?\n====\n#a\n====\n#b")[0].correctAnswer).toBe("");
     expect(parseQuizText("\n\n++++\n\n")).toEqual([]);
