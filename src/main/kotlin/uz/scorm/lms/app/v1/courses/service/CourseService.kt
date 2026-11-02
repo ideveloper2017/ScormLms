@@ -8,9 +8,7 @@ import uz.scorm.lms.app.v1.courses.dto.CourseUpdateRequest
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.courses.model.CourseExpiryPeriodType
-import uz.scorm.lms.app.v1.courses.model.CourseModule
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
-import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseEnrollmentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
@@ -30,7 +28,7 @@ class CourseService(
     private val subjectGroupService: AcademicSubjectGroupService,
     private val teacherRepository: TeacherRepository,
     private val syllabusRepository: SubjectSyllabusRepository,
-    private val moduleRepository: CourseModuleRepository,
+    private val courseSyllabusService: CourseSyllabusService,
 ) {
     @Transactional(readOnly = true)
     fun owned(userId: Long, mayManageAll: Boolean): List<CourseDto> =
@@ -125,19 +123,9 @@ class CourseService(
         return syllabus
     }
 
-    /** Dastur darslari kurs bo'limlariga aylanadi: dastur modullari va darslari tartibida (qoralama holatda). */
+    /** Dastur tuzilmasi kursga ko'chadi: dastur moduli — kurs moduli, dastur darsi — uning darsi (qoralama holatda). */
     private fun createModulesFromSyllabus(course: Course, syllabus: SubjectSyllabus) {
-        syllabus.orderedLessons().forEachIndexed { index, topic ->
-            moduleRepository.save(CourseModule(
-                course = course,
-                title = topic.title.take(255),
-                description = topic.description,
-                position = index + 1,
-                topicType = topic.type.name,
-                plannedHours = topic.hours,
-                syllabusTopicId = topic.id,
-            ))
-        }
+        courseSyllabusService.applySync(course, syllabus)
     }
 
     @Transactional

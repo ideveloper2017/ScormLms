@@ -68,8 +68,9 @@ export interface LearningContent {
   metadataUpdatedAt: string;
   reviewStatus: 'approved';
   approvedRevisionNumber: number;
-  /** Kontent bo'limi (dars) o'quv dasturining qaysi modulida */
-  syllabusModuleName?: string | null;
+  /** Material darsi qaysi kurs modulida */
+  unitId?: number | null;
+  unitTitle?: string | null;
 }
 
 function dataOf<T>(response: { data: ApiResponse<T> }, fallback: string): T {

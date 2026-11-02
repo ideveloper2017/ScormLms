@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { scormApi } from "@/services/api/scorm-api";
 import { studyPlanApi, type LearningContent } from "@/services/api/study-plan-api";
 import { groupBySyllabusModule } from "@/lib/syllabus-modules";
+import { UNASSIGNED_UNIT_TITLE } from "@/lib/course-units";
 import { teacherPortalApi, type CourseContentAsset } from "@/services/api/teacher-portal-api";
 import { CourseForum } from "@/components/course-forum";
 import { LessonContentViewer } from "@/components/learning/lesson-content-viewer";
@@ -219,7 +220,7 @@ export function StudentCourseLearning() {
           </Card>
         )}
         {contents.length > 0 && <nav aria-label="Darslar" className="space-y-4">
-          {groupBySyllabusModule(contents, (content) => content.syllabusModuleName, "Qo'shimcha bo'limlar").map((group, groupIndex) => (
+          {groupBySyllabusModule(contents, (content) => content.unitTitle, UNASSIGNED_UNIT_TITLE).map((group, groupIndex) => (
             <section key={`${groupIndex}-${group.name ?? ""}`} aria-label={group.name ?? undefined} className="space-y-2">
               {group.name && <h3 className="flex items-center gap-2 font-semibold"><Layers className="h-4 w-4 text-primary" />{group.name}</h3>}
               {sectionsOf(group.items).map((section) => (

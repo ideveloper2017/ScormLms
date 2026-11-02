@@ -37,11 +37,11 @@ it('opens the linked lesson, changes one lesson at a time, and preserves complet
   client.clear();
 });
 
-it('groups lessons by syllabus module and course section', async () => {
+it('groups materials by course module and lesson', async () => {
   vi.mocked(studyPlanApi.getCourseContents).mockResolvedValue([
-    { id: 1, moduleId: 41, moduleTitle: 'Kinematika', syllabusModuleName: 'Mexanika', title: 'Video', contentBody: 'a' },
-    { id: 2, moduleId: 41, moduleTitle: 'Kinematika', syllabusModuleName: 'Mexanika', title: 'Konspekt', contentBody: 'b' },
-    { id: 3, moduleId: 42, moduleTitle: 'Issiqlik', syllabusModuleName: 'Termodinamika', title: 'Taqdimot', contentBody: 'c' },
+    { id: 1, moduleId: 41, moduleTitle: 'Kinematika', unitId: 1, unitTitle: 'Mexanika', title: 'Video', contentBody: 'a' },
+    { id: 2, moduleId: 41, moduleTitle: 'Kinematika', unitId: 1, unitTitle: 'Mexanika', title: 'Konspekt', contentBody: 'b' },
+    { id: 3, moduleId: 42, moduleTitle: 'Issiqlik', unitId: 2, unitTitle: 'Termodinamika', title: 'Taqdimot', contentBody: 'c' },
     { id: 4, moduleId: 43, moduleTitle: 'Takrorlash', title: 'Savollar', contentBody: 'd' },
   ] as Awaited<ReturnType<typeof studyPlanApi.getCourseContents>>);
   vi.mocked(studyPlanApi.getCourseProgress).mockResolvedValue({ courseId: 3, progress: 0, completedContents: 0,
@@ -54,6 +54,6 @@ it('groups lessons by syllabus module and course section', async () => {
   const section = within(mechanics).getByRole('group', { name: 'Kinematika' });
   expect(within(section).getAllByRole('button').map((button) => button.textContent)).toEqual(['1.Video', '2.Konspekt']);
   expect(within(screen.getByRole('region', { name: 'Termodinamika' })).getByText('Taqdimot')).toBeInTheDocument();
-  expect(within(screen.getByRole('region', { name: "Qo'shimcha bo'limlar" })).getByRole('group', { name: 'Takrorlash' })).toBeInTheDocument();
+  expect(within(screen.getByRole('region', { name: 'Modulga biriktirilmagan darslar' })).getByRole('group', { name: 'Takrorlash' })).toBeInTheDocument();
   client.clear();
 });

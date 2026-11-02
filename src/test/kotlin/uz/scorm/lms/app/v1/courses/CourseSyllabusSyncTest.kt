@@ -9,11 +9,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.courses.model.CourseModule
+import uz.scorm.lms.app.v1.courses.model.CourseUnit
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
+import uz.scorm.lms.app.v1.courses.repository.CourseUnitRepository
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
 import uz.scorm.lms.app.v1.courses.service.CourseSyllabusService
+import uz.scorm.lms.app.v1.courses.service.CourseUnitService
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusModule
@@ -27,7 +30,9 @@ class CourseSyllabusSyncTest {
     private val courses = mockk<CourseRepository>()
     private val modules = mockk<CourseModuleRepository>()
     private val contents = mockk<CourseContentRepository>()
-    private val service = CourseSyllabusService(access, courses, modules, contents)
+    private val unitRepo = mockk<CourseUnitRepository>()
+    private val service = CourseSyllabusService(access, courses, modules, contents, unitRepo, CourseUnitService(unitRepo, modules, access))
+    private val units = mutableListOf<CourseUnit>()
 
     private val syllabus = SubjectSyllabus(Subject(name = "Fizika", code = "FIZ").apply { id = 3 }, "Fizika dasturi",
         SyllabusLanguage.UZ, "Qisqa", null, "To'liq", status = "APPROVED", revisionNumber = 3).apply {
@@ -46,12 +51,16 @@ class CourseSyllabusSyncTest {
 
     init {
         every { access.requireManage(9, 1, false) } returns course
-        every { modules.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(9) } answers { existing.toList() }
+        every { modules.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(9) } answers { existing.filter { !it.deleted }.sortedBy { it.position } }
         every { modules.save(any<CourseModule>()) } answers {
             firstArg<CourseModule>().also { if (it.id == null) { it.id = 200L + existing.size; existing += it } }
         }
         every { courses.save(any()) } answers { firstArg() }
         every { contents.countByModuleIdAndDeletedFalse(any()) } returns 0
+        every { unitRepo.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(9) } answers { units.filter { !it.deleted }.sortedBy { it.position } }
+        every { unitRepo.save(any<CourseUnit>()) } answers {
+            firstArg<CourseUnit>().also { if (it.id == null) { it.id = 300L + units.size; units += it } }
+        }
     }
 
     @Test
@@ -105,6 +114,32 @@ class CourseSyllabusSyncTest {
         val order = existing.filter { !it.deleted }.sortedBy { it.position }.map { it.title }
         assertEquals(listOf("Tajriba", "Kinematika", "Kirish", "Qo'shimcha", "Eski kontentli"), order)
         assertEquals(listOf("Mexanika", "Mexanika", "Termodinamika"), result.status.topics.map { it.syllabusModuleName })
+        // Dastur modullari kurs modullariga aylandi, darslar o'z modulida; qo'lda qo'shilganlar modulsiz
+        assertEquals(listOf("Mexanika" to 61L, "Termodinamika" to 62L), units.map { it.title to it.syllabusModuleId })
+        val unitOf = existing.filter { !it.deleted }.associate { it.title to it.unit?.title }
+        assertEquals(mapOf("Tajriba" to "Mexanika", "Kinematika" to "Mexanika", "Kirish" to "Termodinamika",
+            "Qo'shimcha" to null, "Eski kontentli" to null), unitOf)
+    }
+
+    @Test
+    fun `dasturdan olingan modul nomi yangilanadi, bosh qolgan eski modul olib tashlanadi, qoshimcha modul darslari bilan saqlanadi`() {
+        val mechanics = SubjectSyllabusModule(syllabus, 1, "Mexanika").apply { id = 61 }
+        syllabus.modules += mechanics
+        syllabus.topics.forEachIndexed { index, topic -> topic.module = mechanics; topic.lessonOrder = index + 1 }
+        val renamed = CourseUnit(course, "Eski nom", position = 2, syllabusModuleId = 61).apply { id = 401 }
+        val removedModule = CourseUnit(course, "O'chirilgan modul", position = 1, syllabusModuleId = 99).apply { id = 402 }
+        val extra = CourseUnit(course, "Takrorlash", position = 3).apply { id = 403 }
+        units += listOf(renamed, removedModule, extra)
+        existing.first { it.title == "Qo'shimcha" }.unit = extra
+
+        service.sync(9, 1, false)
+
+        assertEquals("Mexanika", renamed.title)
+        assertTrue(removedModule.deleted)
+        assertEquals(listOf("Mexanika", "Takrorlash"), units.filter { !it.deleted }.sortedBy { it.position }.map { it.title })
+        assertTrue(existing.filter { it.syllabusTopicId != null }.all { it.unit === renamed })
+        // Umumiy tartib modullarga ergashadi: Mexanika darslari, keyin Takrorlash moduli darslari
+        assertEquals(listOf("Kirish", "Kinematika", "Tajriba", "Qo'shimcha"), existing.sortedBy { it.position }.map { it.title })
     }
 
     @Test

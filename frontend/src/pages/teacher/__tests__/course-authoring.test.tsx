@@ -20,6 +20,7 @@ vi.mock('@/services/api/teacher-portal-api', () => ({ teacherPortalApi: {
   getProfile: vi.fn(), getSubjectMaterialSubjects: vi.fn(), createCourse: vi.fn(), updateCourse: vi.fn(),
   uploadCourseThumbnail: vi.fn(), getCourse: vi.fn(), getEnrollments: vi.fn(), getModules: vi.fn(),
   getContents: vi.fn(), getSubjectMaterials: vi.fn(), deleteModule: vi.fn(), deleteContent: vi.fn(),
+  getUnits: vi.fn(), createModule: vi.fn(), updateUnitStatus: vi.fn(),
 } }));
 
 const course: TeacherCourse = { id: '9', title: 'Mexanika', subjectId: 3, subjectName: 'Fizika',
@@ -49,6 +50,7 @@ beforeEach(() => {
   vi.mocked(teacherPortalApi.getCourse).mockResolvedValue(course);
   vi.mocked(teacherPortalApi.getEnrollments).mockResolvedValue([]);
   vi.mocked(teacherPortalApi.getModules).mockResolvedValue([module]);
+  vi.mocked(teacherPortalApi.getUnits).mockResolvedValue([]);
   vi.mocked(teacherPortalApi.getContents).mockResolvedValue([content]);
   vi.mocked(teacherPortalApi.getSubjectMaterials).mockResolvedValue([]);
   vi.mocked(syllabusApi.list).mockResolvedValue([]);
@@ -100,19 +102,38 @@ describe('course authoring', () => {
     expect(await screen.findByText('Nazariy · 2 soat')).toBeInTheDocument();
   });
 
-  it('groups course sections under their syllabus modules', async () => {
+  it('shows the course as modules with lessons and lets the teacher add an extra module and lesson', async () => {
     vi.mocked(teacherPortalApi.getCourse).mockResolvedValue({ ...course, syllabusId: 31, syllabusName: 'Mexanika dasturi', syllabusRevision: 2 });
-    vi.mocked(teacherPortalApi.getModules).mockResolvedValue([
-      { ...module, syllabusTopicId: 1, syllabusModuleId: 61, syllabusModuleName: 'Kinematika moduli' },
-      { ...module, id: 6, title: 'Tezlik', position: 2, syllabusTopicId: 2, syllabusModuleId: 61, syllabusModuleName: 'Kinematika moduli' },
-      { ...module, id: 7, title: 'Takrorlash', position: 3 },
+    vi.mocked(teacherPortalApi.getUnits).mockResolvedValue([
+      { id: 61, courseId: 9, title: 'Kinematika moduli', position: 1, syllabusModuleId: 5, fromSyllabus: true, lessonCount: 2, publishedLessonCount: 0 },
+      { id: 62, courseId: 9, title: 'Takrorlash', position: 2, syllabusModuleId: null, fromSyllabus: false, lessonCount: 0, publishedLessonCount: 0 },
     ]);
+    vi.mocked(teacherPortalApi.getModules).mockResolvedValue([
+      { ...module, syllabusTopicId: 1, unitId: 61 },
+      { ...module, id: 6, title: 'Tezlik', position: 2, syllabusTopicId: 2, unitId: 61 },
+      { ...module, id: 7, title: 'Erkin dars', position: 3 },
+    ]);
+    vi.mocked(teacherPortalApi.createModule).mockResolvedValue({} as CourseModule);
+    vi.mocked(teacherPortalApi.updateUnitStatus).mockResolvedValue({} as never);
     mountDetail();
     const group = await screen.findByRole('region', { name: 'Kinematika moduli' });
-    expect(within(group).getByText('2 ta bo\'lim')).toBeInTheDocument();
+    expect(within(group).getByText('2 ta dars')).toBeInTheDocument();
     expect(within(group).getByText('Tezlik')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: "Qo'shimcha bo'limlar" })).getByText('Takrorlash')).toBeInTheDocument();
-    expect(screen.getByText(/Dasturda yo'q bo'lim kerak bo'lsa/)).toBeInTheDocument();
+    expect(within(group).getByText("O'quv dasturidan")).toBeInTheDocument();
+    // Dastur modulini kurs sahifasida tahrirlab/o'chirib bo'lmaydi, qo'shimcha modulni — mumkin
+    expect(within(group).queryByRole('button', { name: /modulini o'chirish/ })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Takrorlash' })).getByText(/Bu modulda dars yo'q/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Takrorlash modulini o'chirish" })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Modulga biriktirilmagan darslar' })).getByText('Erkin dars')).toBeInTheDocument();
+
+    fireEvent.click(within(group).getByRole('button', { name: 'Modulni nashr qilish' }));
+    await waitFor(() => expect(teacherPortalApi.updateUnitStatus).toHaveBeenCalledWith('9', 61, 'PUBLISHED'));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Dars nomi' }), { target: { value: 'Savollar' } });
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Dars moduli' }), { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: 'Takrorlash' }));
+    fireEvent.click(screen.getByRole('button', { name: "Dars qo'shish" }));
+    await waitFor(() => expect(teacherPortalApi.createModule).toHaveBeenCalledWith('9', { title: 'Savollar', unitId: 62 }));
   });
 
   it('keeps a created course when its thumbnail upload fails and navigates away from create', async () => {
@@ -185,10 +206,10 @@ describe('course contents protection', () => {
 
   it('does not delete a module until the warning about its lessons is accepted', async () => {
     mountDetail();
-    const remove = await screen.findByRole('button', { name: "Sectionni o'chirish" });
+    const remove = await screen.findByRole('button', { name: "Darsni o'chirish" });
     fireEvent.click(remove);
     expect(teacherPortalApi.deleteModule).not.toHaveBeenCalled();
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('barcha darslar'));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('barcha materiallar'));
     vi.mocked(window.confirm).mockReturnValue(true);
     fireEvent.click(remove);
     await waitFor(() => expect(teacherPortalApi.deleteModule).toHaveBeenCalledWith('9', 4));
@@ -196,7 +217,7 @@ describe('course contents protection', () => {
 
   it('preserves a lesson on Escape and restores its draft after a page remount', async () => {
     const view = mountDetail();
-    fireEvent.click(await screen.findByRole('button', { name: "Dars qo'shish" }));
+    fireEvent.click(await screen.findByRole('button', { name: "Material qo'shish" }));
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByPlaceholderText('Dars mavzusi'), { target: { value: 'Yozilayotgan dars' } });
     fireEvent.keyDown(dialog, { key: 'Escape' });

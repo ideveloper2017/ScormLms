@@ -8,7 +8,9 @@ import uz.scorm.lms.app.v1.courses.dto.CourseSyllabusTopicDto
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.courses.model.CourseModule
 import uz.scorm.lms.app.v1.courses.model.CourseStatus
+import uz.scorm.lms.app.v1.courses.model.CourseUnit
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
+import uz.scorm.lms.app.v1.courses.repository.CourseUnitRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
@@ -37,6 +39,8 @@ class CourseSyllabusService(
     private val courseRepository: CourseRepository,
     private val moduleRepository: CourseModuleRepository,
     private val contentRepository: CourseContentRepository,
+    private val unitRepository: CourseUnitRepository,
+    private val unitService: CourseUnitService,
 ) {
     @Transactional(readOnly = true)
     fun status(courseId: Long, userId: Long, mayManageAll: Boolean): CourseSyllabusStatusDto {
@@ -78,12 +82,15 @@ class CourseSyllabusService(
         }
 
     /**
-     * Kurs bo'limlarini dastur tuzilmasiga moslaydi: har dars — bitta bo'lim, dastur modullari va darslari tartibida;
-     * o'qituvchi qo'lda qo'shgan bo'limlar ulardan keyin. Dasturdan o'chirilgan darsning bo'sh bo'limi olib
-     * tashlanadi, kontent kiritilgan bo'lim (o'qituvchi ishi) saqlanadi.
+     * Kurs tuzilmasini dasturga moslaydi: dastur moduli — kurs moduli, dastur darsi — shu moduldagi kurs darsi,
+     * dastur tartibida; o'qituvchi qo'shgan darslar o'z modulida dastur darslaridan keyin. Dasturdan o'chirilgan
+     * dars yoki modulning bo'sh qolgani olib tashlanadi, material kiritilgani (o'qituvchi ishi) saqlanadi.
+     * Kurs yaratilganda ham shu chaqiriladi.
      */
-    private fun applySync(course: Course, syllabus: SubjectSyllabus): SyncCounts {
-        val modules = moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(requireNotNull(course.id))
+    fun applySync(course: Course, syllabus: SubjectSyllabus): SyncCounts {
+        val courseId = requireNotNull(course.id)
+        val units = syncUnits(course, syllabus)
+        val modules = moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(courseId)
         val lessons = syllabus.orderedLessons()
         val lessonIds = lessons.mapNotNull { it.id }.toSet()
         var removed = 0
@@ -101,6 +108,7 @@ class CourseSyllabusService(
         var updated = 0
         val changed = mutableSetOf<CourseModule>()
         val lessonSections = lessons.map { topic ->
+            val unit = topic.module?.id?.let(units::get)
             linked[topic.id]?.also { module ->
                 if (outdated(module, topic)) {
                     module.title = topic.title.take(255)
@@ -109,9 +117,14 @@ class CourseSyllabusService(
                     changed += module
                     updated++
                 }
+                if (module.unit?.id != unit?.id) {
+                    module.unit = unit
+                    changed += module
+                }
             } ?: CourseModule(
                 course = course, title = topic.title.take(255), description = topic.description,
                 position = 0, topicType = topic.type.name, plannedHours = topic.hours, syllabusTopicId = topic.id,
+                unit = unit,
             ).also { changed += it; added++ }
         }
         val others = kept.filter { module -> lessonSections.none { it === module } }
@@ -122,12 +135,46 @@ class CourseSyllabusService(
             }
         }
         changed.forEach(moduleRepository::save)
+        removeEmptyOrphanUnits(courseId, units.values)
+        // Umumiy tartib: modullar tartibida, har modul ichida dastur darslari, keyin qo'shimchalari
+        unitService.normalize(courseId)
         course.syllabusRevision = syllabus.revisionNumber
         courseRepository.save(course)
         return SyncCounts(added, updated, removed)
     }
 
-    private data class SyncCounts(val added: Int, val updated: Int, val removed: Int)
+    /** Dastur moduli -> kurs moduli (nomi va tartibi dasturdan); o'qituvchi modullari ulardan keyin. */
+    private fun syncUnits(course: Course, syllabus: SubjectSyllabus): Map<Long, CourseUnit> {
+        val existing = unitRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(requireNotNull(course.id))
+        val bySyllabusModule = existing.filter { it.syllabusModuleId != null }.associateBy { it.syllabusModuleId }
+        val synced = syllabus.modules.sortedBy { it.sortOrder }.associate { module ->
+            val title = module.name.take(255)
+            val unit = bySyllabusModule[module.id]?.also {
+                it.title = title
+                it.description = module.description
+            } ?: CourseUnit(course, title, module.description, syllabusModuleId = module.id)
+            requireNotNull(module.id) to unit
+        }
+        val others = existing.filter { unit -> synced.values.none { it === unit } }
+        (synced.values + others).forEachIndexed { index, unit ->
+            unit.position = index + 1
+            unitRepository.save(unit)
+        }
+        return synced
+    }
+
+    /** Dasturdan o'chirilgan modulning kurs moduli: darsi qolmagan bo'lsa olib tashlanadi */
+    private fun removeEmptyOrphanUnits(courseId: Long, synced: Collection<CourseUnit>) {
+        val lessons = moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(courseId)
+        unitRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(courseId)
+            .filter { unit -> unit.fromSyllabus && synced.none { it.id == unit.id } && lessons.none { it.unit?.id == unit.id } }
+            .forEach {
+                it.deleted = true
+                unitRepository.save(it)
+            }
+    }
+
+    data class SyncCounts(val added: Int, val updated: Int, val removed: Int)
 
     private fun linked(course: Course, added: Int = 0, updated: Int = 0, removed: Int = 0) = SyllabusLinkedCourseDto(
         id = requireNotNull(course.id), title = course.title.orEmpty(), status = course.status.orEmpty().lowercase(),

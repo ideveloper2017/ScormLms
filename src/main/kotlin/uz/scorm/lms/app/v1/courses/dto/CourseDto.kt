@@ -151,11 +151,24 @@ data class CourseModuleDto(
     val topicType: String? = null,
     val plannedHours: Int? = null,
     val syllabusTopicId: Long? = null,
-    /** Bo'lim darsi o'quv dasturining qaysi modulida (kontent sahifasida guruhlash uchun) */
-    val syllabusModuleId: Long? = null,
-    val syllabusModuleName: String? = null,
-    val syllabusModuleOrder: Int? = null,
+    /** Dars qaysi kurs modulida (null — modulga biriktirilmagan) */
+    val unitId: Long? = null,
 )
+
+/** Kurs moduli: dastur modulidan (syllabusModuleId) yoki o'qituvchi qo'shgan qo'shimcha modul */
+data class CourseUnitDto(
+    val id: Long,
+    val courseId: Long,
+    val title: String,
+    val description: String?,
+    val position: Int,
+    val syllabusModuleId: Long?,
+    val fromSyllabus: Boolean,
+    val lessonCount: Int,
+    val publishedLessonCount: Int,
+)
+
+data class CourseUnitRequest(val title: String, val description: String? = null)
 
 /** Kurs bog'langan o'quv dasturi darsi va uning kursdagi bo'limi (bo'lsa). */
 data class CourseSyllabusTopicDto(
@@ -195,6 +208,9 @@ data class CourseModuleRequest(
     val plannedHours: Int? = null,
     // Berilsa bo'lim kurs dasturining shu mavzusidan yaratiladi (tur va soat mavzudan olinadi)
     val syllabusTopicId: Long? = null,
+    // Qo'shimcha dars qaysi kurs moduliga (null — o'zgartirilmaydi; detachUnit — moduldan chiqarish)
+    val unitId: Long? = null,
+    val detachUnit: Boolean = false,
 )
 
 data class CourseContentDto(
@@ -225,8 +241,9 @@ data class CourseContentDto(
     val reviewStatus: String,
     val approvedRevisionNumber: Int?,
     val compatibility: ContentCompatibilityDto,
-    /** Kontent bo'limi (dars) o'quv dasturining qaysi modulida — talaba ko'rinishida guruhlash uchun */
-    val syllabusModuleName: String? = null,
+    /** Material darsi qaysi kurs modulida — talaba ko'rinishida modul -> dars -> material guruhlash uchun */
+    val unitId: Long? = null,
+    val unitTitle: String? = null,
 )
 
 data class ContentCompatibilityIssueDto(

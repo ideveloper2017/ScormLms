@@ -6,27 +6,30 @@ import uz.scorm.lms.app.v1.courses.dto.CourseModuleDto
 import uz.scorm.lms.app.v1.courses.dto.CourseModuleRequest
 import uz.scorm.lms.app.v1.courses.model.Course
 import uz.scorm.lms.app.v1.courses.model.CourseModule
-import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusModule
+import uz.scorm.lms.app.v1.courses.model.CourseUnit
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 import uz.scorm.lms.app.v1.courses.model.LearningItemStatus
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
+import uz.scorm.lms.app.v1.courses.repository.CourseUnitRepository
 import java.time.Instant
 
+/** Kurs darslari (bo'limlar): modul ichida, ichida materiallar ([uz.scorm.lms.app.v1.courses.model.CourseContent]). */
 @Service
 class CourseModuleService(
     private val moduleRepository: CourseModuleRepository,
     private val contentRepository: CourseContentRepository,
     private val accessService: CourseAccessService,
+    private val unitRepository: CourseUnitRepository,
+    private val unitService: CourseUnitService,
 ) {
     @Transactional(readOnly = true)
     fun list(courseId: Long, userId: Long, mayManageAll: Boolean): List<CourseModuleDto> {
         val course = accessService.requireRead(courseId, userId, mayManageAll)
         val mayEdit = mayManageAll || course.userId == userId
-        val groups = lessonGroups(course)
         return moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(courseId)
             .filter { mayEdit || it.status == LearningItemStatus.PUBLISHED.name }
-            .map { toDto(it, groups) }
+            .map(::toDto)
     }
 
     @Transactional
@@ -42,10 +45,12 @@ class CourseModuleService(
             topic
         }
         val title = validTitle(request.title.ifBlank { topic?.title?.take(255).orEmpty() })
+        // Dastur darsi o'z dastur moduliga mos kurs moduliga tushadi; qo'shimcha dars — tanlangan modulga
+        val unit = if (topic != null) unitOfTopic(course, topic) else request.unitId?.let { unitService.ownedUnit(courseId, it) }
         val nextPosition = request.position ?: topic?.let { lessonPosition(course, it) } ?: ((moduleRepository
             .findFirstByCourseIdAndDeletedFalseOrderByPositionDesc(courseId)?.position ?: 0) + 1)
         require(nextPosition > 0) { "Modul tartibi musbat bo'lishi kerak" }
-        return toDto(moduleRepository.save(CourseModule(
+        val saved = moduleRepository.save(CourseModule(
             course = course,
             title = title,
             description = request.description?.trim(),
@@ -53,7 +58,10 @@ class CourseModuleService(
             topicType = topic?.type?.name ?: validTopicType(request.topicType),
             plannedHours = topic?.hours ?: validHours(request.plannedHours),
             syllabusTopicId = topic?.id,
-        )), lessonGroups(course))
+            unit = unit,
+        ))
+        unitService.normalize(courseId)
+        return toDto(saved)
     }
 
     @Transactional
@@ -65,7 +73,13 @@ class CourseModuleService(
         request.position?.let { require(it > 0); module.position = it }
         request.topicType?.let { module.topicType = validTopicType(it) }
         request.plannedHours?.let { module.plannedHours = validHours(it) }
-        return toDto(moduleRepository.save(module), lessonGroups(module.course))
+        if (request.unitId != null || request.detachUnit) {
+            require(module.syllabusTopicId == null) { "Dastur darsining moduli o'quv dasturida belgilanadi" }
+            module.unit = if (request.detachUnit) null else unitService.ownedUnit(courseId, requireNotNull(request.unitId))
+        }
+        val saved = moduleRepository.save(module)
+        unitService.normalize(courseId)
+        return toDto(saved)
     }
 
     @Transactional
@@ -74,7 +88,7 @@ class CourseModuleService(
         val module = ownedModule(courseId, moduleId)
         module.status = status.name
         module.publishedAt = if (status == LearningItemStatus.PUBLISHED) module.publishedAt ?: Instant.now() else null
-        return toDto(moduleRepository.save(module), lessonGroups(module.course))
+        return toDto(moduleRepository.save(module))
     }
 
     @Transactional
@@ -109,11 +123,12 @@ class CourseModuleService(
         return position
     }
 
-    /** Dastur darsi -> uning moduli (kurs bo'limlarini o'quv dasturi modullari bo'yicha guruhlash uchun) */
-    fun lessonGroups(course: Course): Map<Long, SubjectSyllabusModule> =
-        course.syllabus?.topics.orEmpty().mapNotNull { topic -> topic.module?.let { requireNotNull(topic.id) to it } }.toMap()
+    private fun unitOfTopic(course: Course, topic: SubjectSyllabusTopic): CourseUnit? = topic.module?.id?.let { moduleId ->
+        unitRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(requireNotNull(course.id))
+            .firstOrNull { it.syllabusModuleId == moduleId }
+    }
 
-    private fun toDto(module: CourseModule, groups: Map<Long, SubjectSyllabusModule>) = CourseModuleDto(
+    private fun toDto(module: CourseModule) = CourseModuleDto(
         id = requireNotNull(module.id),
         courseId = requireNotNull(module.course.id),
         title = module.title,
@@ -125,9 +140,7 @@ class CourseModuleService(
         topicType = module.topicType,
         plannedHours = module.plannedHours,
         syllabusTopicId = module.syllabusTopicId,
-        syllabusModuleId = module.syllabusTopicId?.let(groups::get)?.id,
-        syllabusModuleName = module.syllabusTopicId?.let(groups::get)?.name,
-        syllabusModuleOrder = module.syllabusTopicId?.let(groups::get)?.sortOrder,
+        unitId = module.unit?.id,
     )
 
     private fun validTopicType(value: String?): String? = value?.trim()?.uppercase()?.ifBlank { null }?.also {
