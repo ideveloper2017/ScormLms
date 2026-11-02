@@ -11,6 +11,7 @@ import uz.scorm.lms.app.v1.courses.model.CourseContentType
 import uz.scorm.lms.app.v1.courses.model.SubjectMaterial
 import uz.scorm.lms.app.v1.courses.repository.CourseContentAssetRepository
 import uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository
+import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupTeacherAssignmentRepository
 import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
@@ -72,12 +73,17 @@ class SubjectMaterialService(
     fun create(request: SubjectMaterialRequest, userId: Long, mayManageAll: Boolean): SubjectMaterialDto {
         val subject = subject(request.subjectId)
         requireSubjectAccess(request.subjectId, userId, mayManageAll)
+        return toDto(materials.save(build(subject, request, userId)))
+    }
+
+    /** Tekshirilgan, hali saqlanmagan material — fan banki va o'quv dasturi darsi uchun umumiy */
+    fun build(subject: Subject, request: SubjectMaterialRequest, userId: Long): SubjectMaterial {
         val user = users.findById(userId).orElseThrow { NoSuchElementException("Foydalanuvchi topilmadi") }
         val url = request.contentUrl.clean()
         val body = request.contentBody.clean()
-        val asset = request.assetId?.let { assets.findByIdAndSubjectIdAndDeletedFalse(it, request.subjectId) }
+        val asset = resolveAsset(request)
         validate(request, url, body, asset != null)
-        val saved = materials.save(SubjectMaterial(
+        return SubjectMaterial(
             subject = subject,
             asset = asset,
             ownerUserId = userId,
@@ -91,9 +97,26 @@ class SubjectMaterialService(
             contentVersion = request.contentVersion.trim().ifBlank { "1.0" },
             sourceName = request.sourceName.clean() ?: subject.name,
             sourceUrl = request.sourceUrl.clean(),
-        ))
-        return toDto(saved)
+        )
     }
+
+    /** Material mazmunini almashtiradi va versiyasini oshiradi (kursdagi nusxalar sinxronlashda yangilanadi) */
+    fun change(material: SubjectMaterial, request: SubjectMaterialRequest) {
+        val url = request.contentUrl.clean()
+        val body = request.contentBody.clean()
+        val asset = resolveAsset(request)
+        validate(request, url, body, asset != null)
+        material.title = request.title.trim()
+        material.description = request.description.clean()
+        material.contentType = request.contentType
+        material.contentUrl = url
+        material.contentBody = body
+        material.asset = asset
+        material.contentVersion = "${(material.contentVersion.substringBefore('.').toIntOrNull() ?: 1) + 1}.0"
+    }
+
+    private fun resolveAsset(request: SubjectMaterialRequest) =
+        request.assetId?.let { assets.findByIdAndSubjectIdAndDeletedFalse(it, request.subjectId) }
 
     @Transactional
     fun delete(id: Long, userId: Long, mayManageAll: Boolean) {
@@ -149,7 +172,7 @@ class SubjectMaterialService(
         .filter { !it.deleted && it.active }
         .orElseThrow { NoSuchElementException("Fan topilmadi: $id") }
 
-    private fun toDto(material: SubjectMaterial) = SubjectMaterialDto(
+    fun toDto(material: SubjectMaterial) = SubjectMaterialDto(
         id = requireNotNull(material.id),
         subjectId = requireNotNull(material.subject.id),
         subjectName = material.subject.name,

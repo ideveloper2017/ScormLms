@@ -10,6 +10,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.subject.model.Subject
+import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 
 @Entity
 @Table(name = "subject_materials")
@@ -58,4 +59,13 @@ class SubjectMaterial(
 
     @Column(nullable = false)
     var active: Boolean = true,
-) : BaseEntity()
+) : BaseEntity() {
+    /** O'quv dasturi darsining kontenti (null — faqat fan bankidagi material) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "syllabus_topic_id")
+    var syllabusTopic: SubjectSyllabusTopic? = null
+
+    /** Dars ichidagi tartib raqami */
+    @Column(name = "topic_position")
+    var topicPosition: Int? = null
+}

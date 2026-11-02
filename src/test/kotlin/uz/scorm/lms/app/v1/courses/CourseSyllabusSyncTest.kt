@@ -8,12 +8,18 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import uz.scorm.lms.app.v1.courses.model.Course
+import uz.scorm.lms.app.v1.courses.model.CourseContent
+import uz.scorm.lms.app.v1.courses.model.CourseContentRevision
+import uz.scorm.lms.app.v1.courses.model.CourseContentType
 import uz.scorm.lms.app.v1.courses.model.CourseModule
 import uz.scorm.lms.app.v1.courses.model.CourseUnit
+import uz.scorm.lms.app.v1.courses.model.SubjectMaterial
 import uz.scorm.lms.app.v1.courses.repository.CourseContentRepository
+import uz.scorm.lms.app.v1.courses.repository.CourseContentRevisionRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseModuleRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.courses.repository.CourseUnitRepository
+import uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository
 import uz.scorm.lms.app.v1.courses.service.CourseAccessService
 import uz.scorm.lms.app.v1.courses.service.CourseSyllabusService
 import uz.scorm.lms.app.v1.courses.service.CourseUnitService
@@ -24,6 +30,8 @@ import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.PRACTICAL
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.THEORETICAL
+import java.time.Instant
+import java.time.LocalDate
 
 class CourseSyllabusSyncTest {
     private val access = mockk<CourseAccessService>()
@@ -31,8 +39,14 @@ class CourseSyllabusSyncTest {
     private val modules = mockk<CourseModuleRepository>()
     private val contents = mockk<CourseContentRepository>()
     private val unitRepo = mockk<CourseUnitRepository>()
-    private val service = CourseSyllabusService(access, courses, modules, contents, unitRepo, CourseUnitService(unitRepo, modules, access))
+    private val materialRepo = mockk<SubjectMaterialRepository>()
+    private val revisions = mockk<CourseContentRevisionRepository>()
+    private val service = CourseSyllabusService(access, courses, modules, contents, unitRepo, CourseUnitService(unitRepo, modules, access),
+        materialRepo, revisions)
     private val units = mutableListOf<CourseUnit>()
+    private val contentList = mutableListOf<CourseContent>()
+    private val materials = mutableListOf<SubjectMaterial>()
+    private val savedRevisions = mutableListOf<CourseContentRevision>()
 
     private val syllabus = SubjectSyllabus(Subject(name = "Fizika", code = "FIZ").apply { id = 3 }, "Fizika dasturi",
         SyllabusLanguage.UZ, "Qisqa", null, "To'liq", status = "APPROVED", revisionNumber = 3).apply {
@@ -56,7 +70,21 @@ class CourseSyllabusSyncTest {
             firstArg<CourseModule>().also { if (it.id == null) { it.id = 200L + existing.size; existing += it } }
         }
         every { courses.save(any()) } answers { firstArg() }
-        every { contents.countByModuleIdAndDeletedFalse(any()) } returns 0
+        every { contents.findAllByModuleCourseIdAndDeletedFalseOrderByPositionAsc(9) } answers { contentList.filter { !it.deleted }.sortedBy { it.position } }
+        every { contents.save(any<CourseContent>()) } answers {
+            firstArg<CourseContent>().also { if (it.id == null) { it.id = 500L + contentList.size; contentList += it } }
+        }
+        every { materialRepo.findAllBySyllabusTopicIdInAndDeletedFalseOrderByTopicPositionAscIdAsc(any()) } answers {
+            val ids = firstArg<Collection<Long>>()
+            materials.filter { !it.deleted && it.syllabusTopic?.id in ids }.sortedBy { it.topicPosition }
+        }
+        every { revisions.save(any<CourseContentRevision>()) } answers { firstArg<CourseContentRevision>().also { savedRevisions += it } }
+        every { revisions.findFirstByContentIdAndDeletedFalseOrderByRevisionNumberDesc(any()) } answers {
+            savedRevisions.filter { it.content.id == firstArg<Long>() }.maxByOrNull { it.revisionNumber }
+        }
+        every { revisions.existsByContentIdAndContentVersionAndDeletedFalse(any(), any()) } answers {
+            savedRevisions.any { it.content.id == firstArg<Long>() && it.contentVersion == secondArg<String>() }
+        }
         every { unitRepo.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(9) } answers { units.filter { !it.deleted }.sortedBy { it.position } }
         every { unitRepo.save(any<CourseUnit>()) } answers {
             firstArg<CourseUnit>().also { if (it.id == null) { it.id = 300L + units.size; units += it } }
@@ -104,7 +132,7 @@ class CourseSyllabusSyncTest {
         // Dasturdan o'chirilgan darslarning bo'limlari: biri bo'sh, birida kontent bor
         existing += CourseModule(course, "Eski bo'sh", position = 4, topicType = "THEORETICAL", fromSyllabus = true).apply { id = 104 }
         existing += CourseModule(course, "Eski kontentli", position = 5, topicType = "THEORETICAL", fromSyllabus = true).apply { id = 105 }
-        every { contents.countByModuleIdAndDeletedFalse(105) } returns 2
+        contentList += content(existing.first { it.id == 105L }, "O'qituvchi videosi").apply { id = 601 }
 
         val result = service.sync(9, 1, false)
 
@@ -159,8 +187,72 @@ class CourseSyllabusSyncTest {
     }
 
     @Test
+    fun `dastur darsining materiallari kurs darsiga kochadi, ozgargani yangilanadi, olib tashlangani ochiriladi`() {
+        val lecture = syllabus.topics.first { it.id == 1L }
+        val text = material(1, lecture, "Kirish matni", 1)
+        val video = material(2, lecture, "Kirish videosi", 2, CourseContentType.VIDEO)
+        val dropped = material(9, lecture, "Eski material", 3).apply { deleted = true }
+        val kirish = existing.first { it.id == 101L }
+        contentList += content(kirish, "O'qituvchi izohi", position = 1).apply { id = 701 }
+        contentList += content(kirish, "Eski material", position = 2, fromSyllabus = dropped).apply { id = 702 }
+
+        val first = service.sync(9, 1, false)
+
+        val lesson = contentList.filter { it.module.id == 101L && !it.deleted }.sortedBy { it.position }
+        // Dastur materiallari dastur tartibida, o'qituvchi materiali ulardan keyin; olib tashlangani o'chirildi
+        assertEquals(listOf("Kirish matni", "Kirish videosi", "O'qituvchi izohi"), lesson.map { it.title })
+        assertEquals(listOf(text.id, video.id, null), lesson.map { it.subjectMaterial?.id })
+        assertTrue(contentList.first { it.id == 702L }.deleted)
+        assertEquals(3, first.materials)
+        assertEquals(listOf(1, 1), savedRevisions.map { it.revisionNumber })
+        assertEquals(listOf(7L, 7L), savedRevisions.map { it.changedBy })
+
+        text.title = "Kirish: asosiy tushunchalar"
+        text.contentVersion = "2.0"
+        val copy = lesson.first()
+        copy.status = "PUBLISHED"
+        copy.reviewStatus = "APPROVED"
+
+        val second = service.sync(9, 1, false)
+
+        assertEquals(1, second.materials)
+        assertEquals("Kirish: asosiy tushunchalar", copy.title)
+        assertEquals("2.0", copy.contentVersion)
+        // O'zgargan nusxa qayta ekspertizaga: qoralama va yangi versiya
+        assertEquals("DRAFT", copy.status)
+        assertEquals("DRAFT", copy.reviewStatus)
+        assertEquals(2, savedRevisions.last().revisionNumber)
+    }
+
+    @Test
+    fun `ochirilgan darsning faqat dastur materiallari bolsa dars ham olib tashlanadi`() {
+        existing += CourseModule(course, "Eski dars", position = 4, topicType = "THEORETICAL", syllabusTopicId = 77, fromSyllabus = true).apply { id = 106 }
+        contentList += content(existing.last(), "Eski nusxa", fromSyllabus = material(5, null, "Eski nusxa", 1)).apply { id = 703 }
+
+        val result = service.sync(9, 1, false)
+
+        assertEquals(1, result.removed)
+        assertTrue(existing.first { it.id == 106L }.deleted)
+    }
+
+    @Test
     fun `tasdiqlanmagan versiya bilan sinxronlash rad etiladi`() {
         syllabus.status = "DRAFT"
         assertThrows<IllegalArgumentException> { service.sync(9, 1, false) }
     }
+
+    private fun material(id: Long, topic: SubjectSyllabusTopic?, title: String, position: Int, type: CourseContentType = CourseContentType.TEXT) =
+        SubjectMaterial(syllabus.subject, null, 7, title, null, type,
+            contentUrl = if (type == CourseContentType.TEXT) null else "https://video.example/$id",
+            contentBody = if (type == CourseContentType.TEXT) "<p>$title</p>" else null,
+            languageCode = "uz", authorName = "Kafedra", contentVersion = "1.0", sourceName = "Fizika").apply {
+            this.id = id
+            syllabusTopic = topic
+            topicPosition = position
+        }.also { materials += it }
+
+    private fun content(module: CourseModule, title: String, position: Int = 1, fromSyllabus: SubjectMaterial? = null) =
+        CourseContent(module, title, contentType = CourseContentType.TEXT, contentBody = "<p>$title</p>", subjectMaterial = fromSyllabus,
+            position = position, languageCode = "uz", authorName = "O'qituvchi", contentVersion = "1.0", sourceName = "Fizika",
+            validFrom = LocalDate.now(), metadataUpdatedAt = Instant.now()).apply { this.fromSyllabus = fromSyllabus != null }
 }

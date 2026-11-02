@@ -318,26 +318,7 @@ class CourseContentService(
     )
 
     private fun saveRevision(content: CourseContent, number: Int, userId: Long, changedAt: Instant) {
-        revisionRepository.save(CourseContentRevision(
-            content = content,
-            revisionNumber = number,
-            title = content.title,
-            description = content.description,
-            contentType = content.contentType,
-            contentUrl = content.contentUrl,
-            contentBody = content.contentBody,
-            asset = content.asset,
-            durationMinutes = content.durationMinutes,
-            languageCode = content.languageCode,
-            authorName = content.authorName,
-            contentVersion = content.contentVersion,
-            sourceName = content.sourceName,
-            sourceUrl = content.sourceUrl,
-            validFrom = content.validFrom,
-            validUntil = content.validUntil,
-            changedAt = changedAt,
-            changedBy = userId,
-        ))
+        revisionRepository.save(contentRevision(content, number, userId, changedAt))
     }
 
     private fun revisionDto(revision: CourseContentRevision) = CourseContentRevisionDto(
@@ -424,3 +405,25 @@ class CourseContentService(
         )
     }
 }
+
+/** Kontentning joriy holati versiya tarixiga yoziladi (ekspertiza va nashr shu versiya bo'yicha) */
+fun contentRevision(content: CourseContent, number: Int, userId: Long, changedAt: Instant) = CourseContentRevision(
+    content = content,
+    revisionNumber = number,
+    title = content.title,
+    description = content.description,
+    contentType = content.contentType,
+    contentUrl = content.contentUrl,
+    contentBody = content.contentBody,
+    asset = content.asset,
+    durationMinutes = content.durationMinutes,
+    languageCode = content.languageCode,
+    authorName = content.authorName,
+    contentVersion = content.contentVersion,
+    sourceName = content.sourceName,
+    sourceUrl = content.sourceUrl,
+    validFrom = content.validFrom,
+    validUntil = content.validUntil,
+    changedAt = changedAt,
+    changedBy = userId,
+)

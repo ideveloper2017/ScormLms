@@ -197,7 +197,11 @@ data class CourseSyllabusStatusDto(
 )
 
 /** removed — dasturdan o'chirilgan darslarning bo'sh bo'limlari (kontentli bo'limlar saqlanadi) */
-data class CourseSyllabusSyncResult(val added: Int, val updated: Int, val status: CourseSyllabusStatusDto, val removed: Int = 0)
+data class CourseSyllabusSyncResult(
+    val added: Int, val updated: Int, val status: CourseSyllabusStatusDto, val removed: Int = 0,
+    /** Dars kontenti: dastur materiallari bo'yicha qo'shilgan, yangilangan yoki olib tashlanganlar */
+    val materials: Int = 0,
+)
 
 data class CourseModuleRequest(
     val title: String,

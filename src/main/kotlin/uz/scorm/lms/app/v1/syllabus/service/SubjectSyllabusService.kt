@@ -23,6 +23,7 @@ class SubjectSyllabusService(
     private val revisions: uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRevisionRepository,
     private val mapper: tools.jackson.databind.ObjectMapper,
     private val audit: uz.scorm.lms.app.v1.audit.service.AuditService,
+    private val materials: uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository,
 ) {
     @Transactional(readOnly = true)
     fun list(subjectId: Long?, modelProgramId: Long? = null): List<SubjectSyllabusDto> = when {
@@ -272,8 +273,12 @@ class SubjectSyllabusService(
     )
 
     private fun dto(value: SubjectSyllabus): SubjectSyllabusDto {
+        val topicIds = value.topics.mapNotNull { it.id }
+        val materialCounts = if (topicIds.isEmpty()) emptyMap()
+            else materials.countBySyllabusTopics(topicIds).associate { it.topicId to it.total.toInt() }
         val topics = value.topics.sortedWith(compareBy({ it.type }, { it.sortOrder })).map {
-            SyllabusTopicDto(it.id, it.type, it.sortOrder, it.title, it.description, it.hours, it.part, it.module?.id, it.lessonOrder)
+            SyllabusTopicDto(it.id, it.type, it.sortOrder, it.title, it.description, it.hours, it.part, it.module?.id, it.lessonOrder,
+                materialCount = materialCounts[it.id] ?: 0)
         }
         val modules = value.modules.sortedBy { it.sortOrder }.map { module ->
             SyllabusModuleDto(

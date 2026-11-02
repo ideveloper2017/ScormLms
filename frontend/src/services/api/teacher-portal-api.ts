@@ -174,7 +174,7 @@ export interface CourseSyllabusStatus {
 }
 
 /** removed — dasturdan o'chirilgan darslarning bo'sh bo'limlari (kontentli bo'limlar saqlanadi) */
-export interface CourseSyllabusSyncResult { added: number; updated: number; removed?: number; status: CourseSyllabusStatus }
+export interface CourseSyllabusSyncResult { added: number; updated: number; removed?: number; materials?: number; status: CourseSyllabusStatus }
 
 export interface CourseContent {
   id: number;

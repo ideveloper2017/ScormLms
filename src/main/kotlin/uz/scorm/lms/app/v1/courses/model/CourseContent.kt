@@ -88,7 +88,11 @@ class CourseContent(
 
     @Column(name = "approved_revision_number")
     var approvedRevisionNumber: Int? = null,
-) : BaseEntity()
+) : BaseEntity() {
+    /** O'quv dasturi darsi materialining nusxasi ([subjectMaterial]) — dastur bilan sinxronlashda moslanadi */
+    @Column(name = "from_syllabus", nullable = false)
+    var fromSyllabus: Boolean = false
+}
 
 fun CourseContent.isEffective(onDate: LocalDate = LocalDate.now()): Boolean =
     !onDate.isBefore(validFrom) && (validUntil == null || !onDate.isAfter(validUntil))

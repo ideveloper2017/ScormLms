@@ -41,6 +41,8 @@ data class SyllabusTopicDto(
     val part: Int? = null,
     val moduleId: Long? = null,
     val lessonOrder: Int? = null,
+    /** Dars kontenti: darsga kiritilgan materiallar soni */
+    val materialCount: Int = 0,
 )
 
 /** Modul: nomi, ma'lumoti va darslari (dars — mavzu, mashg'ulot turi bilan) */

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Layers, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { LessonContentSheet } from "@/components/admin/syllabus-lesson-content";
 import { PlanTopicsCheck } from "@/components/admin/syllabus-topics";
 import { syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { useToast } from "@/hooks/use-toast";
@@ -20,8 +21,9 @@ import {
 const select = "h-10 rounded-md border bg-background px-3 text-sm";
 
 /**
- * O'quv dasturi (Everest kabi): "Ma'lumot" — nomi, tili, ta'riflar; "Dasturlar" — modullar va ularning darslari
- * (har darsga mashg'ulot turi). Rejadan ochilganda darslar rejadagi soatlar bilan solishtiriladi.
+ * O'quv dasturi (Everest kabi): "Ma'lumot" — nomi, tili, ta'riflar; "Dasturlar" — modullar, ularning darslari
+ * (har darsga mashg'ulot turi) va dars kontenti (matn, video, hujjat, havola — kurs darsiga ko'chadi).
+ * Rejadan ochilganda darslar rejadagi soatlar bilan solishtiriladi.
  * Faqat qoralama tahrirlanadi; tasdiqlangan dastur ko'rish rejimida ochiladi.
  */
 export function SyllabusDrawer({ item, canWrite, plan, initialTab = "info", onClose, onSaved }: {
@@ -122,6 +124,10 @@ function ProgramEditor({ item, editable, plan, onSaved }: { item: SubjectSyllabu
   const { toast } = useToast();
   const [modules, setModules] = useState<SyllabusModuleInput[]>(() => modulesOf(item));
   const [error, setError] = useState<string | null>(null);
+  // Dars kontenti oynasi (Everest: dars ochilganda resurslar) va undagi o'zgarishdan keyingi material soni
+  const [contentOf, setContentOf] = useState<{ id: number; title: string; type: SyllabusTopicType; moduleName: string } | null>(null);
+  const [counts, setCounts] = useState<Record<number, number>>({});
+  const materialCount = (id: number) => counts[id] ?? item.topics?.find((t) => t.id === id)?.materialCount ?? 0;
   const lessons = modules.flatMap((m) => m.lessons);
   const parts = Math.max(plan?.length ?? 0, ...lessons.map((l) => l.part ?? 1), 1);
   // Rejadan ochilganda: faqat rejada soati bor turlar (turlarga bo'linmagan rejada — barchasi)
@@ -186,6 +192,10 @@ function ProgramEditor({ item, editable, plan, onSaved }: { item: SubjectSyllabu
                 onChange={(e) => update(index, { lessons: module.lessons.map((l, i) => (i === lessonIndex ? { ...l, part: Number(e.target.value) } : l)) })}>
                 {Array.from({ length: parts }, (_, i) => i + 1).map((p) => <option key={p} value={p}>{p}-qism</option>)}
               </select>}
+              {lesson.id ? <Button variant="outline" size="sm" className="h-8" aria-label={`${index + 1}-modul ${lessonIndex + 1}-dars kontenti`}
+                onClick={() => setContentOf({ id: lesson.id!, title: lesson.title, type: lesson.type, moduleName: module.name })}>
+                <Layers className="mr-1.5 h-3.5 w-3.5" />Kontent ({materialCount(lesson.id)})
+              </Button> : editable && <span className="text-xs text-muted-foreground" title="Kontent dastur saqlangandan keyin qo'shiladi">saqlang → kontent</span>}
               {editable && <>
                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Darsni yuqoriga" disabled={lessonIndex === 0}
                   onClick={() => update(index, { lessons: move(module.lessons, lessonIndex, lessonIndex - 1) })}><ArrowUp className="h-3.5 w-3.5" /></Button>
@@ -214,5 +224,7 @@ function ProgramEditor({ item, editable, plan, onSaved }: { item: SubjectSyllabu
         {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Dasturni saqlash
       </Button>
     </div>}
+    {contentOf && <LessonContentSheet syllabusId={item.id} lesson={contentOf} editable={editable} onClose={() => setContentOf(null)}
+      onChanged={(count) => setCounts((value) => ({ ...value, [contentOf.id]: count }))} />}
   </div>;
 }
