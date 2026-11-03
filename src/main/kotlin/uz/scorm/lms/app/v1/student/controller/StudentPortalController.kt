@@ -27,6 +27,7 @@ class StudentPortalController(
     private val reports: StudentReportService,
     private val exports: StudentExportService,
     private val resources: uz.scorm.lms.app.v1.courses.service.CourseResourceService,
+    private val curriculum: uz.scorm.lms.app.v1.curriculum.service.StudentCurriculumService,
 ) {
 
     // ─── Profile ─────────────────────────────────────────────────────────────
@@ -82,6 +83,11 @@ class StudentPortalController(
     ): ResponseEntity<ApiResponse<StudentStudyPlanDto>> = ResponseEntity.ok(ApiResponse.success(
         studyPlanService.studyPlan(requireNotNull(user.id), academicYear)
     ))
+
+    /** Talabaning o'quv rejasi (fanlar, kredit, soatlar) va fanlarning tasdiqlangan o'quv dasturlari */
+    @GetMapping("/curriculum")
+    fun getCurriculum(@CurrentUser user: User) =
+        ResponseEntity.ok(ApiResponse.success(curriculum.mine(requireNotNull(user.id))))
 
     @GetMapping("/courses/{courseId}/progress")
     fun getCourseProgress(

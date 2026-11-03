@@ -15,6 +15,8 @@ interface ProgramCurriculumVersionRepository : JpaRepository<ProgramCurriculumVe
     fun findAllByDeletedFalseOrderByAcademicYearDescVersionCodeAsc(): List<ProgramCurriculumVersion>
     fun existsByProgramIdAndVersionCodeAndDeletedFalse(programId: Long, versionCode: String): Boolean
     fun existsByProgramIdAndAcademicYearAndStatusAndDeletedFalse(programId: Long, academicYear: String, status: CurriculumStatus): Boolean
+    fun findFirstByProgramIdAndAcademicYearAndStatusAndDeletedFalse(programId: Long, academicYear: String, status: CurriculumStatus): ProgramCurriculumVersion?
+    fun findFirstByProgramIdAndStatusAndDeletedFalseOrderByAcademicYearDesc(programId: Long, status: CurriculumStatus): ProgramCurriculumVersion?
     fun countByStatusAndDeletedFalse(status: CurriculumStatus): Long
 
     @Query("""

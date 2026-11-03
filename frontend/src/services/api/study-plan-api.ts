@@ -1,5 +1,15 @@
 import api, { type ApiResponse } from '@/lib/api';
 import type { CourseContentAsset } from './teacher-portal-api';
+import type { CurriculumVersion } from './curriculum-api';
+import type { SubjectSyllabus } from './syllabus-api';
+
+/** reason — reja topilmasa sababi; syllabi — faqat tasdiqlangan dasturlar */
+export interface StudentCurriculum {
+  curriculum: CurriculumVersion | null;
+  currentSemester?: number | null;
+  syllabi: SubjectSyllabus[];
+  reason?: string | null;
+}
 
 export interface StudyPlanCourse {
   enrollmentId: number;
@@ -81,6 +91,11 @@ function dataOf<T>(response: { data: ApiResponse<T> }, fallback: string): T {
 }
 
 export const studyPlanApi = {
+  /** Talabaning o'quv rejasi va fanlarning tasdiqlangan o'quv dasturlari */
+  getMyCurriculum: async (): Promise<StudentCurriculum> => dataOf(
+    await api.get<ApiResponse<StudentCurriculum>>('/students/me/curriculum'),
+    "O'quv reja yuklanmadi",
+  ),
   getMyPlan: async (academicYear?: string): Promise<StudyPlan> => dataOf(
     await api.get<ApiResponse<StudyPlan>>('/students/me/study-plan', {
       params: academicYear ? { academicYear } : undefined,

@@ -5,9 +5,28 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StudentCurriculum } from '@/components/learning/student-curriculum';
 import { studyPlanApi } from '@/services/api/study-plan-api';
 
+/** "O'quv rejam": o'quv reja (fanlar va ularning o'quv dasturlari) va shu yilgi kurslar bo'yicha bajarilish */
 export function StudentStudyPlan() {
+  return (
+    <div className="p-3 sm:p-6 space-y-4">
+      <h1 className="text-2xl font-bold flex items-center gap-2"><BookMarked className="h-6 w-6" />O'quv rejam</h1>
+      <Tabs defaultValue="curriculum">
+        <TabsList>
+          <TabsTrigger value="curriculum">O'quv reja va dasturlar</TabsTrigger>
+          <TabsTrigger value="courses">Kurslar bo'yicha bajarilish</TabsTrigger>
+        </TabsList>
+        <TabsContent value="curriculum" className="mt-4"><StudentCurriculum /></TabsContent>
+        <TabsContent value="courses" className="mt-4"><StudyPlanCourses /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function StudyPlanCourses() {
   const navigate = useNavigate();
   const planQuery = useQuery({
     queryKey: ['student', 'study-plan'],
@@ -24,9 +43,9 @@ export function StudentStudyPlan() {
   const plan = planQuery.data;
   const semesters = [...new Set(plan.courses.map(course => course.semester))].sort((a, b) => a - b);
   return (
-    <div className="p-3 sm:p-6 space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2"><BookMarked className="h-6 w-6" />Individual o'quv reja</h1>
+        <h2 className="text-lg font-semibold">Individual o'quv reja</h2>
         <p className="text-sm text-muted-foreground">{plan.academicYear} o'quv yili · {plan.studentName} · {plan.studentNumber}</p>
       </div>
 
