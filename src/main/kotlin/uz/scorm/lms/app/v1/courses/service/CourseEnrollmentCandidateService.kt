@@ -7,7 +7,6 @@ import uz.scorm.lms.app.v1.courses.model.CourseEnrollmentStatus
 import uz.scorm.lms.app.v1.student.model.StudentProfile
 import uz.scorm.lms.app.v1.student.model.StudentStatus
 import uz.scorm.lms.app.v1.group.model.Group
-import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupMembershipRepository
 
 data class EnrollmentCandidate(val id: Long, val fullName: String, val studentNumber: String,
     val groupName: String?, val eligible: Boolean, val reason: String?)
@@ -18,14 +17,12 @@ data class EnrollmentCandidates(val items: List<EnrollmentCandidate>, val groups
 @Service
 @Transactional(readOnly = true)
 class CourseEnrollmentCandidateService(private val em: EntityManager, private val access: CourseAccessService,
-    private val compatibility: ContentCompatibilityService, private val memberships: AcademicSubjectGroupMembershipRepository) {
+    private val compatibility: ContentCompatibilityService) {
     fun candidates(courseId: Long, actorId: Long, manageAll: Boolean, search: String?, groupId: Long?, page: Int): EnrollmentCandidates {
         require(page in 0..10000) { "Sahifa raqami noto'g'ri" }
         require(groupId == null || groupId > 0) { "Guruh identifikatori noto'g'ri" }
         val course = access.requireManage(courseId, actorId, manageAll)
-        // Fan oqimiga bog'langan kursda dastur — o'quv rejadan (umumiy katalog fanining o'z dasturi yo'q)
-        val programId = course.subjectGroup?.curriculumSubject?.curriculumVersion?.program?.id
-            ?: course.subject?.program?.id
+        val programId = course.subject?.program?.id
             ?: return EnrollmentCandidates(emptyList(), emptyList(), page, 0, false)
         val groups = em.createQuery("select g from Group g where g.deleted = false and g.active = true and g.program.id = :programId order by g.name", Group::class.java)
             .setParameter("programId", programId).resultList
@@ -51,7 +48,6 @@ class CourseEnrollmentCandidateService(private val em: EntityManager, private va
             val reason = when {
                 course.status == "ARCHIVED" -> "Kurs arxivlangan"
                 student.lmsOrientationRequired -> "LMS orientatsiyasi yakunlanmagan"
-                course.subjectGroup != null && memberships.findBySubjectGroupIdAndStudentId(course.subjectGroup!!.id!!, student.id!!) == null -> "Kursning fan guruhiga biriktirilmagan"
                 else -> try { compatibility.requireEnrollmentCompatible(course, student); null } catch (ex: IllegalArgumentException) { ex.message }
             }
             EnrollmentCandidate(student.id!!, student.fullName, student.studentNumber, groupNames[student.groupId], reason == null, reason)

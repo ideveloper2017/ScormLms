@@ -133,43 +133,4 @@ interface StudentRepository : JpaRepository<StudentProfile, Long>, JpaSpecificat
         @Param("groupId") groupId: Long?,
         pageable: Pageable,
     ): Page<StudentProfile>
-
-    @EntityGraph(attributePaths = ["user"])
-    @Query("""
-        select student from StudentProfile student
-        where student.programId = :programId
-          and student.academicYear = :academicYear
-          and student.semesterNumber = :semester
-          and student.studentStatus = :status
-          and student.user.deleted = false
-          and (
-            :search = ''
-            or lower(student.studentNumber) like concat('%', :search, '%')
-            or lower(student.lastName) like concat('%', :search, '%')
-            or lower(student.firstName) like concat('%', :search, '%')
-            or lower(coalesce(student.middleName, '')) like concat('%', :search, '%')
-          )
-          and not exists (
-            select membership.id from AcademicSubjectGroupMembership membership
-            where membership.student.id = student.id
-              and membership.curriculumSubject.id = :curriculumSubjectId
-          )
-          and exists (
-            select assignment.id from CurriculumStudentAssignment assignment
-            where assignment.student.id = student.id
-              and assignment.curriculumVersion.id = :curriculumId
-              and assignment.semesterNumber = :semester
-              and assignment.deleted = false
-          )
-    """)
-    fun findAcademicSubjectGroupCandidates(
-        @Param("programId") programId: Long,
-        @Param("academicYear") academicYear: String,
-        @Param("semester") semester: Int,
-        @Param("status") status: StudentStatus,
-        @Param("curriculumSubjectId") curriculumSubjectId: Long,
-        @Param("curriculumId") curriculumId: Long,
-        @Param("search") search: String,
-        pageable: Pageable,
-    ): Page<StudentProfile>
 }

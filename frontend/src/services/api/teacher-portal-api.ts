@@ -37,7 +37,6 @@ export interface TeacherCourse {
   programName?: string | null;
   programLanguage?: string | null;
   groupName?: string | null;
-  subjectGroupId?: number | null;
   curriculumSubjectId?: number | null;
   academicYear?: string | null;
   semester?: number | null;
@@ -74,7 +73,6 @@ export interface CourseCreatePayload {
   description?: string;
   subjectName?: string;
   subjectId?: number;
-  subjectGroupId?: number;
   groupName?: string;
   startDate?: string;
   endDate?: string;

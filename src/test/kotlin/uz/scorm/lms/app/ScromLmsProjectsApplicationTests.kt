@@ -2,6 +2,7 @@ package uz.scorm.lms.app
 
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -38,9 +39,8 @@ class ScromLmsProjectsApplicationTests {
             assertTrue(metadata.getTables(null, null, "classifier_import_control", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "academic_year_periods", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getTables(null, null, "academic_semester_definitions", arrayOf("TABLE")).use { it.next() })
-            assertTrue(metadata.getTables(null, null, "academic_subject_groups", arrayOf("TABLE")).use { it.next() })
-            assertTrue(metadata.getTables(null, null, "academic_subject_group_memberships", arrayOf("TABLE")).use { it.next() })
-            assertTrue(metadata.getTables(null, null, "academic_subject_group_teacher_assignments", arrayOf("TABLE")).use { it.next() })
+            // Fan oqimlari V99 da olib tashlangan
+            assertFalse(metadata.getTables(null, null, "academic_subject_groups", arrayOf("TABLE")).use { it.next() })
             assertTrue(metadata.getColumns(null, null, "users", "credentials_initialized").use { it.next() })
             assertTrue(metadata.getColumns(null, null, "country_classifiers", "source_code").use { it.next() })
             assertTrue(metadata.getColumns(null, null, "region_classifiers", "managed_source").use { it.next() })
@@ -147,7 +147,6 @@ class ScromLmsProjectsApplicationTests {
             }
             assertTrue(courseColumns.containsAll(setOf(
                 "subject_id",
-                "subject_group_id",
                 "expiry_period_type",
                 "drip_content",
             )))

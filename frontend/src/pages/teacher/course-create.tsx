@@ -19,7 +19,6 @@ import { LazyRichTextEditor } from "@/components/editor/lazy-rich-text-editor";
 import { FileDropzone } from "@/components/file-dropzone";
 import { useToast } from "@/hooks/use-toast";
 import { teacherPortalApi, type TeacherCourse, type CourseCreatePayload } from "@/services/api/teacher-portal-api";
-import { subjectGroupApi } from "@/services/api/subject-group-api";
 import { syllabusApi } from "@/services/api/syllabus-api";
 import { formatTypeCounts } from "@/lib/syllabus";
 
@@ -31,7 +30,6 @@ interface CourseForm {
   title: string;
   shortDescription: string;
   description: string;
-  subjectGroupId: string;
   subjectId: string;
   level: string;
   language: string;
@@ -46,7 +44,6 @@ const INITIAL_FORM: CourseForm = {
   title: "",
   shortDescription: "",
   description: "",
-  subjectGroupId: "",
   subjectId: "",
   level: "BEGINNER",
   language: "uz",
@@ -71,8 +68,7 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
   const savingRef = useRef(false);
   const initial: CourseForm = course ? {
     ...INITIAL_FORM, title: course.title, shortDescription: course.shortDescription || "",
-    description: course.description || "", subjectGroupId: String(course.subjectGroupId || ""),
-    subjectId: course.subjectGroupId ? "" : String(course.subjectId || ""),
+    description: course.description || "", subjectId: String(course.subjectId || ""),
     level: course.level || "BEGINNER", language: course.language || "uz",
     expiryPeriodType: course.expiryPeriodType === "limited_time" ? "LIMITED_TIME" : "LIFETIME",
     dripContent: course.dripContent, startDate: course.startDate || "", endDate: course.endDate || "",
@@ -89,11 +85,6 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
     draft.clear();
     if (onCancel) onCancel(); else navigate("/teacher/courses");
   };
-  const teachingOptions = useQuery({
-    queryKey: ["subject-groups", "teaching-options"],
-    queryFn: subjectGroupApi.teachingOptions,
-    enabled: !course,
-  });
   const assignedSubjects = useQuery({
     queryKey: ["teacher", "course-subject-options"],
     queryFn: teacherPortalApi.getSubjectMaterialSubjects,
@@ -103,20 +94,13 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
     queryKey: ["teacher", "profile"],
     queryFn: teacherPortalApi.getProfile,
   });
-  const selectedGroup = (teachingOptions.data ?? []).find(
-    (item) => String(item.id) === form.subjectGroupId,
-  );
-  const groupedSubjectIds = new Set(
-    (teachingOptions.data ?? []).map((item) => item.subjectId).filter(Boolean),
-  );
-  const fallbackSubjects = (assignedSubjects.data ?? []).filter(
-    (subject) => !groupedSubjectIds.has(subject.id),
-  );
+  // Kurs o'qituvchiga biriktirilgan fan bo'yicha yaratiladi (fan oqimlari olib tashlangan)
+  const fallbackSubjects = assignedSubjects.data ?? [];
   const selectedSubject = fallbackSubjects.find(
     (item) => String(item.id) === form.subjectId,
   );
   // Tanlangan fanning tasdiqlangan va faol o'quv dasturlari
-  const catalogSubjectId = selectedGroup?.subjectId ?? selectedSubject?.id;
+  const catalogSubjectId = selectedSubject?.id;
   const syllabi = useQuery({
     queryKey: ["syllabi", "approved", catalogSubjectId],
     queryFn: () => syllabusApi.list(catalogSubjectId),
@@ -124,14 +108,10 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
     select: (items) => items.filter((item) => item.status === "APPROVED" && item.active),
   });
   const selectedSyllabus = (syllabi.data ?? []).find((item) => String(item.id) === form.syllabusId);
-  const catalogSelection = form.subjectGroupId
-    ? `group:${form.subjectGroupId}`
-    : form.subjectId
-      ? `subject:${form.subjectId}`
-      : "";
-  const catalogLoading = !course && (teachingOptions.isLoading || assignedSubjects.isLoading);
-  const catalogError = !course && (teachingOptions.isError || assignedSubjects.isError);
-  const hasCatalogOptions = (teachingOptions.data?.length ?? 0) + fallbackSubjects.length > 0;
+  const catalogSelection = form.subjectId ? `subject:${form.subjectId}` : "";
+  const catalogLoading = !course && assignedSubjects.isLoading;
+  const catalogError = !course && assignedSubjects.isError;
+  const hasCatalogOptions = fallbackSubjects.length > 0;
 
   const set = <K extends keyof CourseForm>(key: K, value: CourseForm[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -141,18 +121,14 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
   const selectCatalog = (value: string) => {
     setErrors((current) => ({ ...current, subjectId: undefined }));
     const [kind, id] = value.split(":");
-    const group = kind === "group"
-      ? (teachingOptions.data ?? []).find((item) => String(item.id) === id)
-      : undefined;
     const subject = kind === "subject"
       ? fallbackSubjects.find((item) => String(item.id) === id)
       : undefined;
     setForm((current) => ({
       ...current,
-      subjectGroupId: group ? id : "",
       subjectId: subject ? id : "",
       syllabusId: "",
-      language: group?.programLanguage || subject?.programLanguage || current.language,
+      language: subject?.programLanguage || current.language,
     }));
   };
 
@@ -180,7 +156,7 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
     const nextErrors: Partial<Record<keyof CourseForm, string>> = {};
     if (!form.title.trim()) nextErrors.title = "Kurs nomi majburiy";
     else if (form.title.trim().length > 255) nextErrors.title = "Kurs nomi 255 belgidan oshmasligi kerak";
-    if (!course && !selectedGroup && !selectedSubject) nextErrors.subjectId = "Kategoriya / fan tanlang";
+    if (!course && !selectedSubject) nextErrors.subjectId = "Kategoriya / fan tanlang";
     if (form.expiryPeriodType === "LIMITED_TIME" && !form.endDate)
       nextErrors.endDate = "Cheklangan kurs uchun tugash sanasi majburiy";
     if (form.startDate && form.endDate && form.endDate < form.startDate)
@@ -197,7 +173,6 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
         title: form.title.trim(),
         shortDescription: form.shortDescription.trim(),
         description: form.description.trim(),
-        subjectGroupId: !course && form.subjectGroupId ? Number(form.subjectGroupId) : undefined,
         subjectId: !course && form.subjectId ? Number(form.subjectId) : undefined,
         level: form.level,
         language: form.language,
@@ -286,11 +261,6 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
                 <Select value={catalogSelection} onValueChange={selectCatalog} disabled={catalogLoading || catalogError}>
                   <SelectTrigger className="w-full" aria-label="Kategoriya / fan"><SelectValue placeholder="Kategoriyani tanlang" /></SelectTrigger>
                   <SelectContent>
-                    {(teachingOptions.data ?? []).map((group) => (
-                      <SelectItem key={`group-${group.id}`} value={`group:${group.id}`}>
-                        {group.subjectCategoryName ? `${group.subjectCategoryName} · ` : ""}{group.subjectName} · {group.code}
-                      </SelectItem>
-                    ))}
                     {fallbackSubjects.map((subject) => (
                       <SelectItem key={`subject-${subject.id}`} value={`subject:${subject.id}`}>
                         {subject.categoryName ? `${subject.categoryName} · ` : ""}{subject.name}{subject.code ? ` · ${subject.code}` : ""}
@@ -348,7 +318,7 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
               )}
             </Field>
             <Field label="Kurs tili *">
-              <Select disabled={Boolean(course?.subjectGroupId || selectedGroup)} value={form.language} onValueChange={(value) => set("language", value)}>
+              <Select value={form.language} onValueChange={(value) => set("language", value)}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="uz">O'zbekcha</SelectItem>
@@ -382,14 +352,6 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
               </RadioGroup>
             </Field>
             </details>
-            {selectedGroup && (
-              <div className="grid gap-2 rounded-lg border bg-muted/20 p-4 text-sm sm:grid-cols-2">
-                <Info label="Kategoriya" value={selectedGroup.subjectCategoryName || "—"} />
-                <Info label="Dastur" value={selectedGroup.programName} />
-                <Info label="O'quv yili" value={selectedGroup.academicYear} />
-                <Info label="Semestr / kredit" value={`${selectedGroup.semester} / ${selectedGroup.credits}`} />
-              </div>
-            )}
             {selectedSubject && (
               <div className="grid gap-2 rounded-lg border bg-muted/20 p-4 text-sm sm:grid-cols-2">
                 <Info label="Kategoriya" value={selectedSubject.categoryName || "—"} />
@@ -404,14 +366,11 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
       </fieldset>
 
       {!course && !catalogError && !catalogLoading && !hasCatalogOptions && (
-        <p className="text-sm text-destructive">Sizga faol fan yoki curriculum fan guruhi biriktirilmagan. Administratorga murojaat qiling.</p>
-      )}
-      {!course && !catalogError && !catalogLoading && (teachingOptions.data?.length ?? 0) === 0 && fallbackSubjects.length > 0 && (
-        <p className="text-sm text-muted-foreground">Faol curriculum fan guruhi topilmadi. Kurs o'qituvchiga bevosita biriktirilgan fan bo'yicha yaratiladi.</p>
+        <p className="text-sm text-destructive">Sizga faol fan biriktirilmagan. Administratorga murojaat qiling.</p>
       )}
       {catalogError && <div role="alert" className="rounded-lg border border-destructive p-3 text-sm">
         Fanlar ro'yxatini yuklab bo'lmadi.
-        <Button variant="outline" onClick={() => { void teachingOptions.refetch(); void assignedSubjects.refetch(); }}>Qayta urinish</Button>
+        <Button variant="outline" onClick={() => { void assignedSubjects.refetch(); }}>Qayta urinish</Button>
       </div>}
       <div className="sticky bottom-0 flex justify-end gap-3 border-t bg-background py-3">
         <Button variant="outline" onClick={cancel} disabled={saving}>Bekor qilish</Button>

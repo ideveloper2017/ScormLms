@@ -55,7 +55,6 @@ import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
 import { AdminStudyPlanEditor } from "@/pages/admin/study-plan-editor";
 import { AdminAcademicPeriods } from "@/pages/admin/academic-periods";
 import { CurriculumSemesters } from "@/pages/admin/curriculum-semesters";
-import { AdminSubjectGroups } from "@/pages/admin/subject-groups";
 import { AdminSubjectCategories } from "@/pages/admin/subject-categories";
 import { AdminSyllabi } from "@/pages/admin/syllabi";
 import { AdminAdmissionPolicies } from "@/pages/admin/admission-policies";
@@ -360,12 +359,10 @@ function App() {
         <Route path="/admin/student-classifiers" element={<P roles={STAFF_ROLES}><AdminStudentClassifiers /></P>} />
         <Route path="/admin/subjects"     element={<P roles={STAFF_ROLES}><AdminSubjects /></P>} />
         <Route path="/admin/academic-periods" element={<P roles={STAFF_ROLES}><AdminAcademicPeriods /></P>} />
-        <Route path="/admin/subject-groups" element={<P roles={STAFF_ROLES}><AdminSubjectGroups /></P>} />
         <Route path="/admin/subject-categories" element={<P roles={STAFF_ROLES}><AdminSubjectCategories /></P>} />
         <Route path="/admin/syllabi" element={<P roles={STAFF_ROLES}><AdminSyllabi /></P>} />
         <Route path="/admin/admission-policies" element={<P roles={STAFF_ROLES}><AdminAdmissionPolicies /></P>} />
         <Route path="/admin/non-state-licenses" element={<P roles={STAFF_ROLES}><AdminNonStateLicenses /></P>} />
-        <Route path="/admin/courses"      element={<P roles={TEACHER_ROLES}><TeacherCourses title="Kurslarni boshqarish" /></P>} />
         <Route path="/admin/schedule"     element={<P roles={STAFF_ROLES}><TeacherSessions managementMode /></P>} />
         <Route path="/admin/calendar"     element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
         <Route path="/admin/orientations" element={<P roles={STAFF_ROLES}><AdminOrientations /></P>} />

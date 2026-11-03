@@ -88,7 +88,7 @@ import { CurriculumComponentsCard, CurriculumScheduleCard } from "@/components/a
 
 const EMPTY = "__empty__";
 
-// Fan oqimlari o'quv reja sahifasidan olib tashlangan — ular alohida "Fan oqimlari" sahifasida boshqariladi
+// Fan oqimlari tizimdan olib tashlangan (V99)
 const VALID_TABS = ["details", "subjects", "students", "approval"] as const;
 
 const errorMessage = (error: unknown) =>

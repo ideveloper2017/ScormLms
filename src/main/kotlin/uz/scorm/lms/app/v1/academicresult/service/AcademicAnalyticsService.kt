@@ -75,16 +75,15 @@ class AcademicAnalyticsService(
                 val course = session.course
                 val courseEnrollments = byCourse[requireNotNull(course.id)].orEmpty()
                 val results = resultsBySession[requireNotNull(session.id)].orEmpty()
-                // Yil va semestr — fan oqimi orqali o'quv rejadan; rejasiz (eski) kursda — talaba yozilishidan
-                val planItem = course.subjectGroup?.curriculumSubject
+                // Yil va semestr — talaba kursga yozilishidan
                 AcademicStatementRowDto(
                     id = requireNotNull(session.id),
                     topic = session.title,
                     subjectId = course.subject?.id,
                     subject = course.subject?.name ?: course.subjectName ?: course.title.orEmpty(),
-                    group = course.groupName ?: course.subjectGroup?.name.orEmpty(),
-                    academicYear = planItem?.curriculumVersion?.academicYear ?: courseEnrollments.firstOrNull()?.academicYear.orEmpty(),
-                    semester = planItem?.semester ?: courseEnrollments.firstOrNull()?.semester,
+                    group = course.groupName.orEmpty(),
+                    academicYear = courseEnrollments.firstOrNull()?.academicYear.orEmpty(),
+                    semester = courseEnrollments.firstOrNull()?.semester,
                     controlType = if (isFinal) "YAKUNIY" else "ORALIQ",
                     statement = if (isFinal) "Yakuniy qaydnoma" else "Oraliq qaydnoma",
                     status = session.status.name,

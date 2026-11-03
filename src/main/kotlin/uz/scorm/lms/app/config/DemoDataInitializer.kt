@@ -34,12 +34,6 @@ import uz.scorm.lms.app.v1.subject.model.SubjectType
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
 import uz.scorm.lms.app.v1.subjectcategory.model.SubjectCategory
 import uz.scorm.lms.app.v1.subjectcategory.repository.SubjectCategoryRepository
-import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroup
-import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroupMembership
-import uz.scorm.lms.app.v1.subjectgroup.model.AcademicSubjectGroupTeacherAssignment
-import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupMembershipRepository
-import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupRepository
-import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupTeacherAssignmentRepository
 import uz.scorm.lms.app.v1.teacher.model.Teacher
 import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import uz.scorm.lms.app.v1.university.model.University
@@ -82,9 +76,6 @@ class DemoDataInitializer(
     private val ratingSystemRepository: RatingSystemRepository,
     private val curriculumRepository: ProgramCurriculumVersionRepository,
     private val curriculumSubjectRepository: ProgramCurriculumSubjectRepository,
-    private val subjectGroupRepository: AcademicSubjectGroupRepository,
-    private val membershipRepository: AcademicSubjectGroupMembershipRepository,
-    private val teacherAssignmentRepository: AcademicSubjectGroupTeacherAssignmentRepository,
     private val courseRepository: CourseRepository,
     private val moduleRepository: CourseModuleRepository,
     private val contentRepository: CourseContentRepository,
@@ -144,10 +135,7 @@ class DemoDataInitializer(
         val ratingSystem = seedRatingSystem()
         val curriculum = seedCurriculum(program, ratingSystem, teacherUser, academicYear, academicYearStart, academicYearEnd)
 
-        val subjectGroups = subjects.associateWith { subject ->
-            val curriculumSubject = seedCurriculumSubject(curriculum, subject)
-            seedSubjectGroup(curriculumSubject, teacher, student)
-        }
+        subjects.forEach { subject -> seedCurriculumSubject(curriculum, subject) }
 
         val courseSpecs = listOf(
             DemoCourseSpec(
@@ -179,7 +167,7 @@ class DemoDataInitializer(
             ),
         )
         courseSpecs.forEach { spec ->
-            val course = seedCourse(spec, teacherUser, category, subjectGroups.getValue(spec.subject), academicYearStart, academicYearEnd)
+            val course = seedCourse(spec, teacherUser, category, academicYearStart, academicYearEnd)
             seedCourseLessons(course, spec, teacherUser)
             if (spec.published) seedEnrollment(course, student, academicYear, spec.subject.credits ?: 0, spec.progress)
         }
@@ -471,47 +459,10 @@ class DemoDataInitializer(
         return curriculumSubjectRepository.save(curriculumSubject)
     }
 
-    private fun seedSubjectGroup(
-        curriculumSubject: ProgramCurriculumSubject,
-        teacher: Teacher,
-        student: StudentProfile,
-    ): AcademicSubjectGroup {
-        val code = "${curriculumSubject.subjectCodeSnapshot}-01"
-        val subjectGroup = subjectGroupRepository.findAll().firstOrNull {
-            it.curriculumSubject.id == curriculumSubject.id && it.code.equals(code, true)
-        } ?: AcademicSubjectGroup(
-            curriculumSubject = curriculumSubject,
-            code = code,
-            name = "${curriculumSubject.subjectNameSnapshot} — 1-guruh",
-        )
-        subjectGroup.name = "${curriculumSubject.subjectNameSnapshot} — 1-guruh"
-        subjectGroup.capacity = 30
-        subjectGroup.active = true
-        subjectGroup.deleted = false
-        val savedGroup = subjectGroupRepository.save(subjectGroup)
-
-        val assignment = teacherAssignmentRepository.findBySubjectGroupIdAndTeacherId(savedGroup.id!!, teacher.id!!)
-            ?: AcademicSubjectGroupTeacherAssignment(subjectGroup = savedGroup, teacher = teacher)
-        assignment.active = true
-        teacherAssignmentRepository.save(assignment)
-
-        if (membershipRepository.findBySubjectGroupIdAndStudentId(savedGroup.id!!, student.id!!) == null) {
-            membershipRepository.save(
-                AcademicSubjectGroupMembership(
-                    subjectGroup = savedGroup,
-                    curriculumSubject = curriculumSubject,
-                    student = student,
-                ),
-            )
-        }
-        return savedGroup
-    }
-
     private fun seedCourse(
         spec: DemoCourseSpec,
         teacherUser: User,
         category: SubjectCategory,
-        subjectGroup: AcademicSubjectGroup,
         startsOn: LocalDate,
         endsOn: LocalDate,
     ): Course {
@@ -526,8 +477,7 @@ class DemoDataInitializer(
         course.publishedAt = if (spec.published) Instant.now() else null
         course.subject = spec.subject
         course.subjectName = spec.subject.name
-        course.subjectGroup = subjectGroup
-        course.groupName = subjectGroup.name
+        course.groupName = "${spec.subject.name} — 1-guruh"
         course.categoryId = category.id
         course.level = "BEGINNER"
         course.language = "uz"

@@ -3,17 +3,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AdminCurriculumStudents } from '../admin/curriculum-students';
-import { AdminSubjectGroups } from '../admin/subject-groups';
 import { TeacherSessions } from '../teacher/sessions';
 import { curriculumApi, type CurriculumVersion } from '@/services/api/curriculum-api';
-import { subjectGroupApi, type AcademicSubjectGroup } from '@/services/api/subject-group-api';
 import { teacherPortalApi, type TeacherLearningSession } from '@/services/api/teacher-portal-api';
 
 vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { id: 1 } }) }));
 vi.mock('@/lib/rbac-api', () => ({ hasAuthority: () => true }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/services/api/curriculum-api', async (importOriginal) => ({ ...await importOriginal<object>(), curriculumApi: { list: vi.fn(), listSemesterPeriods: vi.fn(), listStudentAssignments: vi.fn(), listStudents: vi.fn(), saveSemesterPeriod: vi.fn(), assignStudents: vi.fn(), removeStudentAssignment: vi.fn() } }));
-vi.mock('@/services/api/subject-group-api', () => ({ subjectGroupApi: { list: vi.fn(), members: vi.fn(), candidates: vi.fn(), teachers: vi.fn(), teacherCandidates: vi.fn(), assign: vi.fn() } }));
 vi.mock('@/services/api/teacher-portal-api', () => ({ teacherPortalApi: { getLearningSessions: vi.fn(), getCourses: vi.fn(), createLearningSession: vi.fn() } }));
 
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
@@ -68,22 +65,6 @@ it('shows curriculum load failure with retry instead of asking to create a new p
   expect(screen.queryByRole('button', { name: "O'quv rejaga o'tish" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Qayta urinish' }));
   await waitFor(() => expect(curriculumApi.list).toHaveBeenCalledTimes(2));
-});
-
-it('allows reaching and assigning candidates beyond the first subject group page', async () => {
-  vi.mocked(subjectGroupApi.list).mockResolvedValue([{ id: 7, code: 'FIZ-A', name: 'Fizika oqimi', programName: 'Fizika', academicYear: '2026-2027', semester: 1, active: true, capacity: 30, memberCount: 0 } as AcademicSubjectGroup]);
-  vi.mocked(subjectGroupApi.members).mockResolvedValue([]);
-  vi.mocked(subjectGroupApi.teachers).mockResolvedValue([]);
-  vi.mocked(subjectGroupApi.teacherCandidates).mockResolvedValue([]);
-  vi.mocked(subjectGroupApi.candidates).mockImplementation(async (_id, params) => ({ items: [student(params?.page ? 21 : 1)], page: params?.page ?? 0, size: 20, totalPages: 2, totalElements: 21 }));
-  vi.mocked(subjectGroupApi.assign).mockResolvedValue({ id: 7 } as AcademicSubjectGroup);
-  mount(<AdminSubjectGroups />);
-  fireEvent.click(await screen.findByRole('button', { name: /FIZ-A/ }));
-  await screen.findByText('Talaba 1');
-  fireEvent.click(screen.getByRole('button', { name: 'Keyingi' }));
-  await screen.findByText('Talaba 21');
-  fireEvent.click(screen.getByRole('button', { name: 'Biriktirish' }));
-  await waitFor(() => expect(subjectGroupApi.assign).toHaveBeenCalledWith(7, [21]));
 });
 
 it('filters timetable by lesson name and state', async () => {

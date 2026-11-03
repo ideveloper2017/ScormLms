@@ -144,11 +144,6 @@ export function AdminDashboard() {
               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Yangi Foydalanuvchi
             </Button>
           )}
-          {isMetodist && (
-            <Button size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate('/admin/courses')}>
-              <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Yangi Kurs
-            </Button>
-          )}
         </div>
       </div>
 

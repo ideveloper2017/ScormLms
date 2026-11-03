@@ -28,7 +28,7 @@ class SyllabusLessonMaterialServiceTest {
     private val syllabi = mockk<SubjectSyllabusRepository>()
     private val materials = mockk<SubjectMaterialRepository>(relaxed = true)
     private val users = mockk<UserRepository>()
-    private val bank = SubjectMaterialService(materials, mockk(relaxed = true), mockk(), users, mockk(), mockk(), mockk(relaxed = true))
+    private val bank = SubjectMaterialService(materials, mockk(relaxed = true), mockk(), users, mockk(), mockk(relaxed = true))
     private val courseSync = mockk<CourseSyllabusService>()
     private val service = SyllabusLessonMaterialService(syllabi, materials, bank, mockk(), courseSync)
     private val stored = mutableListOf<SubjectMaterial>()

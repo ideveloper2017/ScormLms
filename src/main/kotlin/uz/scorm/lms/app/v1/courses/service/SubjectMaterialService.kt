@@ -13,7 +13,6 @@ import uz.scorm.lms.app.v1.courses.repository.CourseContentAssetRepository
 import uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.subject.repository.SubjectRepository
-import uz.scorm.lms.app.v1.subjectgroup.repository.AcademicSubjectGroupTeacherAssignmentRepository
 import uz.scorm.lms.app.v1.teacher.repository.TeacherRepository
 import uz.scorm.lms.app.v1.user.repository.UserRepository
 import java.net.URI
@@ -25,7 +24,6 @@ class SubjectMaterialService(
     private val subjects: SubjectRepository,
     private val users: UserRepository,
     private val teachers: TeacherRepository,
-    private val assignments: AcademicSubjectGroupTeacherAssignmentRepository,
     private val assetService: CourseContentAssetService,
 ) {
     @Transactional(readOnly = true)
@@ -165,7 +163,7 @@ class SubjectMaterialService(
             ?.mapNotNull { it.id }
             ?.toSet()
             .orEmpty()
-        return directIds + assignments.findAssignedSubjectIds(userId)
+        return directIds
     }
 
     private fun subject(id: Long) = subjects.findById(id)

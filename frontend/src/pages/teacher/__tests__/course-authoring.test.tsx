@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeacherCourseCreate } from '../course-create';
 import { TeacherCourseDetail } from '../course-detail';
 import { teacherPortalApi, type TeacherCourse, type CourseModule, type CourseContent } from '@/services/api/teacher-portal-api';
-import { subjectGroupApi } from '@/services/api/subject-group-api';
 import { syllabusApi, type SubjectSyllabus } from '@/services/api/syllabus-api';
 
 const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
@@ -14,7 +13,6 @@ vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { id: 7, rol
 vi.mock('@/components/editor/lazy-rich-text-editor', () => ({ LazyRichTextEditor: ({ value, onChange, disabled }: { value: string; onChange: (value: string) => void; disabled?: boolean }) =>
   <textarea aria-label="Matn muharriri" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} /> }));
 vi.mock('@/components/course-forum', () => ({ CourseForum: () => null }));
-vi.mock('@/services/api/subject-group-api', () => ({ subjectGroupApi: { teachingOptions: vi.fn() } }));
 vi.mock('@/services/api/syllabus-api', () => ({ syllabusApi: { list: vi.fn() } }));
 vi.mock('@/services/api/teacher-portal-api', () => ({ teacherPortalApi: {
   getProfile: vi.fn(), getSubjectMaterialSubjects: vi.fn(), createCourse: vi.fn(), updateCourse: vi.fn(),
@@ -43,7 +41,6 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:preview');
   URL.revokeObjectURL = vi.fn();
   vi.mocked(teacherPortalApi.getProfile).mockResolvedValue({ id: '7', fullName: 'Ustoz', username: 'ustoz' });
-  vi.mocked(subjectGroupApi.teachingOptions).mockResolvedValue([]);
   vi.mocked(teacherPortalApi.getSubjectMaterialSubjects).mockResolvedValue([{ id: 3, name: 'Fizika' }] as Awaited<ReturnType<typeof teacherPortalApi.getSubjectMaterialSubjects>>);
   vi.mocked(teacherPortalApi.createCourse).mockResolvedValue(course);
   vi.mocked(teacherPortalApi.updateCourse).mockResolvedValue(course);
@@ -176,7 +173,8 @@ describe('course authoring', () => {
   });
 
   it('reports loading errors separately from missing subject assignments and supports retry', async () => {
-    vi.mocked(subjectGroupApi.teachingOptions).mockRejectedValueOnce(new Error('Offline')).mockResolvedValue([]);
+    vi.mocked(teacherPortalApi.getSubjectMaterialSubjects).mockRejectedValueOnce(new Error('Offline'))
+      .mockResolvedValue([{ id: 3, name: 'Fizika' }] as Awaited<ReturnType<typeof teacherPortalApi.getSubjectMaterialSubjects>>);
     mount();
     expect(await screen.findByRole('alert')).toHaveTextContent("Fanlar ro'yxatini yuklab bo'lmadi");
     expect(screen.queryByText(/Administratorga murojaat/)).not.toBeInTheDocument();

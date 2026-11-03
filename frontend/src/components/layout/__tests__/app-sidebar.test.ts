@@ -39,7 +39,7 @@ describe("superadmin sidebar navigation", () => {
   it("har bir ochiladigan bo'limda referensdagi sahifalar sonini saqlaydi", () => {
     const counts: Record<string, number> = {
       "Tuzilishi": 2,
-      "Ta'lim jarayoni": 14,
+      "Ta'lim jarayoni": 12,
       "O'zlashtirish": 7,
       "O'qituvchilar": 2,
       "Talabalar": 5,
@@ -65,8 +65,8 @@ describe("superadmin sidebar navigation", () => {
     const links = Object.fromEntries(sections.flatMap((section) => section.items).map((item) => [item.name, item.href]));
 
     expect(links["O'quv reja"]).toBe("/edu-process/curriculum");
-    expect(links["Fan oqimlari"]).toBe("/admin/subject-groups");
-    expect(links["Kurslar"]).toBe("/admin/courses");
+    // Fan oqimlari va admin "Kurslar" sahifasi olib tashlangan
+    expect(links["Fan oqimlari"]).toBeUndefined();
     expect(links["Dars jadvali"]).toBe("/content/schedule");
     expect(links["O'quv rejaga biriktirilgan talabalar"]).toBe("/edu-process/attached-students");
     const monitoring = sections.find((section) => section.label === "Monitoring")?.items ?? [];

@@ -230,7 +230,6 @@ class CourseLifecycleIntegrationTest {
         )
 
         assertEquals(assignedSubject.id, created.subjectId)
-        assertEquals(null, created.subjectGroupId)
         assertThrows<IllegalArgumentException> {
             courseService.create(
                 CourseCreateRequest(

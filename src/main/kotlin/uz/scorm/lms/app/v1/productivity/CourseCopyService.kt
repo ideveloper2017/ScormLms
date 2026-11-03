@@ -23,7 +23,7 @@ class CourseCopyService(
         val source = access.requireManage(sourceId, userId, mayManageAll)
         val created = courses.create(CourseCreateRequest(title = source.title.orEmpty().take(235) + " (nusxa)",
             shortDescription = source.shortDescription, description = source.description, subjectId = source.subject?.id,
-            subjectGroupId = source.subjectGroup?.id, language = source.language, level = source.level,
+            language = source.language, level = source.level,
             requirements = source.requirements, outcomes = source.outcomes, faqs = source.faqs), userId, teacher)
         val target = access.course(created.id)
         val assetIds = mutableMapOf<Long, Long>()

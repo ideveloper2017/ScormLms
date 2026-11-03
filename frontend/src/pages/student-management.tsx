@@ -601,8 +601,7 @@ export function StudentManagement({
     {allowCreate && canManagePersonal && <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-2">
       <p className="font-medium">Talabani ishga tayyorlash</p>
       <p>1. Shaxsiy kartochka yarating. 2. O'quv yili, dastur, semestr va guruhga biriktiring. 3. Parol bering. 4. LMS orientatsiyasini yakunlang. 5. Nashrdagi kurslarga talaba biriktirilganini tekshiring.</p>
-      <p className="text-muted-foreground">Guruhga qabul qilish kurslarga avtomatik kirish bermaydi. Kurslar bo'limida har bir kursning talabalari boshqariladi.</p>
-      {canManageAcademic && <a className="inline-block text-primary underline" href="/admin/courses">Kurslarni ochish</a>}
+      <p className="text-muted-foreground">Guruhga qabul qilish kurslarga avtomatik kirish bermaydi. Kursning talabalari o'qituvchining kurs sahifasida boshqariladi.</p>
     </div>}
     {registryError && <div role="alert" className="rounded-lg border border-destructive p-4 text-sm">Talabalar ro'yxatini yuklab bo'lmadi. <Button variant="outline" size="sm" className="ml-3" onClick={() => void retryRegistry()}>Qayta urinish</Button></div>}
     <Card><CardHeader><CardTitle>Talabalar reyestri</CardTitle></CardHeader><CardContent><DataTable

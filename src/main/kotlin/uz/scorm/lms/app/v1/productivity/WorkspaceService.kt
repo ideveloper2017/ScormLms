@@ -160,7 +160,7 @@ class WorkspaceService(
             SetupStep("2. Yo'nalish va fanlarni kiriting", exists("Program") && exists("Subject"), "/admin/programs"),
             SetupStep("3. Guruh va talaba qabulini tayyorlang", em.createQuery("select count(s) from StudentProfile s where s.groupId is not null and s.user.deleted = false and s.studentStatus = :status", java.lang.Long::class.java)
                 .setParameter("status", uz.scorm.lms.app.v1.student.model.StudentStatus.ACTIVE).singleResult.toLong() > 0, "/students-management"),
-            SetupStep("4. O'qituvchiga fan yoki fan oqimini biriktiring", em.createQuery("select count(t) from Teacher t where t.deleted = false and t.active = true and (t.subjects is not empty or exists (select a.id from AcademicSubjectGroupTeacherAssignment a where a.teacher = t and a.active = true and a.subjectGroup.active = true))", java.lang.Long::class.java).singleResult.toLong() > 0, "/teachers-management"),
+            SetupStep("4. O'qituvchiga fan biriktiring", em.createQuery("select count(t) from Teacher t where t.deleted = false and t.active = true and t.subjects is not empty", java.lang.Long::class.java).singleResult.toLong() > 0, "/teachers-management"),
             SetupStep("5. Birinchi kursni nashr qiling", exists("Course", "and e.status = 'PUBLISHED'"), "/courses"),
         )
     }
