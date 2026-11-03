@@ -72,6 +72,7 @@ import {
   curriculumApprovalReason,
   curriculumApi,
   curriculumInputError,
+  curriculumLegalBasisMissing,
   type CurriculumEducationForm,
   type CurriculumImportDraft,
   type CurriculumStatus,
@@ -1056,7 +1057,7 @@ export function AdminStudyPlanEditor() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="standard-reference">Standart rekviziti *</Label>
+                      <Label htmlFor="standard-reference">Standart rekviziti</Label>
                       <Input
                         id="standard-reference"
                         disabled={!editable || !canWrite}
@@ -1071,7 +1072,7 @@ export function AdminStudyPlanEditor() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="qualification-reference">Malaka talablari rekviziti *</Label>
+                      <Label htmlFor="qualification-reference">Malaka talablari rekviziti</Label>
                       <Input
                         id="qualification-reference"
                         disabled={!editable || !canWrite}
@@ -1139,12 +1140,8 @@ export function AdminStudyPlanEditor() {
                         {[
                           { text: "Reja faol va asosiy maydonlar to'liq", done: item.active && !curriculumInputError(editForm(item)) },
                           { text: "Kamida bitta fan biriktirilgan", done: item.subjectCount > 0 },
-                          {
-                            text: "Standart va malaka rekvizitlari kiritilgan",
-                            done:
-                              Boolean(item.standardReference.trim()) &&
-                              Boolean(item.qualificationRequirementsReference.trim()),
-                          },
+                          // Ixtiyoriy: tasdiqlashni to'xtatmaydi
+                          { text: "Standart va malaka rekvizitlari (ixtiyoriy)", done: !curriculumLegalBasisMissing(item) },
                         ].map((check) => (
                           <div key={check.text} className="flex items-center gap-3 rounded-md border p-3">
                             <CheckCircle2

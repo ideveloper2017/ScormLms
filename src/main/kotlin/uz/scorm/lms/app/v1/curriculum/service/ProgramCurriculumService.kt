@@ -371,8 +371,7 @@ class ProgramCurriculumService(
         require(!versionRepository.existsByProgramIdAndAcademicYearAndStatusAndDeletedFalse(
             requireNotNull(version.program.id), version.academicYear, CurriculumStatus.APPROVED,
         )) { "Dastur va o'quv yili uchun tasdiqlangan curriculum allaqachon mavjud" }
-        require(version.standardReference.isNotBlank()) { "Standart rekvizitini kiriting" }
-        require(version.qualificationRequirementsReference.isNotBlank()) { "Malaka talablari rekvizitini kiriting" }
+        // Standart va malaka talablari rekvizitlari ixtiyoriy: reja ularsiz ham tasdiqlanadi (keyin to'ldiriladi)
         val items = subjectItemRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscSubjectNameSnapshotAsc(id)
         require(items.isNotEmpty()) { "O'quv reja tasdiqlanishi uchun kamida bitta fan kerak" }
         items.forEach { item ->
