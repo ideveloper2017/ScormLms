@@ -21,6 +21,10 @@ export const CourseSchema = z.object({
   }).optional(),
   dueDate: apiOptional(z.coerce.date()),
   credits: z.number().min(0, "Kreditlar manfiy bo'lishi mumkin emas"),
+  /** O'quv rejadagi fan bilan bog'lash ("Fanlar" sahifasi) */
+  subjectId: apiOptional(z.number()),
+  subjectName: apiOptional(z.string()),
+  semester: apiOptional(z.number()),
 });
 
 export const CourseMaterialSchema = z.object({

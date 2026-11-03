@@ -126,6 +126,9 @@ class StudentPortalService(
                 status = calculated.status,
                 credits = enrollment.credits,
                 imageUrl = course.thumbnail,
+                subjectId = course.subject?.id,
+                subjectName = course.subjectName ?: course.subject?.name,
+                semester = enrollment.semester,
             )
         }
     }
