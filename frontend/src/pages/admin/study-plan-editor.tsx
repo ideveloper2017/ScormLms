@@ -391,7 +391,9 @@ export function AdminStudyPlanEditor() {
 
   const formError = curriculumInputError(form);
   const componentCredits = (item?.components ?? []).reduce((sum, c) => sum + c.credits, 0);
-  const editable = creating || item?.status === "DRAFT";
+  // Tasdiqlangan reja ham tahrirlanadi (foydalanuvchi qarori); faqat arxivlangani yopiq
+  const editable = creating || item?.status === "DRAFT" || item?.status === "APPROVED";
+  const approvedEdit = item?.status === "APPROVED";
   const busy = create.isPending || update.isPending;
   const availableSubjects = (subjects.data ?? []).filter(
     (subject) =>
@@ -524,6 +526,12 @@ export function AdminStudyPlanEditor() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {creating && canWrite && <CurriculumExcelPrefill onFilled={applyDraft} />}
+                  {approvedEdit && canWrite && (
+                    <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                      Reja tasdiqlangan: o'zgarishlar darhol talabalarga ta'sir qiladi va har biri audit jurnaliga yoziladi.
+                      Mutaxassislik, fakultet va o'quv yili o'zgartirilmaydi.
+                    </p>
+                  )}
                   <div className="flex justify-center">
                     <div className="inline-flex overflow-hidden rounded-md border">
                       <Button
@@ -630,7 +638,7 @@ export function AdminStudyPlanEditor() {
                       <span className="text-destructive">*</span> Fakultet
                     </Label>
                     <Select
-                      disabled={!editable || !canWrite}
+                      disabled={!editable || !canWrite || approvedEdit}
                       value={facultyId ? String(facultyId) : EMPTY}
                       onValueChange={selectFaculty}
                     >
@@ -653,7 +661,7 @@ export function AdminStudyPlanEditor() {
                       <span className="text-destructive">*</span> Mutaxassislik
                     </Label>
                     <Select
-                      disabled={!editable || !canWrite || !facultyId}
+                      disabled={!editable || !canWrite || !facultyId || approvedEdit}
                       value={form.programId ? String(form.programId) : EMPTY}
                       onValueChange={selectProgram}
                     >
@@ -770,7 +778,7 @@ export function AdminStudyPlanEditor() {
                         <span className="text-destructive">*</span> O'quv yilini boshlash
                       </Label>
                       <Select
-                        disabled={!editable || !canWrite}
+                        disabled={!editable || !canWrite || approvedEdit}
                         value={form.academicYear}
                         onValueChange={selectYear}
                       >
@@ -894,7 +902,7 @@ export function AdminStudyPlanEditor() {
                           <List className="mr-1.5 h-4 w-4" />Jadval
                         </Button>
                       </div>
-                      {item.status === "DRAFT" && canWrite && (
+                      {editable && canWrite && (
                         <Button variant="outline" onClick={() => setImportOpen(true)}>
                           <FileSpreadsheet className="mr-2 h-4 w-4" />
                           Excel'dan import
@@ -911,12 +919,12 @@ export function AdminStudyPlanEditor() {
                       components={item.components ?? []}
                       catalog={subjects.data ?? []}
                       semesters={semesterNumbers}
-                      editable={item.status === "DRAFT" && canWrite}
+                      editable={editable && canWrite}
                       onRemove={setSubjectToRemove}
                       onChanged={refresh}
                     />
                   )}
-                  {subjectsView === "table" && item.status === "DRAFT" && canWrite && (
+                  {subjectsView === "table" && editable && canWrite && (
                     <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto] md:items-end">
                       <div className="space-y-2">
                         <Label>Fan</Label>
@@ -984,7 +992,7 @@ export function AdminStudyPlanEditor() {
                     <CurriculumSubjectsTable
                       curriculumId={item.id}
                       subjects={item.subjects}
-                      editable={item.status === "DRAFT" && canWrite}
+                      editable={editable && canWrite}
                       onRemove={setSubjectToRemove}
                       onChanged={refresh}
                     />
@@ -995,7 +1003,7 @@ export function AdminStudyPlanEditor() {
                 curriculumId={item.id}
                 components={item.components ?? []}
                 semesterCount={item.semesterCount}
-                editable={item.status === "DRAFT" && canWrite}
+                editable={editable && canWrite}
                 onChanged={refresh}
               />
               {(item.schedule?.length ?? 0) > 0 && <CurriculumScheduleCard schedule={item.schedule!} />}
