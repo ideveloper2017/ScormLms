@@ -40,6 +40,9 @@ interface CourseQuizRepository : JpaRepository<CourseQuiz, Long> {
 
     @EntityGraph(attributePaths = ["course"])
     fun findByIdAndDeletedFalse(id: Long): CourseQuiz?
+
+    /** O'quv dasturi darslaridan kelgan kurs testlari (sinxronlash uchun) */
+    fun findAllByCourseIdAndSyllabusQuizIdIsNotNullAndDeletedFalse(courseId: Long): List<CourseQuiz>
 }
 
 interface CourseQuizQuestionRepository : JpaRepository<CourseQuizQuestion, Long> {

@@ -332,6 +332,8 @@ data class StudentTestDto(
     val proctoring: Boolean = false,
     val status: String = "upcoming",
     val score: Int? = null,
+    /** Test qaysi kurs darsida (kurs materiallari sahifasida dars ostida ko'rsatiladi) */
+    val lessonId: String? = null,
 )
 
 // ─── Exam (for /exams endpoint) ──────────────────────────────────────────────

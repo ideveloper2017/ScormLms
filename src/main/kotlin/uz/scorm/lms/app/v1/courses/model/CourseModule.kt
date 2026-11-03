@@ -49,6 +49,11 @@ class CourseModule(
     /** Bo'lim o'quv dasturi darsidan yaratilgan (dars o'chsa, bo'sh bo'lim sinxronlashda olib tashlanadi) */
     @Column(name = "from_syllabus", nullable = false)
     var fromSyllabus: Boolean = syllabusTopicId != null,
+
+    /** Dars qaysi kurs modulida (null — modulga biriktirilmagan) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_id")
+    var unit: CourseUnit? = null,
 ) : BaseEntity()
 
 enum class LearningItemStatus {

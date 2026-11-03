@@ -5,12 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LessonContentViewer } from '@/components/learning/lesson-content-viewer';
 import { RichTextContent } from '@/components/editor/rich-text-content';
-import { type TeacherCourse, type CourseModule, type CourseContent } from '@/services/api/teacher-portal-api';
-import { groupBySyllabusModule } from '@/lib/syllabus-modules';
+import { type TeacherCourse, type CourseModule, type CourseContent, type CourseUnit } from '@/services/api/teacher-portal-api';
+import { groupByUnit } from '@/lib/course-units';
 
 interface Props {
   mode: 'overview' | 'player';
   course: TeacherCourse;
+  /** Kurs modullari (modul -> dars -> material); bo'lmasa darslar sarlavhasiz */
+  units?: CourseUnit[];
   modules: CourseModule[];
   contents: CourseContent[];
   onClose: () => void;
@@ -19,7 +21,7 @@ interface Props {
   initialContentId?: number;
 }
 
-export function CoursePreview({ mode, course, modules, contents, onClose, onDownload, downloadingId, initialContentId }: Props) {
+export function CoursePreview({ mode, course, units = [], modules, contents, onClose, onDownload, downloadingId, initialContentId }: Props) {
   const sortedModules = [...modules].sort((a, b) => a.position - b.position);
   const moduleById = new Map(modules.map(module => [module.id, module]));
   const lessons = sortedModules
@@ -38,8 +40,8 @@ export function CoursePreview({ mode, course, modules, contents, onClose, onDown
         <div className="flex flex-wrap gap-2"><Badge variant="outline">{course.subjectName || 'Fan belgilanmagan'}</Badge><Badge variant="outline">{course.language || 'Til belgilanmagan'}</Badge><Badge variant="outline">{lessons.length} ta dars</Badge></div>
         {course.description && <RichTextContent value={course.description} />}
         {modules.length === 0 && <p>Hali section qo'shilmagan.</p>}
-        {groupBySyllabusModule(sortedModules, module => module.syllabusModuleName, "Qo'shimcha bo'limlar").map((group, groupIndex) => <div key={`${groupIndex}-${group.name ?? ''}`} className="space-y-3">
-          {group.name && <h3 className="font-semibold text-primary">{group.name}</h3>}
+        {groupByUnit(units, sortedModules, module => module.unitId).map((group, groupIndex) => <div key={group.unit?.id ?? `loose-${groupIndex}`} className="space-y-3">
+          {group.title && <h3 className="font-semibold text-primary">{group.title}</h3>}
           {group.items.map(module => <section key={module.id} className="rounded-lg border p-4">
             <h2 className="font-semibold">{module.title} <Badge variant="outline">{module.status === 'published' ? 'Nashrda' : 'Qoralama'}</Badge></h2>
             <ul className="mt-3 space-y-2">{lessons.filter(item => item.moduleId === module.id).map(item => <li key={item.id}>{item.title} <span className="text-muted-foreground">· {item.durationMinutes ?? 0} daqiqa · {item.status === 'published' ? 'Nashrda' : 'Qoralama'}</span></li>)}</ul>
@@ -47,8 +49,8 @@ export function CoursePreview({ mode, course, modules, contents, onClose, onDown
         </div>)}
       </div> : <div className="grid min-w-0 gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
         <nav aria-label="Kurs darslari" className="max-h-52 space-y-2 overflow-y-auto md:max-h-[65vh]">
-          {groupBySyllabusModule(lessons, item => moduleById.get(item.moduleId)?.syllabusModuleName, "Qo'shimcha bo'limlar").map((group, groupIndex) => <div key={`${groupIndex}-${group.name ?? ''}`} className="space-y-1">
-            {group.name && <p className="px-2 pt-1 text-xs font-semibold text-muted-foreground">{group.name}</p>}
+          {groupByUnit(units, lessons, item => moduleById.get(item.moduleId)?.unitId).filter(group => group.items.length > 0).map((group, groupIndex) => <div key={group.unit?.id ?? `loose-${groupIndex}`} className="space-y-1">
+            {group.title && <p className="px-2 pt-1 text-xs font-semibold text-muted-foreground">{group.title}</p>}
             {group.items.map(item => <Button key={item.id} variant={selected?.id === item.id ? 'secondary' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" aria-current={selected?.id === item.id ? 'step' : undefined} onClick={() => setSelectedId(item.id)}>{item.title}</Button>)}
           </div>)}
         </nav>

@@ -74,7 +74,7 @@ describe("SyllabusCatalog", () => {
     await waitFor(() => expect(syllabusApi.delete).toHaveBeenCalledWith(1));
   });
 
-  it("yangi dastur (drawer): qisqa ta'rif, talablar va to'liq ta'rif alohida yuboriladi, keyin Dasturlar ochiladi", async () => {
+  it("yangi dastur (to'liq sahifa): qisqa ta'rif, talablar va to'liq ta'rif alohida yuboriladi, keyin Dasturlar ochiladi", async () => {
     vi.mocked(syllabusApi.list).mockResolvedValue([]);
     vi.mocked(syllabusApi.create).mockResolvedValue(item(3, "DRAFT"));
     wrap(<SyllabusCatalog canWrite />);

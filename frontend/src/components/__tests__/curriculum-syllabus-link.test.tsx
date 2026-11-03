@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CurriculumTopicsDialog, LinkSyllabusDialog } from "@/components/admin/curriculum-syllabus-link";
+import { CurriculumSyllabusPage, LinkSyllabusDialog } from "@/components/admin/curriculum-syllabus-link";
 import { PlanTopicsCheck } from "@/components/admin/syllabus-topics";
 import { curriculumApi, type CurriculumSubject, type CurriculumVersion } from "@/services/api/curriculum-api";
 import { syllabusApi, type SubjectSyllabus } from "@/services/api/syllabus-api";
@@ -12,7 +12,10 @@ vi.mock("@/services/api/curriculum-api", async (importOriginal) => ({
 }));
 vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  syllabusApi: { list: vi.fn(), linkedCourses: vi.fn(async () => []), updateTopicsWithCourses: vi.fn(), updateModulesWithCourses: vi.fn() },
+  syllabusApi: {
+    list: vi.fn(), linkedCourses: vi.fn(async () => []), updateTopicsWithCourses: vi.fn(), updateModulesWithCourses: vi.fn(),
+    lessonMaterials: vi.fn(async () => []), lessonQuizzes: vi.fn(async () => []),
+  },
 }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 
@@ -27,7 +30,7 @@ const syllabus = (patch: Partial<SubjectSyllabus>): SubjectSyllabus => ({
   fullDescription: "t", active: true, status: "DRAFT", revisionNumber: 1, topics: [], ...patch,
 });
 const client = () => new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-describe("CurriculumTopicsDialog", () => {
+describe("CurriculumSyllabusPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({}), syllabus({ id: 41, name: "Dasturlash (RU)", language: "RU", status: "APPROVED" })]);
@@ -36,7 +39,7 @@ describe("CurriculumTopicsDialog", () => {
   it("rejadagi fan dasturini drawer'da, modullar va darslar bilan, reja limitlari bilan ochadi", async () => {
     vi.mocked(syllabusApi.updateModulesWithCourses).mockResolvedValue({ syllabus: syllabus({}), courses: [] });
     render(<QueryClientProvider client={client()}>
-      <CurriculumTopicsDialog rows={[{ ...sem1, syllabusId: 40 }, { ...sem2, syllabusId: 40 }]} canWrite onClose={vi.fn()} onSaved={vi.fn()} />
+      <CurriculumSyllabusPage rows={[{ ...sem1, syllabusId: 40 }, { ...sem2, syllabusId: 40 }]} canWrite onClose={vi.fn()} onSaved={vi.fn()} />
     </QueryClientProvider>);
 
     // Everest kabi: "Ma'lumot" va "Dasturlar" tablari, rejadan ochilganda — "Dasturlar"
@@ -59,6 +62,30 @@ describe("CurriculumTopicsDialog", () => {
       id: null, name: "Asoslar", description: null,
       lessons: [{ id: null, type: "THEORETICAL", title: "O'zgaruvchilar", description: null, part: 2 }],
     }]));
+  });
+
+  it("dars kontenti dastur sahifasi ichida ochiladi, orqaga qaytganda saqlanmagan o'zgarish qoladi", async () => {
+    const lesson = { id: 11, type: "THEORETICAL" as const, sortOrder: 1, title: "Kinematika", moduleId: 5, lessonOrder: 1, materialCount: 2, quizCount: 1 };
+    vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({ modules: [{ id: 5, sortOrder: 1, name: "Mexanika", lessons: [lesson] }], topics: [lesson] })]);
+    const onClose = vi.fn();
+    render(<QueryClientProvider client={client()}>
+      <CurriculumSyllabusPage rows={[{ ...sem1, syllabusId: 40 }]} canWrite onClose={onClose} onSaved={vi.fn()} />
+    </QueryClientProvider>);
+
+    const page = await screen.findByRole("region", { name: "Dasturlash 1,2" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.change(within(page).getByLabelText("1-modul nomi"), { target: { value: "Mexanika asoslari" } });
+    fireEvent.click(within(page).getByRole("button", { name: "1-modul 1-dars kontenti" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Kinematika" })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Sahifa yo'li" })).getByText("Mexanika asoslari")).toBeInTheDocument();
+    expect(screen.getByLabelText("1-modul nomi")).not.toBeVisible();
+    await waitFor(() => expect(syllabusApi.lessonMaterials).toHaveBeenCalledWith(40, 11));
+
+    fireEvent.click(screen.getByRole("button", { name: "Dasturga qaytish" }));
+    expect(screen.queryByRole("heading", { level: 1, name: "Kinematika" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("1-modul nomi")).toHaveValue("Mexanika asoslari");
+    fireEvent.click(screen.getByRole("button", { name: "Orqaga" }));
+    expect(onClose).toHaveBeenCalled();
   });
 });
 

@@ -8,6 +8,7 @@ import {
   BarChart3,
   BookOpen,
   CheckCircle2 as CheckCircleIcon,
+  ClipboardCheck,
   ClipboardList,
   ChevronDown,
   CalendarDays,
@@ -69,7 +70,7 @@ import { useSessionDraft, useUnloadWarning } from "@/hooks/use-session-draft";
 import { CoursePreview } from "@/components/course-preview";
 import { CourseSyllabusPanel } from "@/components/course-syllabus-panel";
 import { TopicTypeBadge } from "@/components/topic-type-badge";
-import { groupBySyllabusModule } from "@/lib/syllabus-modules";
+import { groupByUnit } from "@/lib/course-units";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -90,6 +91,8 @@ const CONTENT_META: Record<
 };
 
 type ItemStatus = "DRAFT" | "PUBLISHED";
+/** Dars formasida "modulsiz" tanlovi */
+const NO_UNIT = "none";
 type ContentType = "VIDEO" | "DOCUMENT" | "LINK" | "FILE" | "TEXT";
 const today = () => {
   const value = new Date();
@@ -128,6 +131,9 @@ export function TeacherCourseDetail({
   const [editingCourse, setEditingCourse] = useState(false);
   const [moduleTitle, setModuleTitle] = useState("");
   const [editingModuleId, setEditingModuleId] = useState<number | null>(null);
+  const [moduleUnitId, setModuleUnitId] = useState(NO_UNIT);
+  const [unitTitle, setUnitTitle] = useState("");
+  const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
   const lessonDraft = useSessionDraft(`course-lesson:v1:${user?.id ?? "anonymous"}:${courseId}`, {
     lessonDialogOpen: false,
     contentTitle: "",
@@ -201,11 +207,24 @@ export function TeacherCourseDetail({
     queryFn: () => teacherPortalApi.getModules(courseId),
     enabled: Boolean(courseId),
   });
+  const unitsQuery = useQuery({
+    queryKey: ["teacher", "course", courseId, "units"],
+    queryFn: () => teacherPortalApi.getUnits(courseId),
+    enabled: Boolean(courseId),
+  });
   const contentsQuery = useQuery({
     queryKey: ["teacher", "course", courseId, "contents"],
     queryFn: () => teacherPortalApi.getContents(courseId),
     enabled: Boolean(courseId),
   });
+  // Dars testlari (o'quv dasturi darsidagi Test va Savol/Javob shu yerga tushadi)
+  const testsQuery = useQuery({
+    queryKey: ["teacher", "tests"],
+    queryFn: teacherPortalApi.getTests,
+    enabled: Boolean(courseId),
+  });
+  const lessonTests = (lessonId: number) =>
+    (testsQuery.data ?? []).filter((test) => test.courseId === String(courseId) && test.lessonId === String(lessonId));
   const subjectMaterialsQuery = useQuery({
     queryKey: ["teacher", "subject-materials"],
     queryFn: teacherPortalApi.getSubjectMaterials,
@@ -258,6 +277,10 @@ export function TeacherCourseDetail({
         queryKey: ["teacher", "course", courseId, "modules"],
       }),
       queryClient.invalidateQueries({
+        queryKey: ["teacher", "course", courseId, "units"],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["teacher", "tests"] }),
+      queryClient.invalidateQueries({
         queryKey: ["teacher", "course", courseId, "contents"],
       }),
     ]);
@@ -296,23 +319,59 @@ export function TeacherCourseDetail({
     onError: showError("Talaba chiqarilmadi"),
   });
   const saveModuleMutation = useMutation({
-    mutationFn: () =>
-      editingModuleId
+    mutationFn: () => {
+      const unitId = moduleUnitId === NO_UNIT ? undefined : Number(moduleUnitId);
+      return editingModuleId
         ? teacherPortalApi.updateModule(courseId, editingModuleId, {
             title: moduleTitle.trim(),
+            // Dastur darsining moduli dasturda belgilanadi — faqat qo'shimcha darsda yuboriladi
+            ...(editingModuleLinked ? {} : unitId ? { unitId } : { detachUnit: true }),
           })
         : teacherPortalApi.createModule(courseId, {
             title: moduleTitle.trim(),
-          }),
+            ...(unitId ? { unitId } : {}),
+          });
+    },
     onSuccess: async () => {
       setModuleTitle("");
       setEditingModuleId(null);
+      setModuleUnitId(NO_UNIT);
       await refreshLearningItems();
       toast({
-        title: editingModuleId ? "Modul yangilandi" : "Modul yaratildi",
+        title: editingModuleId ? "Dars yangilandi" : "Dars yaratildi",
       });
     },
+    onError: showError("Dars saqlanmadi"),
+  });
+  const saveUnitMutation = useMutation({
+    mutationFn: () =>
+      editingUnitId
+        ? teacherPortalApi.updateUnit(courseId, editingUnitId, { title: unitTitle.trim() })
+        : teacherPortalApi.createUnit(courseId, { title: unitTitle.trim() }),
+    onSuccess: async () => {
+      setUnitTitle("");
+      setEditingUnitId(null);
+      await refreshLearningItems();
+      toast({ title: editingUnitId ? "Modul yangilandi" : "Modul yaratildi" });
+    },
     onError: showError("Modul saqlanmadi"),
+  });
+  const unitStatusMutation = useMutation({
+    mutationFn: ({ unitId, status }: { unitId: number; status: ItemStatus }) =>
+      teacherPortalApi.updateUnitStatus(courseId, unitId, status),
+    onSuccess: async (_, { status }) => {
+      await refreshLearningItems();
+      toast({ title: status === "PUBLISHED" ? "Modul darslari nashr qilindi" : "Modul darslari yashirildi" });
+    },
+    onError: showError("Modul holati yangilanmadi"),
+  });
+  const deleteUnitMutation = useMutation({
+    mutationFn: (unitId: number) => teacherPortalApi.deleteUnit(courseId, unitId),
+    onSuccess: async () => {
+      await refreshLearningItems();
+      toast({ title: "Modul o'chirildi", description: "Darslari modulga biriktirilmagan bo'lib qoldi" });
+    },
+    onError: showError("Modul o'chirilmadi"),
   });
   const moduleStatusMutation = useMutation({
     mutationFn: ({
@@ -497,8 +556,14 @@ export function TeacherCourseDetail({
 
   function saveModule() {
     if (!moduleTitle.trim())
-      return toast({ variant: "destructive", title: "Modul nomini kiriting" });
+      return toast({ variant: "destructive", title: "Dars nomini kiriting" });
     saveModuleMutation.mutate();
+  }
+
+  function saveUnit() {
+    if (unitTitle.trim().length < 3)
+      return toast({ variant: "destructive", title: "Modul nomini kiriting (kamida 3 belgi)" });
+    saveUnitMutation.mutate();
   }
 
   function saveContent() {
@@ -563,6 +628,7 @@ export function TeacherCourseDetail({
   function editModule(module: CourseModule) {
     setEditingModuleId(module.id);
     setModuleTitle(module.title);
+    setModuleUnitId(module.unitId ? String(module.unitId) : NO_UNIT);
   }
 
   function editContent(content: CourseContent) {
@@ -661,6 +727,11 @@ export function TeacherCourseDetail({
 
   const enrollments = enrollmentsQuery.data ?? [];
   const modules = modulesQuery.data ?? [];
+  const units = unitsQuery.data ?? [];
+  // Darslar raqami ko'rinish tartibida (modul -> dars), talaba ko'radigan tartib bilan bir xil
+  const lessonGroups = groupByUnit(units, modules, (module) => module.unitId);
+  const displayedLessons = lessonGroups.flatMap((group) => group.items);
+  const editingModuleLinked = modules.some((module) => module.id === editingModuleId && module.syllabusTopicId != null);
   const contents = contentsQuery.data ?? [];
   const subjectMaterials = (subjectMaterialsQuery.data ?? []).filter(
     (material) => material.subjectId === course.subjectId,
@@ -763,9 +834,9 @@ export function TeacherCourseDetail({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Sectionlar", value: modules.length, color: "text-blue-600" },
+          { label: "Modul / dars", value: `${units.length} / ${modules.length}`, color: "text-blue-600" },
           {
-            label: "Darslar",
+            label: "Materiallar",
             value: contents.length,
             color: "text-green-600",
           },
@@ -879,42 +950,70 @@ export function TeacherCourseDetail({
           {course?.syllabusId && <CourseSyllabusPanel courseId={courseId} onChanged={refreshLearningItems} />}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{course?.syllabusId ? "Qo'shimcha bo'lim" : "Fan darslari"}</CardTitle>
+              <CardTitle className="text-base">Kurs tuzilmasi: modul → dars → material</CardTitle>
               <CardDescription>
                 {course?.syllabusId
-                  ? "Bo'limlar o'quv dasturi modullari va darslaridan olinadi. Dasturda yo'q bo'lim kerak bo'lsa (masalan, takrorlash) shu yerda qo'shing."
-                  : "Avval section yarating, keyin uning ichiga video, matn yoki hujjat ko'rinishidagi darslarni qo'shing."}
+                  ? "Modullar va darslar o'quv dasturidan olinadi. Dasturda yo'q modul yoki dars kerak bo'lsa (masalan, takrorlash) shu yerda qo'shing, so'ng dars ichiga video, matn yoki fayl qo'shing."
+                  : "Avval modul va uning darslarini yarating, keyin dars ichiga video, matn yoki hujjat ko'rinishidagi materiallarni qo'shing."}
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={moduleTitle}
-                onChange={(event) => setModuleTitle(event.target.value)}
-                placeholder="Section nomi, masalan: 1-mavzu. Kirish"
-              />
-              <Button
-                onClick={saveModule}
-                disabled={saveModuleMutation.isPending}
-                className="gap-2 sm:shrink-0"
-              >
-                {saveModuleMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                {editingModuleId ? "Sectionni yangilash" : "Section qo'shish"}
-              </Button>
-              {editingModuleId && (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setEditingModuleId(null);
-                    setModuleTitle("");
-                  }}
-                >
-                  Bekor qilish
+            <CardContent className="space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  aria-label="Modul nomi"
+                  value={unitTitle}
+                  onChange={(event) => setUnitTitle(event.target.value)}
+                  placeholder="Modul nomi, masalan: Takrorlash"
+                />
+                <Button variant="outline" onClick={saveUnit} disabled={saveUnitMutation.isPending} className="gap-2 sm:shrink-0">
+                  {saveUnitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Layers className="h-4 w-4" />}
+                  {editingUnitId ? "Modulni yangilash" : "Modul qo'shish"}
                 </Button>
-              )}
+                {editingUnitId && (
+                  <Button variant="ghost" onClick={() => { setEditingUnitId(null); setUnitTitle(""); }}>Bekor qilish</Button>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  aria-label="Dars nomi"
+                  value={moduleTitle}
+                  onChange={(event) => setModuleTitle(event.target.value)}
+                  placeholder="Dars nomi, masalan: 1-mavzu. Kirish"
+                />
+                {units.length > 0 && !editingModuleLinked && (
+                  <Select value={moduleUnitId} onValueChange={setModuleUnitId}>
+                    <SelectTrigger className="sm:w-64" aria-label="Dars moduli"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_UNIT}>Modulsiz</SelectItem>
+                      {units.map((unit) => <SelectItem key={unit.id} value={String(unit.id)}>{unit.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button
+                  onClick={saveModule}
+                  disabled={saveModuleMutation.isPending}
+                  className="gap-2 sm:shrink-0"
+                >
+                  {saveModuleMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  {editingModuleId ? "Darsni yangilash" : "Dars qo'shish"}
+                </Button>
+                {editingModuleId && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setEditingModuleId(null);
+                      setModuleTitle("");
+                      setModuleUnitId(NO_UNIT);
+                    }}
+                  >
+                    Bekor qilish
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -923,15 +1022,15 @@ export function TeacherCourseDetail({
                 Tayyor materialni biriktirish
               </CardTitle>
               <CardDescription>
-                Fan kutubxonasidagi materialni section ichiga biriktiring.
+                Fan kutubxonasidagi materialni dars ichiga biriktiring.
                 Fayl qayta yuklanmaydi.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
-              <Field label="Section *">
+              <Field label="Dars *">
                 <Select value={bankModuleId} onValueChange={setBankModuleId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sectionni tanlang" />
+                    <SelectValue placeholder="Darsni tanlang" />
                   </SelectTrigger>
                   <SelectContent>
                     {modules.map((module) => (
@@ -989,19 +1088,52 @@ export function TeacherCourseDetail({
           </Card>
           {(modulesQuery.isLoading || contentsQuery.isLoading) && <Loading />}
           {!modulesQuery.isLoading && modules.length === 0 && (
-            <Empty text="Dars qo'shish uchun avval section yarating" />
+            <Empty text="Material qo'shish uchun avval dars yarating" />
           )}
-          {groupBySyllabusModule(modules, (module) => module.syllabusModuleName, "Qo'shimcha bo'limlar").map((group, groupIndex) => (
-            <section key={`${groupIndex}-${group.name ?? ""}`} className="space-y-3" aria-label={group.name ?? undefined}>
-              {group.name && (
-                <div className="flex items-center gap-2 pt-2">
+          {lessonGroups.map((group, groupIndex) => (
+            <section key={group.unit?.id ?? `loose-${groupIndex}`} className="space-y-3" aria-label={group.title ?? undefined}>
+              {group.title && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border-l-4 border-primary bg-primary/5 px-3 py-2">
                   <Layers className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold">{group.name}</h3>
-                  <span className="text-xs text-muted-foreground">{group.items.length} ta bo'lim</span>
+                  <h3 className="font-semibold">{group.title}</h3>
+                  <span className="text-xs text-muted-foreground">{group.items.length} ta dars</span>
+                  {group.unit?.syllabusModuleId && <Badge variant="outline">O'quv dasturidan</Badge>}
+                  {group.unit && (
+                    <div className="ml-auto flex flex-wrap items-center gap-1">
+                      {group.items.length > 0 && (() => {
+                        const allPublished = group.items.every((item) => item.status === "published");
+                        return (
+                          <Button variant="outline" size="sm" disabled={unitStatusMutation.isPending}
+                            onClick={() => unitStatusMutation.mutate({ unitId: group.unit!.id, status: allPublished ? "DRAFT" : "PUBLISHED" })}>
+                            {allPublished ? "Modulni yashirish" : "Modulni nashr qilish"}
+                          </Button>
+                        );
+                      })()}
+                      {!group.unit.syllabusModuleId && <>
+                        <Button variant="ghost" size="icon" aria-label={`${group.unit.title} modulini tahrirlash`}
+                          onClick={() => { setEditingUnitId(group.unit!.id); setUnitTitle(group.unit!.title); }}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" aria-label={`${group.unit.title} modulini o'chirish`}
+                          disabled={deleteUnitMutation.isPending}
+                          onClick={() => {
+                            if (window.confirm(`“${group.unit!.title}” moduli o'chirilsinmi? Darslari va materiallari saqlanadi.`))
+                              deleteUnitMutation.mutate(group.unit!.id);
+                          }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>}
+                    </div>
+                  )}
                 </div>
               )}
+              {group.unit && group.items.length === 0 && (
+                <p className="rounded-lg border border-dashed py-4 text-center text-sm text-muted-foreground">
+                  Bu modulda dars yo'q. Yuqoridagi formada dars qo'shib, "{group.unit.title}" modulini tanlang.
+                </p>
+              )}
           {group.items.map((module) => {
-            const sectionIndex = modules.indexOf(module);
+            const sectionIndex = displayedLessons.indexOf(module);
             const sectionLessons = contents.filter(
               (content) => content.moduleId === module.id,
             );
@@ -1020,7 +1152,7 @@ export function TeacherCourseDetail({
                         </CardTitle>
                         <CardDescription className="flex flex-wrap items-center gap-2">
                           {module.topicType && <TopicTypeBadge type={module.topicType} hours={module.plannedHours} />}
-                          <span>{sectionLessons.length} ta dars</span>
+                          <span>{sectionLessons.length} ta material</span>
                         </CardDescription>
                       </div>
                     </div>
@@ -1038,12 +1170,12 @@ export function TeacherCourseDetail({
                         onClick={() => startNewLesson(module.id)}
                       >
                         <Plus className="h-4 w-4" />
-                        Dars qo'shish
+                        Material qo'shish
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Sectionni tahrirlash"
+                        aria-label="Darsni tahrirlash"
                         onClick={() => editModule(module)}
                       >
                         <Edit className="h-4 w-4" />
@@ -1064,18 +1196,18 @@ export function TeacherCourseDetail({
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Sectionni o'chirish"
+                        aria-label="Darsni o'chirish"
                         className="text-destructive"
                         disabled={deleteModuleMutation.isPending}
                         onClick={() => {
-                          if (window.confirm(`“${module.title}” bo‘limi va undagi barcha darslar o‘chirilsinmi?`))
+                          if (window.confirm(`“${module.title}” darsi va undagi barcha materiallar o‘chirilsinmi?`))
                             deleteModuleMutation.mutate(module.id);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                       <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" aria-label="Sectionni ochish yoki yopish">
+                        <Button variant="ghost" size="icon" aria-label="Darsni ochish yoki yopish">
                           <ChevronDown className="h-4 w-4" />
                         </Button>
                       </CollapsibleTrigger>
@@ -1086,7 +1218,7 @@ export function TeacherCourseDetail({
                 <CardContent className="space-y-2 p-3 sm:p-4">
                   {sectionLessons.length === 0 && (
                     <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-                      Bu sectionda dars yo'q. “Dars qo'shish” tugmasini bosing.
+                      Bu darsda material yo'q. “Material qo'shish” tugmasini bosing.
                     </div>
                   )}
                   {sectionLessons.map((content, contentIndex) => {
@@ -1147,7 +1279,7 @@ export function TeacherCourseDetail({
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label="Darsni yuqoriga ko'chirish"
+                      aria-label="Materialni yuqoriga ko'chirish"
                       disabled={contentIndex === 0 || reorderContentsMutation.isPending}
                       onClick={() => moveContent(module.id, content.id, -1)}
                     >
@@ -1156,7 +1288,7 @@ export function TeacherCourseDetail({
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label="Darsni pastga ko'chirish"
+                      aria-label="Materialni pastga ko'chirish"
                       disabled={
                         contentIndex === sectionLessons.length - 1 ||
                         reorderContentsMutation.isPending
@@ -1281,7 +1413,7 @@ export function TeacherCourseDetail({
                       size="icon"
                       disabled={content.reviewStatus === "in_review" || deleteContentMutation.isPending}
                       className="text-destructive"
-                      aria-label="Darsni o'chirish"
+                      aria-label="Materialni o'chirish"
                       onClick={() => {
                         if (window.confirm(`“${content.title}” darsi o‘chirilsinmi?`)) deleteContentMutation.mutate(content.id);
                       }}
@@ -1293,6 +1425,17 @@ export function TeacherCourseDetail({
               </Card>
                     );
                   })}
+                  {lessonTests(module.id).map((test) => (
+                    <div key={test.id} role="group" aria-label={`Dars testi: ${test.title}`}
+                      className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-3 text-sm">
+                      <ClipboardCheck className="h-4 w-4 text-primary" />
+                      <span className="font-medium">{test.title}</span>
+                      <span className="text-xs text-muted-foreground">{test.questions} ta savol · {test.duration} daqiqa</span>
+                      {test.fromSyllabus && <Badge variant="outline">O'quv dasturidan</Badge>}
+                      <Badge variant={test.status === "draft" ? "secondary" : "default"}>{test.status === "draft" ? "Qoralama" : "Nashrda"}</Badge>
+                      <Button variant="link" size="sm" className="ml-auto h-auto p-0" onClick={() => navigate("/teacher/tests")}>Testlar sahifasida ochish</Button>
+                    </div>
+                  ))}
                 </CardContent>
                 </CollapsibleContent>
               </Card>
@@ -1454,7 +1597,7 @@ export function TeacherCourseDetail({
           </div>
         </div>
       </Tabs>
-      {previewMode && <CoursePreview mode={previewMode} initialContentId={previewContentId} course={course} modules={modules} contents={contents} onClose={() => { setPreviewMode(null); setPreviewContentId(undefined); }} onDownload={content => void downloadContent(content)} downloadingId={downloadingContentId} />}
+      {previewMode && <CoursePreview mode={previewMode} initialContentId={previewContentId} course={course} units={units} modules={modules} contents={contents} onClose={() => { setPreviewMode(null); setPreviewContentId(undefined); }} onDownload={content => void downloadContent(content)} downloadingId={downloadingContentId} />}
       <Dialog
         open={lessonDialogOpen}
         onOpenChange={(open) => {
@@ -1464,7 +1607,7 @@ export function TeacherCourseDetail({
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingContentId ? "Darsni tahrirlash" : "Yangi dars qo'shish"}
+              {editingContentId ? "Materialni tahrirlash" : "Yangi material qo'shish"}
             </DialogTitle>
             <DialogDescription>
               Sectionni tanlang, dars turini belgilang va materialni kiriting.
@@ -1661,7 +1804,7 @@ export function TeacherCourseDetail({
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              {editingContentId ? "Yangi versiyani saqlash" : "Darsni saqlash"}
+              {editingContentId ? "Yangi versiyani saqlash" : "Materialni saqlash"}
             </Button>
           </DialogFooter>
         </DialogContent>

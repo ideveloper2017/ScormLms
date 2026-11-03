@@ -14,6 +14,8 @@ export interface Test {
   proctoring: boolean;
   status: 'upcoming' | 'in-progress' | 'completed' | 'missed';
   score?: number;
+  /** Test qaysi kurs darsida (kurs materiallari sahifasida dars ostida ko'rsatiladi) */
+  lessonId?: string | null;
 }
 
 export interface TestQuestion {

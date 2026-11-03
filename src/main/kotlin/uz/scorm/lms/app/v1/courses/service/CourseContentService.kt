@@ -40,7 +40,6 @@ class CourseContentService(
         val mayEdit = mayManageAll || course.userId == userId
         val contents = contentRepository.findAllByModuleCourseIdAndDeletedFalseOrderByModulePositionAscPositionAsc(courseId)
         val compatibility = compatibilityService.evaluateAll(course, contents.map { it.languageCode })
-        val groups = moduleService.lessonGroups(course)
         return contents
             .filter { !it.module.deleted }
             .filter { mayEdit || (
@@ -52,7 +51,7 @@ class CourseContentService(
                 ) }
             .map { content ->
                 toDto(content, compatibility.getValue(content.languageCode))
-                    .copy(syllabusModuleName = content.module.syllabusTopicId?.let(groups::get)?.name)
+                    .copy(unitId = content.module.unit?.id, unitTitle = content.module.unit?.title)
             }
     }
 
@@ -319,26 +318,7 @@ class CourseContentService(
     )
 
     private fun saveRevision(content: CourseContent, number: Int, userId: Long, changedAt: Instant) {
-        revisionRepository.save(CourseContentRevision(
-            content = content,
-            revisionNumber = number,
-            title = content.title,
-            description = content.description,
-            contentType = content.contentType,
-            contentUrl = content.contentUrl,
-            contentBody = content.contentBody,
-            asset = content.asset,
-            durationMinutes = content.durationMinutes,
-            languageCode = content.languageCode,
-            authorName = content.authorName,
-            contentVersion = content.contentVersion,
-            sourceName = content.sourceName,
-            sourceUrl = content.sourceUrl,
-            validFrom = content.validFrom,
-            validUntil = content.validUntil,
-            changedAt = changedAt,
-            changedBy = userId,
-        ))
+        revisionRepository.save(contentRevision(content, number, userId, changedAt))
     }
 
     private fun revisionDto(revision: CourseContentRevision) = CourseContentRevisionDto(
@@ -425,3 +405,25 @@ class CourseContentService(
         )
     }
 }
+
+/** Kontentning joriy holati versiya tarixiga yoziladi (ekspertiza va nashr shu versiya bo'yicha) */
+fun contentRevision(content: CourseContent, number: Int, userId: Long, changedAt: Instant) = CourseContentRevision(
+    content = content,
+    revisionNumber = number,
+    title = content.title,
+    description = content.description,
+    contentType = content.contentType,
+    contentUrl = content.contentUrl,
+    contentBody = content.contentBody,
+    asset = content.asset,
+    durationMinutes = content.durationMinutes,
+    languageCode = content.languageCode,
+    authorName = content.authorName,
+    contentVersion = content.contentVersion,
+    sourceName = content.sourceName,
+    sourceUrl = content.sourceUrl,
+    validFrom = content.validFrom,
+    validUntil = content.validUntil,
+    changedAt = changedAt,
+    changedBy = userId,
+)

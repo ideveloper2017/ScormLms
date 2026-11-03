@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import type { CourseContentAsset, SubjectMaterial } from "@/services/api/teacher-portal-api";
 
 export type SyllabusLanguage = "UZ" | "EN" | "RU" | "KAA" | "UZ_CYRILLIC";
 /** THEORETICAL — nazariy (ma'ruza), PRACTICAL — amaliy, LABORATORY — laboratoriya, SEMINAR — seminar mashg'ulot. */
@@ -8,7 +9,7 @@ export const syllabusTopicTypes: Record<SyllabusTopicType, string> = {
   LABORATORY: "Laboratoriya mashg'ulotlari", SEMINAR: "Seminar mashg'ulotlari",
 };
 /** part — ko'p semestrli fanda qism (1-qism — birinchi semestr); hours — eski ma'lumot, soatlar fan bo'yicha o'quv rejada */
-export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours?: number | null; part?: number | null; moduleId?: number | null; lessonOrder?: number | null }
+export interface SyllabusTopic { id?: number | null; type: SyllabusTopicType; sortOrder: number; title: string; description?: string | null; hours?: number | null; part?: number | null; moduleId?: number | null; lessonOrder?: number | null; materialCount?: number; quizCount?: number }
 /** Dastur moduli (Everest "Dasturlar"): darslari — mavzular, har birida mashg'ulot turi */
 export interface SyllabusModule { id: number; sortOrder: number; name: string; description?: string | null; lessons: SyllabusTopic[] }
 /** Modulni saqlash: id berilsa joyida yangilanadi; lessons — modul darslari tartibda */
@@ -33,7 +34,20 @@ export interface SubjectSyllabusInput {
   topics?: SyllabusTopicInput[];
 }
 /** Dasturga bog'langan kurs: qoralamasi mavzular bilan avtomatik moslanadi, nashr qilingani — kurs sahifasida */
-export interface SyllabusLinkedCourse { id: number; title: string; status: string; autoSync: boolean; added: number; updated: number; removed?: number }
+export interface SyllabusLinkedCourse { id: number; title: string; status: string; autoSync: boolean; added: number; updated: number; removed?: number; materials?: number; quizzes?: number }
+/** Dars resursi: TEST — vaqtli test (darsga bitta), QUESTION — Savol/Javob (bitta savol, urinishlar bilan) */
+export type LessonQuizKind = "TEST" | "QUESTION";
+export type LessonQuestionType = "SINGLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER";
+/** correctAnswer: variantli — variant matni; to'g'ri/noto'g'ri — "true"/"false"; qisqa javob — "|" bilan bir nechta */
+export interface LessonQuizQuestion { text: string; type: LessonQuestionType; options: string[]; correctAnswer: string; explanation?: string | null; points: number }
+export interface LessonQuizInput { kind: LessonQuizKind; title: string; instructions?: string | null; durationMinutes?: number | null; allowedAttempts: number; passingPercentage?: number | null; questions: LessonQuizQuestion[] }
+export interface LessonQuiz extends LessonQuizInput { id: number; durationMinutes: number; passingPercentage: number; version: number }
+export interface LessonQuizzesResult { quizzes: LessonQuiz[]; courses: SyllabusLinkedCourse[] }
+/** Dars kontenti (Everest: dars -> resurslar) — fan bankida saqlanadi, kurs darsiga nusxa bo'ladi */
+export type LessonMaterialType = "TEXT" | "VIDEO" | "DOCUMENT" | "FILE" | "LINK";
+export interface LessonMaterialInput { title: string; description?: string | null; contentType: LessonMaterialType; contentUrl?: string | null; contentBody?: string | null; assetId?: number | null }
+export interface LessonMaterialsResult { materials: SubjectMaterial[]; courses: SyllabusLinkedCourse[] }
+type Wrapped<T> = { success: boolean; data: T };
 export const syllabusApi = {
   history: async (id: number) => (await api.get<SyllabusRevision[]>(`/syllabi/${id}/history`)).data,
   workflow: async (id: number, action: "SUBMIT" | "RETURN" | "APPROVE" | "NEW_VERSION") => (await api.post<SubjectSyllabus>(`/syllabi/${id}/workflow`, { action })).data,
@@ -53,4 +67,31 @@ export const syllabusApi = {
     (await api.put<{ success: boolean; data: { syllabus: SubjectSyllabus; courses: SyllabusLinkedCourse[] } }>(`/syllabus-courses/${syllabusId}/modules`, modules)).data.data,
   /** Mavzular dastur yaratilgandan keyin alohida saqlanadi (ro'yxat to'liq almashtiriladi, faqat qoralamada). */
   updateTopics: async (id: number, topics: SyllabusTopicInput[]) => (await api.put<SubjectSyllabus>(`/syllabi/${id}/topics`, topics)).data,
+  /** Dars kontenti: ro'yxat dars ichidagi tartibda; o'zgarishlar bog'langan qoralama kurslarga ham tushadi */
+  lessonMaterials: async (syllabusId: number, topicId: number) =>
+    (await api.get<Wrapped<SubjectMaterial[]>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/materials`)).data.data,
+  uploadLessonAsset: async (syllabusId: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return (await api.post<Wrapped<CourseContentAsset>>(`/syllabus-courses/${syllabusId}/assets`, form, {
+      headers: { "Content-Type": "multipart/form-data" }, timeout: 180_000,
+    })).data.data;
+  },
+  createLessonMaterial: async (syllabusId: number, topicId: number, input: LessonMaterialInput) =>
+    (await api.post<Wrapped<LessonMaterialsResult>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/materials`, input)).data.data,
+  updateLessonMaterial: async (syllabusId: number, topicId: number, materialId: number, input: LessonMaterialInput) =>
+    (await api.put<Wrapped<LessonMaterialsResult>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/materials/${materialId}`, input)).data.data,
+  reorderLessonMaterials: async (syllabusId: number, topicId: number, materialIds: number[]) =>
+    (await api.put<Wrapped<LessonMaterialsResult>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/materials/order`, materialIds)).data.data,
+  deleteLessonMaterial: async (syllabusId: number, topicId: number, materialId: number) =>
+    (await api.delete<Wrapped<LessonMaterialsResult>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/materials/${materialId}`)).data.data,
+  /** Dars testlari: Test va Savol/Javob — kursga test sifatida tushadi */
+  lessonQuizzes: async (syllabusId: number, topicId: number) =>
+    (await api.get<Wrapped<LessonQuiz[]>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/quizzes`)).data.data,
+  createLessonQuiz: async (syllabusId: number, topicId: number, input: LessonQuizInput) =>
+    (await api.post<Wrapped<LessonQuizzesResult>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/quizzes`, input)).data.data,
+  updateLessonQuiz: async (syllabusId: number, topicId: number, quizId: number, input: LessonQuizInput) =>
+    (await api.put<Wrapped<LessonQuizzesResult>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/quizzes/${quizId}`, input)).data.data,
+  deleteLessonQuiz: async (syllabusId: number, topicId: number, quizId: number) =>
+    (await api.delete<Wrapped<LessonQuizzesResult>>(`/syllabus-courses/${syllabusId}/lessons/${topicId}/quizzes/${quizId}`)).data.data,
 };

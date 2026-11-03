@@ -67,6 +67,9 @@ data class TeacherQuizDto(
     val status: String,
     val avgScore: Int?,
     val participants: Int,
+    /** Test qaysi darsda; fromSyllabus — o'quv dasturi darsidan kelgan (Test yoki Savol/Javob) */
+    val lessonId: String? = null,
+    val fromSyllabus: Boolean = false,
 )
 
 data class TeacherQuizAttemptDto(

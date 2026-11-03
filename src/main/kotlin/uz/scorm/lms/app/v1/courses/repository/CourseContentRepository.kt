@@ -18,4 +18,7 @@ interface CourseContentRepository : JpaRepository<CourseContent, Long> {
 
     fun findFirstByModuleIdAndDeletedFalseOrderByPositionDesc(moduleId: Long): CourseContent?
     fun countByModuleIdAndDeletedFalse(moduleId: Long): Long
+
+    @EntityGraph(attributePaths = ["subjectMaterial"])
+    fun findAllByModuleCourseIdAndDeletedFalseOrderByPositionAsc(courseId: Long): List<CourseContent>
 }

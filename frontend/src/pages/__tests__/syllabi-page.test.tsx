@@ -81,7 +81,7 @@ it("reja fanlari va ularning o'quv dasturlari; dastur yaratilgach dastur (modull
   await waitFor(() => expect(curriculumApi.createSyllabus).toHaveBeenCalledWith(5, 9, {
     language: "UZ", shortDescription: "Dasturlash asoslari", fullDescription: "Dasturlash asoslari",
   }));
-  const topics = await screen.findByRole("dialog", { name: "Dasturlash 1,2" });
+  const topics = await screen.findByRole("region", { name: "Dasturlash 1,2" });
   expect(within(topics).getByLabelText("Reja bilan solishtirish")).toHaveTextContent("2-qism (2-semestr):");
   expect(screen.queryByRole("dialog", { name: "Yangi o'quv dasturi" })).not.toBeInTheDocument();
 });

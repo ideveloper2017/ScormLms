@@ -132,10 +132,21 @@ export interface CourseModule {
   plannedHours?: number | null;
   /** Bo'lim yaratilgan o'quv dasturi mavzusi */
   syllabusTopicId?: number | null;
-  /** Bo'lim darsi o'quv dasturining qaysi modulida (kontent sahifasida guruhlash uchun) */
+  /** Dars qaysi kurs modulida (null — modulga biriktirilmagan) */
+  unitId?: number | null;
+}
+
+/** Kurs moduli (modul -> dars -> material): dastur modulidan yoki o'qituvchi qo'shgan qo'shimcha modul */
+export interface CourseUnit {
+  id: number;
+  courseId: number;
+  title: string;
+  description?: string | null;
+  position: number;
   syllabusModuleId?: number | null;
-  syllabusModuleName?: string | null;
-  syllabusModuleOrder?: number | null;
+  fromSyllabus: boolean;
+  lessonCount: number;
+  publishedLessonCount: number;
 }
 
 export interface CourseSyllabusTopic {
@@ -163,7 +174,7 @@ export interface CourseSyllabusStatus {
 }
 
 /** removed — dasturdan o'chirilgan darslarning bo'sh bo'limlari (kontentli bo'limlar saqlanadi) */
-export interface CourseSyllabusSyncResult { added: number; updated: number; removed?: number; status: CourseSyllabusStatus }
+export interface CourseSyllabusSyncResult { added: number; updated: number; removed?: number; materials?: number; quizzes?: number; status: CourseSyllabusStatus }
 
 export interface CourseContent {
   id: number;
@@ -193,8 +204,9 @@ export interface CourseContent {
   reviewStatus: 'draft' | 'in_review' | 'approved' | 'changes_requested';
   approvedRevisionNumber?: number | null;
   compatibility: ContentCompatibility;
-  /** Kontent bo'limi (dars) o'quv dasturining qaysi modulida */
-  syllabusModuleName?: string | null;
+  /** Material darsi qaysi kurs modulida */
+  unitId?: number | null;
+  unitTitle?: string | null;
 }
 
 export interface CourseContentAsset {
@@ -417,6 +429,9 @@ export interface TeacherTest {
   passingPercentage: number;
   proctoring: boolean;
   proctorIds: string[];
+  /** Test qaysi kurs darsida; fromSyllabus — o'quv dasturi darsidan kelgan (Test yoki Savol/Javob) */
+  lessonId?: string | null;
+  fromSyllabus?: boolean;
 }
 
 export interface TeacherQuizPayload {
@@ -702,7 +717,23 @@ export const teacherPortalApi = {
   getModules: async (courseId: string): Promise<CourseModule[]> => {
     return dataOf(await api.get<ApiResponse<CourseModule[]>>(`/courses/${courseId}/modules`), 'Modullar yuklanmadi');
   },
-  createModule: async (courseId: string, payload: { title: string; description?: string; syllabusTopicId?: number }): Promise<CourseModule> => {
+  getUnits: async (courseId: string): Promise<CourseUnit[]> => {
+    return dataOf(await api.get<ApiResponse<CourseUnit[]>>(`/courses/${courseId}/units`), 'Kurs modullari yuklanmadi');
+  },
+  createUnit: async (courseId: string, payload: { title: string; description?: string }): Promise<CourseUnit> => {
+    return dataOf(await api.post<ApiResponse<CourseUnit>>(`/courses/${courseId}/units`, payload), 'Modul yaratilmadi');
+  },
+  updateUnit: async (courseId: string, unitId: number, payload: { title: string; description?: string }): Promise<CourseUnit> => {
+    return dataOf(await api.put<ApiResponse<CourseUnit>>(`/courses/${courseId}/units/${unitId}`, payload), 'Modul yangilanmadi');
+  },
+  /** Modulni barcha darslari bilan nashr qilish yoki yashirish */
+  updateUnitStatus: async (courseId: string, unitId: number, status: 'DRAFT' | 'PUBLISHED'): Promise<CourseUnit> => {
+    return dataOf(await api.patch<ApiResponse<CourseUnit>>(`/courses/${courseId}/units/${unitId}/status`, { status }), 'Modul holati o\'zgarmadi');
+  },
+  deleteUnit: async (courseId: string, unitId: number): Promise<void> => {
+    await api.delete(`/courses/${courseId}/units/${unitId}`);
+  },
+  createModule: async (courseId: string, payload: { title: string; description?: string; syllabusTopicId?: number; unitId?: number }): Promise<CourseModule> => {
     return dataOf(await api.post<ApiResponse<CourseModule>>(`/courses/${courseId}/modules`, payload), 'Modul yaratilmadi');
   },
   /** Kurs o'quv dasturi mavzulari va ularning kursdagi bo'limlari */
@@ -713,7 +744,7 @@ export const teacherPortalApi = {
   syncCourseSyllabus: async (courseId: string): Promise<CourseSyllabusSyncResult> => {
     return dataOf(await api.post<ApiResponse<CourseSyllabusSyncResult>>(`/courses/${courseId}/syllabus/sync`), 'Dastur bilan sinxronlanmadi');
   },
-  updateModule: async (courseId: string, moduleId: number, payload: { title: string; description?: string }): Promise<CourseModule> => {
+  updateModule: async (courseId: string, moduleId: number, payload: { title: string; description?: string; unitId?: number; detachUnit?: boolean }): Promise<CourseModule> => {
     return dataOf(await api.put<ApiResponse<CourseModule>>(`/courses/${courseId}/modules/${moduleId}`, payload), 'Modul yangilanmadi');
   },
   updateModuleStatus: async (courseId: string, moduleId: number, status: 'DRAFT' | 'PUBLISHED'): Promise<CourseModule> => {
