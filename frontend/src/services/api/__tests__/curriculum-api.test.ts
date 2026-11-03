@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
-import { canApproveCurriculum, curriculumApi, curriculumInputError, type CurriculumStudentPage, type CurriculumVersion, type SaveCurriculumVersionInput } from "../curriculum-api";
+import { canApproveCurriculum, curriculumApi, curriculumInputError, curriculumLegalBasisMissing, type CurriculumStudentPage, type CurriculumVersion, type SaveCurriculumVersionInput } from "../curriculum-api";
 
 vi.mock("@/lib/api");
 
@@ -66,7 +66,10 @@ describe("decision 559 curriculum guards", () => {
     expect(canApproveCurriculum(version({ subjectCount: 1 }))).toBe(true);
     expect(canApproveCurriculum(version({ status: "APPROVED", subjectCount: 1 }))).toBe(false);
     expect(canApproveCurriculum(version({ active: false, subjectCount: 1 }))).toBe(false);
-    expect(canApproveCurriculum(version({ standardReference: "", subjectCount: 1 }))).toBe(false);
+    // Huquqiy asos rekvizitlari ixtiyoriy — tasdiqlashni to'xtatmaydi, faqat eslatiladi
+    expect(canApproveCurriculum(version({ standardReference: "", qualificationRequirementsReference: "", subjectCount: 1 }))).toBe(true);
+    expect(curriculumLegalBasisMissing(version({ standardReference: "" }))).toBe(true);
+    expect(curriculumLegalBasisMissing(version())).toBe(false);
   });
 
   it("loads students derived from the selected curriculum program and year", async () => {

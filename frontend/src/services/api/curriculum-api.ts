@@ -390,9 +390,11 @@ export const curriculumApprovalReason = (version: CurriculumVersion, actor?: imp
 export const canApproveCurriculum = (version: CurriculumVersion) =>
   version.status === "DRAFT" &&
   version.active &&
-  version.subjectCount > 0 &&
-  Boolean(version.standardReference.trim()) &&
-  Boolean(version.qualificationRequirementsReference.trim());
+  version.subjectCount > 0;
+
+/** Huquqiy asos rekvizitlari tasdiqlashni to'xtatmaydi — faqat eslatma */
+export const curriculumLegalBasisMissing = (version: Pick<CurriculumVersion, "standardReference" | "qualificationRequirementsReference">) =>
+  !version.standardReference.trim() || !version.qualificationRequirementsReference.trim();
 
 /** Bo'sh sana maydonlari serverga null bo'lib boradi */
 const versionPayload = (input: SaveCurriculumVersionInput): SaveCurriculumVersionInput => ({
