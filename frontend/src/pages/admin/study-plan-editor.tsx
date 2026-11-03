@@ -1245,7 +1245,7 @@ export function AdminStudyPlanEditor() {
           <DialogHeader>
             <DialogTitle>O'quv rejani tasdiqlash</DialogTitle>
             <DialogDescription>
-              Tasdiqlangandan keyin reja ma'lumotlari va fanlar ro'yxati tahrirlanmaydi.
+              Tasdiqlangandan keyin ham reja tahrirlanadi (mutaxassislik va o'quv yilidan tashqari) — har o'zgarish audit jurnaliga yoziladi.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
