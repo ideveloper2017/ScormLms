@@ -30,6 +30,7 @@ import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.PRACTICAL
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType.THEORETICAL
+import uz.scorm.lms.app.v1.syllabus.service.SyllabusApprovedEvent
 import java.time.Instant
 import java.time.LocalDate
 
@@ -206,22 +207,58 @@ class CourseSyllabusSyncTest {
         assertEquals(3, first.materials)
         assertEquals(listOf(1, 1), savedRevisions.map { it.revisionNumber })
         assertEquals(listOf(7L, 7L), savedRevisions.map { it.changedBy })
+        // Tasdiqlangan dastur kontenti talabaga ochiq: nusxalar tasdiqlangan va nashr qilingan, dars ham nashr qilingan;
+        // o'qituvchi materiali o'z ekspertizasida qoladi
+        assertEquals(listOf("PUBLISHED", "PUBLISHED", "DRAFT"), lesson.map { it.status })
+        assertEquals(listOf("APPROVED", "APPROVED", "DRAFT"), lesson.map { it.reviewStatus })
+        assertEquals(listOf(1, 1, null), lesson.map { it.approvedRevisionNumber })
+        assertEquals("PUBLISHED", kirish.status)
+        assertEquals("DRAFT", existing.first { it.id == 103L }.status)
 
         text.title = "Kirish: asosiy tushunchalar"
         text.contentVersion = "2.0"
         val copy = lesson.first()
-        copy.status = "PUBLISHED"
-        copy.reviewStatus = "APPROVED"
 
         val second = service.sync(9, 1, false)
 
         assertEquals(1, second.materials)
         assertEquals("Kirish: asosiy tushunchalar", copy.title)
         assertEquals("2.0", copy.contentVersion)
-        // O'zgargan nusxa qayta ekspertizaga: qoralama va yangi versiya
+        // O'zgargan nusxa yangi versiya; tasdiqlangan dastur bilan kelgani uchun shu versiyasi tasdiqlanadi
+        assertEquals(2, savedRevisions.last().revisionNumber)
+        assertEquals("PUBLISHED", copy.status)
+        assertEquals(2, copy.approvedRevisionNumber)
+    }
+
+    @Test
+    fun `qoralama dastur kontenti qoralama kursga qoralama bolib tushadi`() {
+        syllabus.status = "DRAFT"
+        course.status = "DRAFT"
+        material(1, syllabus.topics.first { it.id == 1L }, "Kirish matni", 1)
+        every { courses.findAllBySyllabusIdAndDeletedFalseOrderByCreatedAtDesc(31) } returns listOf(course)
+
+        service.syncDraftCourses(31)
+
+        val copy = contentList.single { it.fromSyllabus }
         assertEquals("DRAFT", copy.status)
         assertEquals("DRAFT", copy.reviewStatus)
-        assertEquals(2, savedRevisions.last().revisionNumber)
+        assertEquals("DRAFT", existing.first { it.id == 101L }.status)
+    }
+
+    @Test
+    fun `dastur tasdiqlanganda nashr qilingan kurs ham moslanadi va kontenti talabaga ochiladi`() {
+        course.status = "PUBLISHED"
+        material(1, syllabus.topics.first { it.id == 1L }, "Kirish matni", 1)
+        every { courses.findAllBySyllabusIdAndDeletedFalseOrderByCreatedAtDesc(31) } returns listOf(course)
+
+        service.onSyllabusApproved(SyllabusApprovedEvent(31))
+
+        val copy = contentList.single { it.fromSyllabus }
+        assertEquals("Kirish matni", copy.title)
+        assertEquals("PUBLISHED", copy.status)
+        assertEquals("APPROVED", copy.reviewStatus)
+        assertEquals("PUBLISHED", existing.first { it.id == 101L }.status)
+        assertEquals(3, course.syllabusRevision)
     }
 
     @Test
