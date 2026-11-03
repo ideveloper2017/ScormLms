@@ -31,6 +31,11 @@ class SubjectSyllabusService(
     private val lessonQuizzes: uz.scorm.lms.app.v1.syllabus.repository.SyllabusLessonQuizRepository,
     private val events: ApplicationEventPublisher,
 ) {
+    /** Tanlangan dasturlar (talaba o'quv rejasidagi fanlar dasturlari uchun) */
+    @Transactional(readOnly = true)
+    fun findAll(ids: Collection<Long>): List<SubjectSyllabusDto> =
+        if (ids.isEmpty()) emptyList() else syllabi.findAllById(ids).filter { !it.deleted }.map(::dto)
+
     @Transactional(readOnly = true)
     fun list(subjectId: Long?, modelProgramId: Long? = null): List<SubjectSyllabusDto> = when {
         modelProgramId != null -> syllabi.findAllByModelProgramIdAndDeletedFalseOrderByNameAsc(modelProgramId)

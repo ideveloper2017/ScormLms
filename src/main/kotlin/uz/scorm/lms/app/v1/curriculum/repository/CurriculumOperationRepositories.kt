@@ -14,6 +14,8 @@ interface CurriculumStudentAssignmentRepository : JpaRepository<CurriculumStuden
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = ["curriculumVersion", "curriculumVersion.ratingSystem"])
     fun findAllByStudentIdAndAcademicYearAndSemesterNumberAndDeletedFalse(studentId: Long, academicYear: String, semesterNumber: Int): List<CurriculumStudentAssignment>
     fun findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterNumberAscStudentLastNameAsc(curriculumId: Long): List<CurriculumStudentAssignment>
+    /** Talabaning eng so'nggi biriktirilgan rejasi (talaba "O'quv rejam" sahifasi) */
+    fun findFirstByStudentIdAndActiveTrueAndDeletedFalseOrderBySemesterNumberDesc(studentId: Long): CurriculumStudentAssignment?
     fun findByIdAndCurriculumVersionIdAndDeletedFalse(id: Long, curriculumId: Long): CurriculumStudentAssignment?
     fun findByCurriculumVersionIdAndStudentIdAndSemesterNumber(curriculumId: Long, studentId: Long, semesterNumber: Int): CurriculumStudentAssignment?
     fun existsByCurriculumVersionIdAndStudentIdAndSemesterNumberAndDeletedFalse(curriculumId: Long, studentId: Long, semesterNumber: Int): Boolean
