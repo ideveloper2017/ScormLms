@@ -12,6 +12,8 @@ interface UserRepository : JpaRepository<User, Long> {
     fun existsByUsername(username: String): Boolean
     fun existsByEmail(email: String): Boolean
     fun existsByPhone(phone: String): Boolean
+    fun existsByPhoneAndIdNot(phone: String, id: Long): Boolean
+    fun existsByEmailAndIdNot(email: String, id: Long): Boolean
     fun findAllByStatus(status: UserStatus): List<User>
     fun findAllByRoleNameIgnoreCaseAndStatusAndDeletedFalseOrderByFullNameAsc(
         roleName: String,

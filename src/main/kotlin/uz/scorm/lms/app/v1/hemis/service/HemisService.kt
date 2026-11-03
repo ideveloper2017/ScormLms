@@ -142,8 +142,11 @@ class HemisService(
     }
 
     private fun adminToken(): String {
-        require(connectionStatus().missingFields.isEmpty()) {
-            "HEMIS server manzili, API yo‘li yoki kirish ma’lumotlari sozlanmagan"
+        val missing = connectionStatus().missingFields
+        // Qaysi sozlama yetishmasligi aniq aytiladi (odatda faqat HEMIS_API_TOKEN berilmagan bo'ladi)
+        require(missing.isEmpty()) {
+            "HEMIS ulanishi sozlanmagan: ${missing.joinToString(", ")} berilmagan yoki noto‘g‘ri. " +
+                "Backend muhit o‘zgaruvchisiga qo‘shib, serverni qayta ishga tushiring"
         }
         return bearerToken
     }

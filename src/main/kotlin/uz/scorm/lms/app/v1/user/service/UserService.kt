@@ -53,6 +53,21 @@ class UserService(
         )
     }
 
+    /**
+     * Telefon va email foydalanuvchilar orasida unikal (users_phone_key, users_email_key): saqlashdan oldin
+     * tekshiriladi, aks holda baza xatosi 500 bo'lib qaytardi. [userId] — tahrirlanayotgan foydalanuvchining o'zi.
+     */
+    fun requireContactAvailable(phone: String?, email: String?, userId: Long? = null) {
+        phone?.takeIf(String::isNotBlank)?.let {
+            val taken = if (userId == null) userRepository.existsByPhone(it) else userRepository.existsByPhoneAndIdNot(it, userId)
+            require(!taken) { "Bu telefon raqami boshqa foydalanuvchida bor: $it" }
+        }
+        email?.takeIf(String::isNotBlank)?.let {
+            val taken = if (userId == null) userRepository.existsByEmail(it) else userRepository.existsByEmailAndIdNot(it, userId)
+            require(!taken) { "Bu email boshqa foydalanuvchida bor: $it" }
+        }
+    }
+
     fun registerPendingCredentials(username: String, roleName: String = "student"): User {
         if (userRepository.existsByUsername(username)) {
             throw IllegalArgumentException("Username already exists: $username")
