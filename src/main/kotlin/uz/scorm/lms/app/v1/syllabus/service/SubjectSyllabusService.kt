@@ -1,5 +1,6 @@
 package uz.scorm.lms.app.v1.syllabus.service
 
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.subject.service.SubjectService
@@ -16,6 +17,9 @@ import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 import uz.scorm.lms.app.v1.syllabus.model.SyllabusTopicType
 import uz.scorm.lms.app.v1.syllabus.repository.SubjectSyllabusRepository
 
+/** Dastur tasdiqlandi — bog'langan kurslar shu tranzaksiyada dasturga moslanadi (kontenti talabaga ochiladi) */
+data class SyllabusApprovedEvent(val syllabusId: Long)
+
 @Service
 class SubjectSyllabusService(
     private val syllabi: SubjectSyllabusRepository,
@@ -25,6 +29,7 @@ class SubjectSyllabusService(
     private val audit: uz.scorm.lms.app.v1.audit.service.AuditService,
     private val materials: uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository,
     private val lessonQuizzes: uz.scorm.lms.app.v1.syllabus.repository.SyllabusLessonQuizRepository,
+    private val events: ApplicationEventPublisher,
 ) {
     @Transactional(readOnly = true)
     fun list(subjectId: Long?, modelProgramId: Long? = null): List<SubjectSyllabusDto> = when {
@@ -187,7 +192,9 @@ class SubjectSyllabusService(
             else -> throw IllegalArgumentException("Noma'lum amal")
         }
         audit.logAction("SYLLABUS_$action", requireNotNull(actor.id), "syllabus=$id; revision=${value.revisionNumber}")
-        return dto(syllabi.save(value))
+        val saved = syllabi.save(value)
+        if (action == "APPROVE") events.publishEvent(SyllabusApprovedEvent(id))
+        return dto(saved)
     }
 
     /**

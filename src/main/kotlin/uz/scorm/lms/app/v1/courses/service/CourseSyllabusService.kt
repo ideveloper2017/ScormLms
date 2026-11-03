@@ -1,5 +1,6 @@
 package uz.scorm.lms.app.v1.courses.service
 
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.courses.dto.CourseSyllabusStatusDto
@@ -21,6 +22,7 @@ import uz.scorm.lms.app.v1.courses.repository.CourseRepository
 import uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
+import uz.scorm.lms.app.v1.syllabus.service.SyllabusApprovedEvent
 import java.time.Instant
 import java.time.LocalDate
 
@@ -95,6 +97,18 @@ class CourseSyllabusService(
         }
 
     /**
+     * Dastur tasdiqlanganda bog'langan barcha kurslar (nashr qilinganlari ham) moslanadi: tasdiqlangan dastur kontenti
+     * talabaga ochiladi. Tasdiqlash — ekspert qarori, shuning uchun nashr qilingan kursga "jimgina" tegish emas.
+     */
+    @EventListener
+    @Transactional
+    fun onSyllabusApproved(event: SyllabusApprovedEvent) {
+        courseRepository.findAllBySyllabusIdAndDeletedFalseOrderByCreatedAtDesc(event.syllabusId).forEach { course ->
+            applySync(course, requireSyllabus(course))
+        }
+    }
+
+    /**
      * Kurs tuzilmasini dasturga moslaydi: dastur moduli — kurs moduli, dastur darsi — shu moduldagi kurs darsi,
      * dastur tartibida; o'qituvchi qo'shgan darslar o'z modulida dastur darslaridan keyin. Dasturdan o'chirilgan
      * dars yoki modulning bo'sh qolgani olib tashlanadi, material kiritilgani (o'qituvchi ishi) saqlanadi.
@@ -151,6 +165,7 @@ class CourseSyllabusService(
         }
         changed.forEach(moduleRepository::save)
         val materials = syncMaterials(lessonSections + others, contents, lessonIds)
+        if (syllabus.status == "APPROVED") publishApproved(courseId, lessonIds)
         val quizzes = quizSync.sync(course, lessonSections + others, lessonIds)
         removeEmptyOrphanUnits(courseId, units.values)
         // Umumiy tartib: modullar tartibida, har modul ichida dastur darslari, keyin qo'shimchalari
@@ -195,6 +210,32 @@ class CourseSyllabusService(
             }
         }
         return changed
+    }
+
+    /**
+     * Tasdiqlangan dastur kontenti dastur bilan birga ekspertizadan o'tgan: kursdagi qoralama nusxalari tasdiqlangan
+     * va nashr qilingan, dastur darslari nashr qilingan bo'ladi — talabaga ko'rinadi. O'qituvchi materiallariga
+     * (o'z ekspertizasi bor) tegilmaydi. Qoralama dasturdan kelgan nusxa esa qoralama qoladi.
+     */
+    private fun publishApproved(courseId: Long, lessonIds: Set<Long>) {
+        val now = Instant.now()
+        moduleRepository.findAllByCourseIdAndDeletedFalseOrderByPositionAsc(courseId)
+            .filter { it.syllabusTopicId in lessonIds && it.status == LearningItemStatus.DRAFT.name }
+            .forEach {
+                it.status = LearningItemStatus.PUBLISHED.name
+                it.publishedAt = now
+                moduleRepository.save(it)
+            }
+        contentRepository.findAllByModuleCourseIdAndDeletedFalseOrderByPositionAsc(courseId)
+            .filter { it.fromSyllabus && it.status == LearningItemStatus.DRAFT.name }
+            .forEach { copy ->
+                copy.reviewStatus = ContentReviewStatus.APPROVED.name
+                copy.approvedRevisionNumber =
+                    revisionRepository.findFirstByContentIdAndDeletedFalseOrderByRevisionNumberDesc(requireNotNull(copy.id))?.revisionNumber
+                copy.status = LearningItemStatus.PUBLISHED.name
+                copy.publishedAt = now
+                contentRepository.save(copy)
+            }
     }
 
     private fun copyOf(lesson: CourseModule, material: SubjectMaterial, now: Instant) = CourseContent(
