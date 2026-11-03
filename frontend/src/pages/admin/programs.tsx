@@ -7,18 +7,21 @@ import {
 } from "@/components/ui/select";
 import { FolderTree } from "lucide-react";
 import { CrudSection, useCrudData } from "@/components/admin/crud-section";
-import { DepartmentSelect } from "@/components/admin/department-select";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthority } from "@/lib/rbac-api";
 import {
-  type ProgramRecord, type DepartmentRecord,
+  type ProgramRecord, type FacultyRecord,
   createProgram, deleteProgram, listPrograms, updateProgram,
-  listDepartments,
+  listFaculties,
   validateFullTimeCounterpartInput,
   validateProgramDurationInput,
 } from "@/lib/academic-api";
 
+const NONE = "none";
+
 interface ProgramForm {
+  /** Mutaxassislik fakultetga to'g'ridan-to'g'ri bog'lanadi (o'quv reja yaratishda shu bo'yicha tanlanadi) */
+  facultyId: number | null;
   name: string;
   code: string;
   degreeLevel: string;
@@ -66,7 +69,7 @@ export function AdminPrograms() {
   const { user } = useAuth();
   const canWrite  = hasAuthority(user, "ACADEMIC_WRITE");
   const programs    = useCrudData<ProgramRecord>(["programs"], listPrograms);
-  const departments = useCrudData<DepartmentRecord>(["departments"], listDepartments);
+  const faculties = useCrudData<FacultyRecord>(["faculties"], listFaculties);
 
   const byDegree = DEGREES.map((d) => ({
     ...d,
@@ -113,13 +116,17 @@ export function AdminPrograms() {
         canWrite={canWrite}
         getId={(p) => p.id}
         getName={(p) => p.name}
-        search={(p) => `${p.name} ${p.code ?? ""} ${p.departmentName ?? ""}`}
-        searchPlaceholder="Yo'nalish nomi, kodi yoki kafedra..."
+        search={(p) => `${p.name} ${p.code ?? ""} ${p.facultyName ?? ""}`}
+        searchPlaceholder="Yo'nalish nomi, kodi yoki fakultet..."
         columns={[
           { header: "Nomi",    cell: (p) => <span className="font-medium">{p.name}</span> },
           { header: "Kodi",    cell: (p) => p.code ?? "—" },
           { header: "Daraja",  cell: (p) => <DegreeBadge level={p.degreeLevel} /> },
-          { header: "Kafedra", cell: (p) => p.departmentName ?? "—" },
+          {
+            header: "Fakultet",
+            cell: (p) => p.facultyName
+              ?? <Badge variant="destructive" title="Fakultet tanlanmagan — o'quv reja yaratishda chiqmaydi">Bog'lanmagan</Badge>,
+          },
           { header: "Ta'lim shakli", cell: (p) => p.distanceEnabled ? <Badge variant="outline">Masofaviy</Badge> : <Badge variant="secondary">Kunduzgi</Badge> },
           { header: "Normativ chegara", cell: (p) => p.distanceEnabled ? (p.informationTechnologyProgram ? "AKT istisnosi" : p.degreeLevel === "MASTER" ? 30 : 300) : "—" },
           { header: "Davomiylik", cell: (p) => p.distanceEnabled ? `${p.fullTimeDurationMonths ?? "—"} / ${p.distanceDurationMonths ?? "—"} oy` : "—" },
@@ -127,13 +134,14 @@ export function AdminPrograms() {
           { header: "Holat",   cell: (p) => <ActiveBadge active={p.active} /> },
         ]}
         blankForm={() => ({
-          name: "", code: "", degreeLevel: "BACHELOR", departmentId: null, active: true,
+          facultyId: null, name: "", code: "", degreeLevel: "BACHELOR", departmentId: null, active: true,
           distanceEnabled: false, informationTechnologyProgram: false,
           educationLanguage: "uz", distanceAdmissionLimit: 300, licenseReference: "",
           fullTimeDurationMonths: null, distanceDurationMonths: null,
           fullTimeAvailable: false, fullTimeBasisReference: "",
         })}
         toForm={(p) => ({
+          facultyId: p.facultyId ?? null,
           name: p.name, code: p.code ?? "",
           degreeLevel: p.degreeLevel ?? "BACHELOR",
           departmentId: p.departmentId ?? null, active: p.active,
@@ -149,6 +157,7 @@ export function AdminPrograms() {
         })}
         validate={(f) => {
           if (!f.name.trim()) return "Nomi majburiy";
+          if (!f.facultyId) return "Fakultetni tanlang";
           const durationError = validateProgramDurationInput(f.distanceEnabled, f.fullTimeDurationMonths, f.distanceDurationMonths);
           if (durationError) return durationError;
           const counterpartError = validateFullTimeCounterpartInput(f.distanceEnabled, f.informationTechnologyProgram, f.fullTimeAvailable, f.fullTimeBasisReference);
@@ -160,7 +169,7 @@ export function AdminPrograms() {
         onCreate={(f) =>
           createProgram({
             name: f.name.trim(), code: f.code.trim() || null,
-            degreeLevel: f.degreeLevel, departmentId: f.departmentId, active: f.active,
+            degreeLevel: f.degreeLevel, departmentId: f.departmentId, facultyId: f.facultyId, active: f.active,
             distanceEnabled: f.distanceEnabled, informationTechnologyProgram: f.informationTechnologyProgram,
             educationLanguage: f.educationLanguage,
             distanceAdmissionLimit: f.distanceEnabled && !f.informationTechnologyProgram ? f.distanceAdmissionLimit : null,
@@ -174,7 +183,7 @@ export function AdminPrograms() {
         onUpdate={(id, f) =>
           updateProgram(id, {
             name: f.name.trim(), code: f.code.trim() || null,
-            degreeLevel: f.degreeLevel, departmentId: f.departmentId, active: f.active,
+            degreeLevel: f.degreeLevel, departmentId: f.departmentId, facultyId: f.facultyId, active: f.active,
             distanceEnabled: f.distanceEnabled, informationTechnologyProgram: f.informationTechnologyProgram,
             educationLanguage: f.educationLanguage,
             distanceAdmissionLimit: f.distanceEnabled && !f.informationTechnologyProgram ? f.distanceAdmissionLimit : null,
@@ -227,12 +236,21 @@ export function AdminPrograms() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Kafedra</Label>
-              <DepartmentSelect
-                departments={departments.items}
-                value={form.departmentId}
-                onChange={(departmentId) => set({ departmentId })}
-              />
+              <Label>
+                Fakultet <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={form.facultyId != null ? String(form.facultyId) : NONE}
+                onValueChange={(v) => set({ facultyId: v === NONE ? null : Number(v) })}
+              >
+                <SelectTrigger aria-label="Fakultet"><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE} disabled>Fakultetni tanlang</SelectItem>
+                  {faculties.items.filter((f) => f.active || f.id === form.facultyId).map((f) => (
+                    <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="rounded-lg border p-3 space-y-3">
               <div className="flex items-center justify-between gap-3">

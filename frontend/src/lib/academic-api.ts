@@ -59,6 +59,9 @@ export interface ProgramRecord {
   fullTimeBasisReference?: string | null;
   departmentId?: number | null;
   departmentName?: string | null;
+  /** O'z fakulteti, bo'lmasa kafedrasining fakulteti */
+  facultyId?: number | null;
+  facultyName?: string | null;
 }
 export interface ProgramCreateRequest {
   name: string;
@@ -75,6 +78,7 @@ export interface ProgramCreateRequest {
   fullTimeAvailable?: boolean;
   fullTimeBasisReference?: string | null;
   departmentId?: number | null;
+  facultyId?: number | null;
 }
 export type ProgramUpdateRequest = Partial<ProgramCreateRequest>;
 

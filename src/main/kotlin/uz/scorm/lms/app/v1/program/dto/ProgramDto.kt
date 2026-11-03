@@ -19,6 +19,9 @@ data class ProgramDto(
     val fullTimeBasisReference: String? = null,
     val departmentId: Long? = null,
     val departmentName: String? = null,
+    /** O'z fakulteti, bo'lmasa kafedrasining fakulteti */
+    val facultyId: Long? = null,
+    val facultyName: String? = null,
     val createdAt: Instant? = null,
     val updatedAt: Instant? = null
 )
@@ -37,7 +40,8 @@ data class ProgramCreateRequest(
     val distanceDurationMonths: Int? = null,
     val fullTimeAvailable: Boolean = false,
     val fullTimeBasisReference: String? = null,
-    val departmentId: Long? = null
+    val departmentId: Long? = null,
+    val facultyId: Long? = null
 )
 
 data class ProgramUpdateRequest(
@@ -54,5 +58,6 @@ data class ProgramUpdateRequest(
     val distanceDurationMonths: Int? = null,
     val fullTimeAvailable: Boolean? = null,
     val fullTimeBasisReference: String? = null,
-    val departmentId: Long? = null
+    val departmentId: Long? = null,
+    val facultyId: Long? = null
 )

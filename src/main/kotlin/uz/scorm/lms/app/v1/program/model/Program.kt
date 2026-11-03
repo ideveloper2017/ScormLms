@@ -8,6 +8,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.department.model.Department
+import uz.scorm.lms.app.v1.faculty.model.Faculty
 
 @Entity
 @Table(name = "programs")
@@ -57,4 +58,12 @@ class Program(
     @JoinColumn(name = "department_id")
     var department: Department? = null,
 
-) : BaseEntity()
+) : BaseEntity() {
+    /** Mutaxassislik fakulteti (o'quv reja yaratishda shu bo'yicha tanlanadi); kafedra ixtiyoriy */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "faculty_id")
+    var faculty: Faculty? = null
+}
+
+/** Mutaxassislik fakulteti: o'zi tanlangani, bo'lmasa (eski yozuvlarda) kafedrasining fakulteti */
+fun Program.facultyOf(): Faculty? = faculty ?: department?.faculty

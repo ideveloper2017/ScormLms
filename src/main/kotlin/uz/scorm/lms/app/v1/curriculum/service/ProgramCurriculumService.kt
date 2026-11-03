@@ -34,6 +34,7 @@ import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumComponentRepos
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumScheduleRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumSubjectRepository
 import uz.scorm.lms.app.v1.curriculum.repository.ProgramCurriculumVersionRepository
+import uz.scorm.lms.app.v1.program.model.facultyOf
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.group.repository.GroupRepository
 import uz.scorm.lms.app.v1.student.model.StudentStatus
@@ -547,7 +548,7 @@ class ProgramCurriculumService(
             .map { CurriculumScheduleDto(it.course, it.weeks.split(",")) }
         return CurriculumVersionDto(
             id = requireNotNull(version.id), programId = requireNotNull(version.program.id), programName = version.program.name,
-            facultyId = version.program.department?.faculty?.id, facultyName = version.program.department?.faculty?.name,
+            facultyId = version.program.facultyOf()?.id, facultyName = version.program.facultyOf()?.name,
             versionCode = version.versionCode, academicYear = version.academicYear,
             startYear = version.academicYear.substringBefore("-").toInt(), name = version.name, active = version.active,
             educationLanguage = version.educationLanguage, passingScore = version.passingScore,

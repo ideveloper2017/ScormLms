@@ -3,6 +3,7 @@ package uz.scorm.lms.app.v1.program.service
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uz.scorm.lms.app.v1.department.service.DepartmentService
+import uz.scorm.lms.app.v1.faculty.service.FacultyService
 import uz.scorm.lms.app.v1.program.dto.ProgramCreateRequest
 import uz.scorm.lms.app.v1.program.dto.ProgramDto
 import uz.scorm.lms.app.v1.program.dto.ProgramUpdateRequest
@@ -18,6 +19,7 @@ class ProgramService(
     private val programRepository: ProgramRepository,
     private val programMapper: ProgramMapper,
     private val departmentService: DepartmentService,
+    private val facultyService: FacultyService,
     private val restrictionService: DistanceProgramRestrictionService,
 ) {
     fun list(departmentId: Long? = null): List<ProgramDto> {
@@ -77,7 +79,7 @@ class ProgramService(
                     fullTimeAvailable = request.fullTimeAvailable,
                     fullTimeBasisReference = request.fullTimeBasisReference?.trim()?.takeIf(String::isNotBlank),
                     department = request.departmentId?.let { departmentService.getEntity(it) }
-                )
+                ).apply { assignFaculty(this, request.facultyId) }
             )
         )
     }
@@ -101,6 +103,7 @@ class ProgramService(
         }
         request.fullTimeBasisReference?.let { program.fullTimeBasisReference = it.trim().takeIf(String::isNotBlank) }
         request.departmentId?.let { program.department = departmentService.getEntity(it) }
+        request.facultyId?.let { assignFaculty(program, it) }
         program.distanceAdmissionLimit = Decision559Rules.validateProgramSettings(
             degreeLevel = program.degreeLevel,
             distanceEnabled = program.distanceEnabled,
@@ -121,6 +124,14 @@ class ProgramService(
         )
         restrictionService.requireAllowed(program.code, program.degreeLevel, program.distanceEnabled, LocalDate.now())
         return programMapper.toDto(programRepository.save(program))
+    }
+
+    /** Fakultet tanlanadi; boshqa fakultet kafedrasi bog'langan bo'lsa u ajratiladi (umumiy kafedra qoladi) */
+    private fun assignFaculty(program: Program, facultyId: Long?) {
+        val faculty = facultyId?.let(facultyService::getEntity) ?: return
+        program.faculty = faculty
+        val departmentFaculty = program.department?.faculty
+        if (departmentFaculty != null && departmentFaculty.id != faculty.id) program.department = null
     }
 
     @Transactional

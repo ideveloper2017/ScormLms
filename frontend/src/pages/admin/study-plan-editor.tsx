@@ -254,17 +254,22 @@ export function AdminStudyPlanEditor() {
     () => new Map((departments.data ?? []).map((department) => [department.id, department.facultyId ?? 0])),
     [departments.data],
   );
+  /** Mutaxassislik fakulteti (server o'zinikini, bo'lmasa kafedrasinikini beradi); 0 — umumiy kafedra */
+  const programFaculty = useMemo(
+    () => new Map((programs.data ?? []).map((program) => [program.id,
+      program.facultyId ?? (program.departmentId ? departmentFaculty.get(program.departmentId) : undefined)])),
+    [departmentFaculty, programs.data],
+  );
   const visiblePrograms = useMemo(
     () =>
       (programs.data ?? []).filter((program) => {
         if (!program.active && program.id !== form.programId) return false;
         if (!facultyId) return true;
-        if (!program.departmentId) return false;
-        const programFaculty = departmentFaculty.get(program.departmentId);
+        const faculty = programFaculty.get(program.id);
         // 0 — umumiy kafedra (fakultetga bog'lanmagan): har qanday fakultetda ko'rinadi
-        return programFaculty === facultyId || programFaculty === 0;
+        return faculty === facultyId || faculty === 0;
       }),
-    [departmentFaculty, facultyId, form.programId, programs.data],
+    [facultyId, form.programId, programFaculty, programs.data],
   );
 
   useEffect(() => {
@@ -304,11 +309,9 @@ export function AdminStudyPlanEditor() {
 
   useEffect(() => {
     if (!item || item.facultyId || facultyId || !programs.data || !departments.data) return;
-    const program = programs.data.find((value) => value.id === item.programId);
-    if (program?.departmentId) {
-      setFacultyId(departmentFaculty.get(program.departmentId) ?? 0);
-    }
-  }, [departmentFaculty, departments.data, facultyId, item, programs.data]);
+    const faculty = programFaculty.get(item.programId);
+    if (faculty) setFacultyId(faculty);
+  }, [departments.data, facultyId, item, programFaculty, programs.data]);
 
   const refresh = async () => {
     await Promise.all([
@@ -407,11 +410,9 @@ export function AdminStudyPlanEditor() {
   const selectFaculty = (value: string) => {
     const nextFaculty = Number(value);
     setFacultyId(nextFaculty);
-    const selectedProgram = (programs.data ?? []).find((program) => program.id === form.programId);
-    const selectedFaculty = selectedProgram?.departmentId
-      ? departmentFaculty.get(selectedProgram.departmentId)
-      : 0;
-    if (selectedFaculty !== nextFaculty) {
+    const selectedFaculty = programFaculty.get(form.programId);
+    // Umumiy kafedra mutaxassisligi (0) har qanday fakultetda qoladi
+    if (selectedFaculty !== nextFaculty && selectedFaculty !== 0) {
       setForm((current) => ({ ...current, programId: 0 }));
     }
   };
@@ -444,7 +445,7 @@ export function AdminStudyPlanEditor() {
     setExcelFile(file);
     const program = (programs.data ?? []).find((entry) => entry.id === draft.programId);
     if (program) {
-      setFacultyId(program.departmentId ? departmentFaculty.get(program.departmentId) ?? 0 : 0);
+      setFacultyId(programFaculty.get(program.id) ?? 0);
       selectProgram(String(program.id));
     }
     setForm((current) => ({
@@ -676,7 +677,7 @@ export function AdminStudyPlanEditor() {
                       <p role="alert" className="text-xs text-destructive">
                         Bu fakultetda faol mutaxassislik yo'q. Avval{" "}
                         <Link to="/structure/specialities" className="underline">Tuzilishi → Mutaxassisliklar</Link>{" "}
-                        bo'limida mutaxassislik qo'shing (kafedrasini shu fakultetga biriktiring) yoki boshqa fakultetni tanlang.
+                        bo'limida shu fakultetga mutaxassislik qo'shing yoki mavjudining fakultetini belgilang.
                       </p>
                     )}
                     {editable && canWrite && facultyId > 0 && visiblePrograms.length > 0 && saveAttempted && !form.programId && (
