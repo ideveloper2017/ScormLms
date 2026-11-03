@@ -6,6 +6,7 @@ import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.compliance.Decision559Rules
 import uz.scorm.lms.app.v1.group.repository.GroupRepository
 import uz.scorm.lms.app.v1.program.model.Program
+import uz.scorm.lms.app.v1.program.model.facultyOf
 import uz.scorm.lms.app.v1.program.repository.ProgramRepository
 import uz.scorm.lms.app.v1.student.dto.StudentAdmissionRequest
 import uz.scorm.lms.app.v1.student.dto.StudentAcademicAdmissionRequest
@@ -58,7 +59,7 @@ class StudentLifecycleService(
             "Tanlangan ta'lim darajasi dastur darajasiga mos emas"
         }
         request.departmentId?.let { require(it == program.department?.id) { "Tanlangan kafedra ta'lim dasturiga tegishli emas" } }
-        request.facultyId?.let { require(it == program.department?.faculty?.id) { "Tanlangan fakultet ta'lim dasturiga tegishli emas" } }
+        request.facultyId?.let { require(it == program.facultyOf()?.id) { "Tanlangan fakultet ta'lim dasturiga tegishli emas" } }
         val group = request.groupId?.let {
             groupRepository.findById(it).orElseThrow { IllegalArgumentException("Guruh topilmadi: $it") }
         }
@@ -79,7 +80,7 @@ class StudentLifecycleService(
         studentService.validateAcademicAdmission(student, request)
 
         student.universityId = request.universityId
-        student.facultyId = program.department?.faculty?.id
+        student.facultyId = program.facultyOf()?.id
         student.departmentId = program.department?.id
         student.programId = program.id
         student.degreeLevel = request.degreeLevel
@@ -202,7 +203,7 @@ class StudentLifecycleService(
             toGroupId = plan.groupId
             student.programId = requireNotNull(toProgram.id)
             student.departmentId = toProgram.department?.id
-            student.facultyId = toProgram.department?.faculty?.id
+            student.facultyId = toProgram.facultyOf()?.id
             student.groupId = toGroupId
             student.academicYear = plan.academicYear
             if (student.educationForm == EducationForm.DISTANCE && fromProgram?.id != toProgram.id) {

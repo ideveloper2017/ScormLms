@@ -254,7 +254,8 @@ export function CurriculumExcelPrefill({ onFilled }: { onFilled: (draft: Curricu
           </p>
           {header?.programCode && !draft.programId && (
             <p className="flex items-center gap-1 text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="h-3 w-3" />Yo'nalish {header.programCode} tizimda topilmadi — mutaxassislikni qo'lda tanlang.
+              <AlertTriangle className="h-3 w-3" />Yo'nalish {header.programCode} tizimda topilmadi — mutaxassislikni qo'lda tanlang
+              yoki avval "Tuzilishi → Mutaxassisliklar" bo'limida shu kod bilan qo'shing.
             </p>
           )}
           <p className="text-muted-foreground">Reja saqlangach, fanlar, amaliyot va o'quv jarayoni jadvali shu fayldan import qilinadi.</p>

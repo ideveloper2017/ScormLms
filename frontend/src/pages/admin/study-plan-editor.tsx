@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -254,17 +254,22 @@ export function AdminStudyPlanEditor() {
     () => new Map((departments.data ?? []).map((department) => [department.id, department.facultyId ?? 0])),
     [departments.data],
   );
+  /** Mutaxassislik fakulteti (server o'zinikini, bo'lmasa kafedrasinikini beradi); 0 — umumiy kafedra */
+  const programFaculty = useMemo(
+    () => new Map((programs.data ?? []).map((program) => [program.id,
+      program.facultyId ?? (program.departmentId ? departmentFaculty.get(program.departmentId) : undefined)])),
+    [departmentFaculty, programs.data],
+  );
   const visiblePrograms = useMemo(
     () =>
       (programs.data ?? []).filter((program) => {
         if (!program.active && program.id !== form.programId) return false;
         if (!facultyId) return true;
-        if (!program.departmentId) return false;
-        const programFaculty = departmentFaculty.get(program.departmentId);
+        const faculty = programFaculty.get(program.id);
         // 0 — umumiy kafedra (fakultetga bog'lanmagan): har qanday fakultetda ko'rinadi
-        return programFaculty === facultyId || programFaculty === 0;
+        return faculty === facultyId || faculty === 0;
       }),
-    [departmentFaculty, facultyId, form.programId, programs.data],
+    [facultyId, form.programId, programFaculty, programs.data],
   );
 
   useEffect(() => {
@@ -304,11 +309,9 @@ export function AdminStudyPlanEditor() {
 
   useEffect(() => {
     if (!item || item.facultyId || facultyId || !programs.data || !departments.data) return;
-    const program = programs.data.find((value) => value.id === item.programId);
-    if (program?.departmentId) {
-      setFacultyId(departmentFaculty.get(program.departmentId) ?? 0);
-    }
-  }, [departmentFaculty, departments.data, facultyId, item, programs.data]);
+    const faculty = programFaculty.get(item.programId);
+    if (faculty) setFacultyId(faculty);
+  }, [departments.data, facultyId, item, programFaculty, programs.data]);
 
   const refresh = async () => {
     await Promise.all([
@@ -407,11 +410,9 @@ export function AdminStudyPlanEditor() {
   const selectFaculty = (value: string) => {
     const nextFaculty = Number(value);
     setFacultyId(nextFaculty);
-    const selectedProgram = (programs.data ?? []).find((program) => program.id === form.programId);
-    const selectedFaculty = selectedProgram?.departmentId
-      ? departmentFaculty.get(selectedProgram.departmentId)
-      : 0;
-    if (selectedFaculty !== nextFaculty) {
+    const selectedFaculty = programFaculty.get(form.programId);
+    // Umumiy kafedra mutaxassisligi (0) har qanday fakultetda qoladi
+    if (selectedFaculty !== nextFaculty && selectedFaculty !== 0) {
       setForm((current) => ({ ...current, programId: 0 }));
     }
   };
@@ -444,7 +445,7 @@ export function AdminStudyPlanEditor() {
     setExcelFile(file);
     const program = (programs.data ?? []).find((entry) => entry.id === draft.programId);
     if (program) {
-      setFacultyId(program.departmentId ? departmentFaculty.get(program.departmentId) ?? 0 : 0);
+      setFacultyId(programFaculty.get(program.id) ?? 0);
       selectProgram(String(program.id));
     }
     setForm((current) => ({
@@ -632,7 +633,7 @@ export function AdminStudyPlanEditor() {
                       value={facultyId ? String(facultyId) : EMPTY}
                       onValueChange={selectFaculty}
                     >
-                      <SelectTrigger><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
+                      <SelectTrigger aria-label="Fakultet"><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value={EMPTY} disabled>Fakultetni tanlang</SelectItem>
                         {(faculties.data ?? [])
@@ -655,7 +656,10 @@ export function AdminStudyPlanEditor() {
                       value={form.programId ? String(form.programId) : EMPTY}
                       onValueChange={selectProgram}
                     >
-                      <SelectTrigger><SelectValue placeholder="Mutaxassislikni tanlang" /></SelectTrigger>
+                      <SelectTrigger aria-label="Mutaxassislik" aria-invalid={saveAttempted && !form.programId}
+                        className={saveAttempted && !form.programId ? "border-destructive" : undefined}>
+                        <SelectValue placeholder="Mutaxassislikni tanlang" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={EMPTY} disabled>Mutaxassislikni tanlang</SelectItem>
                         {visiblePrograms.map((program) => (
@@ -665,6 +669,20 @@ export function AdminStudyPlanEditor() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {/* Ro'yxat bo'sh qolsa nima qilish kerakligi (aks holda "Saqlash"da tushunarsiz xato chiqardi) */}
+                    {editable && canWrite && !facultyId && saveAttempted && (
+                      <p className="text-xs text-destructive">Avval fakultetni tanlang — mutaxassisliklar fakultet bo'yicha chiqadi.</p>
+                    )}
+                    {editable && canWrite && facultyId > 0 && programs.isSuccess && visiblePrograms.length === 0 && (
+                      <p role="alert" className="text-xs text-destructive">
+                        Bu fakultetda faol mutaxassislik yo'q. Avval{" "}
+                        <Link to="/structure/specialities" className="underline">Tuzilishi → Mutaxassisliklar</Link>{" "}
+                        bo'limida shu fakultetga mutaxassislik qo'shing yoki mavjudining fakultetini belgilang.
+                      </p>
+                    )}
+                    {editable && canWrite && facultyId > 0 && visiblePrograms.length > 0 && saveAttempted && !form.programId && (
+                      <p className="text-xs text-destructive">Mutaxassislikni tanlang.</p>
+                    )}
                     {item?.subjectCount && item.status === "DRAFT" ? (
                       <p className="text-xs text-muted-foreground">
                         Mutaxassislik almashtirilsa, mavjud fanlar yangi mutaxassislikka mos bo'lishi kerak.

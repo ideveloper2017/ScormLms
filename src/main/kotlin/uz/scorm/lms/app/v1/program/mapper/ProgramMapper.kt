@@ -3,6 +3,7 @@ package uz.scorm.lms.app.v1.program.mapper
 import org.springframework.stereotype.Component
 import uz.scorm.lms.app.v1.program.dto.ProgramDto
 import uz.scorm.lms.app.v1.program.model.Program
+import uz.scorm.lms.app.v1.program.model.facultyOf
 
 @Component
 class ProgramMapper {
@@ -24,6 +25,8 @@ class ProgramMapper {
         fullTimeBasisReference = program.fullTimeBasisReference,
         departmentId = program.department?.id,
         departmentName = program.department?.name,
+        facultyId = program.facultyOf()?.id,
+        facultyName = program.facultyOf()?.name,
         createdAt = program.createdAt,
         updatedAt = program.updatedAt
     )
