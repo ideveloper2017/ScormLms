@@ -86,6 +86,7 @@ class StudentService(
         if (studentRepository.existsByStudentNumber(req.studentNumber.trim()))
             throw IllegalArgumentException("Bu talaba raqami band: ${req.studentNumber}")
         requirePassportNotAssigned(req.passportSeries, req.passportNumber)
+        userService.requireContactAvailable(normalized(req.phoneNumber), normalized(req.email)?.lowercase())
 
         val user = userService.registerPendingCredentials(req.studentNumber.trim(), "student")
         user.fullName = listOf(req.lastName.trim(), req.firstName.trim(), normalized(req.middleName)).filterNotNull().joinToString(" ")
@@ -187,6 +188,7 @@ class StudentService(
         student.currentDistrictId = current.districtId
         student.currentAddress = normalized(req.currentAddress)
         student.user.fullName = student.fullName
+        userService.requireContactAvailable(student.phoneNumber, student.email, student.user.id)
         student.user.phone = student.phoneNumber
         student.user.email = student.email
         val saved = studentRepository.save(student)
@@ -328,6 +330,7 @@ class StudentService(
         requirePassportNotAssigned(req.passportSeries, req.passportNumber)
 
         validateDistanceAdmission(req)
+        userService.requireContactAvailable(req.phoneNumber, req.email)
 
         val user = if (req.password.isBlank()) {
             userService.registerPendingCredentials(req.studentNumber, "student")
@@ -507,6 +510,7 @@ class StudentService(
         req.passportExpiryDate?.let  { student.passportExpiryDate = it }
         req.passportIssuedBy?.let    { student.passportIssuedBy = it }
         req.photoUrl?.let       { student.photoUrl = it }
+        userService.requireContactAvailable(req.phoneNumber, req.email, student.user.id)
         req.phoneNumber?.let    { student.phoneNumber = it; student.user.phone = it }
         req.email?.let          { student.email = it; student.user.email = it }
         req.permanentRegion?.let   { student.permanentRegion = it }

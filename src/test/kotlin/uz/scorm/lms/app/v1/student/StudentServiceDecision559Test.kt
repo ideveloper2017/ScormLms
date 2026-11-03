@@ -76,6 +76,7 @@ class StudentServiceDecision559Test {
         every { teacherRepository.countByActiveTrue() } returns 1
         every { licenseScopeRepository.existsEffectiveCoverage(1, NonStateLicenseStatus.VERIFIED, any()) } returns true
         every { restrictionService.requireAllowed(any(), any(), any(), any()) } returns Unit
+        every { userService.requireContactAvailable(any(), any(), any()) } returns Unit
         every { userService.register(any(), any(), "student") } answers {
             User(username = firstArg(), password = "encoded")
         }

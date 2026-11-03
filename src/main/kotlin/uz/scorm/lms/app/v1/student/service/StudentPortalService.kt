@@ -56,6 +56,14 @@ class StudentPortalService(
     @Transactional
     fun updateProfile(user: User, req: UpdateStudentProfileRequest): StudentProfileResponse {
         val s = profileOrThrow(user)
+        // Telefon va email foydalanuvchilar orasida unikal — boshqasida bo'lsa baza xatosi emas, tushunarli xabar
+        val userId = requireNotNull(user.id)
+        req.phoneNumber?.takeIf(String::isNotBlank)?.let {
+            require(!userRepository.existsByPhoneAndIdNot(it, userId)) { "Bu telefon raqami boshqa foydalanuvchida bor: $it" }
+        }
+        req.email?.takeIf(String::isNotBlank)?.let {
+            require(!userRepository.existsByEmailAndIdNot(it, userId)) { "Bu email boshqa foydalanuvchida bor: $it" }
+        }
         req.phoneNumber?.let  { s.phoneNumber = it; user.phone = it }
         req.email?.let        { s.email = it; user.email = it }
         if (req.currentRegionId != null || req.currentDistrictId != null) {
