@@ -364,7 +364,9 @@ export const curriculumInputError = (input: SaveCurriculumVersionInput): string 
   }
   const yearMatch = /^(\d{4})-(\d{4})$/.exec(input.academicYear);
   if (input.name.trim().length < 2) return "O'quv reja nomi majburiy";
-  if (!input.programId || !input.versionCode.trim()) return "Dastur va versiya kodi majburiy";
+  // Versiya kodi avtomatik yaratiladi — formada faqat mutaxassislik tanlanadi
+  if (!input.programId) return "Mutaxassislikni tanlang (avval fakultetni tanlang)";
+  if (!input.versionCode.trim()) return "O'quv reja versiya kodi yaratilmadi — sahifani yangilang";
   if (!input.educationLanguage) return "O'quv reja tilini tanlang";
   if (!Number.isInteger(input.passingScore) || input.passingScore < 0 || input.passingScore > 100) return "O'tish bali 0-100 oralig'ida bo'lishi kerak";
   if (!Number.isInteger(input.baseCreditAmount) || input.baseCreditAmount < 0) return "Bazaviy kredit summasi manfiy bo'lmasligi kerak";

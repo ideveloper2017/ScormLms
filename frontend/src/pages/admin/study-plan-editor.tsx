@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -632,7 +632,7 @@ export function AdminStudyPlanEditor() {
                       value={facultyId ? String(facultyId) : EMPTY}
                       onValueChange={selectFaculty}
                     >
-                      <SelectTrigger><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
+                      <SelectTrigger aria-label="Fakultet"><SelectValue placeholder="Fakultetni tanlang" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value={EMPTY} disabled>Fakultetni tanlang</SelectItem>
                         {(faculties.data ?? [])
@@ -655,7 +655,10 @@ export function AdminStudyPlanEditor() {
                       value={form.programId ? String(form.programId) : EMPTY}
                       onValueChange={selectProgram}
                     >
-                      <SelectTrigger><SelectValue placeholder="Mutaxassislikni tanlang" /></SelectTrigger>
+                      <SelectTrigger aria-label="Mutaxassislik" aria-invalid={saveAttempted && !form.programId}
+                        className={saveAttempted && !form.programId ? "border-destructive" : undefined}>
+                        <SelectValue placeholder="Mutaxassislikni tanlang" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={EMPTY} disabled>Mutaxassislikni tanlang</SelectItem>
                         {visiblePrograms.map((program) => (
@@ -665,6 +668,20 @@ export function AdminStudyPlanEditor() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {/* Ro'yxat bo'sh qolsa nima qilish kerakligi (aks holda "Saqlash"da tushunarsiz xato chiqardi) */}
+                    {editable && canWrite && !facultyId && saveAttempted && (
+                      <p className="text-xs text-destructive">Avval fakultetni tanlang — mutaxassisliklar fakultet bo'yicha chiqadi.</p>
+                    )}
+                    {editable && canWrite && facultyId > 0 && programs.isSuccess && visiblePrograms.length === 0 && (
+                      <p role="alert" className="text-xs text-destructive">
+                        Bu fakultetda faol mutaxassislik yo'q. Avval{" "}
+                        <Link to="/structure/specialities" className="underline">Tuzilishi → Mutaxassisliklar</Link>{" "}
+                        bo'limida mutaxassislik qo'shing (kafedrasini shu fakultetga biriktiring) yoki boshqa fakultetni tanlang.
+                      </p>
+                    )}
+                    {editable && canWrite && facultyId > 0 && visiblePrograms.length > 0 && saveAttempted && !form.programId && (
+                      <p className="text-xs text-destructive">Mutaxassislikni tanlang.</p>
+                    )}
                     {item?.subjectCount && item.status === "DRAFT" ? (
                       <p className="text-xs text-muted-foreground">
                         Mutaxassislik almashtirilsa, mavjud fanlar yangi mutaxassislikka mos bo'lishi kerak.

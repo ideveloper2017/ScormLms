@@ -52,6 +52,8 @@ describe("decision 559 curriculum guards", () => {
 
   it("validates the reference-compatible curriculum fields", () => {
     expect(curriculumInputError(input({ name: "" }))).toContain("nomi");
+    // Formadagi maydon nomi bilan: "Mutaxassislik" (versiya kodi avtomatik)
+    expect(curriculumInputError(input({ programId: 0 }))).toBe("Mutaxassislikni tanlang (avval fakultetni tanlang)");
     expect(curriculumInputError(input({ passingScore: 101 }))).toContain("0-100");
     expect(curriculumInputError(input({ baseCreditAmount: -1 }))).toContain("manfiy");
     expect(curriculumInputError(input({ ratingSystemId: 0 }))).toContain("baholash tizimini");
