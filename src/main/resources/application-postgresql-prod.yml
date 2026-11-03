@@ -123,7 +123,7 @@ app:
   database:
     expected-name: ${APP_EXPECTED_DATABASE_NAME:scorm_lms}
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:dev-only-secret-do-not-use-in-production-0123456789abcdefghijklmnop}
   scorm:
     secure-cookie: ${SCORM_SECURE_COOKIE:true}
   survey:
