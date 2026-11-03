@@ -14,7 +14,7 @@ const HOURS: [keyof CurriculumSubject, string][] = [
   ["lectureHours", "Ma'ruza"], ["practicalHours", "Amaliy"], ["laboratoryHours", "Laboratoriya"], ["seminarHours", "Seminar"],
   ["selfStudyHours", "Mustaqil"],
 ];
-const hoursText = (s: CurriculumSubject) => {
+export const hoursText = (s: CurriculumSubject) => {
   const typed = HOURS.filter(([key]) => Number(s[key] ?? 0) > 0).map(([key, label]) => `${label} ${s[key]}`);
   return typed.length ? typed.join(" · ") : s.auditoryHours ? `Auditoriya ${s.auditoryHours} · Mustaqil ${s.selfStudyHours ?? 0}` : "—";
 };
@@ -108,7 +108,7 @@ export function StudentCurriculum() {
   </div>;
 }
 
-function SyllabusView({ syllabus }: { syllabus: SubjectSyllabus }) {
+export function SyllabusView({ syllabus }: { syllabus: SubjectSyllabus }) {
   const modules = modulesOf(syllabus);
   return <div aria-label={`${syllabus.name} — o'quv dasturi`} className="space-y-3 rounded-md bg-muted/30 p-3">
     <p className="text-sm">{syllabus.shortDescription}</p>

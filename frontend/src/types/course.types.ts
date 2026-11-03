@@ -20,6 +20,10 @@ export interface Course {
   };
   dueDate?: Date;
   credits: number;
+  /** O'quv rejadagi fan bilan bog'lash ("Fanlar" sahifasi) */
+  subjectId?: number;
+  subjectName?: string;
+  semester?: number;
 }
 
 export interface CourseMaterial {

@@ -70,7 +70,7 @@ const ITEMS = {
 
   // ── Talaba navigatsiyasi (/student/*) ──────────────────────────────────
   sDashboard:     { name: "Dashboard",           href: "/student/dashboard",     icon: LayoutDashboard },
-  sCourses:       { name: "Mening kurslarim",    href: "/student/courses",       icon: BookOpen        },
+  sCourses:       { name: "Fanlar",              href: "/student/courses",       icon: BookOpen        },
   sStudyPlan:     { name: "O'quv rejam",         href: "/student/study-plan",    icon: BookMarked      },
   sOrientation:   { name: "LMS orientatsiyasi",  href: "/student/orientation",   icon: Presentation    },
   sPractice:      { name: "Amaliyot",            href: "/student/practice",      icon: BriefcaseBusiness },

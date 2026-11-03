@@ -109,6 +109,10 @@ data class StudentCourseDto(
     val status: String = "active",
     val credits: Int = 0,
     val imageUrl: String? = null,
+    /** O'quv rejadagi fan bilan bog'lash uchun ("Fanlar" sahifasi) */
+    val subjectId: Long? = null,
+    val subjectName: String? = null,
+    val semester: Int? = null,
 )
 
 data class StudentStudyPlanDto(
