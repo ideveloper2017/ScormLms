@@ -165,8 +165,12 @@ class ProgramCurriculumService(
 
     @Transactional
     fun update(id: Long, request: SaveCurriculumVersionRequest, actorId: Long): CurriculumVersionDto {
-        val version = requireVersion(id)
-        require(version.status == CurriculumStatus.DRAFT) { "Faqat qoralama o'quv reja tahrirlanadi" }
+        val version = requireEditable(id)
+        val approved = version.status == CurriculumStatus.APPROVED
+        // Talabalar rejaga mutaxassislik va o'quv yili orqali bog'langan — tasdiqlangan rejada ular o'zgarmaydi
+        require(!approved || (request.programId == version.program.id && request.academicYear == version.academicYear)) {
+            "Tasdiqlangan o'quv rejaning mutaxassisligi va o'quv yili o'zgartirilmaydi"
+        }
         val program = requireProgram(request.programId)
         val ratingSystem = requireRatingSystem(request.ratingSystemId)
         validate(request, ratingSystem)
@@ -201,7 +205,10 @@ class ProgramCurriculumService(
         version.qualification = qualificationOf(request.qualification)
         applySeasons(version, request)
         versionRepository.save(version)
-        auditService.logAction("CURRICULUM_VERSION_UPDATED", actorId, "curriculum=$id; version=${version.versionCode}")
+        // Semestrlar soni oshirilsa, yangi semestrlar muddati ham yaratiladi (mavjudlariga tegilmaydi)
+        if (approved) createSemesterPeriods(version)
+        auditService.logAction("CURRICULUM_VERSION_UPDATED", actorId,
+            "curriculum=$id; status=${version.status}; version=${version.versionCode}")
         return toDto(version)
     }
 
@@ -221,7 +228,7 @@ class ProgramCurriculumService(
 
     @Transactional
     fun addSubject(id: Long, request: AddCurriculumSubjectRequest, actorId: Long): CurriculumVersionDto {
-        val version = requireDraft(id)
+        val version = requireEditable(id)
         val subject = subjectRepository.findById(request.subjectId).orElseThrow {
             NoSuchElementException("Fan topilmadi: ${request.subjectId}")
         }
@@ -247,14 +254,14 @@ class ProgramCurriculumService(
             semester = request.semester,
             planItemType = request.planItemType,
         ).also { applyPlanDetails(it, request.planRowNumber, request.hours ?: CurriculumSubjectHours()) })
-        auditService.logAction("CURRICULUM_SUBJECT_ADDED", actorId, "curriculum=$id; subject=${subject.id}; semester=${request.semester}")
+        auditService.logAction("CURRICULUM_SUBJECT_ADDED", actorId, "curriculum=$id; status=${version.status}; subject=${subject.id}; semester=${request.semester}")
         return toDto(version)
     }
 
     /** Reja fanining krediti, turi, T/r raqami va soatlari (faqat DRAFT rejada). */
     @Transactional
     fun updateSubject(id: Long, itemId: Long, request: UpdateCurriculumSubjectRequest, actorId: Long): CurriculumVersionDto {
-        val version = requireDraft(id)
+        val version = requireEditable(id)
         val item = subjectItemRepository.findByIdAndDeletedFalse(itemId)
             ?: throw NoSuchElementException("O'quv rejadagi fan topilmadi: $itemId")
         require(item.curriculumVersion.id == id) { "Fan bu o'quv rejaga tegishli emas" }
@@ -264,14 +271,14 @@ class ProgramCurriculumService(
         item.courseWorkType = request.courseWorkType
         applyPlanDetails(item, request.planRowNumber, request.hours)
         subjectItemRepository.save(item)
-        auditService.logAction("CURRICULUM_SUBJECT_UPDATED", actorId, "curriculum=$id; item=$itemId")
+        auditService.logAction("CURRICULUM_SUBJECT_UPDATED", actorId, "curriculum=$id; status=${version.status}; item=$itemId")
         return toDto(version)
     }
 
     /** Reja fanini boshqa semestrga ko'chirish; kredit, soat va dastur o'zgarmaydi (faqat DRAFT rejada). */
     @Transactional
     fun moveSubject(id: Long, itemId: Long, request: MoveCurriculumSubjectRequest, actorId: Long): CurriculumVersionDto {
-        val version = requireDraft(id)
+        val version = requireEditable(id)
         val item = subjectItemRepository.findByIdAndDeletedFalse(itemId)
             ?: throw NoSuchElementException("O'quv rejadagi fan topilmadi: $itemId")
         require(item.curriculumVersion.id == id) { "Fan bu o'quv rejaga tegishli emas" }
@@ -285,38 +292,38 @@ class ProgramCurriculumService(
         val from = item.semester
         item.semester = request.semester
         subjectItemRepository.save(item)
-        auditService.logAction("CURRICULUM_SUBJECT_MOVED", actorId, "curriculum=$id; item=$itemId; semester=$from->${request.semester}")
+        auditService.logAction("CURRICULUM_SUBJECT_MOVED", actorId, "curriculum=$id; status=${version.status}; item=$itemId; semester=$from->${request.semester}")
         return toDto(version)
     }
 
     /** Malakaviy amaliyot yoki YaDA qo'shish (faqat DRAFT rejada). */
     @Transactional
     fun addComponent(id: Long, request: SaveCurriculumComponentRequest, actorId: Long): CurriculumVersionDto {
-        val version = requireDraft(id)
+        val version = requireEditable(id)
         val component = componentRepository.save(ProgramCurriculumComponent(
             curriculumVersion = version, type = request.type, name = "", semester = request.semester,
         ).also { applyComponent(it, version, request) })
-        auditService.logAction("CURRICULUM_COMPONENT_ADDED", actorId, "curriculum=$id; component=${component.id}; type=${request.type}")
+        auditService.logAction("CURRICULUM_COMPONENT_ADDED", actorId, "curriculum=$id; status=${version.status}; component=${component.id}; type=${request.type}")
         return toDto(version)
     }
 
     @Transactional
     fun updateComponent(id: Long, componentId: Long, request: SaveCurriculumComponentRequest, actorId: Long): CurriculumVersionDto {
-        val version = requireDraft(id)
+        val version = requireEditable(id)
         val component = requireComponent(id, componentId)
         applyComponent(component, version, request)
         componentRepository.save(component)
-        auditService.logAction("CURRICULUM_COMPONENT_UPDATED", actorId, "curriculum=$id; component=$componentId")
+        auditService.logAction("CURRICULUM_COMPONENT_UPDATED", actorId, "curriculum=$id; status=${version.status}; component=$componentId")
         return toDto(version)
     }
 
     @Transactional
     fun removeComponent(id: Long, componentId: Long, actorId: Long): CurriculumVersionDto {
-        val version = requireDraft(id)
+        val version = requireEditable(id)
         val component = requireComponent(id, componentId)
         component.deleted = true
         componentRepository.save(component)
-        auditService.logAction("CURRICULUM_COMPONENT_REMOVED", actorId, "curriculum=$id; component=$componentId")
+        auditService.logAction("CURRICULUM_COMPONENT_REMOVED", actorId, "curriculum=$id; status=${version.status}; component=$componentId")
         return toDto(version)
     }
 
@@ -346,13 +353,13 @@ class ProgramCurriculumService(
 
     @Transactional
     fun removeSubject(id: Long, itemId: Long, actorId: Long): CurriculumVersionDto {
-        val version = requireDraft(id)
+        val version = requireEditable(id)
         val item = subjectItemRepository.findByIdAndDeletedFalse(itemId)
             ?: throw NoSuchElementException("O'quv rejadagi fan topilmadi: $itemId")
         require(item.curriculumVersion.id == id) { "Fan bu o'quv rejaga tegishli emas" }
         item.deleted = true
         subjectItemRepository.save(item)
-        auditService.logAction("CURRICULUM_SUBJECT_REMOVED", actorId, "curriculum=$id; item=$itemId")
+        auditService.logAction("CURRICULUM_SUBJECT_REMOVED", actorId, "curriculum=$id; status=${version.status}; item=$itemId")
         return toDto(version)
     }
 
@@ -513,6 +520,11 @@ class ProgramCurriculumService(
             ?: throw NoSuchElementException("Faol baholash tizimi topilmadi")
         require(value.active) { "Faqat faol baholash tizimini tanlash mumkin" }
         return value
+    }
+
+    /** Qoralama va tasdiqlangan reja tahrirlanadi (tasdiqlangandagi o'zgarishlar audit jurnalida status bilan); arxivlangani yo'q */
+    private fun requireEditable(id: Long) = requireVersion(id).also {
+        require(it.status != CurriculumStatus.ARCHIVED) { "Arxivlangan o'quv reja tahrirlanmaydi" }
     }
 
     private fun requireDraft(id: Long) = requireVersion(id).also {

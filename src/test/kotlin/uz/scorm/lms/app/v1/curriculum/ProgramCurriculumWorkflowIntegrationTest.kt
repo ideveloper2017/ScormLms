@@ -87,8 +87,12 @@ class ProgramCurriculumWorkflowIntegrationTest {
         assertEquals("Dasturlash", immutableSnapshot.subjectName)
         assertEquals(6, immutableSnapshot.credits)
 
+        // Tasdiqlangan reja ham tahrirlanadi (o'zgarish audit jurnalida); arxivlangani yopiq
+        val edited = service.addSubject(created.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 2, CurriculumPlanItemType.ELECTIVE), requireNotNull(author.id))
+        assertEquals(2, edited.subjects.size)
+        service.archive(created.id, requireNotNull(approver.id))
         assertThrows<IllegalArgumentException> {
-            service.addSubject(created.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 2, CurriculumPlanItemType.ELECTIVE), requireNotNull(author.id))
+            service.addSubject(created.id, AddCurriculumSubjectRequest(requireNotNull(subject.id), 3, CurriculumPlanItemType.ELECTIVE), requireNotNull(author.id))
         }
     }
 

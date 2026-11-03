@@ -267,7 +267,8 @@ class CurriculumImportService(
 
     private fun requireDraft(id: Long) = (versions.findByIdAndDeletedFalse(id)
         ?: throw NoSuchElementException("O'quv reja topilmadi: $id")).also {
-        require(it.status == CurriculumStatus.DRAFT) { "Faqat qoralama o'quv rejaga import qilinadi" }
+        // Tasdiqlangan reja ham tahrirlanadi (fanlar importi bilan); faqat arxivlangani yopiq
+        require(it.status != CurriculumStatus.ARCHIVED) { "Arxivlangan o'quv rejaga import qilinmaydi" }
     }
 
     private companion object {

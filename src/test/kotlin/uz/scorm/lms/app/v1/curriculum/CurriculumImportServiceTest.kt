@@ -190,8 +190,10 @@ class CurriculumImportServiceTest {
     }
 
     @Test
-    fun `tasdiqlangan rejaga import qilinmaydi`() {
-        every { version.status } returns CurriculumStatus.APPROVED
-        assertThrows<IllegalArgumentException> { service.preview(5, excel(), null) }
+    fun `arxivlangan rejaga import qilinmaydi`() {
+        // Tasdiqlangan reja ham tahrirlanadi (fanlar importi bilan); faqat arxivlangani yopiq
+        every { version.status } returns CurriculumStatus.ARCHIVED
+        val error = assertThrows<IllegalArgumentException> { service.preview(5, excel(), null) }
+        assertEquals("Arxivlangan o'quv rejaga import qilinmaydi", error.message)
     }
 }
