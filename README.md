@@ -85,8 +85,6 @@ Backend uchun majburiy qiymatlar:
 - `SPRING_PROFILES_ACTIVE=postgresql-prod`
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
 - `DB_SCHEMA=public`
-- `APP_EXPECTED_DATABASE_NAME=scorm_lms` — noto'g'ri yoki boshqa tizim
-  bazasida Flyway migratsiyasi va Hibernate ishga tushishini bloklaydi
 - `JWT_SECRET` — kamida 64 baytlik tasodifiy secret
 - `CORS_ALLOWED_ORIGINS` — aniq HTTPS originlar, wildcard emas
 - `FILE_UPLOAD_DIR`, `SCORM_STORAGE_DIR`, `ASSIGNMENT_STORAGE_DIR`, `COURSE_CONTENT_STORAGE_DIR` va `UAT_PRIVATE_STORAGE_DIR` — backup qilinadigan persistent kataloglar; kurs kontenti va UAT kataloglari public static route orqali berilmaydi

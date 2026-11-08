@@ -1,5 +1,0 @@
-org.springframework.boot.env.EnvironmentPostProcessor=\
-uz.scorm.lms.app.config.ProfileAliasEnvironmentPostProcessor
-org.springframework.context.ApplicationListener=\
-uz.scorm.lms.app.config.ActiveProfileGuard,\
-uz.scorm.lms.app.config.DatabaseAutoCreateListener
