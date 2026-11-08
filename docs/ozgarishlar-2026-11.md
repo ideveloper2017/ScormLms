@@ -17,13 +17,13 @@ aks ettiradi; quyidagilar u yerda yo'q.
 
 ## Muhit va ishga tushirish
 - Spring profillari: `postgresql` (lokal/dev), `postgresql-prod` (server), ixtiyoriy `hemis-oauth`,
-  `hemis-employee-oauth`. `ActiveProfileGuard` noma'lum profilda ilovani to'xtatadi.
-  Taxalluslar qabul qilinadi (`ProfileAliasEnvironmentPostProcessor`): `postgres`/`prod` → `postgresql-prod`,
-  `dev` → `postgresql`; env fayldagi CRLF (`\r`) tozalanadi. Serverda env fayl: `/etc/scorm-lms/scorm-lms.env`
-  (Tomcat systemd `EnvironmentFile`), `SPRING_PROFILES_ACTIVE=postgresql-prod`.
-- Baza avtomatik: ishga tushishda `DB_URL` dagi PostgreSQL bazasi yo'q bo'lsa ilova uni yaratadi
-  (`DatabaseAutoCreateListener`, `DB_AUTO_CREATE=true`; foydalanuvchida `CREATEDB` huquqi kerak:
-  `ALTER ROLE scorm_lms CREATEDB;`). Jadvallarni Flyway quradi (V1→V105) — bu oldin ham avtomatik edi.
+  `hemis-employee-oauth`. Serverda env fayl: `/etc/scorm-lms/scorm-lms.env` (Tomcat systemd `EnvironmentFile`),
+  `SPRING_PROFILES_ACTIVE=postgresql-prod` — aynan shu nom (`postgres` emas), qator oxirida `\r` bo'lmasin.
+- Baza bilan ishlash standart Spring Boot: Flyway jadvallarni yaratadi (V1→V105), Hibernate `validate` qiladi.
+  Profil/baza nomini tekshiradigan qo'shimcha qo'riqchi klasslar (`ActiveProfileGuard`, `ProductionDatabaseGuard`,
+  taxallus va avtomatik baza yaratish) olib tashlandi — baza (`scorm_lms`) oldindan yaratilgan bo'lishi kerak:
+  `sudo -u postgres createuser --pwprompt scorm_lms && sudo -u postgres createdb --owner scorm_lms scorm_lms`
+  (deploy skripti `AUTO_CREATE_DATABASE=true` bo'lsa buni o'zi qiladi).
 - `HEMIS_API_TOKEN` faqat muhit o'zgaruvchisidan olinadi — kodda standart qiymat yo'q.
   **Token git tarixiga tushgan — HEMIS tomonida bekor qilib yangisini oling.**
 - Email: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `APP_MAIL_FROM`, `APP_FRONTEND_URL`
