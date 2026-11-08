@@ -166,7 +166,7 @@ export function Settings() {
                 
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label className="text-base font-medium">Debug rejimi</Label>
+                    <Label className="text-base font-medium">Xatolarni tekshirish rejimi</Label>
                     <p className="text-sm text-muted-foreground">
                       SCORM API debug ma'lumotlarini yozish
                     </p>
@@ -443,7 +443,7 @@ export function Settings() {
                 
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label className="text-base font-medium">Session timeout</Label>
+                    <Label className="text-base font-medium">Sessiya muddati</Label>
                     <p className="text-sm text-muted-foreground">
                       Avtomatik chiqish (30 daqiqa)
                     </p>
@@ -453,7 +453,7 @@ export function Settings() {
                 
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label className="text-base font-medium">IP whitelist</Label>
+                    <Label className="text-base font-medium">Ruxsat etilgan IP manzillar</Label>
                     <p className="text-sm text-muted-foreground">
                       Faqat ruxsat etilgan IP manzillardan kirish
                     </p>

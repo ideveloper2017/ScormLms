@@ -245,7 +245,8 @@ function App() {
         {/* ── All learning participants (staff + students) ─────────────────── */}
         <Route path="/courses"       element={<P roles={CONTENT_ROLES}><Courses /></P>} />
         <Route path="/resources"     element={<P roles={CONTENT_ROLES}><Resources /></P>} />
-        <Route path="/communication" element={<P roles={[...CONTENT_ROLES, R_PROC]}><Communication /></P>} />
+        {/* Monitoring menyusida ham "Aloqa" bor — roli ruxsat ro'yxatida bo'lmasa "Ruxsat yo'q" chiqardi */}
+        <Route path="/communication" element={<P roles={[...CONTENT_ROLES, R_PROC, R_MON]}><Communication /></P>} />
         <Route path="/messages"      element={<P roles={[...CONTENT_ROLES, R_PROC]}><Communication /></P>} />
         <Route path="/support"       element={<P roles={ALL_ROLES}><SupportPage /></P>} />
         <Route path="/exams"         element={<P roles={[R_SUPER, R_ADMIN, R_MET, R_TEACH, R_STU, R_PROC]}><Exams /></P>} />

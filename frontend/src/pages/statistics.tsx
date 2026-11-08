@@ -61,6 +61,7 @@ import {
   Area,
   AreaChart
 } from 'recharts';
+import { statusLabel } from "@/lib/status-labels";
 
 const contingentData = {
   total: 2847,
@@ -193,7 +194,7 @@ export function Statistics() {
       case 'rejected':
         return <Badge className="bg-red-100 text-red-800">Rad etilgan</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary">{statusLabel(status)}</Badge>;
     }
   };
 

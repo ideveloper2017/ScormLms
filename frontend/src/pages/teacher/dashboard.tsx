@@ -66,7 +66,7 @@ export function TeacherDashboard() {
   if (statsError) {
     return (
       <div className="p-3 sm:p-4 md:p-6 space-y-4">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">O'qituvchi Dashboard</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">O'qituvchi bosh sahifasi</h1>
         <Card className="border-destructive/50">
           <CardContent className="pt-6 text-center space-y-3">
             <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -93,7 +93,7 @@ export function TeacherDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">O'qituvchi Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">O'qituvchi bosh sahifasi</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Bugun, {new Date().toLocaleDateString("uz-Latn", { weekday: "long", day: "numeric", month: "long" })}
           </p>

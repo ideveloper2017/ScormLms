@@ -21,7 +21,8 @@ class ActiveProfileGuard : ApplicationListener<ApplicationEnvironmentPreparedEve
     override fun getOrder(): Int = Ordered.LOWEST_PRECEDENCE
 }
 
-internal val baseProfiles = setOf("postgresql", "test")
+// postgresql — lokal/dev (application-postgresql.yml), postgresql-prod — server (application-postgresql-prod.yml)
+internal val baseProfiles = setOf("postgresql", "postgresql-prod", "test")
 internal val optionalProfiles = setOf("hemis-oauth", "hemis-employee-oauth")
 
 internal fun requireKnownProfiles(activeProfiles: List<String>) {

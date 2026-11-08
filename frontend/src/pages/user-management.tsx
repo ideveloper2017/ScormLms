@@ -641,7 +641,7 @@ export function UserManagement() {
           <TabsList className={`grid min-w-[280px] w-full ${canAudit && canManageRoles ? 'grid-cols-3' : canAudit || canManageRoles ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <TabsTrigger value="users"       className={ACTIVE_TAB}>Foydalanuvchilar</TabsTrigger>
             {canManageRoles && <TabsTrigger value="permissions" className={ACTIVE_TAB}>Huquqlar Matritsasi</TabsTrigger>}
-            {canAudit       && <TabsTrigger value="audit"       className={ACTIVE_TAB}>Audit Log</TabsTrigger>}
+            {canAudit       && <TabsTrigger value="audit"       className={ACTIVE_TAB}>Harakatlar jurnali</TabsTrigger>}
           </TabsList>
         </div>
 
@@ -802,7 +802,7 @@ export function UserManagement() {
           <TabsContent value="audit" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Tizim Audit Logi</CardTitle>
+                <CardTitle>Tizim harakatlari jurnali</CardTitle>
                 <CardDescription>So'nggi 200 ta amal</CardDescription>
               </CardHeader>
               <CardContent>

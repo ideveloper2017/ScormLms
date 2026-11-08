@@ -546,7 +546,7 @@ export function AdminDashboard() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Audit Loglar</CardTitle>
+                  <CardTitle>Harakatlar jurnali</CardTitle>
                   <CardDescription>So'nggi tizim hodisalari</CardDescription>
                 </CardHeader>
                 <CardContent>

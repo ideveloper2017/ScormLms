@@ -11,7 +11,7 @@ class ActiveProfileGuardTest {
         requireKnownProfiles(listOf("postgresql-prod"))
         requireKnownProfiles(listOf("postgresql-prod", "hemis-oauth"))
         requireKnownProfiles(listOf("postgresql-prod", "hemis-oauth", "hemis-employee-oauth"))
-        requireKnownProfiles(listOf("postgresql-dev"))
+        requireKnownProfiles(listOf("postgresql"))
         requireKnownProfiles(listOf("test"))
     }
 
@@ -30,7 +30,7 @@ class ActiveProfileGuardTest {
         assertFailsWith<IllegalArgumentException> { requireKnownProfiles(listOf("hemis-oauth")) }
         assertFailsWith<IllegalArgumentException> { requireKnownProfiles(emptyList()) }
         assertFailsWith<IllegalArgumentException> {
-            requireKnownProfiles(listOf("postgresql-dev", "postgresql-prod"))
+            requireKnownProfiles(listOf("postgresql", "postgresql-prod"))
         }
     }
 }
