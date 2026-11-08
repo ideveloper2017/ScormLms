@@ -18,6 +18,9 @@ aks ettiradi; quyidagilar u yerda yo'q.
 ## Muhit va ishga tushirish
 - Spring profillari: `postgresql` (lokal/dev), `postgresql-prod` (server), ixtiyoriy `hemis-oauth`,
   `hemis-employee-oauth`. `ActiveProfileGuard` noma'lum profilda ilovani to'xtatadi.
+  Taxalluslar qabul qilinadi (`ProfileAliasEnvironmentPostProcessor`): `postgres`/`prod` → `postgresql-prod`,
+  `dev` → `postgresql`; env fayldagi CRLF (`\r`) tozalanadi. Serverda env fayl: `/etc/scorm-lms/scorm-lms.env`
+  (Tomcat systemd `EnvironmentFile`), `SPRING_PROFILES_ACTIVE=postgresql-prod`.
 - `HEMIS_API_TOKEN` faqat muhit o'zgaruvchisidan olinadi — kodda standart qiymat yo'q.
   **Token git tarixiga tushgan — HEMIS tomonida bekor qilib yangisini oling.**
 - Email: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `APP_MAIL_FROM`, `APP_FRONTEND_URL`
