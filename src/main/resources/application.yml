@@ -102,6 +102,9 @@ app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
   mail:
     from: ${APP_MAIL_FROM:}
+  database:
+    # Ishga tushishda DB_URL dagi baza yo'q bo'lsa yaratiladi (foydalanuvchida CREATEDB huquqi kerak); Flyway keyin jadvallarni quradi
+    auto-create: ${DB_AUTO_CREATE:true}
   demo:
     # Faqat aniq yoqilganda bog'langan demo tuzilma, kurs va darslar yaratiladi.
     enabled: ${APP_DEMO_DATA_ENABLED:false}

@@ -21,6 +21,9 @@ aks ettiradi; quyidagilar u yerda yo'q.
   Taxalluslar qabul qilinadi (`ProfileAliasEnvironmentPostProcessor`): `postgres`/`prod` → `postgresql-prod`,
   `dev` → `postgresql`; env fayldagi CRLF (`\r`) tozalanadi. Serverda env fayl: `/etc/scorm-lms/scorm-lms.env`
   (Tomcat systemd `EnvironmentFile`), `SPRING_PROFILES_ACTIVE=postgresql-prod`.
+- Baza avtomatik: ishga tushishda `DB_URL` dagi PostgreSQL bazasi yo'q bo'lsa ilova uni yaratadi
+  (`DatabaseAutoCreateListener`, `DB_AUTO_CREATE=true`; foydalanuvchida `CREATEDB` huquqi kerak:
+  `ALTER ROLE scorm_lms CREATEDB;`). Jadvallarni Flyway quradi (V1→V105) — bu oldin ham avtomatik edi.
 - `HEMIS_API_TOKEN` faqat muhit o'zgaruvchisidan olinadi — kodda standart qiymat yo'q.
   **Token git tarixiga tushgan — HEMIS tomonida bekor qilib yangisini oling.**
 - Email: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `APP_MAIL_FROM`, `APP_FRONTEND_URL`
