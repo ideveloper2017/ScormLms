@@ -1,4 +1,5 @@
-# Install as /etc/scorm-lms/deploy.conf and keep it root-owned (0644 or stricter).
+# IXTIYORIY. Fayl bo'lmasa deploy skripti quyidagi qiymatlarni standart sifatida ishlatadi (Debian/Ubuntu tomcat11).
+# Faqat farq qiladigan qatorlarni /etc/scorm-lms/deploy.conf ga yozing; fayl root-owned bo'lsin (0644 yoki qattiqroq).
 DEPLOY_INCOMING_DIR=/var/tmp/scorm-lms/incoming
 FRONTEND_BASE_DIR=/var/www/scorm-lms
 # Distro Tomcat uchun odatda /var/lib/tomcat11/webapps.

@@ -16,6 +16,11 @@ aks ettiradi; quyidagilar u yerda yo'q.
 - Dastur mavzularida soat yo'q (V86): soatlar fan bo'yicha o'quv rejada.
 
 ## Muhit va ishga tushirish
+- **Env fayl shart emas.** `/etc/scorm-lms/scorm-lms.env` va `/etc/scorm-lms/deploy.conf` ixtiyoriy. Tomcat'dagi WAR
+  profil berilmagan bo'lsa `postgresql-prod` ni o'zi tanlaydi; baza, fayl kataloglari, JWT siri va CORS standartlari
+  `application-postgresql-prod.yml` da (jadval: `docs/cicd-ubuntu-vps.md`). Birinchi administrator paroli berilmasa
+  tasodifiy yaratilib logda `BIRINCHI ADMINISTRATOR` qatorida chiqadi. Deploy skripti env fayl bo'lmasa tekshiruvlarni
+  o'tkazib yuboradi, yuz modellari bo'lmasa faqat ogohlantiradi. Lokal `bootRun` o'zgarmagan (`postgresql` profili).
 - Spring profillari: `postgresql` (lokal/dev), `postgresql-prod` (server), ixtiyoriy `hemis-oauth`,
   `hemis-employee-oauth`. Serverda env fayl: `/etc/scorm-lms/scorm-lms.env` (Tomcat systemd `EnvironmentFile`),
   `SPRING_PROFILES_ACTIVE=postgresql-prod` — aynan shu nom (`postgres` emas), qator oxirida `\r` bo'lmasin.
