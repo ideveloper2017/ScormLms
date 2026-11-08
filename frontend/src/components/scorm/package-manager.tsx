@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { scormApi, type ScormPackage } from "@/services/api/scorm-api";
 import { teacherPortalApi, type TeacherCourse } from "@/services/api/teacher-portal-api";
+import { statusLabel } from "@/lib/status-labels";
 
 export function ScormPackageManager() {
   const { toast } = useToast();
@@ -69,7 +70,7 @@ export function ScormPackageManager() {
         <div className="space-y-2">
           {loading && <p className="text-sm text-muted-foreground flex gap-2"><RefreshCw className="h-4 w-4 animate-spin" />Paketlar yuklanmoqda...</p>}
           {!loading && courseId && packages.length === 0 && <p className="text-sm text-muted-foreground">Bu kursga hali SCORM paket biriktirilmagan.</p>}
-          {packages.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-md border p-3"><div><p className="font-medium text-sm">{item.title}</p><p className="text-xs text-muted-foreground">{item.entryPoint} · {item.importedBy}</p></div><div className="flex gap-2"><Badge variant="secondary">{item.version === "SCORM_2004" ? "SCORM 2004" : "SCORM 1.2"}</Badge><Badge className="bg-green-100 text-green-800">{item.status}</Badge></div></div>)}
+          {packages.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-md border p-3"><div><p className="font-medium text-sm">{item.title}</p><p className="text-xs text-muted-foreground">{item.entryPoint} · {item.importedBy}</p></div><div className="flex gap-2"><Badge variant="secondary">{item.version === "SCORM_2004" ? "SCORM 2004" : "SCORM 1.2"}</Badge><Badge className="bg-green-100 text-green-800">{statusLabel(item.status)}</Badge></div></div>)}
         </div>
       </CardContent>
     </Card>

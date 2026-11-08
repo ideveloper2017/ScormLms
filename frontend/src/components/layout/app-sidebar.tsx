@@ -43,7 +43,7 @@ const ITEMS = {
   courses:    { name: "Kurslar",               href: "/courses",             icon: BookOpen      },
   resources:  { name: "Axborot resurslari",    href: "/resources",           icon: Library       },
   exams:      { name: "Imtihonlar",            href: "/exams",               icon: GraduationCap },
-  comms:      { name: "Kommunikatsiya",        href: "/communication",       icon: MessageCircle },
+  comms:      { name: "Aloqa",        href: "/communication",       icon: MessageCircle },
   contingent: { name: "Kontingent",            href: "/contingent",          icon: ClipboardList },
   attendance: { name: "Davomat",               href: "/attendance",          icon: Activity      },
   teaching:   { name: "O'qitishni boshqarish", href: "/teaching",            icon: Database      },
@@ -51,9 +51,9 @@ const ITEMS = {
   support:    { name: "Texnik yordam",         href: "/support",             icon: LifeBuoy      },
 
   // ── O'qituvchi navigatsiyasi (/teacher/*) ──────────────────────────────
-  tDashboard:     { name: "Dashboard",          href: "/teacher/dashboard",     icon: LayoutDashboard },
+  tDashboard:     { name: "Bosh sahifa",          href: "/teacher/dashboard",     icon: LayoutDashboard },
   tCourses:       { name: "Mening kurslarim",   href: "/teacher/courses",       icon: BookOpen        },
-  tContent:       { name: "Kontent",            href: "/teacher/content",       icon: Video           },
+  tContent:       { name: "O'quv materiallari",            href: "/teacher/content",       icon: Video           },
   tSessions:      { name: "Dars jadvali",       href: "/teacher/sessions",      icon: CalendarDays    },
   tExams:         { name: "Yakuniy nazorat",    href: "/teacher/exams",         icon: GraduationCap   },
   tAttestations:  { name: "Davlat attestatsiyasi", href: "/teacher/attestations", icon: Award            },
@@ -69,10 +69,10 @@ const ITEMS = {
   tSurveys:       { name: "Anonim so'rovlar",  href: "/teacher/surveys",       icon: ClipboardCheck  },
 
   // ── Talaba navigatsiyasi (/student/*) ──────────────────────────────────
-  sDashboard:     { name: "Dashboard",           href: "/student/dashboard",     icon: LayoutDashboard },
+  sDashboard:     { name: "Bosh sahifa",           href: "/student/dashboard",     icon: LayoutDashboard },
   sCourses:       { name: "Fanlar",              href: "/student/courses",       icon: BookOpen        },
   sStudyPlan:     { name: "O'quv rejam",         href: "/student/study-plan",    icon: BookMarked      },
-  sOrientation:   { name: "LMS orientatsiyasi",  href: "/student/orientation",   icon: Presentation    },
+  sOrientation:   { name: "Tizim bilan tanishuv",  href: "/student/orientation",   icon: Presentation    },
   sPractice:      { name: "Amaliyot",            href: "/student/practice",      icon: BriefcaseBusiness },
   sAssessmentLeave: { name: "Yakuniy nazorat ta'tili", href: "/student/assessment-leave", icon: CalendarDays },
   sSchedule:      { name: "Dars jadvali",        href: "/student/schedule",      icon: CalendarDays    },
@@ -92,7 +92,7 @@ const ITEMS = {
   sSurveys:       { name: "Anonim so'rovlar",    href: "/student/surveys",       icon: ClipboardCheck  },
 
   // ── Admin navigatsiyasi (/admin/*) ──────────────────────────────────────
-  aDashboard:    { name: "Dashboard",           href: "/admin/dashboard",    icon: LayoutDashboard },
+  aDashboard:    { name: "Bosh sahifa",           href: "/admin/dashboard",    icon: LayoutDashboard },
   aStudents:     { name: "Talabalar",           href: "/students/students",  icon: UserCheck       },
   aReinstatementSubjects: { name: "Tiklanganlar fanlari", href: "/student/recovery-study-subjects-info", icon: FileSearch },
   aTeachers:     { name: "O'qituvchilar",       href: "/teachers/tutors",    icon: UserCog         },
@@ -111,7 +111,7 @@ const ITEMS = {
   aNonStateLicenses: { name: "Nodavlat litsenziyalari", href: "/admin/non-state-licenses", icon: BadgeCheck },
   aSchedule:     { name: "Dars jadvali",        href: "/admin/schedule",     icon: CalendarDays    },
   aCalendar:     { name: "Akademik kalendar",   href: "/admin/calendar",     icon: Calendar        },
-  aOrientations: { name: "LMS orientatsiyasi",  href: "/admin/orientations", icon: Presentation    },
+  aOrientations: { name: "Tizim bilan tanishuv",  href: "/admin/orientations", icon: Presentation    },
   aPractices:    { name: "Talaba amaliyoti",    href: "/admin/practices",    icon: BriefcaseBusiness },
   aAssessmentLeaves: { name: "Yakuniy nazorat ta'tili", href: "/admin/assessment-leaves", icon: CalendarDays },
   aForeignTeachers: { name: "Xorijiy pedagoglar", href: "/admin/foreign-teacher-engagements", icon: Globe2 },
@@ -123,7 +123,7 @@ const ITEMS = {
   aContentStandard: { name: "O'zDSt 36.2030 nazorati", href: "/admin/content-standard", icon: ListChecks },
   aReports:      { name: "Hisobotlar",          href: "/admin/reports",      icon: BarChart3       },
   aIntegrations: { name: "Integratsiyalar",     href: "/admin/integrations", icon: Plug            },
-  aAuditLogs:     { name: "Audit log",            href: "/admin/audit-logs",       icon: ScrollText      },
+  aAuditLogs:     { name: "Harakatlar jurnali",            href: "/admin/audit-logs",       icon: ScrollText      },
   aCompliance559: { name: "559-son qaror",        href: "/admin/compliance-559",   icon: Scale           },
   aSurveys:       { name: "Anonim so'rovlar",     href: "/admin/surveys",          icon: ClipboardCheck  },
   aQualityStudies:{ name: "Sifat monitoringi",    href: "/admin/quality-monitoring", icon: FileSearch     },
@@ -153,8 +153,8 @@ export function buildNav(role: string): NavGroup[] {
       referenceItem("Fan guruhlari", "/edu-process/subject-groups", FolderTree),
       referenceItem("Fanlar", "/edu-process/subjects", NotebookText),
       referenceItem("Baholash tizimi", "/edu-process/rating-systems", Star),
-      referenceItem("Vedmost", "/edu-process/statements", ClipboardList),
-      referenceItem("Yakuniy vedmost", "/edu-process/total-statements", FileCheck2),
+      referenceItem("Qaydnomalar (vedomost)", "/edu-process/statements", ClipboardList),
+      referenceItem("Yakuniy qaydnomalar", "/edu-process/total-statements", FileCheck2),
       referenceItem("Nazoratlar", "/controls", GraduationCap),
       referenceItem("HEMISga baholarini yuborish", "/edu-process/export-rating-to-hemis", Plug),
     ] },
@@ -162,10 +162,10 @@ export function buildNav(role: string): NavGroup[] {
       referenceItem("Qayta o'qish", "/re-reading-subject-groups", BookOpen),
       referenceItem("Qayta o'qish rejasi", "/student/re-reading-application", ClipboardList),
       referenceItem("Akademik qarzdorlar", "/edu-process/academic-debtors", ShieldAlert),
-      referenceItem("GPA", "/edu-process/gpa-rating-students", Award),
+      referenceItem("GPA reytingi", "/edu-process/gpa-rating-students", Award),
       referenceItem("Reyting monitoringi", "/users/rating-monitoring", Monitor),
       referenceItem("O'zlashtirish ko'rsatkichi", "/users/rating-average", BarChart3),
-      referenceItem("Baholash", "/students-reading-recovery-for-rating", Star),
+      referenceItem("Qayta o'qish baholari", "/students-reading-recovery-for-rating", Star),
     ] },
     { label: "O'qituvchilar", icon: UserCog, collapsible: true, items: [
       referenceItem("O'qituvchi guruhlari", "/teachers/tutor-groups", Users),
@@ -198,6 +198,10 @@ export function buildNav(role: string): NavGroup[] {
       ITEMS.aAccountability,
       ITEMS.aPublications,
       ITEMS.aQualityStudies,
+      // 559 bo'yicha reyestrlar — avval faqat metodist menyusida edi, admin kira olmasdi
+      ITEMS.aPractices,
+      ITEMS.aAssessmentLeaves,
+      ITEMS.aForeignTeachers,
     ] },
     { label: "Monitoring", icon: Monitor, collapsible: true, items: [
       referenceItem("Talabalar", "/monitoring/students", Users),
@@ -208,11 +212,14 @@ export function buildNav(role: string): NavGroup[] {
       referenceItem("O'qituvchilar", "/monitoring/teachers", UserCog),
       referenceItem("Talabalarning IP manzillari", "/check-login-users", Fingerprint),
       referenceItem("Izohlar", "/commentary-lessons", MessageCircle),
+      ITEMS.aReports,
+      ITEMS.aSurveys,
+      ITEMS.aContentReviews,
     ] },
     { label: "Yangiliklar", icon: Megaphone, collapsible: true, items: [
       referenceItem("Yangiliklar", "/content/posts", Megaphone),
       referenceItem("Dars jadvali", "/content/schedule", CalendarDays),
-      referenceItem("Online resurslar", "/content/online-resource", Globe2),
+      referenceItem("Onlayn resurslar", "/content/online-resource", Globe2),
     ] },
     { label: "Xabarlar",             href: "/messages", icon: MessageCircle, items: [] },
     { label: "Akkauntlar", icon: Shield, collapsible: true, items: [
@@ -220,7 +227,7 @@ export function buildNav(role: string): NavGroup[] {
       referenceItem("Ruxsat guruhlari", "/accounts/permission-groups", Shield),
     ] },
     { label: "Statistika", icon: BarChart3, collapsible: true, items: [
-      referenceItem("Statistika dashbordi", "/statistics-dashbord", LayoutDashboard),
+      referenceItem("Umumiy statistika", "/statistics-dashbord", LayoutDashboard),
       referenceItem("O'zlashtirish ko'rsatkichi", "/appropriation", BarChart3),
       referenceItem("Fan ma'lumotlari", "/subjects-report", BookOpen),
       referenceItem("Test ma'lumotlari", "/subjects-test-report", FileQuestion),
@@ -241,7 +248,9 @@ export function buildNav(role: string): NavGroup[] {
     { label: "Sozlamalar", icon: Settings, collapsible: true, items: [
       referenceItem("Sozlamalar", "/settings/configs", Settings),
       referenceItem("Tillar", "/settings/languages", Globe2),
-      referenceItem("Tarjima", "/settings/internalization", FileText),
+      referenceItem("Tarjimalar", "/settings/internalization", FileText),
+      ITEMS.aIntegrations,
+      ITEMS.aAuditLogs,
     ] },
   ];
 
@@ -261,7 +270,7 @@ export function buildNav(role: string): NavGroup[] {
       { label: "Kurslar",        items: [ITEMS.tCourses, ITEMS.tContent, ITEMS.tSessions] },
       { label: "Baholash",       items: [ITEMS.tAssignments, ITEMS.tTests, ITEMS.tExams, ITEMS.tAttestations, ITEMS.tGradebook] },
       { label: "Talabalar",      items: [ITEMS.tStudents, ITEMS.tAttendance] },
-      { label: "Kommunikatsiya", items: [ITEMS.tMessages, ITEMS.tAnnouncements, ITEMS.tNotifications] },
+      { label: "Aloqa", items: [ITEMS.tMessages, ITEMS.tAnnouncements, ITEMS.tNotifications] },
       { label: "Boshqa",         items: [ITEMS.tSurveys, ITEMS.tReports, ITEMS.support, ITEMS.tProfile] },
     ],
     STUDENT: [

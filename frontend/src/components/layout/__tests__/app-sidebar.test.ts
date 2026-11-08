@@ -45,13 +45,13 @@ describe("superadmin sidebar navigation", () => {
       "Talabalar": 5,
       "Talabalar harakati": 3,
       "Akademik arxiv": 2,
-      "559-son qaror": 10,
-      "Monitoring": 8,
+      "559-son qaror": 13, // referens 10 + Talaba amaliyoti, Yakuniy nazorat ta'tili, Xorijiy pedagoglar
+      "Monitoring": 11, // referens 8 + Hisobotlar, Anonim so'rovlar, Kontent tekshiruvi
       "Yangiliklar": 3,
       "Akkauntlar": 2,
       "Statistika": 10,
       "Asosiy ma'lumot": 5,
-      "Sozlamalar": 3,
+      "Sozlamalar": 5, // referens 3 + Integratsiyalar, Harakatlar jurnali
     };
     const sections = buildNav("super_admin");
 

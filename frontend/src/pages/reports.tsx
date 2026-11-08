@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { downloadInstitutionReport, getContentCompletenessReport, getInstitutionReport, type ReportExportFormat } from "@/services/api/reports-api";
+import { statusLabel } from "@/lib/status-labels";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const today = new Date().toISOString().slice(0, 10);
 const sixMonthsAgo = (() => { const value = new Date(); value.setMonth(value.getMonth() - 6); value.setDate(1); return value.toISOString().slice(0, 10); })();
@@ -46,7 +48,7 @@ export function Reports() {
     <Card>
       <CardHeader className="gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div><CardTitle>Yillik kontent to'liqligi</CardTitle><CardDescription className="mt-1">Har bir kursning nashr, kontent, nazorat va sinxron/asinxron mashg'ulot mezonlari.</CardDescription></div>
-        <div className="flex items-end gap-2"><div><Label className="text-xs">O'quv yili</Label><Input className="w-36" placeholder="2026-2027" value={academicYear} onChange={(event) => setAcademicYear(event.target.value)} /></div><Button variant="outline" disabled={!/^\d{4}-\d{4}$/.test(academicYear)} onClick={() => setAppliedAcademicYear(academicYear)}>Ko'rsatish</Button></div>
+        <div className="flex items-end gap-2"><div><Label className="text-xs">O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" className="w-40" value={academicYear} onChange={setAcademicYear} /></div><Button variant="outline" disabled={!/^\d{4}-\d{4}$/.test(academicYear)} onClick={() => setAppliedAcademicYear(academicYear)}>Ko'rsatish</Button></div>
       </CardHeader>
       <CardContent className="space-y-5">
         {completeness.isLoading ? <Skeleton className="h-52 w-full" /> : completeness.error || !completeness.data ? <div className="rounded-md border border-destructive/40 p-6 text-center"><p className="text-sm text-destructive">{(completeness.error as Error)?.message ?? "Kontent to'liqligi yuklanmadi"}</p><Button className="mt-3" variant="outline" onClick={() => completeness.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Qayta urinish</Button></div> : <>
@@ -65,6 +67,6 @@ export function Reports() {
       </CardContent>
     </Card>
     <Card><CardHeader><CardTitle>Kurslar bo'yicha o'zlashtirish</CardTitle><CardDescription>Yakunlash, baho va davomat foizi</CardDescription></CardHeader><CardContent>{data.courses.length === 0 ? <p className="py-12 text-center text-muted-foreground">Tanlangan davrda kurs topilmadi.</p> : <ResponsiveContainer width="100%" height={320}><BarChart data={data.courses.slice(0, 15)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="courseTitle" tick={{ fontSize: 10 }} /><YAxis domain={[0, 100]} /><Tooltip /><Bar dataKey="completionRate" name="Yakunlash %" fill="#8b5cf6" /><Bar dataKey="averageScore" name="Ball %" fill="#3b82f6" /><Bar dataKey="attendanceRate" name="Davomat %" fill="#10b981" /></BarChart></ResponsiveContainer>}</CardContent></Card>
-    <Card><CardHeader><CardTitle>Kurslar kesimi</CardTitle><CardDescription>Eksportdagi real yozuvlarning ekrandagi ko'rinishi</CardDescription></CardHeader><CardContent className="overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="p-2">Kurs</th><th>Mas'ul</th><th>Holat</th><th>Talaba</th><th>Yakunlash</th><th>Ball</th><th>Davomat</th><th>Kontent</th><th>SCORM</th><th>Faollik</th></tr></thead><tbody>{data.courses.map((row) => <tr key={row.courseId} className="border-b"><td className="p-2 font-medium">{row.courseTitle}</td><td>{row.ownerName || "—"}</td><td><Badge variant="outline">{row.status}</Badge></td><td>{row.enrolledStudents}</td><td>{row.completedStudents} · {row.completionRate}%</td><td>{row.averageScore}%</td><td>{row.attendanceRate}%</td><td>{row.contentCount}</td><td>{row.scormPackageCount}</td><td>{row.activityEventCount}</td></tr>)}</tbody></table></CardContent></Card>
+    <Card><CardHeader><CardTitle>Kurslar kesimi</CardTitle><CardDescription>Eksportdagi real yozuvlarning ekrandagi ko'rinishi</CardDescription></CardHeader><CardContent className="overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="p-2">Kurs</th><th>Mas'ul</th><th>Holat</th><th>Talaba</th><th>Yakunlash</th><th>Ball</th><th>Davomat</th><th>Kontent</th><th>SCORM</th><th>Faollik</th></tr></thead><tbody>{data.courses.map((row) => <tr key={row.courseId} className="border-b"><td className="p-2 font-medium">{row.courseTitle}</td><td>{row.ownerName || "—"}</td><td><Badge variant="outline">{statusLabel(row.status)}</Badge></td><td>{row.enrolledStudents}</td><td>{row.completedStudents} · {row.completionRate}%</td><td>{row.averageScore}%</td><td>{row.attendanceRate}%</td><td>{row.contentCount}</td><td>{row.scormPackageCount}</td><td>{row.activityEventCount}</td></tr>)}</tbody></table></CardContent></Card>
   </div>;
 }

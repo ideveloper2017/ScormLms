@@ -62,7 +62,8 @@ class RefreshTokenService(
     @Transactional
     fun revokeAllForUser(username: String) {
         val user = userRepository.findByUsername(username) ?: return
-        val all = refreshTokenRepository.findAll().filter { it.user?.id == user.id && !it.revoked }
+        // Faqat shu foydalanuvchining faol tokenlari (barcha tokenlarni yuklab filtrlash emas)
+        val all = refreshTokenRepository.findAllByUserAndRevokedFalse(user)
         all.forEach { it.revoked = true }
     }
 }

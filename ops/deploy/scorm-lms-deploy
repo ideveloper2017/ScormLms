@@ -54,8 +54,9 @@ ensure_application_database() {
   active_profiles="$(read_app_env SPRING_PROFILES_ACTIVE)" || \
     fail "SPRING_PROFILES_ACTIVE is missing in $APP_ENV_FILE"
   case ",$active_profiles," in
-    *,postgresql-prod,*) ;;
-    *) fail "SPRING_PROFILES_ACTIVE must include postgresql-prod" ;;
+    # "postgres" va "prod" ilovada postgresql-prod taxallusi sifatida qabul qilinadi (ProfileAliasEnvironmentPostProcessor)
+    *,postgresql-prod,*|*,postgres,*|*,prod,*) ;;
+    *) fail "SPRING_PROFILES_ACTIVE must include postgresql-prod (got: $active_profiles)" ;;
   esac
 
   db_url="$(read_app_env DB_URL)" || fail "DB_URL is missing in $APP_ENV_FILE"

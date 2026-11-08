@@ -7,6 +7,11 @@ import java.time.Instant
 
 interface UserRepository : JpaRepository<User, Long> {
     fun countByStatusAndDeletedFalse(status: UserStatus): Long
+    fun countByDeletedFalse(): Long
+    fun countByDeletedFalseAndLastLoginAtAfter(after: Instant): Long
+    fun countByDeletedFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(from: Instant, to: Instant): Long
+    fun findAllByDeletedFalse(): List<User>
+    fun findAllByStatusAndDeletedFalse(status: UserStatus): List<User>
     fun findByUsername(username: String): User?
     fun findByEmail(email: String): User?
     fun existsByUsername(username: String): Boolean

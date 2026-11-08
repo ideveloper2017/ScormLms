@@ -17,6 +17,9 @@ logging:
     org.hibernate.SQL: WARN
     com.zaxxer.hikari: WARN
     uz.scorm.lms: INFO
+  # Fayl ko'rsatilmasa rollingpolicy ishlamaydi — loglar faqat konsolga chiqib yo'qoladi
+  file:
+    name: ${LOG_FILE:/var/log/scorm-lms/app.log}
   logback:
     rollingpolicy:
       max-file-size: 50MB

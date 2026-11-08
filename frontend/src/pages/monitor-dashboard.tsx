@@ -64,7 +64,7 @@ export function MonitorDashboard() {
   if (statsError) {
     return (
       <div className="p-3 sm:p-4 md:p-6 space-y-4">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Monitoring Dashboard</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Monitoring bosh sahifasi</h1>
         <Card className="border-destructive/50">
           <CardContent className="pt-6 text-center space-y-3">
             <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
@@ -85,7 +85,7 @@ export function MonitorDashboard() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Monitoring Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Monitoring bosh sahifasi</h1>
           <p className="text-muted-foreground">Tizim holati va ishlash ko'rsatkichlari</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()}>

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { hemisApi, type HemisGroup, type HemisStudentPreview } from '@/services/api/hemis-api';
 import { hemisSyncApi, type HemisSyncRun } from '@/services/api/hemis-sync-api';
+import { statusLabel } from "@/lib/status-labels";
 
 type Step = 'group' | 'preview' | 'result';
 interface Props { open: boolean; onOpenChange: (open: boolean) => void; onImported?: () => void }
@@ -82,7 +83,7 @@ export function HemisImportDialog({ open, onOpenChange, onImported }: Props) {
         <div className="rounded border border-amber-300 bg-amber-50 p-3 text-xs dark:bg-amber-950/20">Guruh mappingi, PINFL, jins yoki identity mos kelmasa profil taxminiy qiymat bilan yozilmaydi; konflikt Integratsiyalar ekraniga tushadi.</div>
       </div>}
 
-      {step === 'result' && run && <div className="space-y-3 py-6 text-center"><CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" /><h3 className="font-semibold">Sync run #{run.id} yaratildi</h3><Badge variant="secondary">{run.status}</Badge><p className="text-sm text-muted-foreground">Natija, checkpoint va konfliktlarni Admin → Integratsiyalar bo‘limida kuzating.</p></div>}
+      {step === 'result' && run && <div className="space-y-3 py-6 text-center"><CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" /><h3 className="font-semibold">Sinxronlash #{run.id} boshlandi</h3><Badge variant="secondary">{statusLabel(run.status)}</Badge><p className="text-sm text-muted-foreground">Natija va ziddiyatlarni Admin → Integratsiyalar bo‘limida kuzating.</p></div>}
 
       <DialogFooter className="gap-2">
         {step === 'preview' && <><Button variant="outline" onClick={() => setStep('group')}>Orqaga</Button><Button onClick={startSync} disabled={loading || students.length === 0}>{loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Guruhni sinxronlash</Button></>}

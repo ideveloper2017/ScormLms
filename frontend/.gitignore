@@ -17,8 +17,7 @@ dist-ssr
 *.local.*
 postgresql-data.local.js
 
-# API Files - Development only
-src/lib/api.ts
+# API Files - Development only (src/lib/api.ts git'da kuzatiladi — ignore ro'yxatida bo'lmasin)
 src/lib/api-service.ts
 src/lib/mock-auth.local.ts
 src/lib/database.mock.ts
@@ -33,4 +32,3 @@ src/lib/database.mock.ts
 *.njsproj
 *.sln
 *.sw?
-vite.config.ts

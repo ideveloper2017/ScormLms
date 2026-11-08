@@ -78,6 +78,7 @@ import {
   type CourseContent,
   type CourseModule,
 } from "@/services/api/teacher-portal-api";
+import { AcademicYearSelect } from "@/components/academic-year-select";
 
 const CONTENT_META: Record<
   string,
@@ -1460,7 +1461,7 @@ export function TeacherCourseDetail({
             <CardContent className="flex flex-col gap-3">
               <CourseEnrollmentPicker key={`${user?.id}-${courseId}`} actorId={user?.id} courseId={courseId} selected={studentIds} onChange={setStudentIds} disabled={course.status === "archived" || enrollMutation.isPending} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 flex-[2]">
-                  <label className="space-y-1 text-sm">O'quv yili<Input value={enrollmentAcademicYear} onChange={(event) => setEnrollmentAcademicYear(event.target.value)} placeholder="2026-2027" disabled={course.status === "archived"} /></label>
+                  <label className="space-y-1 text-sm">O'quv yili<AcademicYearSelect aria-label="O'quv yili" value={enrollmentAcademicYear} onChange={setEnrollmentAcademicYear} disabled={course.status === "archived"} /></label>
                   <label className="space-y-1 text-sm">Semestr<Input type="number" min={1} max={20} value={enrollmentSemester} onChange={(event) => setEnrollmentSemester(event.target.value)} disabled={course.status === "archived"} /></label>
                   <label className="space-y-1 text-sm">Kredit<Input type="number" min={0} max={100} value={enrollmentCredits} onChange={(event) => setEnrollmentCredits(event.target.value)} disabled={course.status === "archived"} /></label>
                   <div className="space-y-1 text-sm">Fan turi<Select value={enrollmentRequired} onValueChange={setEnrollmentRequired}><SelectTrigger aria-label="Fan turi"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="true">Majburiy</SelectItem><SelectItem value="false">Tanlov</SelectItem></SelectContent></Select></div>
@@ -1617,14 +1618,14 @@ export function TeacherCourseDetail({
                 placeholder="Dars mavzusi"
               />
             </Field>
-            <Field label="Section *">
+            <Field label="Bo'lim *">
               <Select
                 value={contentModuleId}
                 onValueChange={setContentModuleId}
                 disabled={Boolean(editingContentId)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sectionni tanlang" />
+                  <SelectValue placeholder="Bo'limni tanlang" />
                 </SelectTrigger>
                 <SelectContent>
                   {modules.map((module) => (

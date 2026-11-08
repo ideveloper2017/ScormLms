@@ -6,5 +6,6 @@ import uz.scorm.lms.app.v1.user.model.User
 
 interface RefreshTokenRepository : JpaRepository<RefreshToken, Long> {
     fun findByToken(token: String): RefreshToken?
+    fun findAllByUserAndRevokedFalse(user: User): List<RefreshToken>
     fun deleteByUser(user: User): Long
 }

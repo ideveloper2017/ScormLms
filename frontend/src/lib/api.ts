@@ -69,9 +69,38 @@ api.interceptors.response.use(
     if (monitor) {
       monitor.complete();
     }
+    // Xato matni foydalanuvchiga tushunarli bo'lsin: "Request failed with status code 400" / "Network Error"
+    // o'rniga backend bergan xabar yoki o'zbekcha izoh. error.response o'zgarmaydi.
+    error.message = friendlyErrorMessage(error);
     return Promise.reject(error);
   }
 );
+
+/** Axios xatosidan foydalanuvchiga ko'rsatiladigan matn: backend xabari, bo'lmasa holat kodi bo'yicha o'zbekcha izoh. */
+export function friendlyErrorMessage(error: AxiosError): string {
+  const data = error.response?.data as { message?: unknown; error?: unknown; detail?: unknown } | string | undefined;
+  const fromServer = typeof data === "string"
+    ? data
+    : [data?.message, data?.detail, data?.error].find((v): v is string => typeof v === "string" && v.trim().length > 0);
+  if (fromServer && !/^(Bad Request|Forbidden|Unauthorized|Not Found|Internal Server Error|Conflict)$/i.test(fromServer.trim())) {
+    return fromServer.trim();
+  }
+  if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") return "So'rov vaqti tugadi. Internet aloqasini tekshirib, qayta urinib ko'ring.";
+  if (!error.response) return "Server bilan aloqa yo'q. Internet aloqasini yoki serverni tekshiring.";
+  switch (error.response.status) {
+    case 400: return "Kiritilgan ma'lumotlar noto'g'ri. Maydonlarni tekshiring.";
+    case 401: return "Sessiya tugagan. Tizimga qayta kiring.";
+    case 403: return "Bu amal uchun sizda ruxsat yo'q.";
+    case 404: return "Ma'lumot topilmadi. U o'chirilgan bo'lishi mumkin.";
+    case 409: return "Bunday yozuv allaqachon bor yoki u boshqa yozuvlar bilan bog'langan.";
+    case 413: return "Fayl hajmi juda katta.";
+    case 429: return "So'rovlar juda ko'p. Biroz kutib, qayta urinib ko'ring.";
+    default:
+      return error.response.status >= 500
+        ? "Serverda xatolik yuz berdi. Birozdan so'ng qayta urinib ko'ring."
+        : error.message || "Amalni bajarib bo'lmadi.";
+  }
+}
 
 export async function login(credentials: LoginRequest): Promise<AxiosResponse<AuthResponse>> {
   try {
