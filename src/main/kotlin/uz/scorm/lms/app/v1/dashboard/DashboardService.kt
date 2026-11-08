@@ -58,10 +58,9 @@ class DashboardService(
 
     @Transactional(readOnly = true)
     fun adminStats(): AdminSystemStatsDto {
-        val users = userRepository.findAll().filterNot { it.deleted }
+        // Foydalanuvchi va yozuvlar sanalari bazada hisoblanadi — jadvallar o'sganda hammasini yuklamaymiz
         val courses = courseRepository.findAllByDeletedFalseOrderByCreatedAtDesc()
         val exams = examSessionRepository.findAllByDeletedFalseOrderByExamDateDesc()
-        val enrollments = enrollmentRepository.findAll().filterNot { it.deleted }
         val submissions = submissionRepository.findAllByDeletedFalseOrderBySubmittedAtDesc()
         val graded = submissions.filter { it.status == SubmissionStatus.GRADED && it.score != null }
         val avgAchievement = graded.mapNotNull { submission ->
@@ -70,8 +69,8 @@ class DashboardService(
         }.averageOrZero()
 
         return AdminSystemStatsDto(
-            totalUsers = users.size.toLong(),
-            activeUsers = users.count { it.status == UserStatus.ACTIVE }.toLong(),
+            totalUsers = userRepository.countByDeletedFalse(),
+            activeUsers = userRepository.countByStatusAndDeletedFalse(UserStatus.ACTIVE),
             totalStudents = studentRepository.count(),
             totalTeachers = teacherRepository.count(),
             totalCourses = courses.size.toLong(),
@@ -81,7 +80,7 @@ class DashboardService(
             scormPackages = scormPackageRepository?.countByDeletedFalse() ?: 0,
             systemUptime = ManagementFactory.getRuntimeMXBean().uptime / 1_000,
             serverLoad = cpuUsage(),
-            contentCompletion = enrollments.map { it.progress.toDouble() }.averageOrZero(),
+            contentCompletion = enrollmentRepository.averageProgressAll() ?: 0.0,
             avgAchievement = avgAchievement,
             passRate = if (graded.isEmpty()) 0.0 else percent(graded.count { (it.score ?: 0) >= it.assignment.maxScore * 0.6 }, graded.size),
         )
@@ -103,13 +102,14 @@ class DashboardService(
     @Transactional(readOnly = true)
     fun monthlyMetrics(): List<AdminMonthlyMetricDto> {
         val months = (5 downTo 0).map { YearMonth.now(zone).minusMonths(it.toLong()) }
-        val users = userRepository.findAll().filterNot { it.deleted }
         val courses = courseRepository.findAllByDeletedFalseOrderByCreatedAtDesc()
         val exams = examSessionRepository.findAllByDeletedFalseOrderByExamDateDesc()
         return months.map { month ->
+            val from = month.atDay(1).atStartOfDay(zone).toInstant()
+            val to = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
             AdminMonthlyMetricDto(
                 name = month.toString(),
-                users = users.count { it.createdAt?.atZone(zone)?.let(YearMonth::from) == month }.toLong(),
+                users = userRepository.countByDeletedFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(from, to),
                 courses = courses.count { it.createdAt?.atZone(zone)?.let(YearMonth::from) == month }.toLong(),
                 exams = exams.count { it.createdAt?.atZone(zone)?.let(YearMonth::from) == month }.toLong(),
             )
@@ -376,7 +376,7 @@ class DashboardService(
         return MonitoringStatsDto(
             cpuUsage = cpuUsage(),
             memoryUsage = oneDecimal(memoryUsage),
-            activeUsers = userRepository.findAll().count { !it.deleted && (it.lastLoginAt?.isAfter(recentlyActive) == true) }.toLong(),
+            activeUsers = userRepository.countByDeletedFalseAndLastLoginAtAfter(recentlyActive),
             totalRequests = auditLogRepository.count(),
             errorRate = if (requests.isEmpty()) 0.0 else percent(errors, requests.size),
             uptime = ManagementFactory.getRuntimeMXBean().uptime / 1_000,

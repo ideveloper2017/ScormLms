@@ -198,6 +198,10 @@ export function buildNav(role: string): NavGroup[] {
       ITEMS.aAccountability,
       ITEMS.aPublications,
       ITEMS.aQualityStudies,
+      // 559 bo'yicha reyestrlar — avval faqat metodist menyusida edi, admin kira olmasdi
+      ITEMS.aPractices,
+      ITEMS.aAssessmentLeaves,
+      ITEMS.aForeignTeachers,
     ] },
     { label: "Monitoring", icon: Monitor, collapsible: true, items: [
       referenceItem("Talabalar", "/monitoring/students", Users),
@@ -208,6 +212,9 @@ export function buildNav(role: string): NavGroup[] {
       referenceItem("O'qituvchilar", "/monitoring/teachers", UserCog),
       referenceItem("Talabalarning IP manzillari", "/check-login-users", Fingerprint),
       referenceItem("Izohlar", "/commentary-lessons", MessageCircle),
+      ITEMS.aReports,
+      ITEMS.aSurveys,
+      ITEMS.aContentReviews,
     ] },
     { label: "Yangiliklar", icon: Megaphone, collapsible: true, items: [
       referenceItem("Yangiliklar", "/content/posts", Megaphone),
@@ -242,6 +249,8 @@ export function buildNav(role: string): NavGroup[] {
       referenceItem("Sozlamalar", "/settings/configs", Settings),
       referenceItem("Tillar", "/settings/languages", Globe2),
       referenceItem("Tarjimalar", "/settings/internalization", FileText),
+      ITEMS.aIntegrations,
+      ITEMS.aAuditLogs,
     ] },
   ];
 

@@ -260,22 +260,26 @@ class ChatService(
         return conversationDto(conversationRepository.save(member.conversation), actorId)
     }
 
+    /**
+     * Kim bilan yozishish mumkin: admin — barcha faol foydalanuvchilar; o'qituvchi — o'z kurslaridagi talabalar;
+     * talaba — o'z kurslarining o'qituvchisi va kursdoshlari. Faqat tegishli yozuvlar so'raladi (barchasi emas).
+     */
     private fun contactIds(actorId: Long, mayManageAll: Boolean): Set<Long> {
-        if (mayManageAll) return userRepository.findAll().asSequence()
-            .filter { !it.deleted && it.status == UserStatus.ACTIVE && it.id != actorId }
-            .mapNotNull { it.id }
-            .toSet()
+        if (mayManageAll) return userRepository.findAllByStatusAndDeletedFalse(UserStatus.ACTIVE)
+            .mapNotNullTo(mutableSetOf()) { it.id }
+            .also { it.remove(actorId) }
         val valid = setOf(CourseEnrollmentStatus.ACTIVE, CourseEnrollmentStatus.COMPLETED)
-        val enrollments = enrollmentRepository.findAll().filter {
-            !it.deleted && it.status in valid && !it.course.deleted
-        }
-        val actorCourseIds = enrollments.filter { it.student.user.id == actorId }.mapNotNull { it.course.id }.toSet()
         val result = mutableSetOf<Long>()
-        enrollments.forEach { enrollment ->
-            if (enrollment.course.userId == actorId) enrollment.student.user.id?.let(result::add)
-            if (enrollment.course.id in actorCourseIds) {
-                enrollment.course.userId?.let(result::add)
-                enrollment.student.user.id?.let(result::add)
+        // O'qituvchi sifatida: o'z kurslaridagi talabalar
+        enrollmentRepository.findAllByCourseUserIdAndStatusInAndDeletedFalseAndCourseDeletedFalse(actorId, valid)
+            .forEach { it.student.user.id?.let(result::add) }
+        // Talaba sifatida: o'z kurslarining o'qituvchisi va kursdoshlari
+        val ownCourseIds = enrollmentRepository.findAllByStudentUserIdAndStatusInAndDeletedFalseAndCourseDeletedFalse(actorId, valid)
+            .mapNotNull { it.course.id }.toSet()
+        if (ownCourseIds.isNotEmpty()) {
+            enrollmentRepository.findAllByCourseIdInAndStatusInAndDeletedFalseAndCourseDeletedFalse(ownCourseIds, valid).forEach {
+                it.course.userId?.let(result::add)
+                it.student.user.id?.let(result::add)
             }
         }
         result.remove(actorId)

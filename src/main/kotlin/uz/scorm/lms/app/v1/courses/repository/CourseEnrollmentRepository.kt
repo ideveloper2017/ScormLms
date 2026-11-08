@@ -12,6 +12,30 @@ interface CourseEnrollmentRepository : JpaRepository<CourseEnrollment, Long> {
     @Query("select avg(e.progress) from CourseEnrollment e where e.course.id = :courseId and e.deleted = false and e.status in :statuses")
     fun averageProgress(courseId: Long, statuses: Collection<CourseEnrollmentStatus>): Double?
 
+    /** Barcha faol yozuvlar bo'yicha o'rtacha progress (admin statistikasi) — yozuvlarni yuklamasdan */
+    @Query("select avg(e.progress) from CourseEnrollment e where e.deleted = false")
+    fun averageProgressAll(): Double?
+
+    /** Foydalanuvchi (talaba) o'qiyotgan kurslar yozuvlari */
+    @EntityGraph(attributePaths = ["student", "student.user", "course"])
+    fun findAllByStudentUserIdAndStatusInAndDeletedFalseAndCourseDeletedFalse(
+        userId: Long,
+        statuses: Collection<CourseEnrollmentStatus>,
+    ): List<CourseEnrollment>
+
+    /** O'qituvchi (kurs egasi) kurslaridagi yozuvlar */
+    @EntityGraph(attributePaths = ["student", "student.user", "course"])
+    fun findAllByCourseUserIdAndStatusInAndDeletedFalseAndCourseDeletedFalse(
+        teacherUserId: Long,
+        statuses: Collection<CourseEnrollmentStatus>,
+    ): List<CourseEnrollment>
+
+    @EntityGraph(attributePaths = ["student", "student.user", "course"])
+    fun findAllByCourseIdInAndStatusInAndDeletedFalseAndCourseDeletedFalse(
+        courseIds: Collection<Long>,
+        statuses: Collection<CourseEnrollmentStatus>,
+    ): List<CourseEnrollment>
+
     @EntityGraph(attributePaths = ["student", "student.user", "course", "course.subject", "course.subject.program"])
     fun findAllByDeletedFalseOrderByAcademicYearDescSemesterDescEnrolledAtDesc(): List<CourseEnrollment>
 

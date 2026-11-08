@@ -110,7 +110,7 @@ class NotificationService(
     /** Tizim bildirishnomasi barcha foydalanuvchilarga */
     @Transactional
     fun broadcast(title: String, message: String, priority: NotificationPriority = NotificationPriority.NORMAL) {
-        userRepository.findAll().forEach { user ->
+        userRepository.findAllByDeletedFalse().forEach { user ->
             create(CreateNotificationRequest(
                 userId   = user.id!!,
                 title    = title,
