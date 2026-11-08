@@ -14,18 +14,21 @@ fail() {
 
 [[ $EUID -eq 0 ]] || fail "This command must run as root"
 [[ $# -eq 1 ]] || fail "Usage: scorm-lms-deploy <40-char-sha>-<run-id>-<attempt>"
-[[ -r "$CONFIG_FILE" ]] || fail "$CONFIG_FILE is missing or unreadable"
 
-# shellcheck source=/dev/null
-source "$CONFIG_FILE"
+# deploy.conf ixtiyoriy: bo'lmasa quyidagi standartlar (Debian/Ubuntu tomcat11) ishlatiladi.
+if [[ -r "$CONFIG_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+fi
 
-: "${DEPLOY_INCOMING_DIR:?DEPLOY_INCOMING_DIR is required}"
-: "${FRONTEND_BASE_DIR:?FRONTEND_BASE_DIR is required}"
-: "${TOMCAT_WEBAPPS_DIR:?TOMCAT_WEBAPPS_DIR is required}"
-: "${TOMCAT_SERVICE:?TOMCAT_SERVICE is required}"
-: "${HEALTHCHECK_URL:?HEALTHCHECK_URL is required}"
-: "${DEPLOY_BACKUP_DIR:?DEPLOY_BACKUP_DIR is required}"
+: "${DEPLOY_INCOMING_DIR:=/var/tmp/scorm-lms/incoming}"
+: "${FRONTEND_BASE_DIR:=/var/www/scorm-lms}"
+: "${TOMCAT_WEBAPPS_DIR:=/var/lib/tomcat11/webapps}"
+: "${TOMCAT_SERVICE:=tomcat11}"
+: "${HEALTHCHECK_URL:=http://127.0.0.1:8080/actuator/health/readiness}"
+: "${DEPLOY_BACKUP_DIR:=/var/backups/scorm-lms/deployments}"
 
+# Env fayl ixtiyoriy: bo'lmasa ilova WAR ichidagi standart sozlamalar bilan ishga tushadi.
 APP_ENV_FILE="${APP_ENV_FILE:-/etc/scorm-lms/scorm-lms.env}"
 EXPECTED_DATABASE_NAME="${EXPECTED_DATABASE_NAME:-scorm_lms}"
 AUTO_CREATE_DATABASE="${AUTO_CREATE_DATABASE:-false}"
@@ -51,16 +54,23 @@ ensure_application_database() {
     fail "Unsafe EXPECTED_DATABASE_NAME"
 
   local active_profiles db_url db_user db_password db_schema host port database
-  active_profiles="$(read_app_env SPRING_PROFILES_ACTIVE)" || \
-    fail "SPRING_PROFILES_ACTIVE is missing in $APP_ENV_FILE"
-  case ",$active_profiles," in
-    *,postgresql-prod,*) ;;
-    *) fail "SPRING_PROFILES_ACTIVE must include postgresql-prod (got: '$active_profiles'; e.g. 'postgres' is not a profile — application-postgresql-prod.yml would not load)" ;;
-  esac
+  # Profil berilmasa WAR o'zi postgresql-prod ni tanlaydi; berilgan bo'lsa aynan shuni o'z ichiga olishi shart.
+  active_profiles="$(read_app_env SPRING_PROFILES_ACTIVE || true)"
+  if [[ -n "$active_profiles" ]]; then
+    case ",$active_profiles," in
+      *,postgresql-prod,*) ;;
+      *) fail "SPRING_PROFILES_ACTIVE must include postgresql-prod (got: '$active_profiles'; e.g. 'postgres' is not a profile — application-postgresql-prod.yml would not load). Fix it or remove the line from $APP_ENV_FILE" ;;
+    esac
+  fi
 
-  db_url="$(read_app_env DB_URL)" || fail "DB_URL is missing in $APP_ENV_FILE"
-  db_user="$(read_app_env DB_USERNAME)" || fail "DB_USERNAME is missing in $APP_ENV_FILE"
-  db_password="$(read_app_env DB_PASSWORD)" || fail "DB_PASSWORD is missing in $APP_ENV_FILE"
+  # Baza sozlamalari env'da to'liq bo'lmasa ilova standartlari (localhost/scorm_lms) ishlatiladi: preflight o'tkaziladi.
+  db_url="$(read_app_env DB_URL || true)"
+  db_user="$(read_app_env DB_USERNAME || true)"
+  db_password="$(read_app_env DB_PASSWORD || true)"
+  if [[ -z "$db_url" || -z "$db_user" || -z "$db_password" ]]; then
+    log "DB_URL/DB_USERNAME/DB_PASSWORD env'da to'liq emas: baza preflight o'tkazib yuborildi, ilova standart sozlamalar bilan ulanadi"
+    return 0
+  fi
   db_schema="$(read_app_env DB_SCHEMA || printf 'public')"
   [[ "$db_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || fail "Unsafe DB_USERNAME"
   [[ -n "$db_password" ]] || fail "DB_PASSWORD must not be empty"
@@ -164,21 +174,21 @@ ensure_required_app_secrets() {
   # "postgresql-prod\r" bo'lib, prod sozlamalari (app.jwt.secret ...) yuklanmaydi.
   ! grep -q $'\r' "$APP_ENV_FILE" || \
     fail "$APP_ENV_FILE has Windows (CRLF) line endings; fix with: sed -i 's/\\r\$//' $APP_ENV_FILE"
-  for key in JWT_SECRET CORS_ALLOWED_ORIGINS; do
-    value="$(read_app_env "$key")" || fail "$key is missing in $APP_ENV_FILE"
-    [[ -n "$value" ]] || fail "$key must not be empty in $APP_ENV_FILE"
-  done
-  # SURVEY_ANONYMIZATION_SECRET berilmasa ilova JWT_SECRET'dan foydalanadi.
+  # Berilmagan qiymatlar uchun ilova standartlari bor (tasodifiy JWT siri, localhost baza, bitta origin);
+  # berilgan bo'lsa namuna/zaif qiymat bo'lmasligi kerak. Bo'sh qator (KEY=) berilmagan hisoblanadi.
   for key in JWT_SECRET SURVEY_ANONYMIZATION_SECRET; do
-    value="$(read_app_env "$key")" || continue
+    value="$(read_app_env "$key" || true)"
+    [[ -n "$value" ]] || continue
     [[ "${value,,}" != *change_me* && "${value,,}" != *dev-only* ]] || \
       fail "$key in $APP_ENV_FILE still contains a placeholder value"
     (( ${#value} >= 64 )) || fail "$key must be at least 64 bytes (openssl rand -base64 96)"
   done
-  value="$(read_app_env DB_PASSWORD)"
-  [[ "${value,,}" != *change_me* ]] || fail "DB_PASSWORD in $APP_ENV_FILE still contains a placeholder value"
-  (( ${#value} >= 12 )) || fail "DB_PASSWORD must be at least 12 characters"
-  [[ "$(read_app_env CORS_ALLOWED_ORIGINS)" != *'*'* ]] || \
+  value="$(read_app_env DB_PASSWORD || true)"
+  if [[ -n "$value" ]]; then
+    [[ "${value,,}" != *change_me* ]] || fail "DB_PASSWORD in $APP_ENV_FILE still contains a placeholder value"
+    (( ${#value} >= 12 )) || fail "DB_PASSWORD must be at least 12 characters"
+  fi
+  [[ "$(read_app_env CORS_ALLOWED_ORIGINS || true)" != *'*'* ]] || \
     fail "CORS_ALLOWED_ORIGINS must list explicit origins, not a wildcard"
   [[ "$(read_app_env APP_DEMO_DATA_ENABLED || printf 'false')" != "true" ]] || \
     log "WARNING: APP_DEMO_DATA_ENABLED=true; demo users will be created in production"
@@ -190,17 +200,24 @@ ensure_tomcat_environment() {
   local environment_files
   environment_files="$(systemctl show "$TOMCAT_SERVICE" --property=EnvironmentFiles --value)" || \
     fail "Cannot inspect $TOMCAT_SERVICE environment"
+  # Fayl bor, lekin Tomcat uni yuklamasa ilova standart sozlamalar bilan ishlaydi: to'xtatmaymiz, ogohlantiramiz.
   [[ "$environment_files" == *"$APP_ENV_FILE"* ]] || \
-    fail "$TOMCAT_SERVICE does not load $APP_ENV_FILE. Add EnvironmentFile=$APP_ENV_FILE to its systemd service override"
+    log "WARNING: $TOMCAT_SERVICE $APP_ENV_FILE ni yuklamaydi, ilova undagi qiymatlarni ko'rmaydi (standartlar ishlatiladi). Yuklash uchun systemd override'ga EnvironmentFile=$APP_ENV_FILE qo'shing."
 }
 
 # Yuz tanish modellari (SFaceRecognizer) bo'lmasa proktoring fail-closed ishlamay qoladi — buni deploydan
 # keyin emas, oldin aniqlaymiz. Skript tarmoqdan hech narsa yuklamaydi: o'rnatish
 # ops/face-models/install-face-models.sh orqali alohida bajariladi.
 ensure_face_models() {
-  local model_dir
-  model_dir="$(read_app_env FACE_MODEL_DIR)" || \
-    fail "FACE_MODEL_DIR is not set in $APP_ENV_FILE. Install face models: FACE_MODEL_DIR=/var/lib/scorm-lms/face-models ops/face-models/install-face-models.sh, then add FACE_MODEL_DIR to $APP_ENV_FILE"
+  local model_dir=""
+  if [[ -r "$APP_ENV_FILE" ]]; then
+    model_dir="$(read_app_env FACE_MODEL_DIR || true)"
+  fi
+  if [[ -z "$model_dir" ]]; then
+    # Modelsiz ilova ishga tushadi, faqat yuz ro'yxatdan o'tkazish va proktoring ishlamaydi (fail-closed).
+    log "WARNING: FACE_MODEL_DIR berilmagan, yuz tanish modellari tekshirilmadi. Modellar standart katalogda (<tomcat>/scorm-lms-data/face-models) bo'lishi kerak: FACE_MODEL_DIR=<katalog> ops/face-models/install-face-models.sh"
+    return 0
+  fi
   local entry name sha
   for entry in \
     "face_detection_yunet_2023mar.onnx:8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4" \
@@ -240,9 +257,14 @@ readonly BACKUP_DIR="$DEPLOY_BACKUP_DIR/$RELEASE_ID"
 cd "$INCOMING_DIR"
 sha256sum -c checksums.sha256
 
-ensure_application_database
-ensure_required_app_secrets
-ensure_tomcat_environment
+if [[ -r "$APP_ENV_FILE" ]]; then
+  ensure_application_database
+  ensure_required_app_secrets
+  ensure_tomcat_environment
+else
+  log "$APP_ENV_FILE yo'q: env tekshiruvlari o'tkazib yuborildi, ilova ichki standart sozlamalar bilan ishga tushadi."
+  log "Baza (scorm_lms, rol scorm_lms) oldindan mavjud bo'lishi kerak; jadvallarni Flyway ilova ishga tushganda o'zi yaratadi."
+fi
 ensure_face_models
 
 install -d -m 755 "$RELEASES_DIR"

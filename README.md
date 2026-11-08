@@ -80,7 +80,13 @@ Shundan keyin `demo_teacher` va `demo_student` loginlari bilan tegishli parolda 
 
 ## Production environment
 
-Backend uchun majburiy qiymatlar:
+Env fayl shart emas: WAR'ni Tomcat'ga tashlash yetarli. Profil berilmasa `postgresql-prod` avtomatik tanlanadi va
+har bir qiymatning standarti bor (baza `localhost:5432/scorm_lms` rol `scorm_lms`, fayllar Tomcat katalogidagi
+`scorm-lms-data/`, tasodifiy JWT siri). Serverda faqat PostgreSQL rol va bazani bir marta yarating, jadvallarni
+Flyway o'zi yaratadi; qadamlar va standartlar jadvali: [docs/cicd-ubuntu-vps.md](docs/cicd-ubuntu-vps.md). Birinchi
+administrator paroli berilmasa tasodifiy yaratilib logda `BIRINCHI ADMINISTRATOR` qatorida chiqadi.
+
+Standartni almashtirish kerak bo'lsa quyidagi qiymatlar env orqali beriladi (hammasi ixtiyoriy):
 
 - `SPRING_PROFILES_ACTIVE=postgresql-prod`
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`

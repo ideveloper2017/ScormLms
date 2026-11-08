@@ -27,9 +27,34 @@ sudo install -o root -g root -m 0440 ops/deploy/scorm-lms-deploy.sudoers.example
 sudo visudo -cf /etc/sudoers.d/scorm-lms-deploy
 ```
 
-`/etc/scorm-lms/deploy.conf` ichida Tomcat service nomi va `webapps` manzilini real serverga moslang. Tomcat production environment qiymatlarini repodan tashqaridagi `/etc/scorm-lms/scorm-lms.env` faylidan olishi tavsiya etiladi:
+### Eng kam sozlash: env fayl va deploy.conf shart emas
 
-Deploy preflight `APP_ENV_FILE` ichidagi `DB_URL` database nomini
+`/etc/scorm-lms/scorm-lms.env` ham, `/etc/scorm-lms/deploy.conf` ham ixtiyoriy. WAR Tomcat'da profil berilmagan bo'lsa `postgresql-prod` ni o'zi tanlaydi, barcha sozlamalarning standarti bor, jadvallarni Flyway ilova ishga tushganda o'zi yaratadi. Serverda faqat bir marta PostgreSQL rol va bazani yarating:
+
+```bash
+sudo -u postgres psql -c "CREATE ROLE scorm_lms LOGIN PASSWORD 'scorm-lms-default-db-password'"
+sudo -u postgres createdb --owner scorm_lms scorm_lms
+```
+
+| Sozlama | Env'siz standart | Almashtirish |
+| --- | --- | --- |
+| Baza | `jdbc:postgresql://localhost:5432/scorm_lms`, rol `scorm_lms` | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` |
+| JWT siri | har ishga tushganda tasodifiy (qayta ishga tushganda hamma qayta kiradi) | `JWT_SECRET` |
+| Anonim so'rovnoma siri | baza parolidan olinadi (qayta ishga tushganda o'zgarmaydi) | `SURVEY_ANONYMIZATION_SECRET` |
+| CORS | `http://localhost`; nginx namunasida frontend va `/api` bitta domen, CORS ishlamaydi | `CORS_ALLOWED_ORIGINS` |
+| Fayllar | Tomcat katalogidagi `scorm-lms-data/` | `APP_DATA_DIR` yoki alohida `*_DIR` |
+| Log | Tomcat `logs/scorm-lms.log` | `LOG_FILE` |
+| Birinchi administrator | login `admin`, parol tasodifiy: logda `BIRINCHI ADMINISTRATOR` qatori | `APP_SEED_ADMIN_PASSWORD` |
+
+Standart baza paroli repozitoriyda ochiq. Uni faqat serverning o'zidagi (localhost) baza uchun qoldiring; xohlasangiz `ALTER ROLE scorm_lms PASSWORD '...'` qilib, shu parolni `DB_PASSWORD` sifatida bering. Birinchi administrator parolini logdan oling va kirgach almashtiring:
+
+```bash
+sudo grep -h "BIRINCHI ADMINISTRATOR" /var/lib/tomcat11/logs/scorm-lms.log
+```
+
+Standartlarni almashtirish kerak bo'lsa (ixtiyoriy), `/etc/scorm-lms/deploy.conf` ichida Tomcat service nomi va `webapps` manzilini real serverga moslang, qolgan qiymatlarni esa repodan tashqaridagi `/etc/scorm-lms/scorm-lms.env` faylidan bering:
+
+Env fayl mavjud bo'lsa, deploy preflight `APP_ENV_FILE` ichidagi `DB_URL` database nomini
 `EXPECTED_DATABASE_NAME` bilan solishtiradi. Bu LMS'ni tasodifan `qms_queue`
 yoki boshqa tizim bazasiga ulashni bloklaydi. Lokal PostgreSQL ishlatilganda
 `AUTO_CREATE_DATABASE=true` bo'lsa, database yo'q paytda deploy uni mavjud
@@ -99,9 +124,10 @@ sudo systemctl restart tomcat11
 sudo systemctl show tomcat11 --property=EnvironmentFiles
 ```
 
-Deploy preflight `SPRING_PROFILES_ACTIVE` ichida `postgresql-prod` borligini va
-Tomcat service aynan `APP_ENV_FILE` faylini yuklayotganini tekshiradi. Shu orqali
-Flyway tasodifan dev profil yoki boshqa database bilan ishga tushishi bloklanadi.
+Env fayl mavjud bo'lsa, preflight undagi `SPRING_PROFILES_ACTIVE` `postgresql-prod` ni o'z ichiga
+olishini tekshiradi (profil umuman berilmasa WAR o'zi `postgresql-prod` ni tanlaydi) va Tomcat
+service faylni yuklamayotgan bo'lsa ogohlantiradi. Shu orqali Flyway tasodifan dev profil yoki
+boshqa database bilan ishga tushishi bloklanadi. Env fayl bo'lmasa bu tekshiruvlar o'tkazib yuboriladi.
 
 Nginx misolini o'rnating, `server_name`ni almashtiring va TLS'ni Certbot yoki mavjud sertifikat bilan yoqing:
 
@@ -142,7 +168,7 @@ ssh-keyscan -H -p 22 lms.example.uz
 
 ## 4. Production environment
 
-`/etc/scorm-lms/scorm-lms.env` kamida README'dagi production qiymatlarini saqlashi kerak: `SPRING_PROFILES_ACTIVE`, database credentiallari, `JWT_SECRET`, aniq `CORS_ALLOWED_ORIGINS` va persistent storage kataloglari. Haqiqiy secretlarni Git'ga commit qilmang.
+Env fayl ixtiyoriy. Yaratsangiz, faqat standartni almashtirmoqchi bo'lgan qiymatlarni yozing (README'dagi production ro'yxati): `DB_*`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, persistent storage kataloglari. Yozilgan secretlar namuna yoki zaif bo'lmasligi preflight'da tekshiriladi. Haqiqiy secretlarni Git'ga commit qilmang.
 
 Flyway uchun quyidagi qiymatlarni ham aniq saqlang:
 

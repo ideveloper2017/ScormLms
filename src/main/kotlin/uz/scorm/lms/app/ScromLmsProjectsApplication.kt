@@ -21,7 +21,25 @@ class ScromLmsProjectsApplication : SpringBootServletInitializer() {
 
 
     override fun configure(application: SpringApplicationBuilder): SpringApplicationBuilder {
+        useProductionProfileUnlessConfigured()
         return application.sources(ScromLmsProjectsApplication::class.java)
+    }
+
+    /**
+     * Bu metod faqat tashqi Tomcat (WAR) ishga tushganda chaqiriladi; lokal `bootRun`/`main` chaqirmaydi.
+     * Profil env, `-D` yoki systemd orqali berilmagan bo'lsa production profili yoqiladi, shunda
+     * `/etc/scorm-lms/scorm-lms.env` kabi qo'shimcha sozlama fayllarisiz ham WAR ishlaydi.
+     * Biror joyda profil aniq berilgan bo'lsa u o'zgartirilmaydi.
+     */
+    private fun useProductionProfileUnlessConfigured() {
+        val configured = listOf(
+            System.getenv("SPRING_PROFILES_ACTIVE"),
+            System.getProperty("SPRING_PROFILES_ACTIVE"),
+            System.getProperty("spring.profiles.active"),
+        ).any { !it.isNullOrBlank() }
+        if (!configured) {
+            System.setProperty("spring.profiles.active", "postgresql-prod")
+        }
     }
 }
 
