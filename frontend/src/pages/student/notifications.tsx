@@ -217,7 +217,15 @@ export function StudentNotifications() {
                 !notif.isRead && "shadow-sm border-primary/20",
                 priorityMeta.cls && `border-l-4 ${priorityMeta.cls}`,
               )}
+              role="button"
+              tabIndex={0}
+              aria-label={`${notif.title}${notif.isRead ? "" : " — o'qilmagan, o'qilgan deb belgilash"}`}
               onClick={() => handleMarkRead(notif.id)}
+              onKeyDown={(event) => {
+                // Ichki tugmadagi Enter/Space kartaga tegishli emas
+                if (event.target !== event.currentTarget) return;
+                if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleMarkRead(notif.id); }
+              }}
             >
               {notif.actionUrl?.startsWith('/') && !notif.actionUrl.startsWith('//') && <Button variant="link" size="sm" className="ml-4 mt-2" onClick={event => { event.stopPropagation(); handleMarkRead(notif.id); navigate(notif.actionUrl!); }}>Tegishli sahifani ochish</Button>}
               <CardContent className="flex items-start gap-3 p-4">

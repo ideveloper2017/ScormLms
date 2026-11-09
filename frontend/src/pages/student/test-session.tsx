@@ -31,6 +31,14 @@ import { useProctoringMonitor } from "@/hooks/tests/useProctoringMonitor";
 import { useAnswerAutosave } from "@/hooks/tests/useAnswerAutosave";
 import { useToast } from "@/hooks/use-toast";
 
+// Savol turi talabaga kod emas, o'zbekcha nom bilan ko'rsatiladi
+const QUESTION_TYPE_LABELS: Record<TestQuestion['type'], string> = {
+  'multiple-choice': "Bir javobli",
+  'true-false': "To'g'ri / noto'g'ri",
+  'short-answer': "Qisqa javob",
+  'essay': "Yozma javob",
+};
+
 export function TestSession() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
@@ -339,7 +347,7 @@ export function TestSession() {
                       Savol {currentQuestionIndex + 1} / {questions.length}
                     </CardTitle>
                     <CardDescription className="mt-1">
-                      <Badge variant="outline">{currentQuestion.type}</Badge>
+                      <Badge variant="outline">{QUESTION_TYPE_LABELS[currentQuestion.type] ?? currentQuestion.type}</Badge>
                       <span className="ml-2">{currentQuestion.points} ball</span>
                     </CardDescription>
                   </div>

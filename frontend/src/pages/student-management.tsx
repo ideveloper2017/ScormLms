@@ -58,6 +58,8 @@ import type {
 import { Loader2, Download, UserPlus, RefreshCcw, ArrowRightLeft, MoreHorizontal, DatabaseZap, Search, CircleCheck, TriangleAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
+import { QueryState } from '@/components/query-state';
+import { statusLabel as sharedStatusLabel } from '@/lib/status-labels';
 import { hasAuthority } from '@/lib/rbac-api';
 import { AcademicYearSelect } from "@/components/academic-year-select";
 
@@ -98,6 +100,8 @@ const actionLabel: Record<LifecycleAction, string> = {
 const statusLabel: Record<StudentStatus, string> = {
   REGISTERED: 'Qabul qilinmagan', ACTIVE: 'Faol', SUSPENDED: "To'xtatilgan", EXPELLED: 'Chetlashtirilgan', GRADUATED: 'Bitirgan',
 };
+// Tarixdagi hodisa turi: qabul + yuqoridagi amallar
+const lifecycleEventLabel: Record<StudentLifecycleEventType, string> = { ADMISSION: "O'qishga qabul qilish", ...actionLabel };
 const availableActions: Record<StudentStatus, LifecycleAction[]> = {
   REGISTERED: [],
   ACTIVE: ['SUSPENSION', 'TRANSFER', 'EXPULSION', 'GRADUATION'],
@@ -243,7 +247,7 @@ export function StudentManagement({
   const closeStudentDialog = () => { setIsAdding(false); setEditingStudent(null); setFormData(emptyPersonalForm()); };
   const showError = (error: unknown) => toast({
     title: 'Amal rad etildi',
-    description: error instanceof Error ? error.message : "Server lifecycle qoidasini qabul qilmadi",
+    description: error instanceof Error ? error.message : "Server bu amalni qabul qilmadi",
     variant: 'destructive',
   });
 
@@ -444,7 +448,7 @@ export function StudentManagement({
         academicYear: lifecycleTarget.action === 'TRANSFER' ? lifecycleForm.academicYear.trim() || null : null,
       };
       await transitionStudent(lifecycleTarget.student.id, request);
-      toast({ title: actionLabel[lifecycleTarget.action], description: 'Buyruq va lifecycle hodisasi saqlandi' });
+      toast({ title: actionLabel[lifecycleTarget.action], description: "Buyruq va holat o'zgarishi saqlandi" });
       setLifecycleTarget(null); setLifecycleForm(emptyLifecycle()); await invalidate();
     } catch (error) { showError(error); } finally { setSaving(false); }
   };
@@ -563,7 +567,7 @@ export function StudentManagement({
       { accessorKey: 'courseNumber', header: 'Kurs', cell: ({ row }) => row.original.courseNumber ?? '—' },
     ] satisfies ColumnDef<StudentSummaryDto>[] : []),
     statusColumn,
-    ...(canManageAccounts ? [{ accessorKey: 'accountStatus', header: 'Akkaunt', cell: ({ row }) => <Badge variant={row.original.accountEnabled ? 'default' : 'secondary'}>{row.original.credentialsInitialized ? row.original.accountStatus : 'Parol berilmagan'}</Badge> } satisfies ColumnDef<StudentSummaryDto>] : []),
+    ...(canManageAccounts ? [{ accessorKey: 'accountStatus', header: 'Akkaunt', cell: ({ row }) => <Badge variant={row.original.accountEnabled ? 'default' : 'secondary'}>{row.original.credentialsInitialized ? sharedStatusLabel(row.original.accountStatus) : 'Parol berilmagan'}</Badge> } satisfies ColumnDef<StudentSummaryDto>] : []),
     { id: 'actions', header: () => <div className="text-right">Amallar</div>, enableSorting: false, cell: ({ row: { original: student } }) => {
       const status = student.studentStatus ?? 'REGISTERED';
       const shouldEnable = !student.accountEnabled;
@@ -746,7 +750,7 @@ export function StudentManagement({
     </Dialog>
 
     <Dialog open={!!historyStudent} onOpenChange={open => { if (!open) setHistoryStudent(null); }}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{historyStudent?.fullName}: holat o'zgarishlari tarixi</DialogTitle></DialogHeader>
-      {history.isLoading ? <Loader2 className="mx-auto animate-spin" /> : <div className="space-y-3">{(history.data ?? []).map(event => <Card key={event.id}><CardContent className="space-y-2 pt-4"><div className="flex flex-wrap justify-between gap-2"><Badge>{event.eventType}</Badge><span className="text-sm font-medium">{event.fromStatus ?? '—'} → {event.toStatus}</span></div><p className="text-sm"><b>Buyruq:</b> {event.orderNumber} / {event.orderDate}; <b>amal:</b> {event.effectiveDate}</p>{event.eventType === 'TRANSFER' && <p className="text-sm"><b>Dastur:</b> {event.fromProgramName ?? '—'} → {event.toProgramName ?? '—'}; <b>guruh:</b> {event.fromGroupId ?? '—'} → {event.toGroupId ?? '—'}</p>}<p className="text-sm"><b>Asos:</b> {event.legalBasis}</p><p className="text-sm"><b>Sabab:</b> {event.reason}</p><p className="text-xs text-muted-foreground">{event.recordedByName} · {new Date(event.recordedAt).toLocaleString('uz-Latn')}</p></CardContent></Card>)}{history.data?.length === 0 && <p className="py-8 text-center text-muted-foreground">Lifecycle yozuvi mavjud emas.</p>}</div>}
+      {history.isLoading ? <Loader2 className="mx-auto animate-spin" aria-label="Yuklanmoqda" /> : history.isError ? <QueryState isError error={history.error} onRetry={() => { void history.refetch(); }} /> : <div className="space-y-3">{(history.data ?? []).map(event => <Card key={event.id}><CardContent className="space-y-2 pt-4"><div className="flex flex-wrap justify-between gap-2"><Badge>{lifecycleEventLabel[event.eventType] ?? event.eventType}</Badge><span className="text-sm font-medium">{event.fromStatus ? statusLabel[event.fromStatus] ?? event.fromStatus : '—'} → {statusLabel[event.toStatus] ?? event.toStatus}</span></div><p className="text-sm"><b>Buyruq:</b> {event.orderNumber} / {event.orderDate}; <b>amal:</b> {event.effectiveDate}</p>{event.eventType === 'TRANSFER' && <p className="text-sm"><b>Dastur:</b> {event.fromProgramName ?? '—'} → {event.toProgramName ?? '—'}; <b>guruh:</b> {event.fromGroupId ?? '—'} → {event.toGroupId ?? '—'}</p>}<p className="text-sm"><b>Asos:</b> {event.legalBasis}</p><p className="text-sm"><b>Sabab:</b> {event.reason}</p><p className="text-xs text-muted-foreground">{event.recordedByName} · {new Date(event.recordedAt).toLocaleString('uz-Latn')}</p></CardContent></Card>)}{history.data?.length === 0 && <p className="py-8 text-center text-muted-foreground">Holat o'zgarishlari hali qayd etilmagan.</p>}</div>}
       <DialogFooter><Button variant="outline" onClick={() => history.refetch()}><RefreshCcw className="mr-2 h-4 w-4" />Yangilash</Button></DialogFooter></DialogContent>
     </Dialog>
 
@@ -755,7 +759,7 @@ export function StudentManagement({
         <div className="space-y-4 py-3">
           <p className="text-sm text-muted-foreground">Login: <b>{accountTarget?.student.username}</b>. Amal va sabab audit jurnalida saqlanadi.</p>
           <Field label="Sabab *"><Textarea maxLength={500} value={accountReason} placeholder="Kamida 5 belgi" onChange={event => setAccountReason(event.target.value)} /></Field>
-          {accountTarget?.enabled && <p className="text-sm text-muted-foreground">Qayta yoqish faqat akademik holati ACTIVE bo'lgan talaba uchun ruxsat etiladi.</p>}
+          {accountTarget?.enabled && <p className="text-sm text-muted-foreground">Qayta yoqish faqat akademik holati «Faol» bo'lgan talaba uchun ruxsat etiladi.</p>}
         </div>
         <DialogFooter><Button variant="outline" onClick={() => { setAccountTarget(null); setAccountReason(''); }}>Bekor qilish</Button><Button variant={accountTarget?.enabled ? 'default' : 'destructive'} disabled={saving || accountReason.trim().length < 5} onClick={submitAccountAccess}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{accountTarget?.enabled ? 'Qayta yoqish' : 'Bloklash'}</Button></DialogFooter>
       </DialogContent>

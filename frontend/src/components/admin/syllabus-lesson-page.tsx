@@ -17,6 +17,7 @@ import {
   type SyllabusLinkedCourse, type SyllabusTopicType,
 } from "@/services/api/syllabus-api";
 import type { SubjectMaterial } from "@/services/api/teacher-portal-api";
+import { safeHref } from "@/lib/safe-url";
 
 const select = "h-10 rounded-md border bg-background px-3 text-sm";
 
@@ -112,7 +113,7 @@ export function LessonContentPage({ syllabusId, lesson, editable, onChanged }: {
               </div>
               <Badge variant="outline">{meta.label}</Badge>
               {material.contentUrl && <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                <a href={material.contentUrl} target="_blank" rel="noreferrer" aria-label="Havolani ochish"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}
+                <a href={safeHref(material.contentUrl)} target="_blank" rel="noreferrer" aria-label="Havolani ochish"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}
               {editable && <>
                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Materialni yuqoriga" disabled={index === 0 || reorder.isPending} onClick={() => move(index, index - 1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Materialni pastga" disabled={index === list.length - 1 || reorder.isPending} onClick={() => move(index, index + 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>

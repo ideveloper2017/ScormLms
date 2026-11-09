@@ -157,7 +157,6 @@ export default function FacePhotoSetup({ onSuccess, onSkip }: Props) {
                 photo: capturedBlob,
             });
 
-            console.log("Upload successful:", result);
 
             setStatus("success");
             setMsg("Yuz rasmi muvaffaqiyatli ro'yxatdan o'tkazildi!");

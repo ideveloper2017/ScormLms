@@ -79,6 +79,7 @@ import {
   type CourseModule,
 } from "@/services/api/teacher-portal-api";
 import { AcademicYearSelect } from "@/components/academic-year-select";
+import { useConfirm } from "@/components/confirm-dialog";
 
 const CONTENT_META: Record<
   string,
@@ -111,6 +112,7 @@ export function TeacherCourseDetail({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { confirm, confirmDialog } = useConfirm();
   const courseId = id ?? "";
   const requestedTab = ['lessons', 'modules'].includes(defaultTab) ? 'contents' : defaultTab;
   const [activeTab, setActiveTab] = useState(requestedTab);
@@ -543,9 +545,9 @@ export function TeacherCourseDetail({
     lessonDraft.clear();
   }
 
-  function closeLesson() {
+  async function closeLesson() {
     if (lessonSavingRef.current) return;
-    if (!window.confirm("Saqlanmagan dars o'zgarishlari bekor qilinsinmi?")) return;
+    if (!(await confirm({ title: "Saqlanmagan dars o'zgarishlari bekor qilinsinmi?", description: "Kiritgan ma'lumotlaringiz saqlanmaydi.", confirmLabel: "Ha, bekor qilish", cancelLabel: "Yo'q, davom etaman" }))) return;
     setLessonDialogOpen(false);
     resetContentForm();
   }
@@ -612,7 +614,7 @@ export function TeacherCourseDetail({
       if (!contentFile && !contentAssetId && !contentUrl.trim()) {
         return toast({
           variant: "destructive",
-          title: "Fayl tanlang yoki URL kiriting",
+          title: "Fayl tanlang yoki havola kiriting",
         });
       }
       if ((contentFile || contentAssetId) && contentUrl.trim()) {
@@ -781,6 +783,7 @@ export function TeacherCourseDetail({
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Kurslar ro'yxatiga qaytish"
           onClick={() => navigate("/teacher/courses")}
         >
           <ArrowLeft className="h-5 w-5" />
@@ -816,7 +819,10 @@ export function TeacherCourseDetail({
             <Button
               variant="outline"
               disabled={courseStatusMutation.isPending}
-              onClick={() => courseStatusMutation.mutate("ARCHIVED")}
+              onClick={async () => {
+                if (await confirm({ title: `“${course.title}” kursi arxivlansinmi?`, description: "Arxivlangan kursni tahrirlab bo'lmaydi. Keyin uni qoralamaga qaytarishingiz mumkin.", confirmLabel: "Arxivlash" }))
+                  courseStatusMutation.mutate("ARCHIVED");
+              }}
             >
               Arxivlash
             </Button>
@@ -1078,7 +1084,13 @@ export function TeacherCourseDetail({
                 )}
                 Biriktirish
               </Button>
-              {!subjectMaterialsQuery.isLoading &&
+              {subjectMaterialsQuery.isError && (
+                <div role="alert" className="md:col-span-3 flex flex-wrap items-center gap-2 text-sm text-destructive">
+                  Fan materiallarini yuklab bo'lmadi.
+                  <Button variant="outline" size="sm" onClick={() => void subjectMaterialsQuery.refetch()}>Qayta urinish</Button>
+                </div>
+              )}
+              {!subjectMaterialsQuery.isLoading && !subjectMaterialsQuery.isError &&
                 subjectMaterials.length === 0 && (
                   <p className="md:col-span-3 text-sm text-muted-foreground">
                     Bu fan uchun material yo'q. Avval “Fan materiallari”
@@ -1088,7 +1100,7 @@ export function TeacherCourseDetail({
             </CardContent>
           </Card>
           {(modulesQuery.isLoading || contentsQuery.isLoading) && <Loading />}
-          {!modulesQuery.isLoading && modules.length === 0 && (
+          {!modulesQuery.isLoading && !modulesQuery.isError && modules.length === 0 && (
             <Empty text="Material qo'shish uchun avval dars yarating" />
           )}
           {lessonGroups.map((group, groupIndex) => (
@@ -1117,8 +1129,8 @@ export function TeacherCourseDetail({
                         </Button>
                         <Button variant="ghost" size="icon" className="text-destructive" aria-label={`${group.unit.title} modulini o'chirish`}
                           disabled={deleteUnitMutation.isPending}
-                          onClick={() => {
-                            if (window.confirm(`“${group.unit!.title}” moduli o'chirilsinmi? Darslari va materiallari saqlanadi.`))
+                          onClick={async () => {
+                            if (await confirm({ title: `“${group.unit!.title}” moduli o'chirilsinmi?`, description: "Darslari va materiallari saqlanadi.", confirmLabel: "O'chirish" }))
                               deleteUnitMutation.mutate(group.unit!.id);
                           }}>
                           <Trash2 className="h-4 w-4" />
@@ -1200,8 +1212,8 @@ export function TeacherCourseDetail({
                         aria-label="Darsni o'chirish"
                         className="text-destructive"
                         disabled={deleteModuleMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(`“${module.title}” darsi va undagi barcha materiallar o‘chirilsinmi?`))
+                        onClick={async () => {
+                          if (await confirm({ title: `“${module.title}” darsi va undagi barcha materiallar o‘chirilsinmi?`, confirmLabel: "O'chirish" }))
                             deleteModuleMutation.mutate(module.id);
                         }}
                       >
@@ -1374,6 +1386,7 @@ export function TeacherCourseDetail({
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Materialni tahrirlash"
                       disabled={content.reviewStatus === "in_review"}
                       onClick={() => editContent(content)}
                     >
@@ -1415,8 +1428,8 @@ export function TeacherCourseDetail({
                       disabled={content.reviewStatus === "in_review" || deleteContentMutation.isPending}
                       className="text-destructive"
                       aria-label="Materialni o'chirish"
-                      onClick={() => {
-                        if (window.confirm(`“${content.title}” darsi o‘chirilsinmi?`)) deleteContentMutation.mutate(content.id);
+                      onClick={async () => {
+                        if (await confirm({ title: `“${content.title}” darsi o‘chirilsinmi?`, confirmLabel: "O'chirish" })) deleteContentMutation.mutate(content.id);
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1510,7 +1523,11 @@ export function TeacherCourseDetail({
                     variant="ghost"
                     size="icon"
                     className="text-destructive"
-                    onClick={() => withdrawMutation.mutate(item.studentId)}
+                    aria-label="Talabani kursdan chiqarish"
+                    onClick={async () => {
+                      if (await confirm({ title: `${item.studentName} kursdan chiqarilsinmi?`, description: "Talaba kursdan chiqarilgan deb belgilanadi.", confirmLabel: "Chiqarish" }))
+                        withdrawMutation.mutate(item.studentId);
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -1603,7 +1620,7 @@ export function TeacherCourseDetail({
               {editingContentId ? "Materialni tahrirlash" : "Yangi material qo'shish"}
             </DialogTitle>
             <DialogDescription>
-              Sectionni tanlang, dars turini belgilang va materialni kiriting.
+              Darsni tanlang, material turini belgilang va materialni kiriting.
             </DialogDescription>
           </DialogHeader>
           <p role="status" className="text-sm text-muted-foreground">{lessonDraft.storageFailed
@@ -1740,7 +1757,7 @@ export function TeacherCourseDetail({
                 placeholder={course.subjectName || "Mualliflik materiali"}
               />
             </Field>
-            <Field label="Manba URL">
+            <Field label="Manba havolasi">
               <Input
                 value={contentSourceUrl}
                 onChange={(event) => setContentSourceUrl(event.target.value)}
@@ -1855,7 +1872,7 @@ export function TeacherCourseDetail({
             </p>
           )}
           {(reviewsQuery.data ?? []).length === 0 &&
-            !reviewsQuery.isLoading && (
+            !reviewsQuery.isLoading && !reviewsQuery.error && (
               <p className="text-sm text-muted-foreground">
                 Hali ekspertizaga yuborilmagan.
               </p>
@@ -1902,6 +1919,7 @@ export function TeacherCourseDetail({
           </div>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }

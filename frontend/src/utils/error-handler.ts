@@ -86,11 +86,10 @@ export const handleApiError = (
       case 401:
         apiError.message = "Avtorizatsiya xatosi. Iltimos, qayta kiring.";
         if (redirectOnAuth) {
+          // Bu yerga 401 faqat token yangilab bo'lmagandan keyin yetib keladi (lib/api.ts interceptori).
+          // Sahifani qayta yuklamaymiz: AuthProvider holatni tozalab, login sahifasiga o'tkazadi.
           clearAuthData();
-          // Delay redirect slightly to allow toast to show
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 500);
+          window.dispatchEvent(new Event('auth:session-expired'));
         }
         break;
 

@@ -17,6 +17,7 @@ import {
   type ClassifierItem, type DistrictClassifierItem, listAdminCountries, listAdminDistricts, listAdminRegions,
   getClassifierImportStatus, importBundledClassifiers, saveCountry, saveDistrict, saveRegion,
 } from '@/lib/classifier-api';
+import { safeHref } from "@/lib/safe-url";
 
 type Kind = 'country' | 'region' | 'district';
 type ClassifierTab = 'countries' | 'regions' | 'districts';
@@ -100,7 +101,7 @@ export function AdminStudentClassifiers({ initialTab = 'countries' }: { initialT
         {importStatus.data && <>
           <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-md border p-3"><p className="text-2xl font-semibold">{importStatus.data.countriesTotal}</p><p className="text-xs text-muted-foreground">mamlakat</p></div><div className="rounded-md border p-3"><p className="text-2xl font-semibold">{importStatus.data.regionsTotal}</p><p className="text-xs text-muted-foreground">hudud</p></div><div className="rounded-md border p-3"><p className="text-2xl font-semibold">{importStatus.data.districtsTotal}</p><p className="text-xs text-muted-foreground">tuman/shahar</p></div></div>
           <div className="space-y-1 text-xs text-muted-foreground"><p>Versiya: <span className="font-mono text-foreground">{importStatus.data.datasetVersion}</span></p><p>Manifest SHA-256: <span className="font-mono text-foreground">{importStatus.data.manifestSha256}</span></p></div>
-          <div className="flex flex-wrap gap-2">{importStatus.data.sources.map(source => <Button key={source.url} variant="outline" size="sm" asChild><a href={source.url} target="_blank" rel="noreferrer">{source.title}<ExternalLink className="ml-2 h-3 w-3" /></a></Button>)}</div>
+          <div className="flex flex-wrap gap-2">{importStatus.data.sources.map(source => <Button key={source.url} variant="outline" size="sm" asChild><a href={safeHref(source.url)} target="_blank" rel="noreferrer">{source.title}<ExternalLink className="ml-2 h-3 w-3" /></a></Button>)}</div>
           {importStatus.data.lastRun && <p className="text-xs text-muted-foreground">Oxirgi import: {new Date(importStatus.data.lastRun.finishedAt ?? importStatus.data.lastRun.startedAt).toLocaleString()} · yaratildi {importStatus.data.lastRun.createdCount}, yangilandi {importStatus.data.lastRun.updatedCount}, o'zgarmadi {importStatus.data.lastRun.unchangedCount}, nofaol qilindi {importStatus.data.lastRun.deactivatedCount}.</p>}
         </>}
         {canWrite && <Button disabled={!importStatus.data || importDataset.isPending} onClick={() => importDataset.mutate()}><RefreshCw className={`mr-2 h-4 w-4 ${importDataset.isPending ? 'animate-spin' : ''}`} />{importStatus.data?.current ? 'Paketni qayta tekshirish' : 'Rasmiy paketni import qilish'}</Button>}

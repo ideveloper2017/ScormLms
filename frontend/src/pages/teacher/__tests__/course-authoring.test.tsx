@@ -33,7 +33,6 @@ const content = { id: 5, moduleId: 4, title: 'Birinchi dars', contentType: 'text
 beforeEach(() => {
   vi.resetAllMocks();
   sessionStorage.clear();
-  vi.stubGlobal('confirm', vi.fn(() => false));
   vi.stubGlobal('PointerEvent', MouseEvent);
   HTMLElement.prototype.scrollIntoView = vi.fn();
   HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
@@ -166,7 +165,11 @@ describe('course authoring', () => {
     const view = mount();
     fireEvent.change(screen.getByRole('textbox', { name: 'Kurs nomi *' }), { target: { value: 'Saqlanmagan kurs' } });
     fireEvent.click(screen.getByRole('button', { name: 'Bekor qilish' }));
-    expect(window.confirm).toHaveBeenCalled();
+    const question = await screen.findByRole('alertdialog');
+    expect(question).toHaveTextContent("Saqlanmagan o'zgarishlar bekor qilinsinmi?");
+    fireEvent.click(within(question).getByRole('button', { name: "Yo'q, davom etaman" }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(screen.queryByText("Kurslar ro'yxati")).not.toBeInTheDocument();
     view.unmount();
     mount();
     expect(screen.getByRole('textbox', { name: 'Kurs nomi *' })).toHaveValue('Saqlanmagan kurs');
@@ -218,12 +221,14 @@ describe('course contents protection', () => {
 
   it('does not delete a module until the warning about its lessons is accepted', async () => {
     mountDetail();
-    const remove = await screen.findByRole('button', { name: "Darsni o'chirish" });
-    fireEvent.click(remove);
+    fireEvent.click(await screen.findByRole('button', { name: "Darsni o'chirish" }));
+    const question = await screen.findByRole('alertdialog');
+    expect(question).toHaveTextContent('barcha materiallar');
+    fireEvent.click(within(question).getByRole('button', { name: 'Bekor qilish' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(teacherPortalApi.deleteModule).not.toHaveBeenCalled();
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('barcha materiallar'));
-    vi.mocked(window.confirm).mockReturnValue(true);
-    fireEvent.click(remove);
+    fireEvent.click(await screen.findByRole('button', { name: "Darsni o'chirish" }));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: "O'chirish" }));
     await waitFor(() => expect(teacherPortalApi.deleteModule).toHaveBeenCalledWith('9', 4));
   });
 
@@ -233,13 +238,16 @@ describe('course contents protection', () => {
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByPlaceholderText('Dars mavzusi'), { target: { value: 'Yozilayotgan dars' } });
     fireEvent.keyDown(dialog, { key: 'Escape' });
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: "Yo'q, davom etaman" }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     view.unmount();
     mountDetail();
     expect(await screen.findByPlaceholderText('Dars mavzusi')).toHaveValue('Yozilayotgan dars');
-    vi.mocked(window.confirm).mockReturnValue(true);
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bekor qilish' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Ha, bekor qilish' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(sessionStorage.getItem('course-lesson:v1:7:9')).toBeNull();
   });
 });

@@ -13,6 +13,9 @@ import { LazyRichTextEditor } from "@/components/editor/lazy-rich-text-editor";
 import { isRichTextEmpty, richTextToPlainText } from "@/components/editor/rich-text-utils";
 import { useToast } from "@/hooks/use-toast";
 import { teacherPortalApi, type CourseContent, type SubjectMaterial } from "@/services/api/teacher-portal-api";
+import { useConfirm } from "@/components/confirm-dialog";
+import { QueryState } from "@/components/query-state";
+import { safeHref } from "@/lib/safe-url";
 
 type MaterialType = "VIDEO" | "DOCUMENT" | "LINK" | "FILE" | "TEXT";
 
@@ -27,6 +30,7 @@ const TYPE_META: Record<CourseContent["contentType"], { label: string; icon: Ele
 export function TeacherContent() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { confirm, confirmDialog } = useConfirm();
   const [subjectId, setSubjectId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -87,7 +91,7 @@ export function TeacherContent() {
     if (type === "TEXT" && isRichTextEmpty(body)) return toast({ variant: "destructive", title: "Dars matnini kiriting" });
     if (type === "LINK" && !url.trim()) return toast({ variant: "destructive", title: "Havolani kiriting" });
     if (["VIDEO", "DOCUMENT", "FILE"].includes(type) && !file && !url.trim()) {
-      return toast({ variant: "destructive", title: "Fayl tanlang yoki URL kiriting" });
+      return toast({ variant: "destructive", title: "Fayl tanlang yoki havola kiriting" });
     }
     saveMutation.mutate();
   }
@@ -132,7 +136,7 @@ export function TeacherContent() {
           ) : (
             <>
               <Field label="Fayl"><Input type="file" onChange={event => setFile(event.target.files?.[0] ?? null)} /></Field>
-              <Field label="Yoki tashqi URL"><Input disabled={Boolean(file)} placeholder="https://..." value={url} onChange={event => setUrl(event.target.value)} /></Field>
+              <Field label="Yoki tashqi havola"><Input disabled={Boolean(file)} placeholder="https://..." value={url} onChange={event => setUrl(event.target.value)} /></Field>
             </>
           )}
           <Field label="Qisqa tavsif" className="md:col-span-2"><Textarea value={description} onChange={event => setDescription(event.target.value)} /></Field>
@@ -141,7 +145,8 @@ export function TeacherContent() {
               {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Saqlash
             </Button>
           </div>
-          {!subjectsQuery.isLoading && subjects.length === 0 && <p className="md:col-span-2 text-sm text-destructive">Sizga fan biriktirilmagan. Administratorga murojaat qiling.</p>}
+          {subjectsQuery.isError && <div role="alert" className="md:col-span-2 flex flex-wrap items-center gap-2 text-sm text-destructive">Fanlar ro'yxatini yuklab bo'lmadi. <Button variant="outline" size="sm" onClick={() => void subjectsQuery.refetch()}>Qayta urinish</Button></div>}
+          {!subjectsQuery.isLoading && !subjectsQuery.isError && subjects.length === 0 && <p className="md:col-span-2 text-sm text-destructive">Sizga fan biriktirilmagan. Administratorga murojaat qiling.</p>}
         </CardContent>
       </Card>
 
@@ -150,12 +155,16 @@ export function TeacherContent() {
           <h2 className="text-lg font-semibold">Mening materiallarim</h2>
           <p className="text-sm text-muted-foreground">Kurs ichidagi “Kontent” bo'limidan modulga biriktiriladi.</p>
         </div>
-        {materialsQuery.isLoading && <div className="py-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>}
-        {!materialsQuery.isLoading && materials.length === 0 && <Card><CardContent className="py-10 text-center text-muted-foreground">Hozircha fan materiali yo'q</CardContent></Card>}
-        {materials.map(material => <MaterialCard key={material.id} material={material} deleting={deleteMutation.isPending} onDelete={() => deleteMutation.mutate(material.id)} />)}
+        <QueryState isLoading={materialsQuery.isLoading} isError={materialsQuery.isError} error={materialsQuery.error} onRetry={() => void materialsQuery.refetch()} isEmpty={materials.length === 0} emptyText="Hozircha fan materiali yo'q">
+          {materials.map(material => <MaterialCard key={material.id} material={material} deleting={deleteMutation.isPending} onDelete={async () => {
+            if (!(await confirm({ title: `“${material.title}” materiali o'chirilsinmi?`, confirmLabel: "O'chirish" }))) return;
+            deleteMutation.mutate(material.id);
+          }} />)}
+        </QueryState>
       </div>
 
       <ScormPackageManager />
+      {confirmDialog}
     </div>
   );
 }
@@ -173,8 +182,8 @@ function MaterialCard({ material, deleting, onDelete }: { material: SubjectMater
         {material.contentBody && <p className="mt-1 text-sm line-clamp-2">{richTextToPlainText(material.contentBody)}</p>}
       </div>
       <Badge variant="outline">{meta.label}</Badge>
-      {material.contentUrl && <Button variant="outline" size="icon" asChild><a href={material.contentUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>}
-      <Button variant="ghost" size="icon" className="text-destructive" disabled={deleting} onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
+      {safeHref(material.contentUrl) && <Button variant="outline" size="icon" asChild><a href={safeHref(material.contentUrl)} target="_blank" rel="noreferrer" aria-label="Materialni yangi oynada ochish"><ExternalLink className="h-4 w-4" /></a></Button>}
+      <Button variant="ghost" size="icon" className="text-destructive" aria-label="Materialni o'chirish" disabled={deleting} onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
     </CardContent></Card>
   );
 }

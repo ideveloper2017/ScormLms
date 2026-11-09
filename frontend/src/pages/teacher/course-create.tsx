@@ -25,6 +25,7 @@ import { formatTypeCounts } from "@/lib/syllabus";
 import { CourseFormField as Field } from "@/components/course-form-field";
 import { useAuth } from "@/contexts/auth-context";
 import { useSessionDraft, useUnloadWarning } from "@/hooks/use-session-draft";
+import { useConfirm } from "@/components/confirm-dialog";
 
 interface CourseForm {
   title: string;
@@ -66,6 +67,7 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const savingRef = useRef(false);
+  const { confirm, confirmDialog } = useConfirm();
   const initial: CourseForm = course ? {
     ...INITIAL_FORM, title: course.title, shortDescription: course.shortDescription || "",
     description: course.description || "", subjectId: String(course.subjectId || ""),
@@ -79,9 +81,9 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
   const [additionalOpen, setAdditionalOpen] = useState(Boolean(course));
   const dirty = JSON.stringify(form) !== JSON.stringify(initial) || Boolean(thumbnail);
   useUnloadWarning(dirty || saving);
-  const cancel = () => {
+  const cancel = async () => {
     if (savingRef.current) return;
-    if (dirty && !window.confirm("Saqlanmagan o'zgarishlar bekor qilinsinmi?")) return;
+    if (dirty && !(await confirm({ title: "Saqlanmagan o'zgarishlar bekor qilinsinmi?", description: "Kiritgan ma'lumotlaringiz saqlanmaydi.", confirmLabel: "Ha, bekor qilish", cancelLabel: "Yo'q, davom etaman" }))) return;
     draft.clear();
     if (onCancel) onCancel(); else navigate("/teacher/courses");
   };
@@ -217,7 +219,7 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
   return (
     <div className="mx-auto max-w-7xl space-y-5 p-3 sm:p-4 md:p-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={cancel} disabled={saving}>
+        <Button variant="ghost" size="icon" aria-label="Orqaga qaytish" onClick={cancel} disabled={saving}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -378,6 +380,7 @@ export function TeacherCourseCreate({ course, onSaved, onCancel }: {
           <Save className="h-4 w-4" /> {saving ? "Saqlanmoqda..." : course ? "O‘zgarishlarni saqlash" : "Kurs yaratish"}
         </Button>
       </div>
+      {confirmDialog}
     </div>
   );
 }

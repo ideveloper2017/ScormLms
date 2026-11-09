@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { AuthResponse, RefreshTokenResponse, User } from "@/types/auth.types";
 import { monitorApiRequest } from "./performance-monitor";
 
@@ -21,6 +21,23 @@ const TOKEN_KEY = "token";
 const REFRESH_TOKEN_KEY = "refreshToken";
 const TOKEN_EXPIRES_AT_KEY = "tokenExpiresAt";
 
+/** Sessiya tugab, uni yangilab bo'lmaganda `window` ga yuboriladigan hodisa nomi (AuthProvider tinglaydi). */
+export const SESSION_EXPIRED_EVENT = "auth:session-expired";
+
+/** So'rov sozlamasiga qo'shiladigan ichki belgilar. */
+interface AuthRequestFlags {
+  /** Token yangilash so'rovi: Authorization sarlavhasi access token bilan almashtirilmaydi */
+  __isRefresh?: boolean;
+  /** 401 dan keyin bir marta qayta yuborilgan so'rov: ikkinchi marta yangilashga urinmaymiz */
+  __retried?: boolean;
+  __performanceMonitor?: { complete: () => void };
+}
+type AuthRequestConfig = InternalAxiosRequestConfig & AuthRequestFlags;
+
+/** 401 qaytsa ham token yangilash kerak bo'lmagan manzillar: bu yerda 401 "login/parol xato" degani. */
+const AUTH_ENDPOINTS = ["/auth/login", "/auth/hemis/", "/auth/refresh-token", "/auth/logout", "/auth/forgot-password", "/auth/reset-password"];
+const isAuthEndpoint = (url: string | undefined): boolean => !!url && AUTH_ENDPOINTS.some((path) => url.includes(path));
+
 let refreshTokenPromise: Promise<RefreshTokenResponse> | null = null;
 
 const api: AxiosInstance = axios.create({
@@ -34,20 +51,18 @@ const api: AxiosInstance = axios.create({
 
 // Request interceptor: Add auth token and start performance monitoring
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  (config: AuthRequestConfig) => {
+    // Token yangilash so'rovi refresh tokenni o'zi qo'yadi: uni access token bilan almashtirib yubormaymiz.
     const token = getToken();
-    if (token && config.headers) {
+    if (token && config.headers && !config.__isRefresh) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Start performance monitoring for this request
     const url = config.url || 'unknown';
     const method = config.method?.toUpperCase() || 'GET';
-    const monitor = monitorApiRequest(url, method);
-    
-    // Store monitor in config so we can access it in response/error interceptors
-    (config as any).__performanceMonitor = monitor;
-    
+    config.__performanceMonitor = monitorApiRequest(url, method);
+
     return config;
   },
   (error: AxiosError) => Promise.reject(error)
@@ -57,18 +72,31 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     // Complete performance monitoring
-    const monitor = (response.config as any).__performanceMonitor;
-    if (monitor) {
-      monitor.complete();
-    }
+    (response.config as AuthRequestConfig).__performanceMonitor?.complete();
     return response;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
+    const config = error.config as AuthRequestConfig | undefined;
     // Complete performance monitoring even on error
-    const monitor = (error.config as any)?.__performanceMonitor;
-    if (monitor) {
-      monitor.complete();
+    config?.__performanceMonitor?.complete();
+
+    // Access token muddati tugagan: refresh token bilan yangisini olib, shu so'rovni bir marta qayta yuboramiz.
+    // Bir vaqtda kelgan bir nechta 401 bitta yangilash so'rovini kutadi (refreshToken() single-flight).
+    if (
+      error.response?.status === 401 && config && !config.__isRefresh && !config.__retried
+      && !isAuthEndpoint(config.url) && getRefreshToken()
+    ) {
+      config.__retried = true;
+      try {
+        const tokens = await refreshToken();
+        config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+        return api.request(config);
+      } catch {
+        // Yangilab bo'lmadi: sessiya haqiqatan tugagan. Ilova holatini AuthProvider tozalaydi.
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+      }
     }
+
     // Xato matni foydalanuvchiga tushunarli bo'lsin: "Request failed with status code 400" / "Network Error"
     // o'rniga backend bergan xabar yoki o'zbekcha izoh. error.response o'zgarmaydi.
     error.message = friendlyErrorMessage(error);
@@ -108,7 +136,7 @@ export async function login(credentials: LoginRequest): Promise<AxiosResponse<Au
     const payload = response.data.data;
 
     if (!response.data.success || !payload?.accessToken) {
-      throw new Error(response.data.message || "Authentication failed: no token received");
+      throw new Error(response.data.message || "Tizimga kirib bo'lmadi: server token qaytarmadi.");
     }
 
     storeAuthData(payload);
@@ -120,12 +148,12 @@ export async function login(credentials: LoginRequest): Promise<AxiosResponse<Au
     clearAuthData();
 
     if (axios.isAxiosError(error)) {
-      let errorMessage = "Authentication failed";
+      let errorMessage = "Tizimga kirib bo'lmadi";
 
       if (error.code === "ECONNABORTED") {
-        errorMessage = "Request timeout. Please check your internet connection.";
+        errorMessage = "So'rov vaqti tugadi. Internet aloqasini tekshirib, qayta urinib ko'ring.";
       } else if (!error.response) {
-        errorMessage = "Cannot connect to server. Please check your internet connection or try again later.";
+        errorMessage = "Serverga ulanib bo'lmadi. Internet aloqasini tekshiring yoki birozdan so'ng qayta urinib ko'ring.";
       } else if (error.response.status === 401) {
         errorMessage = "Login yoki parol noto'g'ri";
       } else if (error.response.data?.message) {
@@ -139,7 +167,7 @@ export async function login(credentials: LoginRequest): Promise<AxiosResponse<Au
       throw new Error(errorMessage);
     }
 
-    throw error instanceof Error ? error : new Error("An unexpected error occurred during login");
+    throw error instanceof Error ? error : new Error("Tizimga kirishda kutilmagan xatolik yuz berdi");
   }
 }
 
@@ -202,28 +230,32 @@ export async function refreshToken(): Promise<RefreshTokenResponse> {
   const currentRefreshToken = getRefreshToken();
   if (!currentRefreshToken) {
     clearAuthData();
-    throw new Error("No refresh token available");
+    throw new Error("Sessiya tugagan. Tizimga qayta kiring.");
   }
 
+  const refreshConfig: AxiosRequestConfig & AuthRequestFlags = {
+    headers: { Authorization: `Bearer ${currentRefreshToken}` },
+    __isRefresh: true,
+  };
+
   refreshTokenPromise = api
-    .post<CommonApiResponse<RefreshTokenResponse>>(
-      "/auth/refresh-token",
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${currentRefreshToken}`,
-        },
-      }
-    )
+    .post<CommonApiResponse<RefreshTokenResponse>>("/auth/refresh-token", {}, refreshConfig)
     .then((response) => {
       if (!response.data.success || !response.data.data) {
-        throw new Error(response.data.message || "Token refresh failed");
+        throw new Error(response.data.message || "Sessiyani yangilab bo'lmadi");
       }
 
       storeTokenData(response.data.data);
       return response.data.data;
     })
     .catch((error) => {
+      // Refresh token bir martalik: boshqa oynada (tab) allaqachon yangilangan bo'lsa, bu oynadagi eski
+      // token rad etiladi. Bunday holda saqlangan yangi tokenlar bilan davom etamiz, chiqarib yubormaymiz.
+      const storedAccess = getToken();
+      const storedRefresh = getRefreshToken();
+      if (storedAccess && storedRefresh && storedRefresh !== currentRefreshToken) {
+        return { accessToken: storedAccess, refreshToken: storedRefresh } as RefreshTokenResponse;
+      }
       clearAuthData();
       throw error;
     })
@@ -239,7 +271,7 @@ export const refreshAccessToken = refreshToken;
 export async function getCurrentUser(): Promise<User> {
   const response = await api.get<CommonApiResponse<User>>("/auth/me");
   if (!response.data.success || !response.data.data) {
-    throw new Error(response.data.message || "Failed to load current user");
+    throw new Error(response.data.message || "Foydalanuvchi ma'lumotini yuklab bo'lmadi");
   }
   localStorage.setItem("user", JSON.stringify(response.data.data));
   return response.data.data;

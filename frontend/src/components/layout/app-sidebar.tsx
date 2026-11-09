@@ -44,10 +44,7 @@ const ITEMS = {
   resources:  { name: "Axborot resurslari",    href: "/resources",           icon: Library       },
   exams:      { name: "Imtihonlar",            href: "/exams",               icon: GraduationCap },
   comms:      { name: "Aloqa",        href: "/communication",       icon: MessageCircle },
-  contingent: { name: "Kontingent",            href: "/contingent",          icon: ClipboardList },
-  attendance: { name: "Davomat",               href: "/attendance",          icon: Activity      },
-  teaching:   { name: "O'qitishni boshqarish", href: "/teaching",            icon: Database      },
-  stats:      { name: "Statistika",            href: "/statistics",          icon: BarChart3     },
+  stats:      { name: "Statistika",            href: "/statistics-dashbord", icon: BarChart3     },
   support:    { name: "Texnik yordam",         href: "/support",             icon: LifeBuoy      },
 
   // ── O'qituvchi navigatsiyasi (/teacher/*) ──────────────────────────────
@@ -87,7 +84,6 @@ const ITEMS = {
   sAttendance:    { name: "Davomat",             href: "/student/attendance",    icon: UserCheck       },
   sMessages:      { name: "Xabarlar",            href: "/student/messages",      icon: MessageCircle   },
   sNotifications: { name: "Bildirishnomalar",    href: "/student/notifications", icon: Bell            },
-  sCalendar:      { name: "Akademik kalendar",   href: "/student/calendar",      icon: Calendar        },
   sProfile:       { name: "Profil",              href: "/student/profile",       icon: CircleUser      },
   sSurveys:       { name: "Anonim so'rovlar",    href: "/student/surveys",       icon: ClipboardCheck  },
 
@@ -110,7 +106,6 @@ const ITEMS = {
   aAdmissionPolicies: { name: "Qabul va kontrakt", href: "/admin/admission-policies", icon: Landmark },
   aNonStateLicenses: { name: "Nodavlat litsenziyalari", href: "/admin/non-state-licenses", icon: BadgeCheck },
   aSchedule:     { name: "Dars jadvali",        href: "/admin/schedule",     icon: CalendarDays    },
-  aCalendar:     { name: "Akademik kalendar",   href: "/admin/calendar",     icon: Calendar        },
   aOrientations: { name: "Tizim bilan tanishuv",  href: "/admin/orientations", icon: Presentation    },
   aPractices:    { name: "Talaba amaliyoti",    href: "/admin/practices",    icon: BriefcaseBusiness },
   aAssessmentLeaves: { name: "Yakuniy nazorat ta'tili", href: "/admin/assessment-leaves", icon: CalendarDays },
@@ -128,7 +123,6 @@ const ITEMS = {
   aSurveys:       { name: "Anonim so'rovlar",     href: "/admin/surveys",          icon: ClipboardCheck  },
   aQualityStudies:{ name: "Sifat monitoringi",    href: "/admin/quality-monitoring", icon: FileSearch     },
   aContentReviews:{ name: "Kontent tekshiruvi",  href: "/admin/content-reviews",  icon: FileCheck2       },
-  aSettings:      { name: "Sozlamalar",          href: "/admin/settings",         icon: Settings        },
   aNotifications: { name: "Bildirishnomalar",    href: "/admin/notifications",     icon: Bell            },
   tNotifications: { name: "Bildirishnomalar",    href: "/teacher/notifications",   icon: Bell            },
 } satisfies Record<string, NavItem>;
@@ -259,11 +253,11 @@ export function buildNav(role: string): NavGroup[] {
     ADMIN:       ADMIN_NAV,
     METODIST: [
       { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-      { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.contingent] },
+      { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers] },
       { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aSyllabi, ITEMS.aSchedule, ITEMS.exams] },
       { label: "Nazorat va hisobot", items: [ITEMS.aContentReviews, ITEMS.aReports, ITEMS.aQualityStudies, ITEMS.aSurveys, ITEMS.stats] },
       { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers] },
-      { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.teaching, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },
+      { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },
     ],
     TEACHER: [
       { label: "Asosiy",         items: [ITEMS.tDashboard] },
@@ -278,7 +272,7 @@ export function buildNav(role: string): NavGroup[] {
       { label: "Ta'lim",    items: [ITEMS.sOrientation, ITEMS.sPractice, ITEMS.sAssessmentLeave, ITEMS.sStudyPlan, ITEMS.sCourses, ITEMS.sResources, ITEMS.sSchedule, ITEMS.sAssignments, ITEMS.sTests, ITEMS.sExams, ITEMS.sAttestations] },
       { label: "Natijalar", items: [ITEMS.sGrades, ITEMS.sTranscript, ITEMS.sReports, ITEMS.sAttendance] },
       { label: "Aloqa",     items: [ITEMS.sMessages, ITEMS.sNotifications] },
-      { label: "Boshqa",    items: [ITEMS.sSurveys, ITEMS.sCalendar, ITEMS.support, ITEMS.sProfile] },
+      { label: "Boshqa",    items: [ITEMS.sSurveys, ITEMS.support, ITEMS.sProfile] },
     ],
     PROCTOR: [
       { label: "Asosiy", items: [ITEMS.home, ITEMS.exams, ITEMS.comms, ITEMS.support] },
@@ -509,7 +503,7 @@ export function AppSidebar() {
                   </DropdownMenuItem>
                 )}
                 {showSettings && (
-                  <DropdownMenuItem onClick={() => go("/settings")}>
+                  <DropdownMenuItem onClick={() => go("/settings/configs")}>
                     <Settings className="mr-2 size-4" /> Sozlamalar
                   </DropdownMenuItem>
                 )}

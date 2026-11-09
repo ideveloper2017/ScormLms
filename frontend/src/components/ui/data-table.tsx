@@ -255,19 +255,19 @@ export function DataTable<TData, TValue>({
           <span className="mr-1 whitespace-nowrap">
             {(serverPagination?.pageIndex ?? table.getState().pagination.pageIndex) + 1} / {Math.max(serverPagination?.pageCount ?? table.getPageCount(), 1)}
           </span>
-          <Button variant="outline" size="icon" className="h-8 w-8"
+          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Birinchi sahifa" title="Birinchi sahifa"
             onClick={() => serverPagination ? serverPagination.onPageChange(0) : table.setPageIndex(0)} disabled={serverPagination ? serverPagination.pageIndex <= 0 : !table.getCanPreviousPage()}>
             <ChevronsLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8"
+          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Oldingi sahifa" title="Oldingi sahifa"
             onClick={() => serverPagination ? serverPagination.onPageChange(serverPagination.pageIndex - 1) : table.previousPage()} disabled={serverPagination ? serverPagination.pageIndex <= 0 : !table.getCanPreviousPage()}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8"
+          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Keyingi sahifa" title="Keyingi sahifa"
             onClick={() => serverPagination ? serverPagination.onPageChange(serverPagination.pageIndex + 1) : table.nextPage()} disabled={serverPagination ? serverPagination.pageIndex + 1 >= serverPagination.pageCount : !table.getCanNextPage()}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8"
+          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Oxirgi sahifa" title="Oxirgi sahifa"
             onClick={() => serverPagination ? serverPagination.onPageChange(Math.max(serverPagination.pageCount - 1, 0)) : table.setPageIndex(table.getPageCount() - 1)} disabled={serverPagination ? serverPagination.pageIndex + 1 >= serverPagination.pageCount : !table.getCanNextPage()}>
             <ChevronsRight className="h-4 w-4" />
           </Button>
