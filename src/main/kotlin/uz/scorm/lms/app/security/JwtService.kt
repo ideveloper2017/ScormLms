@@ -7,12 +7,15 @@ import io.jsonwebtoken.io.Decoders
 import io.jsonwebtoken.security.Keys
 import mu.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.core.env.Environment
+import org.springframework.core.env.Profiles
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Service
 
 import java.nio.charset.StandardCharsets
 import java.security.Key
+import java.security.SecureRandom
 import java.util.*
 import kotlin.math.log
 
@@ -20,21 +23,27 @@ private val logger = KotlinLogging.logger {}
 
 @Service
 class JwtService(
-    @Value("\${app.jwt.secret}") private val secret: String,
+    @Value("\${app.jwt.secret}") configuredSecret: String,
     @Value("\${app.jwt.expiration-ms:86400000}") private val expirationMs: Long,
     @Value("\${app.jwt.expiration}")
     private val accessTokenExpirationInMs: Long,
     @Value("\${app.jwt.refresh-expiration:2592000000}") // 30 days default
-    private val refreshTokenExpirationInMs: Long
+    private val refreshTokenExpirationInMs: Long,
+    environment: Environment,
 ) {
-    init {
-        // HS512 kamida 64 bayt talab qiladi; aks holda jjwt "Unexpected exception during
-        // bean creation" (WeakKeyException) bilan yiqiladi yoki login paytida xato beradi.
-        val secretBytes = secret.toByteArray(StandardCharsets.UTF_8).size
-        require(secretBytes >= 64) {
-            "JWT_SECRET (app.jwt.secret) kamida 64 bayt bo'lishi kerak, hozir $secretBytes bayt. " +
-                "Yangi qiymat: openssl rand -base64 96 | tr -d '\\n'"
+    /**
+     * Yaroqsiz JWT_SECRET ilovani to'xtatmaydi: uning o'rniga tasodifiy kalit ishlatiladi va logga ogohlantirish
+     * yoziladi. Shunda zaif yoki namuna kalit bilan token soxtalashtirib bo'lmaydi, lekin deploy ham yiqilmaydi.
+     * Tasodifiy kalit har ishga tushganda yangilanadi: foydalanuvchilar sessiyasi cookie orqali o'zi tiklanadi.
+     */
+    private val secret: String = run {
+        val production = environment.acceptsProfiles(Profiles.of("postgresql-prod"))
+        val problem = jwtSecretProblem(configuredSecret, production) ?: return@run configuredSecret
+        logger.warn {
+            "JWT_SECRET yaroqsiz ($problem): vaqtinchalik tasodifiy kalit ishlatilmoqda. " +
+                "Doimiy kalit uchun JWT_SECRET ga kamida 64 belgili tasodifiy qiymat bering (openssl rand -base64 96)."
         }
+        Base64.getEncoder().encodeToString(ByteArray(64).also { SecureRandom().nextBytes(it) })
     }
 
     private val key: Key = Keys.hmacShaKeyFor(secret.toByteArray(StandardCharsets.UTF_8))
@@ -177,5 +186,23 @@ class JwtService(
         } catch (e: Exception) {
             true
         }
+    }
+}
+
+private val PLACEHOLDER_MARKERS = listOf("change_me", "changeme")
+private val NON_PRODUCTION_MARKERS = listOf("dev-only", "test-only")
+
+/**
+ * JWT kaliti nega yaroqsizligini qaytaradi (yaroqli bo'lsa null). HS512 kamida 64 bayt talab qiladi;
+ * `.env.example` dagi namuna qiymat hammaga ma'lum; production'da dev/test kalitlari ham qabul qilinmaydi.
+ */
+internal fun jwtSecretProblem(secret: String, production: Boolean): String? {
+    val lowered = secret.lowercase()
+    return when {
+        secret.isBlank() -> "berilmagan"
+        secret.toByteArray(StandardCharsets.UTF_8).size < 64 -> "64 baytdan qisqa"
+        PLACEHOLDER_MARKERS.any { it in lowered } -> "namuna qiymat (.env.example)"
+        production && NON_PRODUCTION_MARKERS.any { it in lowered } -> "dev/test uchun mo'ljallangan qiymat"
+        else -> null
     }
 }

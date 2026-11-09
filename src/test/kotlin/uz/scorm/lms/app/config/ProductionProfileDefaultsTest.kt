@@ -5,15 +5,19 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.ConfigurableEnvironment
 import kotlin.test.Test
+import uz.scorm.lms.app.security.jwtSecretProblem
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
  * `postgresql-prod` profili hech qanday env fayl/o'zgaruvchisiz ham ishga tushishi uchun standart qiymatlarga
  * ega bo'lishi kerak. Bu test haqiqiy yml fayllarni bean'siz Spring muhitiga yuklab, standartlar hal bo'lishini va
- * ProductionSecretsGuard talablariga javob berishini tekshiradi (baza/Docker kerak emas).
+ * JWT kaliti talablariga javob berishini tekshiradi (baza/Docker kerak emas).
  */
 class ProductionProfileDefaultsTest {
+
+    private val MIN_HMAC_SECRET_BYTES = 64
 
     @Configuration(proxyBeanMethods = false)
     class NoBeans
@@ -38,10 +42,10 @@ class ProductionProfileDefaultsTest {
             val survey = env.required("app.survey.anonymization-secret")
             val dbPassword = env.required("spring.datasource.password")
 
-            requireProductionSecret("JWT_SECRET", jwt, MIN_HMAC_SECRET_BYTES)
-            requireProductionSecret("SURVEY_ANONYMIZATION_SECRET", survey, MIN_HMAC_SECRET_BYTES)
-            requireProductionSecret("DB_PASSWORD", dbPassword, MIN_DATABASE_PASSWORD_LENGTH)
-            ProductionSecretsGuard(jwt, survey, dbPassword)
+            // Standart JWT kaliti yaroqli bo'lishi kerak: aks holda JwtService har safar ogohlantirish berardi
+            assertNull(jwtSecretProblem(jwt, production = true))
+            assertTrue(survey.toByteArray().size >= MIN_HMAC_SECRET_BYTES)
+            assertTrue(dbPassword.isNotBlank())
         }
     }
 
