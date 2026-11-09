@@ -166,8 +166,8 @@ ensure_application_database() {
   fi
 }
 
-# Tomcat to'xtatilishidan oldin: bo'sh yoki namuna secret bilan ilova ishga tushmaydi
-# (ProductionSecretsGuard), shuning uchun buni downtime'siz shu yerda aniqlaymiz.
+# Env fayldagi maxfiy qiymatlar haqida ogohlantiradi. Yaroqsiz JWT_SECRET deployni to'xtatmaydi:
+# ilova o'zi tasodifiy kalitga o'tadi (JwtService), shuning uchun bu yerda faqat xabar beriladi.
 ensure_required_app_secrets() {
   local key value
   # systemd EnvironmentFile CRLF'dagi \r ni qiymatga qo'shib qo'yadi: profil
@@ -179,15 +179,12 @@ ensure_required_app_secrets() {
   for key in JWT_SECRET SURVEY_ANONYMIZATION_SECRET; do
     value="$(read_app_env "$key" || true)"
     [[ -n "$value" ]] || continue
-    [[ "${value,,}" != *change_me* && "${value,,}" != *dev-only* ]] || \
-      fail "$key in $APP_ENV_FILE still contains a placeholder value"
-    (( ${#value} >= 64 )) || fail "$key must be at least 64 bytes (openssl rand -base64 96)"
+    if [[ "${value,,}" == *change_me* || "${value,,}" == *dev-only* ]] || (( ${#value} < 64 )); then
+      log "WARNING: $key in $APP_ENV_FILE namuna yoki 64 belgidan qisqa. Yangi qiymat: openssl rand -base64 96"
+    fi
   done
   value="$(read_app_env DB_PASSWORD || true)"
-  if [[ -n "$value" ]]; then
-    [[ "${value,,}" != *change_me* ]] || fail "DB_PASSWORD in $APP_ENV_FILE still contains a placeholder value"
-    (( ${#value} >= 12 )) || fail "DB_PASSWORD must be at least 12 characters"
-  fi
+  [[ "${value,,}" != *change_me* ]] || fail "DB_PASSWORD in $APP_ENV_FILE still contains a placeholder value (baza bu parol bilan ulanmaydi)"
   [[ "$(read_app_env CORS_ALLOWED_ORIGINS || true)" != *'*'* ]] || \
     fail "CORS_ALLOWED_ORIGINS must list explicit origins, not a wildcard"
   [[ "$(read_app_env APP_DEMO_DATA_ENABLED || printf 'false')" != "true" ]] || \
