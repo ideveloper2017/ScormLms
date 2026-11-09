@@ -20,6 +20,8 @@ data class SyllabusLessonMaterialRequest(
     val contentUrl: String? = null,
     val contentBody: String? = null,
     val assetId: Long? = null,
+    /** Video davomiyligi (soniya) */
+    val durationSeconds: Int? = null,
 )
 
 /** Dars kontenti va shu o'zgarish bilan moslangan qoralama kurslar */
@@ -114,9 +116,9 @@ class SyllabusLessonMaterialService(
         syllabus.topics.firstOrNull { it.id == topicId } ?: throw NoSuchElementException("Dars ushbu dasturga tegishli emas: $topicId")
 
     private fun bankRequest(syllabus: SubjectSyllabus, request: SyllabusLessonMaterialRequest) = SubjectMaterialRequest(
-        subjectId = requireNotNull(syllabus.subject.id), title = request.title, description = request.description,
+        subjectId = syllabus.subject?.id, title = request.title, description = request.description,
         contentType = request.contentType, contentUrl = request.contentUrl, contentBody = request.contentBody,
-        assetId = request.assetId,
+        assetId = request.assetId, durationSeconds = request.durationSeconds,
         languageCode = when (syllabus.language) {
             SyllabusLanguage.RU -> "ru"
             SyllabusLanguage.EN -> "en"

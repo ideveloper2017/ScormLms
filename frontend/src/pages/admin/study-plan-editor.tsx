@@ -245,9 +245,10 @@ export function AdminStudyPlanEditor() {
     queryFn: () => academicPeriodApi.listSemesters(false),
   });
   const item = detail.data;
+  // Barcha fanlar (umumiy katalog): rejaga istalgan fan qo'shiladi, fan guruhi bo'yicha filtrlanadi
   const subjects = useQuery({
-    queryKey: ["subjects", form.programId],
-    queryFn: () => listSubjects(form.programId),
+    queryKey: ["subjects", "all"],
+    queryFn: () => listSubjects(),
     enabled: !creating && form.programId > 0,
   });
 

@@ -106,7 +106,7 @@ export function LessonContentPage({ syllabusId, lesson, editable, onChanged }: {
               <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{index + 1}. {material.title}</p>
-                {material.description && <p className="text-xs text-muted-foreground">{material.description}</p>}
+                {material.description && <p className="line-clamp-2 text-xs text-muted-foreground">{richTextToPlainText(material.description)}</p>}
                 {material.asset && <p className="truncate text-xs text-muted-foreground">{material.asset.originalFileName}</p>}
                 {material.contentBody && <p className="mt-1 line-clamp-2 text-sm">{richTextToPlainText(material.contentBody)}</p>}
               </div>

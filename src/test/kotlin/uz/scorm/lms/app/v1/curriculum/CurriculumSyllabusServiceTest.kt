@@ -34,7 +34,8 @@ class CurriculumSyllabusServiceTest {
     private val syllabi = mockk<SubjectSyllabusRepository>()
     private val models = mockk<SubjectModelProgramRepository>()
     private val syllabusService = mockk<SubjectSyllabusService>()
-    private val service = CurriculumSyllabusService(versions, items, syllabi, models, syllabusService, mockk(relaxed = true), mockk(relaxed = true))
+    private val materials = mockk<uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository>()
+    private val service = CurriculumSyllabusService(versions, items, syllabi, models, syllabusService, mockk(relaxed = true), mockk(relaxed = true), materials)
 
     private val version = mockk<ProgramCurriculumVersion>(relaxed = true).also {
         every { it.id } returns 5
@@ -74,6 +75,25 @@ class CurriculumSyllabusServiceTest {
 
         service.detach(5, 11, actorId = 9)
         assertEquals(null, sem1.syllabus)
+    }
+
+    @Test
+    fun `fansiz yaratilgan dastur birinchi biriktirilganda shu fanga va uning dars materiallariga yoziladi`() {
+        val syllabus = SubjectSyllabus(null, "Mexanika kursi", SyllabusLanguage.UZ, "Qisqa", null, "To'liq").apply { id = 43 }
+        syllabus.topics += SubjectSyllabusTopic(syllabus, SyllabusTopicType.THEORETICAL, 1, "Kinematika").apply { id = 70 }
+        val material = uz.scorm.lms.app.v1.courses.model.SubjectMaterial(null, null, 9, "Ma'ruza", null,
+            uz.scorm.lms.app.v1.courses.model.CourseContentType.TEXT, contentBody = "<p>x</p>", languageCode = "uz",
+            authorName = "Kafedra", contentVersion = "1.0", sourceName = "Dastur")
+        every { syllabi.findByIdAndDeletedFalse(43) } returns syllabus
+        every { syllabi.save(any()) } answers { firstArg() }
+        every { materials.findAllBySyllabusTopicIdInAndDeletedFalseOrderByTopicPositionAscIdAsc(listOf(70L)) } returns listOf(material)
+        every { materials.save(any()) } answers { firstArg() }
+
+        service.attach(5, 11, 43, actorId = 9)
+
+        assertSame(programming, syllabus.subject)
+        assertSame(programming, material.subject)
+        assertSame(syllabus, sem1.syllabus)
     }
 
     @Test

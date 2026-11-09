@@ -24,6 +24,7 @@ interface SubjectForm {
   nameKaa: string;
   nameUzCyrillic: string;
   code: string;
+  /** Formada ko'rinmaydi — kredit o'quv rejada (har semestr qatorida) belgilanadi; tahrirda eski qiymat saqlanadi */
   credits: string;
   subjectType: "" | "PRACTICE" | "COURSE_WORK" | "STATE_ATTESTATION" | "GRADUATION_WORK";
   programId: number | null;
@@ -35,12 +36,10 @@ const subjectTypeLabel: Record<string, string> = {
   PRACTICE: "Amaliyot", COURSE_WORK: "Kurs ishi", STATE_ATTESTATION: "Davlat attestatsiyasi", GRADUATION_WORK: "Bitiruv ishi",
 };
 
-// O'quv rejaga faqat kodi va krediti (1..60) bor fan qo'shiladi
+// O'quv rejaga kodi bor fan qo'shiladi; kredit va soatlar o'quv rejada beriladi
 const validateSubject = (f: SubjectForm): string | null => {
   if (!f.name.trim()) return "Fan nomi majburiy";
   if (!f.code.trim()) return "Fan kodi majburiy (o'quv rejaga qo'shish uchun kerak)";
-  const credits = parseCredits(f.credits);
-  if (credits == null || credits < 1 || credits > 60) return "Kredit 1 dan 60 gacha bo'lishi kerak";
   return null;
 };
 
@@ -66,7 +65,6 @@ export function AdminSubjects() {
 
   const activeCount    = subjects.items.filter((s) => s.active).length;
   const inactiveCount  = subjects.items.length - activeCount;
-  const totalCredits   = subjects.items.reduce((sum, s) => sum + (s.credits ?? 0), 0);
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
@@ -79,7 +77,7 @@ export function AdminSubjects() {
           </div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Fanlar</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            O'quv fanlarini va kredit soatlarini boshqaring
+            O'quv fanlari katalogi — kredit va soatlar o'quv rejada belgilanadi
           </p>
         </div>
 
@@ -96,11 +94,6 @@ export function AdminSubjects() {
             {inactiveCount > 0 && (
               <Badge variant="outline" className="text-xs">
                 Nofaol: {inactiveCount}
-              </Badge>
-            )}
-            {totalCredits > 0 && (
-              <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 text-xs">
-                Jami kredit: {totalCredits}
               </Badge>
             )}
           </div>
@@ -123,17 +116,6 @@ export function AdminSubjects() {
         columns={[
           { header: "Nomi",      cell: (s) => <span className="font-medium">{s.name}</span> },
           { header: "Kodi",      cell: (s) => s.code ?? "—" },
-          {
-            header: "Kredit",
-            cell: (s) =>
-              s.credits != null ? (
-                <Badge variant="outline" className="text-xs font-mono">
-                  {s.credits} kr
-                </Badge>
-              ) : (
-                "—"
-              ),
-          },
           { header: "Yo'nalish", cell: (s) => s.programName ?? "—" },
           { header: "Fan guruhi", cell: (s) => s.subjectCategoryName ?? "—" },
           { header: "Fan turi", cell: (s) => (s.subjectType ? subjectTypeLabel[s.subjectType] : "Oddiy fan") },
@@ -163,7 +145,6 @@ export function AdminSubjects() {
             name: f.name.trim(),
             nameEn: f.nameEn.trim() || null, nameRu: f.nameRu.trim() || null, nameKaa: f.nameKaa.trim() || null, nameUzCyrillic: f.nameUzCyrillic.trim() || null,
             code: f.code.trim() || null,
-            credits: parseCredits(f.credits),
             subjectType: f.subjectType || null,
             programId: f.programId,
             subjectCategoryId: f.subjectCategoryId,
@@ -197,25 +178,13 @@ export function AdminSubjects() {
                 placeholder="masalan: Matematik analiz"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Kodi</Label>
-                <Input
-                  value={form.code}
-                  onChange={(e) => set({ code: e.target.value })}
-                  placeholder="MA101"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Kredit soat</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.credits}
-                  onChange={(e) => set({ credits: e.target.value })}
-                  placeholder="6"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Kodi</Label>
+              <Input
+                value={form.code}
+                onChange={(e) => set({ code: e.target.value })}
+                placeholder="MA101"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Fan guruhi</Label>

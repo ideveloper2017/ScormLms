@@ -107,7 +107,7 @@ class CourseService(
         require((syllabus.status == "APPROVED" || allowDraft) && syllabus.active) {
             "Kurs faqat tasdiqlangan va faol o'quv dasturi asosida yaratiladi"
         }
-        require(subjectId != null && syllabus.subject.id == subjectId) { "Tanlangan o'quv dasturi kurs faniga mos emas" }
+        require(subjectId != null && syllabus.subject?.id == subjectId) { "Tanlangan o'quv dasturi kurs faniga mos emas" }
         return syllabus
     }
 

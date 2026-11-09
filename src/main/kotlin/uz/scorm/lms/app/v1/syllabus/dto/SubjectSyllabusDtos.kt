@@ -6,9 +6,10 @@ import java.time.Instant
 
 data class SubjectSyllabusDto(
     val id: Long,
-    val subjectId: Long,
+    /** null — dastur hali o'quv reja faniga biriktirilmagan */
+    val subjectId: Long?,
     val subjectCode: String?,
-    val subjectName: String,
+    val subjectName: String?,
     val name: String,
     val language: SyllabusLanguage,
     val shortDescription: String,
@@ -29,6 +30,13 @@ data class SubjectSyllabusDto(
     val semester: Int? = null,
     /** Dastur tuzilmasi: modullar va ularning darslari (eski revision JSON'larida bo'lmaydi) */
     val modules: List<SyllabusModuleDto> = emptyList(),
+    /** Natijalar (har biri yangi qatordan) */
+    val learningOutcomes: String? = null,
+    /** Muqova rasmi yuklangan */
+    val coverImageAvailable: Boolean = false,
+    /** Yuklangan tanishtiruv videosi nomi (null — yuklanmagan) */
+    val introVideoName: String? = null,
+    val introVideoUrl: String? = null,
 )
 
 data class SyllabusTopicDto(
@@ -68,14 +76,18 @@ data class SyllabusWorkflowRequest(val action: String)
 data class SyllabusRevisionDto(val revisionNumber: Int, val content: SubjectSyllabusDto, val approvedByName: String, val approvedAt: Instant)
 
 data class SubjectSyllabusRequest(
-    val subjectId: Long,
-    // Berilmasa fan nomi olinadi — dastur fan bilan aniqlanadi
+    /** Ixtiyoriy: fan o'quv reja taxtasida dastur biriktirilganda yoziladi */
+    val subjectId: Long? = null,
+    // Berilmasa fan nomi olinadi; fansiz dasturda majburiy
     val name: String? = null,
     val language: SyllabusLanguage,
     val shortDescription: String,
     val requirements: String? = null,
     val fullDescription: String,
     val active: Boolean = true,
+    val learningOutcomes: String? = null,
+    /** Tanishtiruv videosi havolasi (fayl alohida yuklanadi) */
+    val introVideoUrl: String? = null,
     // null — mavzular o'zgartirilmaydi; ro'yxat berilsa, to'liq almashtiriladi
     val topics: List<SyllabusTopicRequest>? = null,
 )

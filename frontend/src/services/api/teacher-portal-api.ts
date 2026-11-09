@@ -235,6 +235,8 @@ export interface SubjectMaterial {
   sourceUrl?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  /** Video davomiyligi (soniya) */
+  durationSeconds?: number | null;
 }
 
 export interface SubjectMaterialPayload {

@@ -6,6 +6,17 @@ import { teacherPortalApi, type CourseContentAsset } from '@/services/api/teache
 
 const PdfReader = lazy(() => import('./pdf-reader'));
 type Lesson = { id: number; title: string; contentType?: string; contentBody?: string | null; contentUrl?: string | null; asset?: CourseContentAsset | null };
+/** Fayl o'qish manbasi: sukut bo'yicha kurs kontenti; talaba o'quv dasturidan o'qiganda — dastur materiali */
+export interface LessonFileLoader {
+  file: () => Promise<Blob>;
+  presentation: () => Promise<Blob>;
+  legacyWord: () => Promise<string>;
+}
+const courseLoader = (courseId: string, contentId: number): LessonFileLoader => ({
+  file: () => teacherPortalApi.downloadContentFile(courseId, contentId),
+  presentation: () => teacherPortalApi.previewPresentation(courseId, contentId),
+  legacyWord: () => teacherPortalApi.previewLegacyWord(courseId, contentId),
+});
 
 /** Allowlisted providers only. Never embed arbitrary sites in the LMS origin. */
 export function videoSource(value: string): { kind: 'embed' | 'video'; url: string } | null {
@@ -34,15 +45,16 @@ export function videoSource(value: string): { kind: 'embed' | 'video'; url: stri
   return null;
 }
 
-export function LessonContentViewer({ courseId, content }: { courseId: string; content: Lesson }) {
+export function LessonContentViewer({ courseId, content, loader }: { courseId: string; content: Lesson; loader?: LessonFileLoader }) {
   return <div className="min-w-0 space-y-4">
     {content.contentBody && <RichTextContent value={content.contentBody} contained className="rounded-md border bg-background p-4 leading-7" />}
-    {content.asset ? <AssetReader key={`${courseId}:${content.id}:${content.asset.sha256}`} courseId={courseId} content={content} asset={content.asset} />
+    {content.asset ? <AssetReader key={`${courseId}:${content.id}:${content.asset.sha256}`} courseId={courseId} content={content} asset={content.asset}
+      loader={loader ?? courseLoader(courseId, content.id)} />
       : content.contentUrl ? <LinkedMedia key={content.contentUrl} title={content.title} value={content.contentUrl} /> : null}
   </div>;
 }
 
-function LinkedMedia({ title, value }: { title: string; value: string }) {
+export function LinkedMedia({ title, value }: { title: string; value: string }) {
   const source = videoSource(value);
   if (!source) return <p role="status" className="rounded-md border p-4 text-sm text-muted-foreground">Bu materialni sayt ichida o‘qish uchun o‘qituvchi uning PDF, Word, HTML yoki video faylini yuklashi kerak.</p>;
   return source.kind === 'video' ? <VideoPlayer title={title} url={source.url} />
@@ -51,7 +63,7 @@ function LinkedMedia({ title, value }: { title: string; value: string }) {
       referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation" />;
 }
 
-function VideoPlayer({ title, url }: { title: string; url: string }) {
+export function VideoPlayer({ title, url }: { title: string; url: string }) {
   const video = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -77,7 +89,7 @@ function VideoPlayer({ title, url }: { title: string; url: string }) {
   </div>;
 }
 
-function AssetReader({ courseId, content, asset }: { courseId: string; content: Lesson; asset: CourseContentAsset }) {
+function AssetReader({ courseId, content, asset, loader }: { courseId: string; content: Lesson; asset: CourseContentAsset; loader: LessonFileLoader }) {
   const extension = asset.originalFileName.split('.').pop()?.toLowerCase();
   const legacy = extension === 'doc';
   const isDocx = extension === 'docx';
@@ -88,9 +100,9 @@ function AssetReader({ courseId, content, asset }: { courseId: string; content: 
     queryKey: ['lesson-file', courseId, content.id, asset.sha256],
     enabled: supported, gcTime: 0, staleTime: Infinity, retry: 1,
     queryFn: async () => {
-      if (isPresentation) return { blob: await teacherPortalApi.previewPresentation(courseId, content.id) };
-      if (legacy) return { text: await teacherPortalApi.previewLegacyWord(courseId, content.id), html: false };
-      const blob = await teacherPortalApi.downloadContentFile(courseId, content.id);
+      if (isPresentation) return { blob: await loader.presentation() };
+      if (legacy) return { text: await loader.legacyWord(), html: false };
+      const blob = await loader.file();
       if (isDocx) {
         const { convertToHtml } = await import('mammoth');
         const result = await convertToHtml({ arrayBuffer: await blob.arrayBuffer() });

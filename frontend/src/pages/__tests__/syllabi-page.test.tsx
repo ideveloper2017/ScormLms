@@ -8,11 +8,11 @@ import { syllabusApi, type SubjectSyllabus } from "@/services/api/syllabus-api";
 
 vi.mock("@/services/api/curriculum-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  curriculumApi: { list: vi.fn(), get: vi.fn(), createSyllabus: vi.fn(), attachSyllabus: vi.fn(), detachSyllabus: vi.fn() },
+  curriculumApi: { list: vi.fn(), get: vi.fn(), attachSyllabus: vi.fn() },
 }));
 vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  syllabusApi: { list: vi.fn(), linkedCourses: vi.fn(async () => []), updateTopicsWithCourses: vi.fn(), updateModulesWithCourses: vi.fn() },
+  syllabusApi: { list: vi.fn(), delete: vi.fn(), mediaFile: vi.fn() },
 }));
 vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: { id: 1, role: { name: "admin" }, roles: [], permissions: ["ACADEMIC_WRITE"] } }) }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
@@ -21,19 +21,13 @@ const row = (patch: Partial<CurriculumSubject>): CurriculumSubject => ({
   id: 9, subjectId: 1, subjectCode: "DAS1110", subjectName: "Dasturlash 1,2", credits: 6, semester: 1, planItemType: "REQUIRED",
   planRowNumber: "1.09", lectureHours: 18, practicalHours: 27, laboratoryHours: 27, seminarHours: 0, auditoryHours: 72, selfStudyHours: 108, ...patch,
 });
-const sem2 = row({ id: 10, semester: 2, credits: 4, lectureHours: 12, practicalHours: 18, laboratoryHours: 18, auditoryHours: 48, selfStudyHours: 72 });
-const writing = row({
-  id: 11, subjectId: 2, subjectCode: "AKY1104", subjectName: "Akademik yozuv", planRowNumber: "1.10", credits: 4, lectureHours: 0,
-  practicalHours: 48, laboratoryHours: 0, auditoryHours: 48, selfStudyHours: 72,
-  syllabusId: 40, syllabusName: "Akademik yozuv", syllabusLanguage: "UZ", syllabusStatus: "APPROVED", syllabusTopicCount: 9, syllabusComplete: true,
-});
 const version = (id: number, subjects: CurriculumSubject[], patch: Partial<CurriculumVersion> = {}) => ({
   id, programName: "Dasturiy injiniring", versionCode: `DI-${id}`, academicYear: "2025-2026", educationLanguage: "uz-Latn",
   status: "APPROVED", subjects, ...patch,
 }) as CurriculumVersion;
 const syllabus = (patch: Partial<SubjectSyllabus>): SubjectSyllabus => ({
-  id: 41, subjectId: 1, subjectName: "Dasturlash 1,2", name: "Dasturlash 1,2", language: "UZ", shortDescription: "q",
-  fullDescription: "t", active: true, status: "DRAFT", revisionNumber: 1, topics: [], ...patch,
+  id: 41, subjectId: 1, subjectCode: "DAS1110", subjectName: "Dasturlash 1,2", name: "Dasturlash 1,2", language: "UZ", shortDescription: "q",
+  fullDescription: "t", active: true, status: "APPROVED", revisionNumber: 1, topics: [], ...patch,
 });
 const mount = () => render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
@@ -43,68 +37,28 @@ const mount = () => render(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(curriculumApi.list).mockResolvedValue([version(5, []), version(6, [], { status: "ARCHIVED", versionCode: "ESKI" })]);
-  vi.mocked(curriculumApi.get).mockResolvedValue(version(5, [row({}), sem2, writing]));
-  vi.mocked(syllabusApi.list).mockResolvedValue([]);
-});
-
-it("reja fanlari va ularning o'quv dasturlari; dastur yaratilgach dastur (modullar) reja soatlari bilan ochiladi", async () => {
-  mount();
-
-  const select = await screen.findByLabelText("O'quv reja");
-  expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual(["Dasturiy injiniring · DI-5 · 2025-2026"]);
-  const dasturlash = (await screen.findByText("Dasturlash 1,2")).closest("tr") as HTMLElement;
-  expect(within(dasturlash).getByText("1, 2")).toBeInTheDocument();
-  expect(within(dasturlash).getByText("Tuzilmagan")).toBeInTheDocument();
-  const yozuv = screen.getByText("Akademik yozuv", { selector: "p.font-medium" }).closest("tr") as HTMLElement;
-  expect(within(yozuv).getByText("Tasdiqlangan")).toBeInTheDocument();
-  expect(within(yozuv).getByRole("button", { name: /9 dars/ })).toHaveAttribute("title", "Rejadagi barcha mashg'ulot turlariga dars kiritilgan");
-  expect(screen.getByText("2 ta fandan 1 tasiga o'quv dasturi tuzilgan")).toBeInTheDocument();
-
-  fireEvent.click(within(dasturlash).getByRole("button", { name: /Dastur yaratish/ }));
-  const dialog = await screen.findByRole("dialog", { name: "Yangi o'quv dasturi" });
-  expect(within(dialog).getByLabelText("Fan *")).toHaveValue("9");
-  expect(within(dialog).getByLabelText("Rejadagi soatlar"))
-    .toHaveTextContent("Rejada: 1, 2-semestr · 6+4 kredit · Ma'ruza 30 · Amaliy 45 · Laboratoriya 45 · Mustaqil ta'lim 180");
-  expect(within(dialog).getByRole("option", { name: "1.10 Akademik yozuv — dastur bor" })).toBeDisabled();
-  expect(await within(dialog).findByLabelText("Dastur tili")).toHaveValue("UZ");
-
-  vi.mocked(curriculumApi.createSyllabus).mockResolvedValue(version(5, []));
-  vi.mocked(curriculumApi.get).mockResolvedValue(version(5, [
-    row({ syllabusId: 41, syllabusName: "Dasturlash 1,2", syllabusTopicCount: 0, syllabusComplete: false }),
-    { ...sem2, syllabusId: 41 }, writing,
-  ]));
   vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({})]);
-  fireEvent.change(within(dialog).getByLabelText("Fanning maqsadi va vazifalari"), { target: { value: "Dasturlash asoslari" } });
-  fireEvent.click(within(dialog).getByRole("button", { name: "Yaratish va dasturni kiritish" }));
-
-  await waitFor(() => expect(curriculumApi.createSyllabus).toHaveBeenCalledWith(5, 9, {
-    language: "UZ", shortDescription: "Dasturlash asoslari", fullDescription: "Dasturlash asoslari",
-  }));
-  const topics = await screen.findByRole("region", { name: "Dasturlash 1,2" });
-  expect(within(topics).getByLabelText("Reja bilan solishtirish")).toHaveTextContent("2-qism (2-semestr):");
-  expect(screen.queryByRole("dialog", { name: "Yangi o'quv dasturi" })).not.toBeInTheDocument();
+  vi.mocked(curriculumApi.list).mockResolvedValue([version(5, []), version(6, [], { status: "ARCHIVED", versionCode: "ESKI" })]);
+  vi.mocked(curriculumApi.get).mockResolvedValue(version(5, [row({}), row({ id: 10, semester: 2 }), row({ id: 11, subjectId: 2, subjectName: "Akademik yozuv" })]));
 });
 
-it("fanning mavjud dasturi oldindan tanlanadi va biriktiriladi", async () => {
-  vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({ id: 30, name: "Dasturlash (KI rejasi)", topics: [] })]);
+it("faqat bitta «O'quv dasturlari» ro'yxati (tablarsiz); ⋮ menyudan dastur o'quv reja faniga biriktiriladi", async () => {
+  mount();
+
+  expect(await screen.findByRole("heading", { level: 1, name: "O'quv dasturlari" })).toBeInTheDocument();
+  expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  const line = (await screen.findByRole("button", { name: /Dasturlash 1,2 — dasturni ochish/ })).closest("tr") as HTMLElement;
+
+  fireEvent.keyDown(within(line).getByRole("button", { name: "Dasturlash 1,2 — amallar" }), { key: "Enter" });
+  fireEvent.click(await screen.findByRole("menuitem", { name: "O'quv rejaga biriktirish" }));
+  const dialog = await screen.findByRole("dialog", { name: "O'quv rejaga biriktirish" });
+  // Arxivlangan reja chiqmaydi; rejada faqat shu fan (ikki semestri bitta qator bo'lib)
+  expect(within(await within(dialog).findByLabelText("O'quv reja")).getAllByRole("option").map((o) => o.textContent)).toEqual(["Dasturiy injiniring · DI-5 · 2025-2026"]);
+  expect(await within(dialog).findByText("1, 2-semestr", { exact: false })).toBeInTheDocument();
+  expect(within(dialog).queryByText(/Akademik yozuv/)).not.toBeInTheDocument();
+
   vi.mocked(curriculumApi.attachSyllabus).mockResolvedValue(version(5, []));
-  mount();
-
-  fireEvent.click(await screen.findByRole("button", { name: /Yangi o'quv dasturi/ }));
-  const dialog = await screen.findByRole("dialog", { name: "Yangi o'quv dasturi" });
-  const existing = await within(dialog).findByRole("radio", { name: /Dasturlash \(KI rejasi\)/ });
-  expect(existing).toBeChecked();
-  expect(within(dialog).queryByLabelText("Dastur tili")).not.toBeInTheDocument();
-  fireEvent.click(within(dialog).getByRole("button", { name: "Biriktirish va dasturni ochish" }));
-  await waitFor(() => expect(curriculumApi.attachSyllabus).toHaveBeenCalledWith(5, 9, 30));
-  expect(curriculumApi.createSyllabus).not.toHaveBeenCalled();
-});
-
-it("o'quv rejalar yuklanmasa xabar va qayta yuklash tugmasi chiqadi", async () => {
-  vi.mocked(curriculumApi.list).mockRejectedValue(new Error("offline"));
-  mount();
-  expect(await screen.findByRole("alert")).toHaveTextContent("O'quv rejalar yuklanmadi");
-  fireEvent.click(screen.getByRole("button", { name: "Qayta yuklash" }));
-  await waitFor(() => expect(curriculumApi.list).toHaveBeenCalledTimes(2));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Biriktirish" }));
+  await waitFor(() => expect(curriculumApi.attachSyllabus).toHaveBeenCalledWith(5, 9, 41));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 });
