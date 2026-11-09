@@ -15,6 +15,12 @@ import { hasAuthority } from "@/lib/rbac-api";
 import { canCompleteQualityMonitoringStudy, qualityMonitoringApi, qualityMonitoringParticipantRange, type CompleteQualityMonitoringStudyInput, type QualityMonitoringMethod, type QualityMonitoringStudy } from "@/services/api/quality-monitoring-api";
 import { statusLabel } from "@/lib/status-labels";
 import { AcademicYearSelect } from "@/components/academic-year-select";
+import { useConfirm } from "@/components/confirm-dialog";
+import { QueryState } from "@/components/query-state";
+import { listAdminSurveys } from "@/services/api/survey-api";
+
+// Select bo'sh qiymatni qabul qilmaydi: "so'rov bog'lanmagan" uchun alohida belgi
+const NO_SURVEY = "none";
 
 const methodMeta: Record<QualityMonitoringMethod, { label: string; icon: typeof UsersRound }> = {
   FOCUS_GROUP: { label: "Fokus-guruh", icon: UsersRound },
@@ -29,11 +35,13 @@ export function AdminQualityMonitoring() {
   const { user } = useAuth();
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
   const { toast } = useToast();
+  const { confirm, confirmDialog } = useConfirm();
   const client = useQueryClient();
   const [form, setForm] = useState({ method: "FOCUS_GROUP" as QualityMonitoringMethod, title: "", objective: "", academicYear: currentAcademicYear(), startsAt: localDateTime(1), endsAt: localDateTime(3), locationDescription: "", populationScope: "", relatedSurveyId: "" });
   const [completing, setCompleting] = useState<QualityMonitoringStudy | null>(null);
   const [completion, setCompletion] = useState<CompleteQualityMonitoringStudyInput>({ participantCount: 3, summary: "", findings: "", recommendations: "", evidenceReference: "" });
   const studies = useQuery({ queryKey: ["quality-monitoring", "studies"], queryFn: qualityMonitoringApi.list });
+  const surveys = useQuery({ queryKey: ["surveys", "admin"], queryFn: listAdminSurveys, enabled: canWrite });
   const refresh = () => client.invalidateQueries({ queryKey: ["quality-monitoring", "studies"] });
   const fail = (error: Error) => toast({ variant: "destructive", title: "Amal bajarilmadi", description: error.message });
   const create = useMutation({
@@ -48,6 +56,9 @@ export function AdminQualityMonitoring() {
     mutationFn: ({ id, kind }: { id: number; kind: "approve" | "cancel" }) => qualityMonitoringApi[kind](id),
     onSuccess: async () => { await refresh(); toast({ title: "Monitoring dalili holati yangilandi" }); }, onError: fail,
   });
+  const cancelWithConfirm = async (id: number, studyTitle: string) => {
+    if (await confirm({ title: "Tadbir bekor qilinsinmi?", description: `"${studyTitle}" qoralamasi bekor qilinadi. Bu amalni qaytarib bo'lmaydi.`, confirmLabel: "Ha, bekor qilish", cancelLabel: "Yo'q" })) action.mutate({ id, kind: "cancel" });
+  };
   const openCompletion = (study: QualityMonitoringStudy) => {
     const [min] = qualityMonitoringParticipantRange(study.method);
     setCompletion({ participantCount: min, summary: "", findings: "", recommendations: "", evidenceReference: "" });
@@ -62,7 +73,7 @@ export function AdminQualityMonitoring() {
       <div className="space-y-2"><Label>Nomi</Label><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></div>
       <div className="space-y-2 md:col-span-2"><Label>Maqsad</Label><Textarea value={form.objective} onChange={(event) => setForm({ ...form, objective: event.target.value })} /></div>
       <div className="space-y-2"><Label>O'quv yili</Label><AcademicYearSelect aria-label="O'quv yili" value={form.academicYear} onChange={(academicYear) => setForm((f) => ({ ...f, academicYear }))} /></div>
-      <div className="space-y-2"><Label>Bog'langan anonim so'rov ID (ixtiyoriy)</Label><Input type="number" min={1} value={form.relatedSurveyId} onChange={(event) => setForm({ ...form, relatedSurveyId: event.target.value })} /></div>
+      <div className="space-y-2"><Label>Bog'langan anonim so'rov (ixtiyoriy)</Label><Select value={form.relatedSurveyId || NO_SURVEY} disabled={surveys.isLoading} onValueChange={(value) => setForm({ ...form, relatedSurveyId: value === NO_SURVEY ? "" : value })}><SelectTrigger aria-label="Bog'langan anonim so'rov"><SelectValue placeholder={surveys.isLoading ? "Yuklanmoqda..." : "So'rovni tanlang"} /></SelectTrigger><SelectContent><SelectItem value={NO_SURVEY}>So'rov bog'lanmagan</SelectItem>{(surveys.data ?? []).map((survey) => <SelectItem key={survey.id} value={String(survey.id)}>{survey.title} ({statusLabel(survey.status)})</SelectItem>)}</SelectContent></Select>{surveys.isError && <p className="text-xs text-destructive">So'rovlar ro'yxatini yuklab bo'lmadi. <button type="button" className="underline" onClick={() => { void surveys.refetch(); }}>Qayta urinish</button></p>}</div>
       <div className="space-y-2"><Label>Boshlanish</Label><Input type="datetime-local" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} /></div>
       <div className="space-y-2"><Label>Tugash</Label><Input type="datetime-local" value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} /></div>
       <div className="space-y-2"><Label>O'tkazish muhiti</Label><Input value={form.locationDescription} onChange={(event) => setForm({ ...form, locationDescription: event.target.value })} placeholder="Auditoriya yoki onlayn platforma" /></div>
@@ -70,9 +81,12 @@ export function AdminQualityMonitoring() {
       <Button className="md:col-span-2 md:w-fit" disabled={!form.title.trim() || !form.objective.trim() || !form.locationDescription.trim() || !form.populationScope.trim() || create.isPending} onClick={() => create.mutate()}><ClipboardCheck className="mr-2 h-4 w-4" />Qoralama yaratish</Button>
     </CardContent></Card>}
 
-    <div className="grid gap-4 lg:grid-cols-2">{(studies.data ?? []).map((study) => { const meta = methodMeta[study.method]; const Icon = meta.icon; return <Card key={study.id}><CardHeader><div className="flex justify-between gap-3"><div><CardTitle className="flex items-center gap-2 text-lg"><Icon className="h-4 w-4" />{study.title}</CardTitle><CardDescription>{meta.label} · {study.academicYear} · {study.facilitatorName}</CardDescription></div><Badge>{statusLabel(study.status)}</Badge></div></CardHeader><CardContent className="space-y-3"><p className="text-sm">{study.objective}</p><p className="text-xs text-muted-foreground">{study.populationScope} · {study.locationDescription} · shaxsiy identifikatorlar saqlanmaydi</p>{study.summary && <div className="rounded-md bg-muted p-3 text-sm"><b>Xulosa:</b> {study.summary}</div>}{study.findings && <p className="text-sm"><b>Topilmalar:</b> {study.findings}</p>}{study.recommendations && <p className="text-sm"><b>Tavsiyalar:</b> {study.recommendations}</p>}{study.evidenceReference && <p className="text-xs text-muted-foreground">Dalil: {study.evidenceReference}</p>}<div className="flex flex-wrap gap-2">{canWrite && canCompleteQualityMonitoringStudy(study) && <Button size="sm" onClick={() => openCompletion(study)}>Natijani kiritish</Button>}{canWrite && study.status === "COMPLETED" && <Button size="sm" onClick={() => action.mutate({ id: study.id, kind: "approve" })}><CheckCircle2 className="mr-1 h-3 w-3" />Tasdiqlash</Button>}{canWrite && study.status === "DRAFT" && <Button size="sm" variant="destructive" onClick={() => action.mutate({ id: study.id, kind: "cancel" })}><XCircle className="mr-1 h-3 w-3" />Bekor qilish</Button>}</div></CardContent></Card>; })}{studies.data?.length === 0 && <Card className="lg:col-span-2"><CardContent className="py-10 text-center text-muted-foreground">Monitoring dalili hali yaratilmagan.</CardContent></Card>}</div>
+    <QueryState isLoading={studies.isLoading} isError={studies.isError} error={studies.error} onRetry={() => { void studies.refetch(); }} isEmpty={!studies.data?.length} emptyText="Monitoring dalili hali yaratilmagan.">
+    <div className="grid gap-4 lg:grid-cols-2">{(studies.data ?? []).map((study) => { const meta = methodMeta[study.method]; const Icon = meta.icon; return <Card key={study.id}><CardHeader><div className="flex justify-between gap-3"><div><CardTitle className="flex items-center gap-2 text-lg"><Icon className="h-4 w-4" />{study.title}</CardTitle><CardDescription>{meta.label} · {study.academicYear} · {study.facilitatorName}</CardDescription></div><Badge>{statusLabel(study.status)}</Badge></div></CardHeader><CardContent className="space-y-3"><p className="text-sm">{study.objective}</p><p className="text-xs text-muted-foreground">{study.populationScope} · {study.locationDescription} · shaxsiy identifikatorlar saqlanmaydi</p>{study.summary && <div className="rounded-md bg-muted p-3 text-sm"><b>Xulosa:</b> {study.summary}</div>}{study.findings && <p className="text-sm"><b>Topilmalar:</b> {study.findings}</p>}{study.recommendations && <p className="text-sm"><b>Tavsiyalar:</b> {study.recommendations}</p>}{study.evidenceReference && <p className="text-xs text-muted-foreground">Dalil: {study.evidenceReference}</p>}<div className="flex flex-wrap gap-2">{canWrite && canCompleteQualityMonitoringStudy(study) && <Button size="sm" onClick={() => openCompletion(study)}>Natijani kiritish</Button>}{canWrite && study.status === "COMPLETED" && <Button size="sm" onClick={() => action.mutate({ id: study.id, kind: "approve" })}><CheckCircle2 className="mr-1 h-3 w-3" />Tasdiqlash</Button>}{canWrite && study.status === "DRAFT" && <Button size="sm" variant="destructive" onClick={() => { void cancelWithConfirm(study.id, study.title); }}><XCircle className="mr-1 h-3 w-3" />Bekor qilish</Button>}</div></CardContent></Card>; })}</div>
+    </QueryState>
 
     <Dialog open={!!completing} onOpenChange={(open) => { if (!open) setCompleting(null); }}><DialogContent><DialogHeader><DialogTitle>Agregat natijani qayd etish</DialogTitle><DialogDescription>{completing?.title}. Ishtirokchi shaxslarini yozmang; faqat tekshiriladigan umumlashtirilgan natija kiriting.</DialogDescription></DialogHeader><div className="space-y-3"><div className="space-y-2"><Label>Ishtirokchilar soni ({participantRange[0]}–{participantRange[1]})</Label><Input type="number" min={participantRange[0]} max={participantRange[1]} value={completion.participantCount} onChange={(event) => setCompletion({ ...completion, participantCount: Number(event.target.value) })} /></div><div className="space-y-2"><Label>Agregat xulosa</Label><Textarea value={completion.summary} onChange={(event) => setCompletion({ ...completion, summary: event.target.value })} /></div><div className="space-y-2"><Label>Topilmalar</Label><Textarea value={completion.findings} onChange={(event) => setCompletion({ ...completion, findings: event.target.value })} /></div><div className="space-y-2"><Label>Tavsiyalar</Label><Textarea value={completion.recommendations} onChange={(event) => setCompletion({ ...completion, recommendations: event.target.value })} /></div><div className="space-y-2"><Label>Dalil rekviziti</Label><Input value={completion.evidenceReference} onChange={(event) => setCompletion({ ...completion, evidenceReference: event.target.value })} placeholder="Protokol raqami yoki himoyalangan arxiv manzili" /></div></div><DialogFooter><Button variant="outline" onClick={() => setCompleting(null)}>Bekor qilish</Button><Button disabled={completion.summary.trim().length < 20 || completion.findings.trim().length < 20 || completion.recommendations.trim().length < 10 || !completion.evidenceReference.trim() || finish.isPending} onClick={() => finish.mutate()}>Natijani saqlash</Button></DialogFooter></DialogContent></Dialog>
+    {confirmDialog}
   </div>;
 }
 

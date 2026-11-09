@@ -246,7 +246,7 @@ export function LinkSyllabusDialog({ curriculumId, subject, onClose, onLinked }:
         </DialogHeader>
         {existing.isLoading && <p className="text-sm text-muted-foreground">Yuklanmoqda...</p>}
         {!existing.isLoading && items.length === 0 && (
-          <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">Bu fan uchun boshqa dastur yo'q.</p>
+          <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">Bu fan uchun o'quv dasturi yo'q — avval «O'quv dasturlari» bo'limida yarating.</p>
         )}
         <div role="radiogroup" aria-label="Mavjud o'quv dasturlari" className="space-y-1.5">
           {items.map((s) => (
@@ -254,6 +254,7 @@ export function LinkSyllabusDialog({ curriculumId, subject, onClose, onLinked }:
               <input type="radio" name="syllabus" className="mt-1" checked={selected === s.id} onChange={() => setSelected(s.id)} />
               <span className="flex-1">
                 <span className="font-medium">{s.name}</span>
+                {!s.subjectId && <span className="ml-2 rounded border px-1.5 text-[10px] text-muted-foreground">fanga biriktirilmagan</span>}
                 <span className="block text-xs text-muted-foreground">
                   {languageLabel(s.language)} · {syllabusStatuses[s.status]} ·{" "}
                   <ListOrdered className="inline h-3 w-3" /> {s.topics?.length ?? 0} mavzu

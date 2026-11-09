@@ -11,10 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { DataTable } from "@/components/ui/data-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listAuditLogs, type AuditLogEntry } from "@/lib/rbac-api";
-
-function fmtDateTime(s: string) {
-  return new Date(s).toLocaleString("uz-Latn", { dateStyle: "short", timeStyle: "short" });
-}
+import { formatDateTime } from "@/lib/format-date";
 
 const METHOD_CLS: Record<string, string> = {
   GET:    "bg-blue-100   text-blue-800   dark:bg-blue-900/30   dark:text-blue-300",
@@ -81,7 +78,7 @@ const columns: ColumnDef<AuditLogEntry>[] = [
     accessorKey: "timestamp",
     header: "Vaqt",
     cell: ({ getValue }) => (
-      <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtDateTime(getValue<string>())}</span>
+      <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(getValue<string>())}</span>
     ),
   },
 ];

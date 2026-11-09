@@ -1,11 +1,13 @@
 import api from "@/lib/api";
+import { responseErrorMessage } from "@/lib/api-error";
 import axios from "axios";
 
 // ─── Error helper ──────────────────────────────────────────────────────────
+// Xabarni o'qish qoidasi lib/api-error.ts da. Bu yerda server matni o'zgartirilmasdan olinadi
+// (apiErrorMessage dan farqi: "Not Found" kabi holat nomi ham shu holicha qaytadi).
 export function extractApiError(error: unknown, fallback: string): Error {
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { message?: string; error?: string } | undefined;
-    return new Error(data?.message || data?.error || error.message || fallback);
+    return new Error(responseErrorMessage(error) || error.message || fallback);
   }
   return error instanceof Error ? error : new Error(fallback);
 }

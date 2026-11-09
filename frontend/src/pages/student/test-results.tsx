@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useTestResults } from "@/hooks/tests/useTests";
 import { useToast } from "@/hooks/use-toast";
 import { qk } from "@/lib/query-keys";
+import { statusLabel } from "@/lib/status-labels";
+import { QueryState } from "@/components/query-state";
 import { proctoringAppealApi } from "@/services/api/proctoring-appeal-api";
 import { StudentQuizReviewCard } from "@/components/learning/quiz-review";
 import { TestResult as TestResultType } from "@/types/test.types";
@@ -34,6 +36,13 @@ const PROCTOR_EVENT_LABELS: Record<string, string> = {
   window_blurred: "Oyna fokusni yo'qotdi",
   network_offline: "Tarmoq uzildi",
   page_exit: "Test sahifasidan chiqildi",
+};
+
+// Risk darajasi talabaga o'zbekcha ko'rsatiladi
+const SEVERITY_LABELS: Record<string, string> = {
+  medium: "O'rtacha xavf",
+  high: "Yuqori xavf",
+  critical: "Juda yuqori xavf",
 };
 
 function ProctoringAppealCard({ quizId, attemptId }: { quizId: string; attemptId: string }) {
@@ -63,14 +72,14 @@ function ProctoringAppealCard({ quizId, attemptId }: { quizId: string; attemptId
       {context.isLoading && <p className="text-sm text-muted-foreground">Apellyatsiya ma'lumoti yuklanmoqda...</p>}
       {context.error && <p className="text-sm text-destructive">Ma'lumot yuklanmadi: {(context.error as Error).message}</p>}
       {data?.appeal && <div className="rounded-lg border p-4 space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">Yuborilgan murojaat</span><Badge variant={data.appeal.status === 'approved' ? 'default' : data.appeal.status === 'rejected' ? 'destructive' : 'outline'}>{data.appeal.status.toUpperCase()}</Badge></div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">Yuborilgan murojaat</span><Badge variant={data.appeal.status === 'approved' ? 'default' : data.appeal.status === 'rejected' ? 'destructive' : 'outline'}>{statusLabel(data.appeal.status)}</Badge></div>
         <p className="text-sm">{data.appeal.reason}</p>
         <p className="text-xs text-muted-foreground">{new Date(data.appeal.requestedAt).toLocaleString('uz-Latn')} · {data.appeal.disputedEvents.length} ta hodisa</p>
-        {data.appeal.decision && <div className="rounded bg-muted p-3 text-sm"><span className="font-medium">Yakuniy qaror:</span> {data.appeal.decision}<span className="block text-xs text-muted-foreground mt-1">{data.appeal.reviewedBy} · {data.appeal.reviewedAt ? new Date(data.appeal.reviewedAt).toLocaleString('uz-Latn') : ''}</span></div>}
+        {data.appeal.decision && <div className="rounded bg-muted p-3 text-sm"><span className="font-medium">Yakuniy qaror:</span> {statusLabel(data.appeal.decision)}<span className="block text-xs text-muted-foreground mt-1">{data.appeal.reviewedBy} · {data.appeal.reviewedAt ? new Date(data.appeal.reviewedAt).toLocaleString('uz-Latn') : ''}</span></div>}
       </div>}
       {data && !data.appeal && !data.eligible && <p className="text-sm text-muted-foreground">Apellyatsiya muddati yoki urinish holati murojaat yuborishga ruxsat bermaydi. Muddat: {new Date(data.deadline).toLocaleString('uz-Latn')}</p>}
       {data?.eligible && <>
-        <div className="space-y-2"><p className="text-sm font-medium">Qayta ko'riladigan risk hodisalari</p>{data.riskEvents.length === 0 && <p className="text-sm text-muted-foreground">Apellyatsiya uchun risk hodisasi qayd etilmagan.</p>}{data.riskEvents.map(event => <label key={event.id} className="flex items-start gap-3 rounded border p-3 cursor-pointer"><Checkbox checked={eventIds.includes(event.id)} onCheckedChange={() => setEventIds(current => current.includes(event.id) ? current.filter(id => id !== event.id) : [...current, event.id])} /><span className="text-sm"><span className="font-medium">{PROCTOR_EVENT_LABELS[event.type] ?? event.type}</span><span className="block text-xs text-muted-foreground">{event.severity.toUpperCase()} · {new Date(event.occurredAt).toLocaleString('uz-Latn')}</span></span></label>)}</div>
+        <div className="space-y-2"><p className="text-sm font-medium">Qayta ko'riladigan risk hodisalari</p>{data.riskEvents.length === 0 && <p className="text-sm text-muted-foreground">Apellyatsiya uchun risk hodisasi qayd etilmagan.</p>}{data.riskEvents.map(event => <label key={event.id} className="flex items-start gap-3 rounded border p-3 cursor-pointer"><Checkbox checked={eventIds.includes(event.id)} onCheckedChange={() => setEventIds(current => current.includes(event.id) ? current.filter(id => id !== event.id) : [...current, event.id])} /><span className="text-sm"><span className="font-medium">{PROCTOR_EVENT_LABELS[event.type] ?? event.type}</span><span className="block text-xs text-muted-foreground">{SEVERITY_LABELS[event.severity] ?? event.severity} · {new Date(event.occurredAt).toLocaleString('uz-Latn')}</span></span></label>)}</div>
         <Textarea value={reason} onChange={event => setReason(event.target.value)} maxLength={2000} placeholder="Texnik yoki boshqa uzrli holatni 10-2000 belgi bilan tushuntiring" />
         <div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">Muddat: {new Date(data.deadline).toLocaleString('uz-Latn')}</p><Button onClick={() => create.mutate()} disabled={reason.trim().length < 10 || eventIds.length === 0 || create.isPending}>{create.isPending ? "Yuborilmoqda..." : "Apellyatsiya yuborish"}</Button></div>
       </>}
@@ -85,8 +94,8 @@ export function TestResults() {
   const resultFromState = location.state?.result as TestResultType | undefined;
 
   // Fetch test results if not passed via state
-  const { data: resultFromApi, isLoading } = useTestResults(testId!);
-  
+  const { data: resultFromApi, isLoading, isError, error, refetch } = useTestResults(testId!);
+
   const result = resultFromState || resultFromApi;
 
   // Loading state
@@ -97,6 +106,17 @@ export function TestResults() {
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
           <p className="text-muted-foreground">Natijalar yuklanmoqda...</p>
         </div>
+      </div>
+    );
+  }
+
+  // So'rov bajarilmagan bo'lsa (404 dan tashqari) bu "natija topilmadi" emas — qayta urinish taklif qilinadi
+  const notFound = (error as { response?: { status?: number } } | null)?.response?.status === 404;
+  if (!result && isError && !notFound) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 p-6">
+        <QueryState isError error={error} onRetry={() => { void refetch(); }} className="py-4" />
+        <Button variant="ghost" onClick={() => navigate('/student/tests')}>Testlar sahifasiga qaytish</Button>
       </div>
     );
   }
@@ -225,7 +245,7 @@ export function TestResults() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Award className="h-4 w-4" />
-                Status
+                Holat
               </CardTitle>
             </CardHeader>
             <CardContent>

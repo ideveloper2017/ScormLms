@@ -1,6 +1,6 @@
 import { useMemo, useState, type DragEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { BookOpen, Clock, GripVertical, Loader2, MoreHorizontal, Pencil, Plus, Search } from "lucide-react";
+import { BookOpen, Clock, GripVertical, Loader2, MoreHorizontal, Pencil, Plus, Search, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { EditSubjectDialog } from "@/components/admin/curriculum-subjects-table";
+import { LinkSyllabusDialog } from "@/components/admin/curriculum-syllabus-link";
+import { CurriculumTeacherDialog } from "@/components/admin/curriculum-teacher-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { extractApiError, type SubjectRecord } from "@/lib/academic-api";
 import { HOURS_PER_CREDIT } from "@/lib/syllabus";
@@ -58,6 +60,8 @@ export function CurriculumSubjectBoard({ curriculumId, subjects, components, cat
   const [over, setOver] = useState<number | null>(null);
   const [pendingSemester, setPendingSemester] = useState<number | null>(null);
   const [editing, setEditing] = useState<CurriculumSubject | null>(null);
+  const [linking, setLinking] = useState<CurriculumSubject | null>(null);
+  const [staffing, setStaffing] = useState<CurriculumSubject | null>(null);
 
   const fail = (title: string) => (e: unknown) =>
     toast({ variant: "destructive", title, description: extractApiError(e, "Xatolik").message });
@@ -113,6 +117,9 @@ export function CurriculumSubjectBoard({ curriculumId, subjects, components, cat
   return (
     <>
       {editing && <EditSubjectDialog curriculumId={curriculumId} subject={editing} onClose={() => setEditing(null)} onSaved={onChanged} />}
+      {linking && <LinkSyllabusDialog curriculumId={curriculumId} subject={linking} onClose={() => setLinking(null)}
+        onLinked={async () => { await onChanged(); setLinking(null); }} />}
+      {staffing && <CurriculumTeacherDialog curriculumId={curriculumId} subject={staffing} onClose={() => setStaffing(null)} onSaved={onChanged} />}
       <div className={cn("grid gap-4", editable && "lg:grid-cols-[280px_minmax(0,1fr)]")}>
         {editable && (
           <aside aria-label="Fanlar katalogi" className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)]">
@@ -138,7 +145,7 @@ export function CurriculumSubjectBoard({ curriculumId, subjects, components, cat
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 font-medium leading-snug" title={s.name}>{s.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {s.code ?? "kodsiz"} · {s.credits ? `${s.credits} kredit` : "kredit yo'q"}
+                        {s.code ?? "kodsiz"}
                         {planned && ` · rejada: ${[...planned].sort((a, b) => a - b).join(", ")}-sem.`}
                       </p>
                     </div>
@@ -192,6 +199,7 @@ export function CurriculumSubjectBoard({ curriculumId, subjects, components, cat
                       <SubjectCard key={s.id} subject={s} editable={editable} busy={busy} semesters={semesters}
                         onDragStart={startDrag({ kind: "item", itemId: s.id, semester: s.semester })} onDragEnd={endDrag}
                         onEdit={() => setEditing(s)} onMove={(to) => place({ kind: "item", itemId: s.id, semester: s.semester }, to)}
+                        onSyllabus={() => setLinking(s)} onTeacher={() => setStaffing(s)}
                         onRemove={() => onRemove(s)} />
                     ));
                     return group.length > 1 ? (
@@ -222,7 +230,7 @@ export function CurriculumSubjectBoard({ curriculumId, subjects, components, cat
   );
 }
 
-function SubjectCard({ subject: s, editable, busy, semesters, onDragStart, onDragEnd, onEdit, onMove, onRemove }: {
+function SubjectCard({ subject: s, editable, busy, semesters, onDragStart, onDragEnd, onEdit, onMove, onRemove, onSyllabus, onTeacher }: {
   subject: CurriculumSubject;
   editable: boolean;
   busy: boolean;
@@ -232,6 +240,8 @@ function SubjectCard({ subject: s, editable, busy, semesters, onDragStart, onDra
   onEdit: () => void;
   onMove: (semester: number) => void;
   onRemove: () => void;
+  onSyllabus: () => void;
+  onTeacher: () => void;
 }) {
   const hours = totalHours(s);
   const hoursState = hours === 0 ? "empty" : hours === s.credits * HOURS_PER_CREDIT ? "ok" : "warn";
@@ -249,42 +259,67 @@ function SubjectCard({ subject: s, editable, busy, semesters, onDragStart, onDra
   const tone = (state: string) =>
     state === "ok" ? "text-emerald-600 dark:text-emerald-400" : state === "warn" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/60";
 
+  // Dastur va o'qituvchi — kartaning pastki qatorida, bosiladigan (tahrir rejimida) va uzun nom qisqartiriladi
+  const link = (props: { label: string; title: string; value: string; empty: boolean; icon: typeof BookOpen; tone: string; onClick: () => void }) => {
+    const body = <>
+      <props.icon className={cn("h-3.5 w-3.5 shrink-0", props.tone)} aria-hidden="true" />
+      <span className={cn("truncate", props.empty && "text-muted-foreground")}>{props.value}</span>
+    </>;
+    const className = "flex min-w-0 items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1 text-left text-xs";
+    return editable
+      ? <button type="button" disabled={busy} title={props.title} aria-label={props.label} onClick={props.onClick} className={cn(className, "hover:bg-muted")}>{body}</button>
+      : <span title={props.title} className={className}>{body}</span>;
+  };
+
   return (
     <div draggable={editable && !busy} onDragStart={onDragStart} onDragEnd={onDragEnd}
-      className={cn("flex items-center gap-2 rounded-lg border bg-background px-3 py-2 shadow-sm", editable && "cursor-grab active:cursor-grabbing")}>
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-sm font-medium leading-snug" title={s.subjectName}>{s.subjectName}</p>
-        <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="truncate">{s.planRowNumber ? `${s.planRowNumber} · ` : ""}{s.subjectCode}</span>
-          {s.planItemType === "ELECTIVE" && <Badge variant="outline" className="px-1.5 py-0 text-[10px]">Tanlov</Badge>}
-          {s.courseWorkType && <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{courseWorkLabels[s.courseWorkType]}</Badge>}
-        </p>
-      </div>
-      <Badge className="shrink-0 tabular-nums" title="Soat / kredit">{hours}/{s.credits}</Badge>
-      <span title={hoursTitle}><Clock className={cn("h-4 w-4", tone(hoursState))} aria-label={hoursTitle} /></span>
-      <span title={syllabusTitle}><BookOpen className={cn("h-4 w-4", tone(syllabusState))} aria-label={syllabusTitle} /></span>
-      {editable && (
-        <>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" disabled={busy} onClick={onEdit} aria-label={`${s.subjectName} — kredit va soatlar`}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" disabled={busy} aria-label={`${s.subjectName} — amallar`}>
-                <MoreHorizontal className="h-4 w-4" />
+      className={cn("space-y-2 rounded-lg border bg-background p-3 shadow-sm", editable && "cursor-grab active:cursor-grabbing")}>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-medium leading-snug" title={s.subjectName}>{s.subjectName}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="truncate">{s.planRowNumber ? `${s.planRowNumber} · ` : ""}{s.subjectCode}</span>
+            {s.planItemType === "ELECTIVE" && <Badge variant="outline" className="px-1.5 py-0 text-[10px]">Tanlov</Badge>}
+            {s.courseWorkType && <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{courseWorkLabels[s.courseWorkType]}</Badge>}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Badge className="tabular-nums" title="Soat / kredit">{hours}/{s.credits}</Badge>
+          <span title={hoursTitle} className="px-1"><Clock className={cn("h-4 w-4", tone(hoursState))} aria-label={hoursTitle} /></span>
+          {editable && (
+            <>
+              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} onClick={onEdit} aria-label={`${s.subjectName} — kredit va soatlar`}>
+                <Pencil className="h-3.5 w-3.5" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Boshqa semestrga ko'chirish</DropdownMenuLabel>
-              {semesters.filter((n) => n !== s.semester).map((n) => (
-                <DropdownMenuItem key={n} onClick={() => onMove(n)}>{n}-semestr</DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onClick={onRemove}>Rejadan olib tashlash</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </>
-      )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} aria-label={`${s.subjectName} — amallar`}>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onSyllabus}>O'quv dasturini biriktirish</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onTeacher}>O'qituvchini biriktirish</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Boshqa semestrga ko'chirish</DropdownMenuLabel>
+                  {semesters.filter((n) => n !== s.semester).map((n) => (
+                    <DropdownMenuItem key={n} onClick={() => onMove(n)}>{n}-semestr</DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive" onClick={onRemove}>Rejadan olib tashlash</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {link({ label: `${s.subjectName} — o'quv dasturi`, title: syllabusTitle, value: `Dastur: ${s.syllabusName ?? "yo'q"}`,
+          empty: !s.syllabusName, icon: BookOpen, tone: tone(syllabusState), onClick: onSyllabus })}
+        {link({ label: `${s.subjectName} — o'qituvchi`, title: s.teacherName ? `O'qituvchi: ${s.teacherName}` : "O'qituvchi biriktirilmagan",
+          value: `O'qituvchi: ${s.teacherName ?? "yo'q"}`, empty: !s.teacherName, icon: UserRound,
+          tone: s.teacherId ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/60", onClick: onTeacher })}
+      </div>
     </div>
   );
 }

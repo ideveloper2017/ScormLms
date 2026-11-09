@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import { clearAuthData as clearSession } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { ApiError } from '@/types/api.types';
 
@@ -24,10 +25,8 @@ export interface ErrorHandlerOptions {
  * Clears all authentication data from localStorage and redirects to login
  */
 export const clearAuthData = (): void => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('tokenExpiresAt');
-  localStorage.removeItem('user');
+  // Yagona manba: xotiradagi access token, sessiya belgisi va eski kalitlar ham shu yerda tozalanadi
+  clearSession();
 };
 
 /**
@@ -86,11 +85,10 @@ export const handleApiError = (
       case 401:
         apiError.message = "Avtorizatsiya xatosi. Iltimos, qayta kiring.";
         if (redirectOnAuth) {
+          // Bu yerga 401 faqat token yangilab bo'lmagandan keyin yetib keladi (lib/api.ts interceptori).
+          // Sahifani qayta yuklamaymiz: AuthProvider holatni tozalab, login sahifasiga o'tkazadi.
           clearAuthData();
-          // Delay redirect slightly to allow toast to show
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 500);
+          window.dispatchEvent(new Event('auth:session-expired'));
         }
         break;
 

@@ -72,8 +72,9 @@ class CourseContentAssetService(
     }
 
     @Transactional
-    fun uploadForSubject(subject: Subject, file: MultipartFile, userId: Long): CourseContentAssetDto =
-        store(file, userId, "subject-${requireNotNull(subject.id)}", subject = subject)
+    /** Fan fayli; fansiz (hali rejaga biriktirilmagan) dastur fayllari umumiy "subject-0" joyida saqlanadi */
+    fun uploadForSubject(subject: Subject?, file: MultipartFile, userId: Long): CourseContentAssetDto =
+        store(file, userId, subject?.id?.let { "subject-$it" } ?: UNBOUND_SCOPE, subject = subject)
 
     private fun store(
         file: MultipartFile,
@@ -148,6 +149,12 @@ class CourseContentAssetService(
             asset.course?.id == courseId ||
                 (asset.subject?.id != null && asset.subject?.id == course.subject?.id)
             )) { "Kontent fayli topilmadi" }
+        return open(asset)
+    }
+
+    /** Saqlangan faylni ochadi — ruxsat chaqiruvchida tekshiriladi (kurs kontenti yoki talabaning o'quv dasturi) */
+    fun open(asset: CourseContentAsset): CourseContentDownload {
+        require(!asset.deleted) { "Kontent fayli topilmadi" }
         val target = storagePath(assetScope(asset), asset.storageKey)
         require(Files.isRegularFile(target)) { "Kontent fayli saqlash joyida topilmadi" }
         return CourseContentDownload(
@@ -172,7 +179,7 @@ class CourseContentAssetService(
     private fun assetScope(asset: CourseContentAsset): String = when {
         asset.course?.id != null -> asset.course!!.id.toString()
         asset.subject?.id != null -> "subject-${asset.subject!!.id}"
-        else -> error("Fayl scope'i mavjud emas")
+        else -> UNBOUND_SCOPE
     }
 
     private fun storagePath(scope: String, storageKey: String): Path {
@@ -201,6 +208,7 @@ class CourseContentAssetService(
     companion object {
         private val STORAGE_KEY = Regex("[0-9a-f-]{36}")
         private val SCOPE = Regex("(?:subject-)?[0-9]+")
+        private const val UNBOUND_SCOPE = "subject-0"
         private val GENERIC_MEDIA_TYPES = setOf("application/octet-stream", "binary/octet-stream")
         private val ALLOWED_EXTENSIONS = mapOf(
             "mp4" to "video/mp4",

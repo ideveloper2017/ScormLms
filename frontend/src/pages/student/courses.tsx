@@ -99,7 +99,7 @@ export function StudentCourses() {
               return <Card key={subject.id} role="region" aria-label={subject.subjectName} className="flex flex-col">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="line-clamp-2 text-lg">{subject.subjectName}</CardTitle>
+                    <CardTitle className="line-clamp-2 text-lg"><button type="button" className="text-left hover:underline" onClick={() => navigate(`/student/subjects/${subject.id}`)}>{subject.subjectName}</button></CardTitle>
                     <Badge variant="outline">{subject.semester}-semestr</Badge>
                   </div>
                   <CardDescription>{subject.subjectCode} · {subject.credits} kredit · {subject.planItemType === 'ELECTIVE' ? 'Tanlov' : 'Majburiy'}</CardDescription>
@@ -119,6 +119,7 @@ export function StudentCourses() {
                         <Play className="mr-2 h-4 w-4" />{course.progress > 0 ? 'Davom ettirish' : 'Kursni boshlash'}
                       </Button>
                     </div>)}
+                    <Button variant="secondary" size="sm" className="w-full" onClick={() => navigate(`/student/subjects/${subject.id}`)}><BookOpen className="mr-2 h-4 w-4" />Fanni ochish</Button>
                     {syllabus
                       ? <Button variant="outline" size="sm" className="w-full" onClick={() => setSyllabusOpen(syllabus)}><ScrollText className="mr-2 h-4 w-4" />O‘quv dasturi</Button>
                       : <p className="text-center text-xs text-muted-foreground">O‘quv dasturi hali tasdiqlanmagan</p>}

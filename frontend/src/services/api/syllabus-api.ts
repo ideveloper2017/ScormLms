@@ -17,9 +17,16 @@ export interface SyllabusModuleInput { id?: number | null; name: string; descrip
 /** id — mavjud mavzu (joyida yangilanadi, kurs bo'limlari bilan bog'lanish saqlanadi) */
 export interface SyllabusTopicInput { id?: number | null; type: SyllabusTopicType; title: string; description?: string | null; part?: number | null }
 export interface SubjectSyllabus {
-  id: number; subjectId: number; subjectCode?: string | null; subjectName: string;
+  /** null — dastur hali o'quv reja faniga biriktirilmagan (fan taxtada 📖 orqali yoziladi) */
+  id: number; subjectId: number | null; subjectCode?: string | null; subjectName: string | null;
   name: string; language: SyllabusLanguage; shortDescription: string;
   requirements?: string | null; fullDescription: string; active: boolean;
+  /** Natijalar — fanni o'rganib talaba nimalarga erishadi (har biri yangi qatordan) */
+  learningOutcomes?: string | null;
+  coverImageAvailable?: boolean;
+  updatedAt?: string;
+  introVideoName?: string | null;
+  introVideoUrl?: string | null;
   status: "DRAFT" | "IN_REVIEW" | "APPROVED"; revisionNumber: number;
   topics?: SyllabusTopic[]; theoreticalHours?: number; practicalHours?: number; laboratoryHours?: number; seminarHours?: number;
   modules?: SyllabusModule[];
@@ -28,9 +35,11 @@ export interface SubjectSyllabus {
 }
 export interface SyllabusRevision { revisionNumber: number; content: SubjectSyllabus; approvedByName: string; approvedAt: string }
 export interface SubjectSyllabusInput {
-  /** name berilmasa backend fan nomini oladi */
-  subjectId: number; name?: string; language: SyllabusLanguage;
+  /** Ixtiyoriy: fan o'quv reja taxtasida biriktiriladi; fansiz dasturda name majburiy */
+  subjectId?: number | null; name?: string; language: SyllabusLanguage;
   shortDescription: string; requirements?: string | null; fullDescription: string; active: boolean;
+  learningOutcomes?: string | null;
+  introVideoUrl?: string | null;
   topics?: SyllabusTopicInput[];
 }
 /** Dasturga bog'langan kurs: qoralamasi mavzular bilan avtomatik moslanadi, nashr qilingani — kurs sahifasida */
@@ -45,9 +54,11 @@ export interface LessonQuiz extends LessonQuizInput { id: number; durationMinute
 export interface LessonQuizzesResult { quizzes: LessonQuiz[]; courses: SyllabusLinkedCourse[] }
 /** Dars kontenti (Everest: dars -> resurslar) — fan bankida saqlanadi, kurs darsiga nusxa bo'ladi */
 export type LessonMaterialType = "TEXT" | "VIDEO" | "DOCUMENT" | "FILE" | "LINK";
-export interface LessonMaterialInput { title: string; description?: string | null; contentType: LessonMaterialType; contentUrl?: string | null; contentBody?: string | null; assetId?: number | null }
+export interface LessonMaterialInput { title: string; description?: string | null; contentType: LessonMaterialType; contentUrl?: string | null; contentBody?: string | null; assetId?: number | null; durationSeconds?: number | null }
 export interface LessonMaterialsResult { materials: SubjectMaterial[]; courses: SyllabusLinkedCourse[] }
 type Wrapped<T> = { success: boolean; data: T };
+export type SyllabusMediaKind = "cover" | "video";
+
 export const syllabusApi = {
   history: async (id: number) => (await api.get<SyllabusRevision[]>(`/syllabi/${id}/history`)).data,
   workflow: async (id: number, action: "SUBMIT" | "RETURN" | "APPROVE" | "NEW_VERSION") => (await api.post<SubjectSyllabus>(`/syllabi/${id}/workflow`, { action })).data,
@@ -56,6 +67,15 @@ export const syllabusApi = {
   })).data,
   create: async (input: SubjectSyllabusInput) => (await api.post<SubjectSyllabus>("/syllabi", input)).data,
   update: async (id: number, input: SubjectSyllabusInput) => (await api.put<SubjectSyllabus>(`/syllabi/${id}`, input)).data,
+  /** Muqova rasmi (cover) yoki tanishtiruv videosi (video) */
+  uploadMedia: async (id: number, kind: SyllabusMediaKind, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return (await api.post<SubjectSyllabus>(`/syllabi/${id}/media/${kind}`, form, { headers: { "Content-Type": "multipart/form-data" }, timeout: 600_000 })).data;
+  },
+  removeMedia: async (id: number, kind: SyllabusMediaKind) => (await api.delete<SubjectSyllabus>(`/syllabi/${id}/media/${kind}`)).data,
+  mediaFile: async (id: number, kind: SyllabusMediaKind): Promise<Blob> =>
+    (await api.get(`/syllabi/${id}/media/${kind}`, { responseType: "blob", timeout: 300_000 })).data as Blob,
   delete: async (id: number) => { await api.delete(`/syllabi/${id}`); },
   linkedCourses: async (syllabusId: number) =>
     (await api.get<{ success: boolean; data: SyllabusLinkedCourse[] }>(`/syllabus-courses/${syllabusId}/courses`)).data.data,

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminAcademicPeriods } from "@/pages/admin/academic-periods";
 import { curriculumApi, curriculumStatusLabels, type CurriculumSemesterOverview } from "@/services/api/curriculum-api";
+import { formatDate } from "@/lib/format-date";
 
 type PeriodState = "current" | "upcoming" | "finished" | "inactive" | "missing";
 const stateLabel: Record<PeriodState, string> = {
@@ -22,7 +23,6 @@ const periodState = (row: CurriculumSemesterOverview, now: string): PeriodState 
   if (now < row.startsOn) return "upcoming";
   return now > row.endsOn ? "finished" : "current";
 };
-const formatDate = (value?: string | null) => (value ? value.split("-").reverse().join(".") : "—");
 
 /**
  * "Semestrlar": har bir o'quv reja semestri va uning muddati (joriy / kelgusi / tugagan). Muddat reja tasdiqlanganda

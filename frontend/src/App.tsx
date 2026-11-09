@@ -1,130 +1,151 @@
-import type { ReactNode } from "react";
-import { Route, Routes } from "react-router-dom";
+import { lazy, Suspense, type ReactNode } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { DashboardLayout } from "@/components/layout/AdminLayout";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import LoginPage from "@/pages/auth/login";
+
+// Har bir sahifa alohida faylga (chunk) bo'linadi va faqat ochilganda yuklanadi: aks holda login sahifasi
+// uchun ham butun ilova (100+ sahifa) bitta katta fayl bo'lib yuklanardi.
 
 // Auth pages
-import LoginPage from "@/pages/auth/login";
-import ForgotPasswordPage from "@/pages/auth/forgot-password";
-import ResetPasswordPage from "@/pages/auth/reset-password";
-import HemisCallbackPage from "@/pages/auth/hemis-callback";
-
-// Dashboards
-import { AdminDashboard } from "@/pages/admin-dashboard";
-import { StudentDashboard } from "@/pages/student-dashboard";
-import { StudentCourses } from "@/pages/student/courses";
-import { ProctorDashboard } from "@/pages/proctor-dashboard";
-import { MonitorDashboard } from "@/pages/monitor-dashboard";
+const ForgotPasswordPage = lazy(() => import("@/pages/auth/forgot-password"));
+const ResetPasswordPage = lazy(() => import("@/pages/auth/reset-password"));
+const HemisCallbackPage = lazy(() => import("@/pages/auth/hemis-callback"));
+const AdminDashboard = lazy(() => import("@/pages/admin-dashboard").then((m) => ({ default: m.AdminDashboard })));
+const StudentDashboard = lazy(() => import("@/pages/student-dashboard").then((m) => ({ default: m.StudentDashboard })));
+const StudentCourses = lazy(() => import("@/pages/student/courses").then((m) => ({ default: m.StudentCourses })));
+const StudentSubject = lazy(() => import("@/pages/student/subject").then((m) => ({ default: m.StudentSubject })));
+const StudentSubjectLesson = lazy(() => import("@/pages/student/subject-lesson").then((m) => ({ default: m.StudentSubjectLesson })));
+const ProctorDashboard = lazy(() => import("@/pages/proctor-dashboard").then((m) => ({ default: m.ProctorDashboard })));
+const MonitorDashboard = lazy(() => import("@/pages/monitor-dashboard").then((m) => ({ default: m.MonitorDashboard })));
 
 // Feature pages
-import { AttendanceProgress } from "@/pages/attendance-progress";
-import { Communication } from "@/pages/communication";
-import { ContingentManagement } from "@/pages/contingent-management";
-import { Courses } from "@/pages/courses";
-import { Exams } from "@/pages/exams";
-import { Reports } from "@/pages/reports";
-import { Resources } from "@/pages/resources";
-import { Settings } from "@/pages/settings";
-import { SupportPage } from "@/pages/support";
-import { Statistics } from "@/pages/statistics";
-import { StudentCabinet } from "@/pages/student-cabinet";
-import { StudentManagement } from "@/pages/student-management";
-import { TeachingManagement } from "@/pages/teaching-management";
-import { UserManagement } from "@/pages/user-management";
-import { Groups } from "@/pages/groups";
-import { Subjects } from "@/pages/subjects";
-import { TeacherManagement } from "@/pages/teacher-management";
-import { AcademicStructure } from "@/pages/academic-structure";
-import { CoursePlayer } from "@/components/scorm/course-player";
-import { ProctoringSession } from "@/components/proctoring/proctoring-session";
+const Communication = lazy(() => import("@/pages/communication").then((m) => ({ default: m.Communication })));
+const Courses = lazy(() => import("@/pages/courses").then((m) => ({ default: m.Courses })));
+const Exams = lazy(() => import("@/pages/exams").then((m) => ({ default: m.Exams })));
+const Reports = lazy(() => import("@/pages/reports").then((m) => ({ default: m.Reports })));
+const Resources = lazy(() => import("@/pages/resources").then((m) => ({ default: m.Resources })));
+const SupportPage = lazy(() => import("@/pages/support").then((m) => ({ default: m.SupportPage })));
+const StudentCabinet = lazy(() => import("@/pages/student-cabinet").then((m) => ({ default: m.StudentCabinet })));
+const StudentManagement = lazy(() => import("@/pages/student-management").then((m) => ({ default: m.StudentManagement })));
+const UserManagement = lazy(() => import("@/pages/user-management").then((m) => ({ default: m.UserManagement })));
+const TeacherManagement = lazy(() => import("@/pages/teacher-management").then((m) => ({ default: m.TeacherManagement })));
+const AcademicStructure = lazy(() => import("@/pages/academic-structure").then((m) => ({ default: m.AcademicStructure })));
+const CoursePlayer = lazy(() => import("@/components/scorm/course-player").then((m) => ({ default: m.CoursePlayer })));
+const ProctoringSession = lazy(() => import("@/components/proctoring/proctoring-session").then((m) => ({ default: m.ProctoringSession })));
 
 // Admin pages
-import { AdminRoles } from "@/pages/admin/roles";
-import { AdminFaculties } from "@/pages/admin/faculties";
-import { AdminDepartments } from "@/pages/admin/departments";
-import { AdminPrograms } from "@/pages/admin/programs";
-import { AdminGroups } from "@/pages/admin/groups";
-import { AdminStudentClassifiers } from "@/pages/admin/student-classifiers";
-import { AdminReinstatementSubjectReport } from "@/pages/admin/reinstatement-subject-report";
-import { AdminSubjects } from "@/pages/admin/subjects";
-import { AdminStudyPlans } from "@/pages/admin/study-plans";
-import { AdminCurriculumStudents } from "@/pages/admin/curriculum-students";
-import { AdminStudyPlanEditor } from "@/pages/admin/study-plan-editor";
-import { AdminAcademicPeriods } from "@/pages/admin/academic-periods";
-import { CurriculumSemesters } from "@/pages/admin/curriculum-semesters";
-import { AdminSubjectCategories } from "@/pages/admin/subject-categories";
-import { AdminSyllabi } from "@/pages/admin/syllabi";
-import { AdminAdmissionPolicies } from "@/pages/admin/admission-policies";
-import { AdminNonStateLicenses } from "@/pages/admin/non-state-licenses";
-import { AdminCalendar } from "@/pages/admin/calendar";
-import { AdminIntegrations } from "@/pages/admin/integrations";
-import { AdminAuditLogs } from "@/pages/admin/audit-logs";
-import { AdminCompliance559 } from "@/pages/admin/compliance-559";
-import { AdminSurveys } from "@/pages/admin/surveys";
-import { AdminContentReviews } from "@/pages/admin/content-reviews";
-import { AdminOrientations } from "@/pages/admin/orientations";
-import { AdminQualityMonitoring } from "@/pages/admin/quality-monitoring";
-import { AdminPractices } from "@/pages/admin/practices";
-import { AdminAssessmentLeaves } from "@/pages/admin/assessment-leaves";
-import { AdminForeignTeacherEngagements } from "@/pages/admin/foreign-teacher-engagements";
-import { AdminAccountabilityReferrals } from "@/pages/admin/accountability-referrals";
-import { AdminDistanceProgramRestrictions } from "@/pages/admin/distance-program-restrictions";
-import { AdminBiometricGovernance } from "@/pages/admin/biometric-governance";
-import { AdminDistanceReadiness } from "@/pages/admin/distance-readiness";
-import { AdminOfficialSitePublications } from "@/pages/admin/official-site-publications";
-import { AdminUniversities } from "@/pages/admin/universities";
-import { AdminNationalities, AdminReferenceLabels } from "@/pages/admin/reference-data";
-import { AdminSystemConfigs, AdminSystemLanguages, AdminTranslationMessages } from "@/pages/admin/system-settings";
-import { AcademicStatements, AcademicTestResults, AdminRatingSystems, StudentAcademicResultsView, StudentGpaRegistry } from "@/pages/admin/academic-results";
-import { AcademicStatisticsDashboard, AppropriationStatistics, FailedStudentsStatistics, GradeDistributionReport, StudentTaskStatisticsReport, SubjectStatisticsReport } from "@/pages/admin/statistics-reports";
-import { ElectiveChoiceMonitoring, InactiveStudentMonitoring, LearningParticipationMonitoring, LessonCommentMonitoring, StudentIpMonitoring, StudentLoginMonitoring, TeacherLoginMonitoring } from "@/pages/admin/monitoring-reports";
-import { StudentMovementRegistry } from "@/pages/admin/student-movements";
-import { ControlsOverview } from "@/pages/admin/controls-overview";
-import { FinalExamCallLetters, StudentTranscripts } from "@/pages/admin/academic-documents";
-import { ReReadingApplications, ReReadingPlans, ReReadingRecoveryResults, StudentReReadingReport, TeacherReReadingReport } from "@/pages/admin/re-reading";
-import { TutorGroups } from "@/pages/admin/tutor-groups";
-import { AdminContentStandard } from "@/pages/admin/content-standard";
-import { PublicInstitutionDisclosure } from "@/pages/public/institution-disclosure";
-import { Surveys } from "@/pages/surveys";
+const AdminRoles = lazy(() => import("@/pages/admin/roles").then((m) => ({ default: m.AdminRoles })));
+const AdminFaculties = lazy(() => import("@/pages/admin/faculties").then((m) => ({ default: m.AdminFaculties })));
+const AdminDepartments = lazy(() => import("@/pages/admin/departments").then((m) => ({ default: m.AdminDepartments })));
+const AdminPrograms = lazy(() => import("@/pages/admin/programs").then((m) => ({ default: m.AdminPrograms })));
+const AdminGroups = lazy(() => import("@/pages/admin/groups").then((m) => ({ default: m.AdminGroups })));
+const AdminStudentClassifiers = lazy(() => import("@/pages/admin/student-classifiers").then((m) => ({ default: m.AdminStudentClassifiers })));
+const AdminReinstatementSubjectReport = lazy(() => import("@/pages/admin/reinstatement-subject-report").then((m) => ({ default: m.AdminReinstatementSubjectReport })));
+const AdminSubjects = lazy(() => import("@/pages/admin/subjects").then((m) => ({ default: m.AdminSubjects })));
+const AdminStudyPlans = lazy(() => import("@/pages/admin/study-plans").then((m) => ({ default: m.AdminStudyPlans })));
+const AdminCurriculumStudents = lazy(() => import("@/pages/admin/curriculum-students").then((m) => ({ default: m.AdminCurriculumStudents })));
+const AdminStudyPlanEditor = lazy(() => import("@/pages/admin/study-plan-editor").then((m) => ({ default: m.AdminStudyPlanEditor })));
+const AdminAcademicPeriods = lazy(() => import("@/pages/admin/academic-periods").then((m) => ({ default: m.AdminAcademicPeriods })));
+const CurriculumSemesters = lazy(() => import("@/pages/admin/curriculum-semesters").then((m) => ({ default: m.CurriculumSemesters })));
+const AdminSubjectCategories = lazy(() => import("@/pages/admin/subject-categories").then((m) => ({ default: m.AdminSubjectCategories })));
+const AdminSyllabi = lazy(() => import("@/pages/admin/syllabi").then((m) => ({ default: m.AdminSyllabi })));
+const AdminAdmissionPolicies = lazy(() => import("@/pages/admin/admission-policies").then((m) => ({ default: m.AdminAdmissionPolicies })));
+const AdminNonStateLicenses = lazy(() => import("@/pages/admin/non-state-licenses").then((m) => ({ default: m.AdminNonStateLicenses })));
+const AdminIntegrations = lazy(() => import("@/pages/admin/integrations").then((m) => ({ default: m.AdminIntegrations })));
+const AdminAuditLogs = lazy(() => import("@/pages/admin/audit-logs").then((m) => ({ default: m.AdminAuditLogs })));
+const AdminCompliance559 = lazy(() => import("@/pages/admin/compliance-559").then((m) => ({ default: m.AdminCompliance559 })));
+const AdminSurveys = lazy(() => import("@/pages/admin/surveys").then((m) => ({ default: m.AdminSurveys })));
+const AdminContentReviews = lazy(() => import("@/pages/admin/content-reviews").then((m) => ({ default: m.AdminContentReviews })));
+const AdminOrientations = lazy(() => import("@/pages/admin/orientations").then((m) => ({ default: m.AdminOrientations })));
+const AdminQualityMonitoring = lazy(() => import("@/pages/admin/quality-monitoring").then((m) => ({ default: m.AdminQualityMonitoring })));
+const AdminPractices = lazy(() => import("@/pages/admin/practices").then((m) => ({ default: m.AdminPractices })));
+const AdminAssessmentLeaves = lazy(() => import("@/pages/admin/assessment-leaves").then((m) => ({ default: m.AdminAssessmentLeaves })));
+const AdminForeignTeacherEngagements = lazy(() => import("@/pages/admin/foreign-teacher-engagements").then((m) => ({ default: m.AdminForeignTeacherEngagements })));
+const AdminAccountabilityReferrals = lazy(() => import("@/pages/admin/accountability-referrals").then((m) => ({ default: m.AdminAccountabilityReferrals })));
+const AdminDistanceProgramRestrictions = lazy(() => import("@/pages/admin/distance-program-restrictions").then((m) => ({ default: m.AdminDistanceProgramRestrictions })));
+const AdminBiometricGovernance = lazy(() => import("@/pages/admin/biometric-governance").then((m) => ({ default: m.AdminBiometricGovernance })));
+const AdminDistanceReadiness = lazy(() => import("@/pages/admin/distance-readiness").then((m) => ({ default: m.AdminDistanceReadiness })));
+const AdminOfficialSitePublications = lazy(() => import("@/pages/admin/official-site-publications").then((m) => ({ default: m.AdminOfficialSitePublications })));
+const AdminUniversities = lazy(() => import("@/pages/admin/universities").then((m) => ({ default: m.AdminUniversities })));
+const AdminNationalities = lazy(() => import("@/pages/admin/reference-data").then((m) => ({ default: m.AdminNationalities })));
+const AdminReferenceLabels = lazy(() => import("@/pages/admin/reference-data").then((m) => ({ default: m.AdminReferenceLabels })));
+const AdminSystemConfigs = lazy(() => import("@/pages/admin/system-settings").then((m) => ({ default: m.AdminSystemConfigs })));
+const AdminSystemLanguages = lazy(() => import("@/pages/admin/system-settings").then((m) => ({ default: m.AdminSystemLanguages })));
+const AdminTranslationMessages = lazy(() => import("@/pages/admin/system-settings").then((m) => ({ default: m.AdminTranslationMessages })));
+const AcademicStatements = lazy(() => import("@/pages/admin/academic-results").then((m) => ({ default: m.AcademicStatements })));
+const AcademicTestResults = lazy(() => import("@/pages/admin/academic-results").then((m) => ({ default: m.AcademicTestResults })));
+const AdminRatingSystems = lazy(() => import("@/pages/admin/academic-results").then((m) => ({ default: m.AdminRatingSystems })));
+const StudentAcademicResultsView = lazy(() => import("@/pages/admin/academic-results").then((m) => ({ default: m.StudentAcademicResultsView })));
+const StudentGpaRegistry = lazy(() => import("@/pages/admin/academic-results").then((m) => ({ default: m.StudentGpaRegistry })));
+const AcademicStatisticsDashboard = lazy(() => import("@/pages/admin/statistics-reports").then((m) => ({ default: m.AcademicStatisticsDashboard })));
+const AppropriationStatistics = lazy(() => import("@/pages/admin/statistics-reports").then((m) => ({ default: m.AppropriationStatistics })));
+const FailedStudentsStatistics = lazy(() => import("@/pages/admin/statistics-reports").then((m) => ({ default: m.FailedStudentsStatistics })));
+const GradeDistributionReport = lazy(() => import("@/pages/admin/statistics-reports").then((m) => ({ default: m.GradeDistributionReport })));
+const StudentTaskStatisticsReport = lazy(() => import("@/pages/admin/statistics-reports").then((m) => ({ default: m.StudentTaskStatisticsReport })));
+const SubjectStatisticsReport = lazy(() => import("@/pages/admin/statistics-reports").then((m) => ({ default: m.SubjectStatisticsReport })));
+const ElectiveChoiceMonitoring = lazy(() => import("@/pages/admin/monitoring-reports").then((m) => ({ default: m.ElectiveChoiceMonitoring })));
+const InactiveStudentMonitoring = lazy(() => import("@/pages/admin/monitoring-reports").then((m) => ({ default: m.InactiveStudentMonitoring })));
+const LearningParticipationMonitoring = lazy(() => import("@/pages/admin/monitoring-reports").then((m) => ({ default: m.LearningParticipationMonitoring })));
+const LessonCommentMonitoring = lazy(() => import("@/pages/admin/monitoring-reports").then((m) => ({ default: m.LessonCommentMonitoring })));
+const StudentIpMonitoring = lazy(() => import("@/pages/admin/monitoring-reports").then((m) => ({ default: m.StudentIpMonitoring })));
+const StudentLoginMonitoring = lazy(() => import("@/pages/admin/monitoring-reports").then((m) => ({ default: m.StudentLoginMonitoring })));
+const TeacherLoginMonitoring = lazy(() => import("@/pages/admin/monitoring-reports").then((m) => ({ default: m.TeacherLoginMonitoring })));
+const StudentMovementRegistry = lazy(() => import("@/pages/admin/student-movements").then((m) => ({ default: m.StudentMovementRegistry })));
+const ControlsOverview = lazy(() => import("@/pages/admin/controls-overview").then((m) => ({ default: m.ControlsOverview })));
+const FinalExamCallLetters = lazy(() => import("@/pages/admin/academic-documents").then((m) => ({ default: m.FinalExamCallLetters })));
+const StudentTranscripts = lazy(() => import("@/pages/admin/academic-documents").then((m) => ({ default: m.StudentTranscripts })));
+const ReReadingApplications = lazy(() => import("@/pages/admin/re-reading").then((m) => ({ default: m.ReReadingApplications })));
+const ReReadingPlans = lazy(() => import("@/pages/admin/re-reading").then((m) => ({ default: m.ReReadingPlans })));
+const ReReadingRecoveryResults = lazy(() => import("@/pages/admin/re-reading").then((m) => ({ default: m.ReReadingRecoveryResults })));
+const StudentReReadingReport = lazy(() => import("@/pages/admin/re-reading").then((m) => ({ default: m.StudentReReadingReport })));
+const TeacherReReadingReport = lazy(() => import("@/pages/admin/re-reading").then((m) => ({ default: m.TeacherReReadingReport })));
+const TutorGroups = lazy(() => import("@/pages/admin/tutor-groups").then((m) => ({ default: m.TutorGroups })));
+const AdminContentStandard = lazy(() => import("@/pages/admin/content-standard").then((m) => ({ default: m.AdminContentStandard })));
+const PublicInstitutionDisclosure = lazy(() => import("@/pages/public/institution-disclosure").then((m) => ({ default: m.PublicInstitutionDisclosure })));
+const Surveys = lazy(() => import("@/pages/surveys").then((m) => ({ default: m.Surveys })));
 
 // Student pages
-import { StudentSchedule } from "@/pages/student/schedule";
-import { StudentAssignments } from "@/pages/student/assignments";
-import { StudentTests } from "@/pages/student/tests";
-import { TestSession } from "@/pages/student/test-session";
-import { TestResults } from "@/pages/student/test-results";
-import { StudentGrades } from "@/pages/student/grades";
-import { StudentTranscript, StudentReports } from "@/pages/student/academic-reports";
-import { StudentAttendance } from "@/pages/student/attendance";
-import { StudentNotifications } from "@/pages/student/notifications";
-import { StudentStudyPlan } from "@/pages/student/study-plan";
-import { StudentCourseLearning } from "@/pages/student/course-learning";
-import { StudentOrientation } from "@/pages/student/orientation";
-import { StudentPractice } from "@/pages/student/practice";
-import { StudentAssessmentLeave } from "@/pages/student/assessment-leave";
+const StudentSchedule = lazy(() => import("@/pages/student/schedule").then((m) => ({ default: m.StudentSchedule })));
+const StudentAssignments = lazy(() => import("@/pages/student/assignments").then((m) => ({ default: m.StudentAssignments })));
+const StudentTests = lazy(() => import("@/pages/student/tests").then((m) => ({ default: m.StudentTests })));
+const TestSession = lazy(() => import("@/pages/student/test-session").then((m) => ({ default: m.TestSession })));
+const TestResults = lazy(() => import("@/pages/student/test-results").then((m) => ({ default: m.TestResults })));
+const StudentGrades = lazy(() => import("@/pages/student/grades").then((m) => ({ default: m.StudentGrades })));
+const StudentTranscript = lazy(() => import("@/pages/student/academic-reports").then((m) => ({ default: m.StudentTranscript })));
+const StudentReports = lazy(() => import("@/pages/student/academic-reports").then((m) => ({ default: m.StudentReports })));
+const StudentAttendance = lazy(() => import("@/pages/student/attendance").then((m) => ({ default: m.StudentAttendance })));
+const StudentNotifications = lazy(() => import("@/pages/student/notifications").then((m) => ({ default: m.StudentNotifications })));
+const StudentStudyPlan = lazy(() => import("@/pages/student/study-plan").then((m) => ({ default: m.StudentStudyPlan })));
+const StudentCourseLearning = lazy(() => import("@/pages/student/course-learning").then((m) => ({ default: m.StudentCourseLearning })));
+const StudentOrientation = lazy(() => import("@/pages/student/orientation").then((m) => ({ default: m.StudentOrientation })));
+const StudentPractice = lazy(() => import("@/pages/student/practice").then((m) => ({ default: m.StudentPractice })));
+const StudentAssessmentLeave = lazy(() => import("@/pages/student/assessment-leave").then((m) => ({ default: m.StudentAssessmentLeave })));
 
 // Teacher pages
-import { TeacherDashboard } from "@/pages/teacher/dashboard";
-import { TeacherCourses } from "@/pages/teacher/courses";
-import { TeacherCourseCreate } from "@/pages/teacher/course-create";
-import { TeacherCourseDetail } from "@/pages/teacher/course-detail";
-import { TeacherAssignments } from "@/pages/teacher/assignments";
-import { TeacherSubmissions } from "@/pages/teacher/submissions";
-import { TeacherTests } from "@/pages/teacher/tests";
-import { TeacherQuestions } from "@/pages/teacher/questions";
-import { TeacherGradebook } from "@/pages/teacher/gradebook";
-import { TeacherStudents } from "@/pages/teacher/students";
-import { TeacherAttendance } from "@/pages/teacher/attendance";
-import { TeacherAnnouncements } from "@/pages/teacher/announcements";
-import { TeacherContent } from "@/pages/teacher/content";
-import { TeacherSessions } from "@/pages/teacher/sessions";
-import { TeacherExams } from "@/pages/teacher/exams";
-import { TeacherAttestations } from "@/pages/teacher/attestations";
-import { StudentAttestations } from "@/pages/student/attestations";
-import { TeacherProfile } from "@/pages/teacher/profile";
+const TeacherDashboard = lazy(() => import("@/pages/teacher/dashboard").then((m) => ({ default: m.TeacherDashboard })));
+const TeacherCourses = lazy(() => import("@/pages/teacher/courses").then((m) => ({ default: m.TeacherCourses })));
+const TeacherCourseCreate = lazy(() => import("@/pages/teacher/course-create").then((m) => ({ default: m.TeacherCourseCreate })));
+const TeacherCourseDetail = lazy(() => import("@/pages/teacher/course-detail").then((m) => ({ default: m.TeacherCourseDetail })));
+const TeacherAssignments = lazy(() => import("@/pages/teacher/assignments").then((m) => ({ default: m.TeacherAssignments })));
+const TeacherSubmissions = lazy(() => import("@/pages/teacher/submissions").then((m) => ({ default: m.TeacherSubmissions })));
+const TeacherTests = lazy(() => import("@/pages/teacher/tests").then((m) => ({ default: m.TeacherTests })));
+const TeacherQuestions = lazy(() => import("@/pages/teacher/questions").then((m) => ({ default: m.TeacherQuestions })));
+const TeacherGradebook = lazy(() => import("@/pages/teacher/gradebook").then((m) => ({ default: m.TeacherGradebook })));
+const TeacherStudents = lazy(() => import("@/pages/teacher/students").then((m) => ({ default: m.TeacherStudents })));
+const TeacherAttendance = lazy(() => import("@/pages/teacher/attendance").then((m) => ({ default: m.TeacherAttendance })));
+const TeacherAnnouncements = lazy(() => import("@/pages/teacher/announcements").then((m) => ({ default: m.TeacherAnnouncements })));
+const TeacherContent = lazy(() => import("@/pages/teacher/content").then((m) => ({ default: m.TeacherContent })));
+const TeacherSessions = lazy(() => import("@/pages/teacher/sessions").then((m) => ({ default: m.TeacherSessions })));
+const TeacherExams = lazy(() => import("@/pages/teacher/exams").then((m) => ({ default: m.TeacherExams })));
+const TeacherAttestations = lazy(() => import("@/pages/teacher/attestations").then((m) => ({ default: m.TeacherAttestations })));
+const StudentAttestations = lazy(() => import("@/pages/student/attestations").then((m) => ({ default: m.StudentAttestations })));
+const TeacherProfile = lazy(() => import("@/pages/teacher/profile").then((m) => ({ default: m.TeacherProfile })));
+const NotFoundPage = lazy(() => import("@/pages/not-found").then((m) => ({ default: m.NotFoundPage })));
 
 // ─── Role constants (match backend role names, normalizeRole strips ROLE_ prefix) ──────
 // Backend returns role.name = "super_admin" | "admin" | "metodist" | "teacher" |
@@ -154,19 +175,12 @@ function App() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    console.log('App.tsx - Showing loading screen');
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
-          <p className="text-muted-foreground">Yuklanmoqda...</p>
-        </div>
-      </div>
-    );
+    return <FullScreenLoader />;
   }
 
   return (
     <>
+      <Suspense fallback={<FullScreenLoader />}>
       <Routes>
         {/* ── Public ──────────────────────────────────────────────────────── */}
         <Route path="/login"          element={<LoginPage />} />
@@ -181,7 +195,7 @@ function App() {
           path="/"
           element={
             <AuthGuard>
-              <DashboardLayout>{getDashboardComponent(user)}</DashboardLayout>
+              <DashboardLayout><Suspense fallback={<PageLoader />}>{getDashboardComponent(user)}</Suspense></DashboardLayout>
             </AuthGuard>
           }
         />
@@ -218,6 +232,8 @@ function App() {
         {/* ── /student/* ───────────────────────────────────────────────────── */}
         <Route path="/student/dashboard"     element={<P roles={[R_STU]}><StudentDashboard /></P>} />
         <Route path="/student/courses"       element={<P roles={[R_STU]}><StudentCourses /></P>} />
+        <Route path="/student/subjects/:id"  element={<P roles={[R_STU]}><StudentSubject /></P>} />
+        <Route path="/student/subjects/:id/lessons/:topicId" element={<P roles={[R_STU]}><StudentSubjectLesson /></P>} />
         <Route path="/student/study-plan"    element={<P roles={[R_STU]}><StudentStudyPlan /></P>} />
         <Route path="/student/orientation"   element={<P roles={[R_STU]}><StudentOrientation /></P>} />
         <Route path="/student/practice"      element={<P roles={[R_STU]}><StudentPractice /></P>} />
@@ -254,21 +270,22 @@ function App() {
         <Route path="/course/:id"    element={<P roles={CONTENT_ROLES}><CoursePlayer /></P>} />
 
         {/* ── Teacher / Metodist / Admin ────────────────────────────────────── */}
-        <Route path="/contingent"  element={<P roles={STAFF_ROLES}><ContingentManagement /></P>} />
-        <Route path="/attendance"  element={<P roles={TEACHER_ROLES}><AttendanceProgress /></P>} />
-        <Route path="/teaching"    element={<P roles={TEACHER_ROLES}><TeachingManagement /></P>} />
+        {/* Bu manzillarda ilgari namunaviy (soxta) ma'lumotli sahifalar turardi; eski havolalar haqiqiy sahifalarga o'tadi */}
+        <Route path="/contingent"  element={<Navigate to="/students/students" replace />} />
+        <Route path="/attendance"  element={<Navigate to="/teacher/attendance" replace />} />
+        <Route path="/teaching"    element={<Navigate to="/teacher/courses" replace />} />
 
         {/* ── Akademik tuzilma (Stage 3) ───────────────────────────────────── */}
         <Route path="/academic"            element={<P roles={STAFF_ROLES}><AcademicStructure /></P>} />
-        <Route path="/groups"              element={<P roles={STAFF_ROLES}><Groups /></P>} />
-        <Route path="/subjects"            element={<P roles={STAFF_ROLES}><Subjects /></P>} />
+        <Route path="/groups"              element={<Navigate to="/admin/groups" replace />} />
+        <Route path="/subjects"            element={<Navigate to="/admin/subjects" replace />} />
 
         {/* ── Proctor ──────────────────────────────────────────────────────── */}
         <Route path="/exam/:id/proctoring" element={<P roles={[R_STU]}><ProctoringSession /></P>} />
 
         {/* ── Admin / Super Admin ───────────────────────────────────────────── */}
-        <Route path="/statistics" element={<P roles={[...ADMIN_ROLES, R_MON, R_MET]}><Statistics /></P>} />
-        <Route path="/settings"   element={<P roles={ADMIN_ROLES}><Settings /></P>} />
+        <Route path="/statistics" element={<Navigate to="/statistics-dashbord" replace />} />
+        <Route path="/settings"   element={<Navigate to="/settings/configs" replace />} />
 
         {/* ── /admin/* ─────────────────────────────────────────────────────── */}
         <Route path="/universities"       element={<P roles={STAFF_ROLES}><AdminUniversities /></P>} />
@@ -365,7 +382,7 @@ function App() {
         <Route path="/admin/admission-policies" element={<P roles={STAFF_ROLES}><AdminAdmissionPolicies /></P>} />
         <Route path="/admin/non-state-licenses" element={<P roles={STAFF_ROLES}><AdminNonStateLicenses /></P>} />
         <Route path="/admin/schedule"     element={<P roles={STAFF_ROLES}><TeacherSessions managementMode /></P>} />
-        <Route path="/admin/calendar"     element={<P roles={STAFF_ROLES}><AdminCalendar /></P>} />
+        <Route path="/admin/calendar"     element={<Navigate to="/edu-process/academic-years" replace />} />
         <Route path="/admin/orientations" element={<P roles={STAFF_ROLES}><AdminOrientations /></P>} />
         <Route path="/admin/practices"    element={<P roles={STAFF_ROLES}><AdminPractices /></P>} />
         <Route path="/admin/assessment-leaves" element={<P roles={STAFF_ROLES}><AdminAssessmentLeaves /></P>} />
@@ -383,19 +400,23 @@ function App() {
         <Route path="/admin/surveys"        element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminSurveys /></P>} />
         <Route path="/admin/quality-monitoring" element={<P roles={[...ADMIN_ROLES, R_MET, R_MON]}><AdminQualityMonitoring /></P>} />
         <Route path="/admin/content-reviews" element={<P roles={STAFF_ROLES}><AdminContentReviews /></P>} />
-        <Route path="/admin/settings"          element={<P roles={ADMIN_ROLES}><Settings /></P>} />
+        <Route path="/admin/settings"          element={<Navigate to="/settings/configs" replace />} />
         <Route path="/admin/notifications"     element={<P roles={STAFF_ROLES}><StudentNotifications /></P>} />
 
+        {/* Noto'g'ri manzil: jimgina bosh sahifani ko'rsatmasdan, aniq "topilmadi" xabari */}
         <Route
           path="*"
           element={
             <AuthGuard>
-              <DashboardLayout>{getDashboardComponent(user)}</DashboardLayout>
+              <DashboardLayout><Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense></DashboardLayout>
             </AuthGuard>
           }
         />
       </Routes>
+      </Suspense>
       <Toaster />
+      {/* Ilovaning bir qismi xabarlarni sonner orqali chiqaradi: usiz ular ekranda ko'rinmaydi */}
+      <SonnerToaster position="top-right" richColors closeButton />
     </>
   );
 }
@@ -406,9 +427,36 @@ function P({ roles, children }: { roles: string[]; children: ReactNode }) {
   return (
     <AuthGuard>
       <DashboardLayout>
-        <RoleGuard allowedRoles={roles}>{children}</RoleGuard>
+        <RoleGuard allowedRoles={roles}>
+          {/* Menyu joyida qoladi, faqat sahifa qismi yuklanadi */}
+          <Suspense fallback={<PageLoader />}>{children}</Suspense>
+        </RoleGuard>
       </DashboardLayout>
     </AuthGuard>
+  );
+}
+
+// ─── Yuklanish ko'rsatkichlari ───────────────────────────────────────────────────────
+
+function FullScreenLoader() {
+  return (
+    <div role="status" className="flex min-h-screen items-center justify-center bg-background">
+      <div className="text-center">
+        <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+        <p className="text-muted-foreground">Yuklanmoqda...</p>
+      </div>
+    </div>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div role="status" className="flex min-h-[40vh] items-center justify-center">
+      <div className="text-center">
+        <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+        <p className="text-sm text-muted-foreground">Sahifa yuklanmoqda...</p>
+      </div>
+    </div>
   );
 }
 

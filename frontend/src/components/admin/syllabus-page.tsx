@@ -1,23 +1,33 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowLeft, ArrowUp, ChevronRight, Layers, Loader2, Plus, Trash2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, BookOpen, ChevronRight, FileText, Image as ImageIcon, Loader2, Settings2, Trash2, Upload, Video } from "lucide-react";
+import { SyllabusCurriculum } from "@/components/admin/syllabus-curriculum";
+import { LazyRichTextEditor } from "@/components/editor/lazy-rich-text-editor";
+import { RichTextContent } from "@/components/editor/rich-text-content";
+import { SyllabusCover } from "@/components/learning/syllabus-media";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { LessonContentPage, type OpenLesson } from "@/components/admin/syllabus-lesson-page";
-import { PlanTopicsCheck } from "@/components/admin/syllabus-topics";
 import { syllabusStatuses } from "@/components/admin/syllabus-workflow";
 import { useToast } from "@/hooks/use-toast";
-import { extractApiError, listSubjects } from "@/lib/academic-api";
-import { TOPIC_TYPES, planHours, syllabusLanguages, topicTypeMeta, type PlanPart } from "@/lib/syllabus";
-import { modulesOf } from "@/lib/syllabus-modules";
+import { extractApiError } from "@/lib/academic-api";
+import { syllabusLanguages, type PlanPart } from "@/lib/syllabus";
 import {
-  syllabusApi, type SubjectSyllabus, type SyllabusLanguage, type SyllabusModuleInput, type SyllabusTopicType,
+  syllabusApi, type SubjectSyllabus, type SyllabusLanguage, type SyllabusMediaKind,
 } from "@/services/api/syllabus-api";
 
 const select = "h-10 rounded-md border bg-background px-3 text-sm";
+
+type Section = "program" | "basic" | "info" | "media";
+const SECTIONS: { value: Section; label: string; icon: typeof BookOpen }[] = [
+  { value: "program", label: "O'quv dasturi", icon: BookOpen },
+  { value: "basic", label: "Asosiy", icon: Settings2 },
+  { value: "info", label: "Ma'lumot", icon: FileText },
+  { value: "media", label: "Media", icon: ImageIcon },
+];
 
 /**
  * O'quv dasturi (Everest kabi): "Ma'lumot" — nomi, tili, ta'riflar; "Dasturlar" — modullar, ularning darslari
@@ -36,7 +46,7 @@ export function SyllabusPage({ item, canWrite, plan, initialTab = "info", onClos
   onSaved: (saved: SubjectSyllabus) => unknown;
 }) {
   const [current, setCurrent] = useState<SubjectSyllabus | null>(item);
-  const [tab, setTab] = useState<"info" | "program">(item ? initialTab : "info");
+  const [tab, setTab] = useState<Section>(item && initialTab === "program" ? "program" : "basic");
   const editable = canWrite && (current == null || current.status === "DRAFT");
   const saved = async (value: SubjectSyllabus) => { setCurrent(value); await onSaved(value); };
   const title = current ? current.name : "O'quv dasturi qo'shish";
@@ -68,75 +78,136 @@ export function SyllabusPage({ item, canWrite, plan, initialTab = "info", onClos
       <div>
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="text-sm text-muted-foreground">
-          {current ? `${current.subjectName} · ${syllabusStatuses[current.status]}` : "Avval ma'lumotlarni saqlang, keyin modullar va darslarni kiriting."}
+          {current ? `${current.subjectName ?? "Fanga biriktirilmagan"} · ${syllabusStatuses[current.status]}` : "Avval ma'lumotlarni saqlang, keyin bo'limlar va darslarni kiriting."}
           {current && !editable && " — tahrirlash uchun dasturning yangi versiyasini oching."}
         </p>
       </div>
-      <Tabs value={tab} onValueChange={(value) => setTab(value as "info" | "program")}>
-        <TabsList>
-          <TabsTrigger value="info">Ma'lumot</TabsTrigger>
-          <TabsTrigger value="program" disabled={!current}>Dasturlar</TabsTrigger>
+      {/* Mentor LMS kabi: chapda bo'limlar menyusi, o'ngda tanlangan bo'lim */}
+      <Tabs value={tab} onValueChange={(value) => setTab(value as Section)} orientation="vertical"
+        className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
+        <TabsList aria-label="Dastur bo'limlari" className="flex h-auto flex-row flex-wrap items-stretch justify-start gap-1 rounded-xl border bg-background p-2 shadow-sm lg:flex-col">
+          {SECTIONS.map(({ value, label, icon: Icon }) => (
+            <TabsTrigger key={value} value={value} disabled={value === "program" && !current}
+              className="justify-start gap-2 rounded-md border-l-2 border-transparent px-3 py-2.5 data-[state=active]:border-foreground data-[state=active]:bg-muted data-[state=active]:shadow-none">
+              <Icon className="h-4 w-4" />{label}
+            </TabsTrigger>
+          ))}
         </TabsList>
-        <TabsContent value="info" className="mt-4 max-w-4xl">
-          <InfoForm key={current?.id ?? "new"} item={current} editable={editable}
-            onSaved={async (value) => { await saved(value); if (!item) setTab("program"); }} />
-        </TabsContent>
-        <TabsContent value="program" className="mt-4">
-          {current && <ProgramEditor key={current.id} item={current} editable={editable} plan={plan} onSaved={saved}
-            counts={counts} onOpenLesson={setLesson} />}
-        </TabsContent>
+        <div className="min-w-0 rounded-xl border bg-background p-4 shadow-sm sm:p-5">
+          <TabsContent value="program" className="mt-0">
+            {current && <SyllabusCurriculum key={current.id} item={current} editable={editable} plan={plan} onSaved={saved}
+              counts={counts} onCount={(id, count) => setCounts((value) => ({ ...value, [id]: count }))} onOpenLesson={setLesson} />}
+          </TabsContent>
+          {tab !== "program" && <InfoForm key={current?.id ?? "new"} item={current} editable={editable} section={tab} onMedia={saved}
+            onSaved={async (value) => { await saved(value); if (!item) setTab("program"); }} />}
+        </div>
       </Tabs>
     </div>
   </section>;
 }
 
-function InfoForm({ item, editable, onSaved }: { item: SubjectSyllabus | null; editable: boolean; onSaved: (value: SubjectSyllabus) => unknown }) {
-  const subjects = useQuery({ queryKey: ["subjects", "all"], queryFn: () => listSubjects(), enabled: item == null });
-  const [subjectId, setSubjectId] = useState(item?.subjectId ?? 0);
+/**
+ * Dastur ma'lumoti (Everest "O'quv dasturi qo'shish" kabi): chapda fan, nomi, tili, qisqa ta'rif, talablar, natijalar;
+ * o'ngda to'liq ta'rif (CKEditor + formula), muqova rasmi va tanishtiruv videosi. Hammasi talaba fan sahifasida ko'rinadi.
+ * Yangi dasturda tanlangan rasm/video saqlangandan keyin yuklanadi.
+ */
+function InfoForm({ item, editable, section, onSaved, onMedia }: {
+  item: SubjectSyllabus | null;
+  editable: boolean;
+  /** Ko'rinadigan qism; qolganlari yashirin, lekin holati saqlanadi va birga saqlanadi */
+  section: Exclude<Section, "program">;
+  onSaved: (value: SubjectSyllabus) => unknown;
+  /** Rasm/video yuklandi yoki o'chirildi (tab almashmaydi) */
+  onMedia: (value: SubjectSyllabus) => unknown;
+}) {
   const [name, setName] = useState(item?.name ?? "");
   const [language, setLanguage] = useState<SyllabusLanguage>(item?.language ?? "UZ");
   const [shortDescription, setShortDescription] = useState(item?.shortDescription ?? "");
   const [requirements, setRequirements] = useState(item?.requirements ?? "");
+  const [learningOutcomes, setLearningOutcomes] = useState(item?.learningOutcomes ?? "");
   const [fullDescription, setFullDescription] = useState(item?.fullDescription ?? "");
+  const [introVideoUrl, setIntroVideoUrl] = useState(item?.introVideoUrl ?? "");
+  const [pending, setPending] = useState<{ cover?: File; video?: File }>({});
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const invalid = !subjectId ? "Fanni tanlang" : shortDescription.trim().length < 3 ? "Qisqa ta'rif kamida 3 belgi"
-    : fullDescription.trim().length < 3 ? "To'liq ta'rif majburiy" : null;
+  const queryClient = useQueryClient();
+  const plainFull = fullDescription.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").trim();
+  // Fan tanlanmaydi — u o'quv reja taxtasida dastur biriktirilganda yoziladi; shuning uchun nom majburiy
+  const invalid = name.trim().length < 3 ? "Dastur nomini kiriting (kamida 3 belgi)" : shortDescription.trim().length < 3 ? "Qisqa ta'rif kamida 3 belgi"
+    : plainFull.length < 3 && !/<img|math-tex/.test(fullDescription) ? "To'liq ta'rif majburiy"
+    : introVideoUrl.trim() && !/^https?:\/\/\S+$/i.test(introVideoUrl.trim()) ? "Video havolasi http(s):// bilan boshlanishi kerak" : null;
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const input = {
-        subjectId, name: name.trim() || undefined, language, shortDescription: shortDescription.trim(),
-        requirements: requirements.trim() || null, fullDescription: fullDescription.trim(), active: item?.active ?? true,
+        subjectId: item?.subjectId ?? null, name: name.trim(), language, shortDescription: shortDescription.trim(),
+        requirements: requirements.trim() || null, learningOutcomes: learningOutcomes.trim() || null, fullDescription: fullDescription.trim(),
+        introVideoUrl: introVideoUrl.trim() || null, active: item?.active ?? true,
       };
-      return item ? syllabusApi.update(item.id, input) : syllabusApi.create(input);
+      let value = item ? await syllabusApi.update(item.id, input) : await syllabusApi.create(input);
+      if (pending.cover) value = await syllabusApi.uploadMedia(value.id, "cover", pending.cover);
+      if (pending.video) value = await syllabusApi.uploadMedia(value.id, "video", pending.video);
+      return value;
     },
-    onSuccess: async (value) => { setError(null); await onSaved(value); toast({ title: "Ma'lumotlar saqlandi" }); },
+    onSuccess: async (value) => { setError(null); setPending({}); await onSaved(value); toast({ title: "Ma'lumotlar saqlandi" }); },
     onError: (e) => setError(extractApiError(e, "Saqlanmadi").message),
   });
+  // Mavjud dasturda rasm/video darhol yuklanadi; yangi dasturda — saqlashda
+  const media = useMutation({
+    mutationFn: ({ kind, file }: { kind: SyllabusMediaKind; file: File | null }) =>
+      file ? syllabusApi.uploadMedia(item!.id, kind, file) : syllabusApi.removeMedia(item!.id, kind),
+    onSuccess: async (value, { kind, file }) => {
+      await queryClient.invalidateQueries({ queryKey: ["syllabus", value.id, "media", kind] });
+      await onMedia(value);
+      toast({ title: file ? (kind === "cover" ? "Rasm yuklandi" : "Video yuklandi") : "O'chirildi" });
+    },
+    onError: (e) => toast({ variant: "destructive", title: "Fayl saqlanmadi", description: extractApiError(e, "Saqlanmadi").message }),
+  });
+  const pick = (kind: SyllabusMediaKind, file: File | null) => {
+    if (item) media.mutate({ kind, file });
+    else setPending((value) => ({ ...value, [kind]: file ?? undefined }));
+  };
 
-  return <div className="space-y-3">
-    <div className="grid gap-3 sm:grid-cols-2">
-      {item ? <div className="space-y-1.5"><Label>Fan</Label><p className="pt-2 text-sm">{item.subjectName}</p></div> :
-        <div className="space-y-1.5"><Label htmlFor="sd-subject">Fan *</Label>
-          <select id="sd-subject" className={`${select} w-full`} value={subjectId} disabled={!editable} onChange={(e) => setSubjectId(Number(e.target.value))}>
-            <option value={0}>Fanni tanlang</option>
-            {(subjects.data ?? []).filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.name}{s.code ? ` (${s.code})` : ""}</option>)}
-          </select></div>}
-      <div className="space-y-1.5"><Label htmlFor="sd-language">Dastur tili *</Label>
-        <select id="sd-language" className={`${select} w-full`} value={language} disabled={!editable} onChange={(e) => setLanguage(e.target.value as SyllabusLanguage)}>
-          {syllabusLanguages.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-        </select></div>
+  return <div className="space-y-4">
+    <div hidden={section !== "basic"} className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className="space-y-4">
+        <div className="space-y-1.5"><Label htmlFor="sd-name">Nomi *</Label>
+          <Input id="sd-name" value={name} maxLength={500} disabled={!editable} placeholder="O'quv dasturining nomini kiriting" onChange={(e) => setName(e.target.value)} />
+          <p className="text-xs text-muted-foreground">{item?.subjectName
+            ? <>Fan: <span className="font-medium text-foreground">{item.subjectName}</span> (o'quv rejada biriktirilgan)</>
+            : "Fan o'quv reja taxtasida — fan kartasidagi 📖 orqali dastur biriktirilganda yoziladi."}</p></div>
+        <div className="space-y-1.5"><Label htmlFor="sd-language">Dastur tili *</Label>
+          <select id="sd-language" className={`${select} w-full`} value={language} disabled={!editable} onChange={(e) => setLanguage(e.target.value as SyllabusLanguage)}>
+            {syllabusLanguages.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+          </select></div>
+        <div className="space-y-1.5"><Label htmlFor="sd-short">Qisqa ta'rif *</Label>
+          <Textarea id="sd-short" rows={5} maxLength={2000} value={shortDescription} disabled={!editable} placeholder="Qisqacha ta'rifni kiriting" onChange={(e) => setShortDescription(e.target.value)} /></div>
+      </div>
+      <div className="min-w-0 space-y-1.5"><Label>To'liq ta'rif *</Label>
+        {editable ? <LazyRichTextEditor value={fullDescription} onChange={setFullDescription} placeholder="Fan haqida to'liq ma'lumot..." />
+          : <RichTextContent value={fullDescription} className="min-h-24 rounded-md border p-3 text-sm" />}</div>
     </div>
-    <div className="space-y-1.5"><Label htmlFor="sd-name">Nomi</Label>
-      <Input id="sd-name" value={name} maxLength={500} disabled={!editable} placeholder="Bo'sh qolsa fan nomi olinadi" onChange={(e) => setName(e.target.value)} /></div>
-    <div className="space-y-1.5"><Label htmlFor="sd-short">Qisqa ta'rif *</Label>
-      <Textarea id="sd-short" rows={2} maxLength={2000} value={shortDescription} disabled={!editable} onChange={(e) => setShortDescription(e.target.value)} /></div>
-    <div className="space-y-1.5"><Label htmlFor="sd-req">Talablar</Label>
-      <Textarea id="sd-req" rows={2} value={requirements} disabled={!editable} onChange={(e) => setRequirements(e.target.value)} /></div>
-    <div className="space-y-1.5"><Label htmlFor="sd-full">To'liq ta'rif *</Label>
-      <Textarea id="sd-full" rows={5} value={fullDescription} disabled={!editable} onChange={(e) => setFullDescription(e.target.value)} /></div>
+    <div hidden={section !== "info"} className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-1.5"><Label htmlFor="sd-req">Talablar</Label>
+        <Textarea id="sd-req" rows={8} value={requirements} disabled={!editable} placeholder="Talablarni kiriting — har biri yangi qatordan" onChange={(e) => setRequirements(e.target.value)} /></div>
+      <div className="space-y-1.5"><Label htmlFor="sd-outcomes">Natijalar</Label>
+        <Textarea id="sd-outcomes" rows={8} value={learningOutcomes} disabled={!editable}
+          placeholder={"Fanni o'rganib talaba nimalarga erishadi — har biri yangi qatordan"} onChange={(e) => setLearningOutcomes(e.target.value)} /></div>
+      <p className="text-xs text-muted-foreground lg:col-span-2">Talaba fan sahifasida "Talablar va natijalar" bo'limida ro'yxat bo'lib ko'rinadi.</p>
+    </div>
+    <div hidden={section !== "media"} className="max-w-3xl space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MediaTile kind="cover" label="Muqova rasmi" hint="512×512, JPG/PNG/WEBP" accept="image/jpeg,image/png,image/webp" editable={editable}
+          busy={media.isPending && media.variables?.kind === "cover"} pending={pending.cover} item={item} onPick={(file) => pick("cover", file)} />
+        <MediaTile kind="video" label="Tanishtiruv videosi" hint="MP4/WEBM, 200 MB gacha" accept="video/mp4,video/webm" editable={editable}
+          busy={media.isPending && media.variables?.kind === "video"} pending={pending.video} item={item} onPick={(file) => pick("video", file)} />
+      </div>
+      <div className="space-y-1.5"><Label htmlFor="sd-video-url">Yoki video havolasi</Label>
+        <Input id="sd-video-url" value={introVideoUrl} maxLength={1000} disabled={!editable} placeholder="https://youtube.com/..." onChange={(e) => setIntroVideoUrl(e.target.value)} />
+        <p className="text-xs text-muted-foreground">Rasm bannerda, video "Fan haqida" bo'limida talabaga ko'rinadi. Havola "Saqlash" bilan saqlanadi.</p></div>
+    </div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {editable && <div className="flex justify-end">
+    {editable && <div className="flex items-center justify-end gap-3 border-t pt-4">
+      {invalid && <span className="text-xs text-muted-foreground">{invalid}</span>}
       <Button disabled={!!invalid || save.isPending} title={invalid ?? undefined} onClick={() => save.mutate()}>
         {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{item ? "Saqlash" : "Saqlash va davom etish"}
       </Button>
@@ -144,118 +215,42 @@ function InfoForm({ item, editable, onSaved }: { item: SubjectSyllabus | null; e
   </div>;
 }
 
-function ProgramEditor({ item, editable, plan, onSaved, counts, onOpenLesson }: {
-  item: SubjectSyllabus;
-  editable: boolean;
-  plan?: PlanPart[];
-  onSaved: (value: SubjectSyllabus) => unknown;
-  /** Dars kontenti sahifasidagi o'zgarishdan keyingi material + test soni */
-  counts: Record<number, number>;
-  /** Dars kontenti (Everest: dars ochilganda resurslar) */
-  onOpenLesson: (lesson: OpenLesson) => void;
+/** Rasm/video yuklash plitkasi: ko'rinish (rasm), fayl nomi (video), almashtirish va o'chirish */
+function MediaTile({ kind, label, hint, accept, editable, busy, pending, item, onPick }: {
+  kind: SyllabusMediaKind; label: string; hint: string; accept: string; editable: boolean; busy: boolean;
+  pending?: File; item: SubjectSyllabus | null; onPick: (file: File | null) => void;
 }) {
-  const { toast } = useToast();
-  const [modules, setModules] = useState<SyllabusModuleInput[]>(() => modulesOf(item));
-  const [error, setError] = useState<string | null>(null);
-  const materialCount = (id: number) => {
-    const topic = item.topics?.find((t) => t.id === id);
-    return counts[id] ?? (topic?.materialCount ?? 0) + (topic?.quizCount ?? 0);
-  };
-  const lessons = modules.flatMap((m) => m.lessons);
-  const parts = Math.max(plan?.length ?? 0, ...lessons.map((l) => l.part ?? 1), 1);
-  // Rejadan ochilganda: faqat rejada soati bor turlar (turlarga bo'linmagan rejada — barchasi)
-  const types: SyllabusTopicType[] = plan?.length && TOPIC_TYPES.some((type) => planHours(plan, type) !== null)
-    ? TOPIC_TYPES.filter((type) => (planHours(plan, type) ?? 0) > 0 || lessons.some((l) => l.type === type))
-    : TOPIC_TYPES;
-  const update = (index: number, change: Partial<SyllabusModuleInput>) =>
-    setModules((list) => list.map((m, i) => (i === index ? { ...m, ...change } : m)));
-  const move = <T,>(list: T[], from: number, to: number) => {
-    if (to < 0 || to >= list.length) return list;
-    const copy = [...list]; const [value] = copy.splice(from, 1); copy.splice(to, 0, value); return copy;
-  };
-  const invalid = modules.some((m) => m.name.trim().length < 3) ? "Modul nomi kamida 3 belgi bo'lishi kerak"
-    : lessons.some((l) => l.title.trim().length < 2) ? "Dars nomi kiritilmagan" : null;
-  const save = useMutation({
-    mutationFn: () => syllabusApi.updateModulesWithCourses(item.id, modules.map((m) => ({
-      id: m.id ?? null, name: m.name.trim(), description: m.description?.trim() || null,
-      lessons: m.lessons.map((l) => ({ id: l.id ?? null, type: l.type, title: l.title.trim(), description: l.description?.trim() || null, part: parts > 1 ? l.part ?? 1 : null })),
-    }))),
-    onSuccess: async (result) => {
-      setError(null);
-      setModules(modulesOf(result.syllabus));
-      await onSaved(result.syllabus);
-      const changed = result.courses.filter((c) => c.added + c.updated > 0);
-      toast({
-        title: "Dastur saqlandi",
-        description: changed.length ? changed.map((c) => `«${c.title}»: ${c.added} ta bo'lim qo'shildi, ${c.updated} ta yangilandi`).join("; ") : undefined,
-      });
-    },
-    onError: (e) => setError(extractApiError(e, "Saqlanmadi").message),
-  });
-
-  return <div className="space-y-4">
-    {plan?.length ? <PlanTopicsCheck topics={lessons} plan={plan} noun="dars" /> : null}
-    {modules.map((module, index) => (
-      <section key={module.id ?? `new-${index}`} aria-label={`${index + 1}-modul`} className="space-y-3 rounded-lg border p-3 shadow-sm">
-        <div className="flex items-start gap-2">
-          <span className="mt-2 text-sm font-semibold text-muted-foreground">{index + 1}.</span>
-          <div className="flex-1 space-y-2">
-            <Input aria-label={`${index + 1}-modul nomi`} placeholder="Modul nomi" value={module.name} maxLength={255} disabled={!editable}
-              onChange={(e) => update(index, { name: e.target.value })} />
-            <Textarea aria-label={`${index + 1}-modul ma'lumoti`} placeholder="Modul haqida qisqa ma'lumot" rows={2} maxLength={500} value={module.description ?? ""} disabled={!editable}
-              onChange={(e) => update(index, { description: e.target.value })} />
-          </div>
-          {editable && <div className="flex flex-col gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`${index + 1}-modulni yuqoriga`} disabled={index === 0} onClick={() => setModules((l) => move(l, index, index - 1))}><ArrowUp className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`${index + 1}-modulni pastga`} disabled={index === modules.length - 1} onClick={() => setModules((l) => move(l, index, index + 1))}><ArrowDown className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={`${index + 1}-modulni o'chirish`} onClick={() => setModules((l) => l.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
-          </div>}
-        </div>
-        <ol className="space-y-2 pl-6">
-          {module.lessons.map((lesson, lessonIndex) => (
-            <li key={lesson.id ?? `l-${lessonIndex}`} className="flex flex-wrap items-center gap-2">
-              <span className="w-6 text-xs text-muted-foreground">{lessonIndex + 1}.</span>
-              <Input className="min-w-48 flex-1" aria-label={`${index + 1}-modul ${lessonIndex + 1}-dars nomi`} placeholder="Dars nomi" value={lesson.title} maxLength={500} disabled={!editable}
-                onChange={(e) => update(index, { lessons: module.lessons.map((l, i) => (i === lessonIndex ? { ...l, title: e.target.value } : l)) })} />
-              <select aria-label={`${index + 1}-modul ${lessonIndex + 1}-dars turi`} className={`${select} w-36`} value={lesson.type} disabled={!editable}
-                onChange={(e) => update(index, { lessons: module.lessons.map((l, i) => (i === lessonIndex ? { ...l, type: e.target.value as SyllabusTopicType } : l)) })}>
-                {types.map((type) => <option key={type} value={type}>{topicTypeMeta[type].short}</option>)}
-              </select>
-              {parts > 1 && <select aria-label={`${index + 1}-modul ${lessonIndex + 1}-dars qismi`} className={`${select} w-28`} value={lesson.part ?? 1} disabled={!editable}
-                onChange={(e) => update(index, { lessons: module.lessons.map((l, i) => (i === lessonIndex ? { ...l, part: Number(e.target.value) } : l)) })}>
-                {Array.from({ length: parts }, (_, i) => i + 1).map((p) => <option key={p} value={p}>{p}-qism</option>)}
-              </select>}
-              {lesson.id ? <Button variant="outline" size="sm" className="h-8" aria-label={`${index + 1}-modul ${lessonIndex + 1}-dars kontenti`}
-                onClick={() => onOpenLesson({ id: lesson.id!, title: lesson.title, type: lesson.type, moduleName: module.name })}>
-                <Layers className="mr-1.5 h-3.5 w-3.5" />Kontent ({materialCount(lesson.id)})
-              </Button> : editable && <span className="text-xs text-muted-foreground" title="Kontent dastur saqlangandan keyin qo'shiladi">saqlang → kontent</span>}
-              {editable && <>
-                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Darsni yuqoriga" disabled={lessonIndex === 0}
-                  onClick={() => update(index, { lessons: move(module.lessons, lessonIndex, lessonIndex - 1) })}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Darsni pastga" disabled={lessonIndex === module.lessons.length - 1}
-                  onClick={() => update(index, { lessons: move(module.lessons, lessonIndex, lessonIndex + 1) })}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={`${index + 1}-modul ${lessonIndex + 1}-darsni o'chirish`}
-                  onClick={() => update(index, { lessons: module.lessons.filter((_, i) => i !== lessonIndex) })}><Trash2 className="h-3.5 w-3.5" /></Button>
-              </>}
-            </li>
-          ))}
-          {module.lessons.length === 0 && <li className="text-xs text-muted-foreground">Darslar yo'q</li>}
-        </ol>
-        {editable && <Button variant="outline" size="sm" className="ml-6"
-          onClick={() => update(index, { lessons: [...module.lessons, { type: module.lessons.at(-1)?.type ?? types[0], title: "", part: module.lessons.at(-1)?.part ?? null }] })}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" />Dars qo'shish
-        </Button>}
-      </section>
-    ))}
-    {modules.length === 0 && <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">Hali modul yo'q. Dastur modullardan, modullar darslardan iborat.</p>}
-    {editable && <Button variant="outline" onClick={() => setModules((l) => [...l, { name: `${l.length + 1}-modul`, description: "", lessons: [] }])}>
-      <Plus className="mr-2 h-4 w-4" />Yangi modul
-    </Button>}
-    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {editable && <div className="flex justify-end">
-      <Button disabled={!!invalid || save.isPending} title={invalid ?? undefined} onClick={() => save.mutate()}>
-        {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Dasturni saqlash
-      </Button>
+  const input = useRef<HTMLInputElement>(null);
+  const uploaded = kind === "cover" ? !!item?.coverImageAvailable : !!item?.introVideoName;
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pending || kind !== "cover") { setPreview(null); return; }
+    const url = URL.createObjectURL(pending);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pending, kind]);
+  const Icon = kind === "cover" ? ImageIcon : Video;
+  const name = pending?.name ?? (kind === "video" ? item?.introVideoName : null);
+  return <div className="space-y-1.5">
+    <Label>{label}</Label>
+    <div className="relative flex h-40 flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border border-dashed text-center">
+      {kind === "cover" && (preview ? <img src={preview} alt={label} className="absolute inset-0 h-full w-full object-cover" />
+        : item && uploaded ? <SyllabusCover queryKey={["syllabus", item.id, "media", "cover", item.updatedAt]} load={() => syllabusApi.mediaFile(item.id, "cover")}
+          available alt={label} className="absolute inset-0 h-full w-full" /> : null)}
+      {!(kind === "cover" && (preview || uploaded)) && <>
+        <Icon className="h-7 w-7 text-primary" aria-hidden="true" />
+        <span className="max-w-full truncate px-3 text-sm">{name ?? (editable ? (kind === "cover" ? "Rasm yuklang" : "Videoni yuklang") : "Yuklanmagan")}</span>
+        <span className="text-xs text-muted-foreground">{name ? (pending ? "saqlashda yuklanadi" : "yuklangan") : hint}</span>
+      </>}
+      {busy && <div className="absolute inset-0 flex items-center justify-center bg-background/70"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+    </div>
+    {editable && <div className="flex gap-2">
+      <input ref={input} type="file" accept={accept} hidden aria-label={`${label} fayli`}
+        onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) onPick(file); }} />
+      <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => input.current?.click()}>
+        <Upload className="mr-1.5 h-3.5 w-3.5" />{uploaded || pending ? "Almashtirish" : "Yuklash"}</Button>
+      {(uploaded || pending) && <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => onPick(null)}>
+        <Trash2 className="mr-1.5 h-3.5 w-3.5" />O'chirish</Button>}
     </div>}
   </div>;
 }

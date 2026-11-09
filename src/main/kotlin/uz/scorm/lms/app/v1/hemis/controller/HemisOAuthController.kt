@@ -19,6 +19,7 @@ import uz.scorm.lms.app.security.JwtService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.auth.controller.TokenResponse
 import uz.scorm.lms.app.v1.auth.service.HemisOAuthLoginCodeService
+import uz.scorm.lms.app.v1.auth.service.RefreshTokenCookie
 import uz.scorm.lms.app.v1.auth.service.RefreshTokenService
 import uz.scorm.lms.app.v1.hemis.service.HEMIS_EMPLOYEE_REGISTRATION_ID
 import uz.scorm.lms.app.v1.hemis.service.HemisOAuthAccountService
@@ -38,6 +39,7 @@ class HemisOAuthController(
     private val userDetailsService: UserDetailsService,
     private val jwtService: JwtService,
     private val refreshTokenService: RefreshTokenService,
+    private val refreshTokenCookie: RefreshTokenCookie,
     private val userMapper: UserMapper,
     private val userRepository: UserRepository,
     private val auditService: AuditService,
@@ -150,11 +152,12 @@ class HemisOAuthController(
 
         return ResponseEntity.ok()
             .header("Cache-Control", "no-store")
+            // Refresh token javob tanasida emas, HttpOnly cookie'da (oddiy login bilan bir xil)
+            .header("Set-Cookie", refreshTokenCookie.issue(request, refreshToken.token))
             .body(ApiResponse.success(
                 TokenResponse(
                     user = userMapper.toDto(user),
                     accessToken = accessToken,
-                    refreshToken = refreshToken.token,
                     expiresIn = jwtService.getExpirationInSeconds(accessToken),
                 )
             ))

@@ -1,11 +1,13 @@
 package uz.scorm.lms.app.v1.auth.controller
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import jakarta.servlet.http.HttpServletRequest
 import mu.KotlinLogging
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.AuthenticationManager
@@ -25,6 +27,7 @@ import uz.scorm.lms.app.common.ApiResponse as CommonApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 import uz.scorm.lms.app.security.JwtService
 import uz.scorm.lms.app.security.ClientIpResolver
+import uz.scorm.lms.app.v1.auth.service.RefreshTokenCookie
 import uz.scorm.lms.app.v1.auth.service.RefreshTokenService
 import uz.scorm.lms.app.v1.audit.service.AuditService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
@@ -46,7 +49,9 @@ data class LoginRequest(val username: String = "", val password: String = "")
 data class TokenResponse(
     val user: UserDto,
     val accessToken: String,
-    val refreshToken: String,
+    /** Refresh token javob tanasida berilmaydi: u HttpOnly cookie'da (RefreshTokenCookie), JavaScript o'qiy olmaydi. */
+    @field:JsonInclude(JsonInclude.Include.NON_NULL)
+    val refreshToken: String? = null,
     val expiresIn: Long
 )
 @RestController
@@ -63,9 +68,10 @@ class AuthController(
     private val userService: UserService,
     private val clientIpResolver: ClientIpResolver,
     private val auditService: AuditService,
+    private val refreshTokenCookie: RefreshTokenCookie,
 ) {
 
-    data class RefreshRequest(val refreshToken: String)
+    data class RefreshRequest(val refreshToken: String? = null)
     data class ErrorResponse(val message: String, val retryAfterSeconds: Long? = null)
 
     @PostMapping("/login")
@@ -150,22 +156,24 @@ class AuthController(
         val token = jwtService.generateToken(principal)
         val refresh = refreshTokenService.create(userEntity)
         val userDto = userMapper.toDto(userEntity);
-        return ResponseEntity.ok(
-            CommonApiResponse.success(
-                TokenResponse(
-                    user = userDto,
-                    accessToken = token,
-                    refreshToken = refresh.token,
-                    expiresIn = jwtService.getExpirationInSeconds(token)
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.issue(request, refresh.token))
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(
+                CommonApiResponse.success(
+                    TokenResponse(
+                        user = userDto,
+                        accessToken = token,
+                        expiresIn = jwtService.getExpirationInSeconds(token)
+                    )
                 )
             )
-        )
     }
 
     @Deprecated("Use /refresh-token endpoint instead")
     @PostMapping("/refresh")
-    fun refresh(@RequestBody body: RefreshRequest): ResponseEntity<CommonApiResponse<JwtResponse>> {
-        return refreshToken("Bearer ${body.refreshToken}")
+    fun refresh(request: HttpServletRequest, @RequestBody body: RefreshRequest): ResponseEntity<CommonApiResponse<JwtResponse>> {
+        return refreshToken(request, body.refreshToken?.let { "Bearer $it" })
     }
 
     @PostMapping("/refresh-token")
@@ -185,9 +193,19 @@ class AuthController(
             )
         ]
     )
-    fun refreshToken(@RequestHeader("Authorization") refreshToken: String): ResponseEntity<CommonApiResponse<JwtResponse>> {
+    fun refreshToken(
+        request: HttpServletRequest,
+        @RequestHeader("Authorization", required = false) authorization: String?,
+    ): ResponseEntity<CommonApiResponse<JwtResponse>> {
+        // Brauzer: HttpOnly cookie. Eski/brauzer bo'lmagan mijozlar: Authorization sarlavhasi (faqat ularga
+        // yangi token javob tanasida qaytadi; cookie esa har doim yangilanadi).
+        val cookieToken = refreshTokenCookie.read(request)
+        val headerToken = authorization?.substringAfter("Bearer ")?.trim()?.takeIf { it.isNotEmpty() }
+        val token = cookieToken ?: headerToken
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(CommonApiResponse.error(message = "Sessiya topilmadi. Tizimga qayta kiring."))
+
         return try {
-            val token = refreshToken.substringAfter("Bearer ").trim()
             val storedToken = refreshTokenService.validate(token)
             val username = storedToken.user?.username
                 ?: throw IllegalStateException("Refresh token foydalanuvchisi topilmadi")
@@ -195,15 +213,20 @@ class AuthController(
             val newAccessToken = jwtService.generateToken(userDetails)
             val rotatedToken = refreshTokenService.rotate(token)
 
-            ResponseEntity.ok(CommonApiResponse.success(JwtResponse(
-                accessToken = newAccessToken,
-                refreshToken = rotatedToken.token,
-                expiresIn = jwtService.getExpirationInSeconds(newAccessToken),
-            )))
+            ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.issue(request, rotatedToken.token))
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(CommonApiResponse.success(JwtResponse(
+                    accessToken = newAccessToken,
+                    refreshToken = rotatedToken.token.takeIf { cookieToken == null },
+                    expiresIn = jwtService.getExpirationInSeconds(newAccessToken),
+                )))
         } catch (e: Exception) {
-            logger.error("Token refresh failed: ${e.message}", e)
+            // Muddati o'tgan yoki bekor qilingan token — kutilgan holat, stack trace kerak emas
+            logger.warn { "Token refresh rad etildi: ${e.message}" }
             ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(CommonApiResponse.error(message = e.message ?: "Refresh token yaroqsiz"))
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.clear(request))
+                .body(CommonApiResponse.error(message = "Sessiya tugagan. Tizimga qayta kiring."))
         }
     }
 
@@ -263,9 +286,14 @@ class AuthController(
     }
 
     @PostMapping("/logout")
-    fun logout(@RequestBody body: RefreshRequest): ResponseEntity<Void> {
-        refreshTokenService.revoke(body.refreshToken)
-        return ResponseEntity.noContent().build()
+    fun logout(request: HttpServletRequest, @RequestBody(required = false) body: RefreshRequest?): ResponseEntity<Void> {
+        // Cookie'dagi va (eski mijozlar yuborgan) tanadagi token bekor qilinadi, cookie o'chiriladi
+        listOfNotNull(refreshTokenCookie.read(request), body?.refreshToken?.takeIf { it.isNotBlank() })
+            .distinct()
+            .forEach(refreshTokenService::revoke)
+        return ResponseEntity.noContent()
+            .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.clear(request))
+            .build()
     }
 
 }

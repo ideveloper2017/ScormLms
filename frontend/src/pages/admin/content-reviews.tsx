@@ -26,6 +26,7 @@ import {
   teacherPortalApi,
   type CourseContentReview,
 } from "@/services/api/teacher-portal-api";
+import { safeHref } from "@/lib/safe-url";
 
 export function AdminContentReviews() {
   const { user } = useAuth();
@@ -163,7 +164,7 @@ export function AdminContentReviews() {
                   {review.sourceUrl ? (
                     <a
                       className="underline"
-                      href={review.sourceUrl}
+                      href={safeHref(review.sourceUrl)}
                       target="_blank"
                       rel="noreferrer"
                     >

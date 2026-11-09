@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { qk } from "@/lib/query-keys";
 import { teacherPortalApi } from "@/services/api/teacher-portal-api";
+import { useConfirm } from "@/components/confirm-dialog";
 
 function localInputValue(date: Date) {
   const offset = date.getTimezoneOffset() * 60_000;
@@ -33,6 +34,7 @@ export function TeacherAttendance() {
   const [minimumSeconds, setMinimumSeconds] = useState("0");
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { confirm, confirmDialog } = useConfirm();
   const recordsQuery = useQuery({
     queryKey: qk.teacher.attendance(),
     queryFn: teacherPortalApi.getAttendance,
@@ -102,9 +104,10 @@ export function TeacherAttendance() {
         {records.map(record => {
           const attended = record.present + record.late;
           const rate = record.total > 0 ? Math.round(attended / record.total * 100) : 0;
-          return <Card key={record.id}><CardContent className="p-4 space-y-3"><div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3"><div><div className="font-medium">{record.sessionTitle}</div><div className="text-sm text-muted-foreground">{record.courseTitle} · {record.group || "Guruhsiz"} · {fmtDate(record.opensAt)} — {fmtDate(record.closesAt)}</div><div className="text-xs text-muted-foreground mt-1">Minimal faollik: {record.minimumActivitySeconds} soniya</div></div><div className="flex items-center gap-2"><Badge variant={record.status === "open" ? "default" : "secondary"}>{record.status === "scheduled" ? "Rejada" : record.status === "open" ? "Ochiq" : "Yopilgan"}</Badge><Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteMutation.mutate(record.id)}><Trash2 className="h-4 w-4" /></Button></div></div><div className="flex flex-wrap gap-4 text-sm"><span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" />{record.present} qatnashdi</span><span className="text-yellow-600 flex items-center gap-1"><Clock3 className="h-4 w-4" />{record.late} kech</span><span className="text-red-600 flex items-center gap-1"><XCircle className="h-4 w-4" />{record.absent} qatnashmadi</span><span className="text-muted-foreground flex items-center gap-1"><Users className="h-4 w-4" />{record.pending} kutilmoqda / {record.total} jami</span></div><div><div className="flex justify-between text-xs text-muted-foreground mb-1"><span>Faollik bilan tasdiqlangan davomat</span><span>{rate}%</span></div><Progress value={rate} /></div></CardContent></Card>;
+          return <Card key={record.id}><CardContent className="p-4 space-y-3"><div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3"><div><div className="font-medium">{record.sessionTitle}</div><div className="text-sm text-muted-foreground">{record.courseTitle} · {record.group || "Guruhsiz"} · {fmtDate(record.opensAt)} — {fmtDate(record.closesAt)}</div><div className="text-xs text-muted-foreground mt-1">Minimal faollik: {record.minimumActivitySeconds} soniya</div></div><div className="flex items-center gap-2"><Badge variant={record.status === "open" ? "default" : "secondary"}>{record.status === "scheduled" ? "Rejada" : record.status === "open" ? "Ochiq" : "Yopilgan"}</Badge><Button variant="ghost" size="icon" className="text-destructive" aria-label="Davomat oynasini o'chirish" onClick={async () => { if (!(await confirm({ title: `“${record.sessionTitle}” davomat oynasi o'chirilsinmi?`, description: "Shu oyna bo'yicha davomat natijalari ham ro'yxatdan o'chadi. Bu amalni qaytarib bo'lmaydi.", confirmLabel: "O'chirish" }))) return; deleteMutation.mutate(record.id); }}><Trash2 className="h-4 w-4" /></Button></div></div><div className="flex flex-wrap gap-4 text-sm"><span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" />{record.present} qatnashdi</span><span className="text-yellow-600 flex items-center gap-1"><Clock3 className="h-4 w-4" />{record.late} kech</span><span className="text-red-600 flex items-center gap-1"><XCircle className="h-4 w-4" />{record.absent} qatnashmadi</span><span className="text-muted-foreground flex items-center gap-1"><Users className="h-4 w-4" />{record.pending} kutilmoqda / {record.total} jami</span></div><div><div className="flex justify-between text-xs text-muted-foreground mb-1"><span>Faollik bilan tasdiqlangan davomat</span><span>{rate}%</span></div><Progress value={rate} /></div></CardContent></Card>;
         })}
       </div>
+      {confirmDialog}
     </div>
   );
 }

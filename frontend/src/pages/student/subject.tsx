@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RichTextContent } from '@/components/editor/rich-text-content';
+import { QueryState } from '@/components/query-state';
 import { SyllabusCover, SyllabusIntroVideo } from '@/components/learning/syllabus-media';
 import { useCourses } from '@/hooks/courses/useCourses';
 import { languageLabel, topicTypeMeta } from '@/lib/syllabus';
@@ -72,6 +73,12 @@ export function StudentSubject() {
     return <div className="flex items-center justify-center gap-2 p-10"><Loader2 className="h-5 w-5 animate-spin" />Fan yuklanmoqda...</div>;
   }
   if (!row) {
+    // So'rov bajarilmagan bo'lsa (404 dan tashqari) bu "fan topilmadi" emas — qayta urinish taklif qilinadi
+    const notFound = (curriculumQuery.error as { response?: { status?: number } } | null)?.response?.status === 404;
+    if (curriculumQuery.isError && !notFound) {
+      return <div className="space-y-3 p-10 text-center"><QueryState isError error={curriculumQuery.error} onRetry={() => { void curriculumQuery.refetch(); }} className="py-0" />
+        <Button variant="ghost" onClick={() => navigate('/student/courses')}>Fanlarga qaytish</Button></div>;
+    }
     return <div className="space-y-3 p-10 text-center"><p className="text-muted-foreground">Fan o'quv rejangizda topilmadi.</p>
       <Button variant="outline" onClick={() => navigate('/student/courses')}>Fanlarga qaytish</Button></div>;
   }
@@ -149,7 +156,9 @@ export function StudentSubject() {
               </div>
             </div>
             {lessonsQuery.isLoading && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Darslar yuklanmoqda...</p>}
-            {modules.length === 0 && <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {(lessonsQuery.isError || contentsQuery.isError) && <QueryState isError error={lessonsQuery.error ?? contentsQuery.error}
+              onRetry={() => { void (lessonsQuery.isError ? lessonsQuery : contentsQuery).refetch(); }} className="py-4" />}
+            {modules.length === 0 && !lessonsQuery.isLoading && !contentsQuery.isLoading && !lessonsQuery.isError && !contentsQuery.isError && <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
               {syllabus ? "O'quv dasturida hali modul va mavzular yo'q." : "Bu fan uchun o'quv dasturi hali tasdiqlanmagan."}</p>}
             {view === 'list' && <ListView modules={modules} onOpen={open} />}
             {view === 'type' && <TypeView modules={modules} onOpen={open} />}
@@ -174,7 +183,8 @@ export function StudentSubject() {
 
           <TabsContent value="grades" className="mt-0 space-y-3 p-4">
             {!courseId ? <p className="text-sm text-muted-foreground">Hali baho qo'yilmagan. Dars testlari va nazoratlar baholari shu yerda chiqadi.</p>
-              : gradesQuery.isLoading ? <Loader2 className="h-4 w-4 animate-spin" />
+              : gradesQuery.isLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Yuklanmoqda" />
+              : gradesQuery.isError ? <QueryState isError error={gradesQuery.error} onRetry={() => { void gradesQuery.refetch(); }} className="py-4" />
               : (gradesQuery.data ?? []).length === 0 ? <p className="text-sm text-muted-foreground">Hali baho qo'yilmagan.</p>
               : (gradesQuery.data ?? []).map((grade) => (
                 <div key={grade.id}>

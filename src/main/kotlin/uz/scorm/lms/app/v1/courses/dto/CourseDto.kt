@@ -248,6 +248,9 @@ data class CourseContentDto(
     /** Material darsi qaysi kurs modulida — talaba ko'rinishida modul -> dars -> material guruhlash uchun */
     val unitId: Long? = null,
     val unitTitle: String? = null,
+    /** Dars qaysi o'quv dasturi darsiga bog'langan va mashg'ulot turi (talaba fan sahifasi) */
+    val syllabusTopicId: Long? = null,
+    val topicType: String? = null,
 )
 
 data class ContentCompatibilityIssueDto(
@@ -324,7 +327,8 @@ data class CourseContentAssetDto(
 )
 
 data class SubjectMaterialRequest(
-    val subjectId: Long,
+    /** Fansiz (rejaga hali biriktirilmagan) dastur materialida null */
+    val subjectId: Long?,
     val title: String,
     val description: String? = null,
     val contentType: CourseContentType,
@@ -335,6 +339,8 @@ data class SubjectMaterialRequest(
     val contentVersion: String = "1.0",
     val sourceName: String? = null,
     val sourceUrl: String? = null,
+    /** Video davomiyligi (soniya) */
+    val durationSeconds: Int? = null,
 )
 
 data class SubjectMaterialSubjectDto(
@@ -349,8 +355,8 @@ data class SubjectMaterialSubjectDto(
 
 data class SubjectMaterialDto(
     val id: Long,
-    val subjectId: Long,
-    val subjectName: String,
+    val subjectId: Long?,
+    val subjectName: String?,
     val title: String,
     val description: String?,
     val contentType: String,
@@ -364,6 +370,7 @@ data class SubjectMaterialDto(
     val sourceUrl: String?,
     val createdAt: Instant?,
     val updatedAt: Instant?,
+    val durationSeconds: Int? = null,
 )
 
 data class CourseContentReviewDto(

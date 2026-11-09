@@ -238,8 +238,9 @@ class ProgramCurriculumService(
         }
         val code = subject.code?.trim()
         require(!code.isNullOrBlank() && code.length <= 100) { "Fanning kodi kiritilmagan: avval \"Fanlar\" bo'limida fan kodini kiriting" }
-        val credits = request.credits ?: subject.credits
-        require(credits != null && credits in 1..60) { "Fan krediti 1 dan 60 gacha bo'lishi kerak" }
+        // Kredit fanda emas, rejada: berilmasa 0 bilan qo'shiladi va keyin "Kredit va soatlar" orqali kiritiladi
+        val credits = request.credits ?: subject.credits ?: 0
+        require(credits in 0..60) { "Fan krediti 0 dan 60 gacha bo'lishi kerak" }
         require(request.semester in 1..version.semesterCount) { "Semestr o'quv reja chegarasidan tashqarida" }
         academicPeriodService.requireActiveSemester(request.semester)
         require(!subjectItemRepository.existsByCurriculumVersionIdAndSubjectIdAndSemesterAndDeletedFalse(id, request.subjectId, request.semester)) {
@@ -552,6 +553,7 @@ class ProgramCurriculumService(
                 syllabusId = item.syllabus?.id, syllabusName = item.syllabus?.name, syllabusLanguage = item.syllabus?.language?.name,
                 syllabusStatus = item.syllabus?.status, syllabusTopicCount = item.syllabus?.topics?.size ?: 0,
                 syllabusComplete = item.syllabus?.let { curriculumTopicsComplete(it, bySubject.getValue(item.subject?.id ?: -(item.id ?: 0))) },
+                teacherId = item.teacher?.id, teacherName = item.teacher?.fullName,
             ) }
         val components = componentRepository.findAllByCurriculumVersionIdAndDeletedFalseOrderBySemesterAscTypeAsc(requireNotNull(version.id))
             .map { CurriculumComponentDto(requireNotNull(it.id), it.type, it.name, it.semester, it.credits, it.hours, it.weeks) }

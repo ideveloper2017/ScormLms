@@ -1,4 +1,5 @@
 import api, { type ApiResponse } from "@/lib/api";
+import { unwrap } from "./unwrap";
 
 export type ComplianceStatus = "COMPLIANT" | "WARNING" | "NON_COMPLIANT";
 export type RequirementImplementation = "IMPLEMENTED" | "PARTIAL" | "NOT_IMPLEMENTED";
@@ -96,11 +97,6 @@ export interface ComplianceIssue {
 export interface ComplianceOwner { id: number; name: string; username: string }
 export interface ComplianceIssueInput { violationCode: string; ownerId: number; dueDate: string; remediationPlan: string }
 export interface ComplianceIssueUpdate { ownerId: number; dueDate: string; remediationPlan: string }
-
-function unwrap<T>(response: ApiResponse<T>, fallback: string): T {
-  if (!response.success || response.data == null) throw new Error(response.message ?? fallback);
-  return response.data;
-}
 
 export async function getDecision559Compliance(): Promise<Decision559ComplianceSummary> {
   const response = await api.get<ApiResponse<Decision559ComplianceSummary>>("/compliance/559/summary");

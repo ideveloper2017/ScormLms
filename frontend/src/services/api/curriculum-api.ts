@@ -70,6 +70,9 @@ export interface CurriculumSubject {
   syllabusTopicCount?: number;
   /** Rejada soati bor har bir mashg'ulot turiga (har bir semestr qismida) mavzu kiritilganmi */
   syllabusComplete?: boolean | null;
+  /** Mas'ul o'qituvchi (shu semestr qatori) */
+  teacherId?: number | null;
+  teacherName?: string | null;
 }
 
 export interface CreateCurriculumSyllabusInput {
@@ -446,6 +449,11 @@ export const curriculumApi = {
     (await api.post<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/syllabus`, input)).data,
   detachSyllabus: async (id: number, itemId: number) =>
     (await api.delete<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/syllabus`)).data,
+  /** Fanning shu semestr qatoriga mas'ul o'qituvchi */
+  assignTeacher: async (id: number, itemId: number, teacherId: number) =>
+    (await api.put<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/teacher/${teacherId}`)).data,
+  removeTeacher: async (id: number, itemId: number) =>
+    (await api.delete<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}/teacher`)).data,
   updateSubject: async (id: number, itemId: number, input: UpdateCurriculumSubjectInput) =>
     (await api.put<CurriculumVersion>(`/curricula/${id}/subjects/${itemId}`, input)).data,
   /** Reja fanini boshqa semestrga ko'chirish (kredit, soat va dastur o'zgarmaydi) */

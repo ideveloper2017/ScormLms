@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { QueryClientContext } from "@tanstack/react-query";
 import { AuthResponse, User } from "@/types/auth.types";
 import {
   clearAuthData,
@@ -8,6 +9,8 @@ import {
   isAuthenticated as apiCheck,
   login as apiLogin,
   logout as apiLogout,
+  SESSION_EXPIRED_EVENT,
+  SESSION_FLAG_KEY,
 } from "@/lib/api";
 
 interface AuthContextType {
@@ -26,12 +29,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
+  // Ixtiyoriy: testlarda QueryClientProvider bo'lmasligi mumkin
+  const queryClient = useContext(QueryClientContext);
 
   const clearAuthState = useCallback(() => {
     clearAuthData();
+    // Keshdagi ma'lumot oldingi foydalanuvchiniki: umumiy kompyuterda keyingi odam ko'rmasligi kerak
+    queryClient?.clear();
     setUser(null);
     setIsAuthenticated(false);
-  }, []);
+  }, [queryClient]);
+
+  // Sessiya tugadi (token yangilab bo'lmadi) yoki boshqa oynada tizimdan chiqildi
+  useEffect(() => {
+    const onSessionExpired = () => {
+      clearAuthState();
+      navigate("/login", { replace: true });
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === SESSION_FLAG_KEY && event.newValue === null) onSessionExpired();
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [clearAuthState, navigate]);
 
   useEffect(() => {
     let isMounted = true;
@@ -55,6 +79,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setUser(currentUser);
         setIsAuthenticated(true);
+
+        // Saqlangan nusxa tez ochilish uchun; rollar o'zgargan bo'lishi mumkin, shuning uchun serverdan yangilaymiz.
+        if (savedUser) {
+          getCurrentUser()
+            .then((fresh) => { if (isMounted) setUser(normalizeUser(fresh)); })
+            .catch(() => undefined);
+        }
       } catch {
         if (isMounted) {
           clearAuthState();
@@ -83,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!response.data.success || !payload) {
         return {
           success: false,
-          message: response.data.message || "Login failed",
+          message: response.data.message || "Tizimga kirib bo'lmadi",
         };
       }
 
@@ -97,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearAuthState();
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Login failed",
+        message: error instanceof Error ? error.message : "Tizimga kirib bo'lmadi",
       };
     } finally {
       setIsLoading(false);

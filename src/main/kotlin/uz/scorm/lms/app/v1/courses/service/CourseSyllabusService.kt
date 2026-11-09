@@ -244,13 +244,15 @@ class CourseSyllabusService(
         position = 0, languageCode = material.languageCode, authorName = material.authorName,
         contentVersion = material.contentVersion, sourceName = material.sourceName, sourceUrl = material.sourceUrl,
         validFrom = LocalDate.now(), metadataUpdatedAt = now,
+        durationMinutes = material.durationSeconds?.let { (it + 59) / 60 },
     ).apply { fromSyllabus = true }
 
     /** Dasturdagi material o'zgargan bo'lsa nusxa yangilanadi: yangi versiya, qoralama va qayta ekspertiza */
     private fun refreshCopy(copy: CourseContent, material: SubjectMaterial, now: Instant): Boolean {
         val same = copy.title == material.title && copy.description == material.description &&
             copy.contentType == material.contentType && copy.contentUrl == material.contentUrl &&
-            copy.contentBody == material.contentBody && copy.asset?.id == material.asset?.id
+            copy.contentBody == material.contentBody && copy.asset?.id == material.asset?.id &&
+            copy.durationMinutes == material.durationSeconds?.let { (it + 59) / 60 }
         if (same) return false
         val contentId = requireNotNull(copy.id)
         val revision = (revisionRepository.findFirstByContentIdAndDeletedFalseOrderByRevisionNumberDesc(contentId)?.revisionNumber ?: 0) + 1
@@ -260,6 +262,7 @@ class CourseSyllabusService(
         copy.contentUrl = material.contentUrl
         copy.contentBody = material.contentBody
         copy.asset = material.asset
+        copy.durationMinutes = material.durationSeconds?.let { (it + 59) / 60 }
         copy.contentVersion = material.contentVersion.takeUnless {
             revisionRepository.existsByContentIdAndContentVersionAndDeletedFalse(contentId, it)
         } ?: "${material.contentVersion}.$revision"

@@ -98,7 +98,7 @@ class CourseContentService(
         val course = accessService.requireManage(courseId, userId, mayManageAll)
         val module = moduleService.ownedModule(courseId, moduleId)
         val material = subjectMaterialService.requireMaterial(materialId)
-        require(course.subject?.id == material.subject.id) { "Material kurs faniga tegishli emas" }
+        require(material.subject?.id != null && course.subject?.id == material.subject?.id) { "Material kurs faniga tegishli emas" }
         val nextPosition = (contentRepository.findFirstByModuleIdAndDeletedFalseOrderByPositionDesc(moduleId)?.position ?: 0) + 1
         val now = Instant.now()
         val saved = contentRepository.save(CourseContent(
@@ -315,6 +315,8 @@ class CourseContentService(
         reviewStatus = content.reviewStatus.lowercase(),
         approvedRevisionNumber = content.approvedRevisionNumber,
         compatibility = compatibility,
+        syllabusTopicId = content.module.syllabusTopicId,
+        topicType = content.module.topicType,
     )
 
     private fun saveRevision(content: CourseContent, number: Int, userId: Long, changedAt: Instant) {

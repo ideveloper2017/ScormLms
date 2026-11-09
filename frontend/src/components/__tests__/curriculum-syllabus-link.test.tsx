@@ -14,10 +14,12 @@ vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
   syllabusApi: {
     list: vi.fn(), linkedCourses: vi.fn(async () => []), updateTopicsWithCourses: vi.fn(), updateModulesWithCourses: vi.fn(),
-    lessonMaterials: vi.fn(async () => []), lessonQuizzes: vi.fn(async () => []),
+    lessonMaterials: vi.fn(async () => []), lessonQuizzes: vi.fn(async () => []), uploadLessonAsset: vi.fn(), createLessonMaterial: vi.fn(), updateLessonMaterial: vi.fn(),
   },
 }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock("@/components/editor/lazy-rich-text-editor", () => ({ LazyRichTextEditor: ({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder?: string }) =>
+  <textarea aria-label={placeholder ?? "Matn muharriri"} value={value} onChange={(event) => onChange(event.target.value)} /> }));
 
 const row = (patch: Partial<CurriculumSubject>): CurriculumSubject => ({
   id: 9, subjectId: 1, subjectCode: "DAS1110", subjectName: "Dasturlash 1,2", credits: 6, semester: 1, planItemType: "REQUIRED",
@@ -36,35 +38,43 @@ describe("CurriculumSyllabusPage", () => {
     vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({}), syllabus({ id: 41, name: "Dasturlash (RU)", language: "RU", status: "APPROVED" })]);
   });
 
-  it("rejadagi fan dasturini drawer'da, modullar va darslar bilan, reja limitlari bilan ochadi", async () => {
-    vi.mocked(syllabusApi.updateModulesWithCourses).mockResolvedValue({ syllabus: syllabus({}), courses: [] });
+  it("rejadagi fan dasturi: Mentor kabi bo'lim qo'shish va bo'lim menyusidan dars qo'shish (reja limitlari bilan)", async () => {
+    const saved = syllabus({ modules: [{ id: 5, sortOrder: 1, name: "Asoslar", lessons: [] }] });
+    vi.mocked(syllabusApi.updateModulesWithCourses).mockResolvedValue({ syllabus: saved, courses: [] });
     render(<QueryClientProvider client={client()}>
       <CurriculumSyllabusPage rows={[{ ...sem1, syllabusId: 40 }, { ...sem2, syllabusId: 40 }]} canWrite onClose={vi.fn()} onSaved={vi.fn()} />
     </QueryClientProvider>);
 
-    // Everest kabi: "Ma'lumot" va "Dasturlar" tablari, rejadan ochilganda — "Dasturlar"
-    expect(await screen.findByRole("tab", { name: "Dasturlar", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Ma'lumot" })).toBeInTheDocument();
+    // Chap menyu: O'quv dasturi, Asosiy, Ma'lumot, Media; rejadan ochilganda — O'quv dasturi
+    expect(await screen.findByRole("tab", { name: "O'quv dasturi", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Asosiy" })).toBeInTheDocument();
     expect(syllabusApi.list).toHaveBeenCalledWith(1);
     const check = screen.getByLabelText("Reja bilan solishtirish");
     expect(within(check).getAllByText("Nazariy")[0].parentElement).toHaveTextContent("Nazariy 30 soat · dars yo'q");
     expect(within(check).getByText("2-qism (2-semestr):")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Yangi modul/ }));
-    fireEvent.change(screen.getByLabelText("1-modul nomi"), { target: { value: "Asoslar" } });
-    fireEvent.click(screen.getByRole("button", { name: /Dars qo'shish/ }));
-    fireEvent.change(screen.getByLabelText("1-modul 1-dars nomi"), { target: { value: "O'zgaruvchilar" } });
+    fireEvent.click(screen.getByRole("button", { name: /Bo'lim qo'shish/ }));
+    fireEvent.change(await screen.findByLabelText("Bo'lim nomi *"), { target: { value: "Asoslar" } });
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Saqlash" }));
+    await waitFor(() => expect(syllabusApi.updateModulesWithCourses).toHaveBeenCalledWith(40, [{ id: null, name: "Asoslar", description: null, lessons: [] }]));
+
+    const section = await screen.findByRole("region", { name: "1. Asoslar" });
+    fireEvent.keyDown(within(section).getByRole("button", { name: /Bo'lim menyusi/ }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Dars qo'shish/ }));
+    fireEvent.click(await screen.findByLabelText(/Faqat dars/));
+    fireEvent.click(screen.getByRole("button", { name: "Keyingi" }));
+    fireEvent.change(screen.getByLabelText("Nomi *"), { target: { value: "O'zgaruvchilar" } });
     // Faqat rejada soati bor turlar (seminar yo'q), ko'p semestrli fanda qism tanlanadi
-    expect(within(screen.getByLabelText("1-modul 1-dars turi")).getAllByRole("option").map((o) => o.textContent)).toEqual(["Nazariy", "Amaliy", "Laboratoriya"]);
-    fireEvent.change(screen.getByLabelText("1-modul 1-dars qismi"), { target: { value: "2" } });
-    fireEvent.click(screen.getByRole("button", { name: "Dasturni saqlash" }));
-    await waitFor(() => expect(syllabusApi.updateModulesWithCourses).toHaveBeenCalledWith(40, [{
-      id: null, name: "Asoslar", description: null,
+    expect(within(screen.getByLabelText("Mashg'ulot turi *")).getAllByRole("option").map((o) => o.textContent)).toEqual(["Nazariy", "Amaliy", "Laboratoriya"]);
+    fireEvent.change(screen.getByLabelText("Qism (semestr)"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Dars qo'shish" }));
+    await waitFor(() => expect(syllabusApi.updateModulesWithCourses).toHaveBeenLastCalledWith(40, [{
+      id: 5, name: "Asoslar", description: null,
       lessons: [{ id: null, type: "THEORETICAL", title: "O'zgaruvchilar", description: null, part: 2 }],
     }]));
   });
 
-  it("dars kontenti dastur sahifasi ichida ochiladi, orqaga qaytganda saqlanmagan o'zgarish qoladi", async () => {
+  it("dars resurslari dastur sahifasi ichida ochiladi va orqaga qaytiladi", async () => {
     const lesson = { id: 11, type: "THEORETICAL" as const, sortOrder: 1, title: "Kinematika", moduleId: 5, lessonOrder: 1, materialCount: 2, quizCount: 1 };
     vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({ modules: [{ id: 5, sortOrder: 1, name: "Mexanika", lessons: [lesson] }], topics: [lesson] })]);
     const onClose = vi.fn();
@@ -72,20 +82,90 @@ describe("CurriculumSyllabusPage", () => {
       <CurriculumSyllabusPage rows={[{ ...sem1, syllabusId: 40 }]} canWrite onClose={onClose} onSaved={vi.fn()} />
     </QueryClientProvider>);
 
-    const page = await screen.findByRole("region", { name: "Dasturlash 1,2" });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    fireEvent.change(within(page).getByLabelText("1-modul nomi"), { target: { value: "Mexanika asoslari" } });
-    fireEvent.click(within(page).getByRole("button", { name: "1-modul 1-dars kontenti" }));
+    const section = await screen.findByRole("region", { name: "1. Mexanika" });
+    expect(within(section).getByText("3 resurs")).toBeInTheDocument();
+    fireEvent.click(within(section).getByRole("button", { name: "1-bo'lim 1-dars: Kinematika" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Kinematika" })).toBeInTheDocument();
-    expect(within(screen.getByRole("navigation", { name: "Sahifa yo'li" })).getByText("Mexanika asoslari")).toBeInTheDocument();
-    expect(screen.getByLabelText("1-modul nomi")).not.toBeVisible();
+    expect(within(screen.getByRole("navigation", { name: "Sahifa yo'li" })).getByText("Mexanika")).toBeInTheDocument();
     await waitFor(() => expect(syllabusApi.lessonMaterials).toHaveBeenCalledWith(40, 11));
 
     fireEvent.click(screen.getByRole("button", { name: "Dasturga qaytish" }));
     expect(screen.queryByRole("heading", { level: 1, name: "Kinematika" })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("1-modul nomi")).toHaveValue("Mexanika asoslari");
+    expect(screen.getByRole("region", { name: "1. Mexanika" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Orqaga" }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("bo'lim menyusidan rasm fayli bilan dars: dars saqlanadi, fayl yuklanib material yaratiladi", async () => {
+    const lesson = { id: 12, type: "THEORETICAL" as const, sortOrder: 1, title: "Sxema", moduleId: 5, lessonOrder: 1 };
+    vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({ modules: [{ id: 5, sortOrder: 1, name: "Mexanika", lessons: [] }] })]);
+    vi.mocked(syllabusApi.updateModulesWithCourses).mockResolvedValue({
+      syllabus: syllabus({ modules: [{ id: 5, sortOrder: 1, name: "Mexanika", lessons: [lesson] }], topics: [lesson] }), courses: [],
+    });
+    vi.mocked(syllabusApi.uploadLessonAsset).mockResolvedValue({ id: 77 } as never);
+    vi.mocked(syllabusApi.createLessonMaterial).mockResolvedValue({ materials: [], courses: [] });
+    render(<QueryClientProvider client={client()}>
+      <CurriculumSyllabusPage rows={[{ ...sem1, syllabusId: 40 }]} canWrite onClose={vi.fn()} onSaved={vi.fn()} />
+    </QueryClientProvider>);
+
+    const section = await screen.findByRole("region", { name: "1. Mexanika" });
+    fireEvent.keyDown(within(section).getByRole("button", { name: /Bo'lim menyusi/ }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Dars qo'shish/ }));
+    fireEvent.click(await screen.findByLabelText("Rasm fayl"));
+    fireEvent.click(screen.getByRole("button", { name: "Keyingi" }));
+    fireEvent.change(screen.getByLabelText("Nomi *"), { target: { value: "Sxema" } });
+    const file = new File([new Uint8Array([1])], "sxema.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Rasm fayl *"), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "Dars qo'shish" }));
+    await waitFor(() => expect(syllabusApi.createLessonMaterial).toHaveBeenCalledWith(40, 12, expect.objectContaining({ title: "Sxema", contentType: "FILE", assetId: 77 })));
+    expect(syllabusApi.uploadLessonAsset).toHaveBeenCalledWith(40, file);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("Mentor kabi video havola darsi: manba, ulashish havolasi, davomiylik va xulosa; tahrirlashda kontent ham o'zgaradi", async () => {
+    const lesson = { id: 12, type: "THEORETICAL" as const, sortOrder: 1, title: "CSS asoslari", moduleId: 5, lessonOrder: 1 };
+    const withLesson = syllabus({ modules: [{ id: 5, sortOrder: 1, name: "Kirish", lessons: [lesson] }], topics: [lesson] });
+    vi.mocked(syllabusApi.list).mockResolvedValue([syllabus({ modules: [{ id: 5, sortOrder: 1, name: "Kirish", lessons: [] }] })]);
+    vi.mocked(syllabusApi.updateModulesWithCourses).mockResolvedValue({ syllabus: withLesson, courses: [] });
+    vi.mocked(syllabusApi.createLessonMaterial).mockResolvedValue({ materials: [], courses: [] });
+    render(<QueryClientProvider client={client()}>
+      <CurriculumSyllabusPage rows={[{ ...sem1, syllabusId: 40 }]} canWrite onClose={vi.fn()} onSaved={vi.fn()} />
+    </QueryClientProvider>);
+
+    const section = await screen.findByRole("region", { name: "1. Kirish" });
+    fireEvent.keyDown(within(section).getByRole("button", { name: /Bo'lim menyusi/ }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Dars qo'shish/ }));
+    fireEvent.click(await screen.findByLabelText("Video havola"));
+    fireEvent.click(screen.getByRole("button", { name: "Keyingi" }));
+    fireEvent.change(screen.getByLabelText("Nomi *"), { target: { value: "CSS asoslari" } });
+    expect(screen.getByLabelText("Video manbasi")).toHaveValue("youtube");
+    fireEvent.change(screen.getByLabelText(/Video havolasi/), { target: { value: "https://vimeo.com/1" } });
+    expect(screen.getByText("YouTube ulashish havolasini kiriting")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Video havolasi/), { target: { value: "https://youtu.be/1Rs2ND1ryYc" } });
+    fireEvent.change(screen.getByLabelText("Davomiyligi"), { target: { value: "06:18:37" } });
+    fireEvent.change(screen.getByLabelText(/Dars haqida qisqacha/), { target: { value: "<p>Kirish darsi</p>" } });
+    fireEvent.click(screen.getByRole("button", { name: "Dars qo'shish" }));
+    await waitFor(() => expect(syllabusApi.createLessonMaterial).toHaveBeenCalledWith(40, 12, {
+      title: "CSS asoslari", description: "<p>Kirish darsi</p>", contentType: "VIDEO", contentBody: null,
+      contentUrl: "https://youtu.be/1Rs2ND1ryYc", assetId: null, durationSeconds: 22717,
+    }));
+    expect(syllabusApi.updateModulesWithCourses).toHaveBeenLastCalledWith(40, [{ id: 5, name: "Kirish", description: null,
+      lessons: [{ id: null, type: "THEORETICAL", title: "CSS asoslari", description: "Kirish darsi", part: null }] }]);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    // Tahrirlash: mavjud video material bilan to'ldiriladi va yangilanadi
+    vi.mocked(syllabusApi.lessonMaterials).mockResolvedValue([{ id: 90, subjectId: 1, subjectName: "x", title: "CSS asoslari", contentType: "video",
+      contentUrl: "https://youtu.be/1Rs2ND1ryYc", description: "<p>Kirish darsi</p>", durationSeconds: 22717,
+      languageCode: "uz", authorName: "a", contentVersion: "1.0", sourceName: "s" }]);
+    vi.mocked(syllabusApi.updateLessonMaterial).mockResolvedValue({ materials: [], courses: [] });
+    const updated = await screen.findByRole("region", { name: "1. Kirish" });
+    fireEvent.keyDown(within(updated).getByRole("button", { name: "CSS asoslari — menyu" }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Tahrirlash" }));
+    expect(await screen.findByDisplayValue("06:18:37")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Video havolasi/)).toHaveValue("https://youtu.be/1Rs2ND1ryYc");
+    fireEvent.change(screen.getByLabelText("Davomiyligi"), { target: { value: "10:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Darsni saqlash" }));
+    await waitFor(() => expect(syllabusApi.updateLessonMaterial).toHaveBeenCalledWith(40, 12, 90, expect.objectContaining({ durationSeconds: 600, contentType: "VIDEO" })));
   });
 });
 
