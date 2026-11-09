@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
+import { apiErrorMessage } from "@/lib/api-error";
 import { hasAuthority } from "@/lib/rbac-api";
 import { curriculumApi, curriculumStatusLabels } from "@/services/api/curriculum-api";
 import { listGroups } from "@/lib/academic-api";
 import { AttachedStudentsRegistry } from "@/components/admin/attached-students-registry";
 import { useConfirm } from "@/components/confirm-dialog";
 
-const message = (error: unknown) => error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
+const message = (error: unknown) => apiErrorMessage(error, "Amalni bajarib bo'lmadi");
 
 interface AdminCurriculumStudentsProps {
   /** When set, locks the page to this curriculum (embedded as a tab inside the plan editor) and hides the plan picker. */

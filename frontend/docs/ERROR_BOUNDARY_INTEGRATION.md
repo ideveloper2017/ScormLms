@@ -712,5 +712,5 @@ After integration, ensure:
 
 - Component: `src/components/error-boundary.tsx`
 - Demo: `src/components/error-boundary-demo.tsx`
-- Documentation: `src/components/ERROR_BOUNDARY_README.md`
+- Documentation: `docs/ERROR_BOUNDARY_README.md`
 - Tests: `src/components/__tests__/error-boundary.test.tsx`

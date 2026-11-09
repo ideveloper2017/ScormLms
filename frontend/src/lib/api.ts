@@ -17,16 +17,31 @@ export interface CommonApiResponse<T> {
 export type ApiResponse<T> = CommonApiResponse<T>;
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1";
-const TOKEN_KEY = "token";
-const REFRESH_TOKEN_KEY = "refreshToken";
-const TOKEN_EXPIRES_AT_KEY = "tokenExpiresAt";
+
+// ── Tokenlar qayerda turadi ─────────────────────────────────────────────────────────────
+// Access token: faqat shu sahifa xotirasida (pastdagi o'zgaruvchi). Sahifa yopilsa yo'qoladi.
+// Refresh token: brauzerning HttpOnly cookie'sida — JavaScript uni o'qiy olmaydi, shuning uchun sahifaga
+//   tushgan begona skript (XSS) uzoq muddatli tokenni o'g'irlay olmaydi. Server uni faqat /auth manziliga oladi.
+// localStorage'da token saqlanmaydi; faqat "sessiya bor bo'lishi mumkin" degan maxfiy bo'lmagan belgi turadi,
+// toki tizimga kirmagan odam uchun har sahifa ochilganda behuda yangilash so'rovi yuborilmasin.
+let accessToken: string | null = null;
+let accessTokenExpiresAt = 0;
+
+/** Sessiya belgisi: boshqa oynalar (tab) chiqishni shu kalit o'chirilishidan biladi. */
+export const SESSION_FLAG_KEY = "auth:session";
+/** Eski versiya tokenlarni shu kalitlarda saqlagan: birinchi yangilashda cookie'ga ko'chirilib, o'chiriladi. */
+const LEGACY_TOKEN_KEYS = ["token", "refreshToken", "tokenExpiresAt"] as const;
+const LEGACY_REFRESH_TOKEN_KEY = "refreshToken";
+
+const hasSessionHint = (): boolean =>
+  localStorage.getItem(SESSION_FLAG_KEY) === "1" || !!localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY);
 
 /** Sessiya tugab, uni yangilab bo'lmaganda `window` ga yuboriladigan hodisa nomi (AuthProvider tinglaydi). */
 export const SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 /** So'rov sozlamasiga qo'shiladigan ichki belgilar. */
 interface AuthRequestFlags {
-  /** Token yangilash so'rovi: Authorization sarlavhasi access token bilan almashtirilmaydi */
+  /** Token yangilash so'rovi: access token qo'shilmaydi (server refresh tokenni cookie'dan oladi) */
   __isRefresh?: boolean;
   /** 401 dan keyin bir marta qayta yuborilgan so'rov: ikkinchi marta yangilashga urinmaymiz */
   __retried?: boolean;
@@ -52,7 +67,7 @@ const api: AxiosInstance = axios.create({
 // Request interceptor: Add auth token and start performance monitoring
 api.interceptors.request.use(
   (config: AuthRequestConfig) => {
-    // Token yangilash so'rovi refresh tokenni o'zi qo'yadi: uni access token bilan almashtirib yubormaymiz.
+    // Token yangilash so'rovida access token yuborilmaydi: server refresh tokenni cookie'dan oladi.
     const token = getToken();
     if (token && config.headers && !config.__isRefresh) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -84,7 +99,7 @@ api.interceptors.response.use(
     // Bir vaqtda kelgan bir nechta 401 bitta yangilash so'rovini kutadi (refreshToken() single-flight).
     if (
       error.response?.status === 401 && config && !config.__isRefresh && !config.__retried
-      && !isAuthEndpoint(config.url) && getRefreshToken()
+      && !isAuthEndpoint(config.url) && hasSessionHint()
     ) {
       config.__retried = true;
       try {
@@ -139,9 +154,8 @@ export async function login(credentials: LoginRequest): Promise<AxiosResponse<Au
       throw new Error(response.data.message || "Tizimga kirib bo'lmadi: server token qaytarmadi.");
     }
 
-    storeAuthData(payload);
+    storeTokenData(payload);
     localStorage.setItem("user", JSON.stringify(payload.user));
-    api.defaults.headers.common.Authorization = `Bearer ${payload.accessToken}`;
 
     return response;
   } catch (error) {
@@ -196,9 +210,8 @@ export async function hemisPasswordLogin(login: string, password: string): Promi
     if (!response.data.success || !payload?.accessToken) {
       throw new Error(response.data.message || "HEMIS orqali kirish yakunlanmadi");
     }
-    storeAuthData(payload);
+    storeTokenData(payload);
     localStorage.setItem("user", JSON.stringify(payload.user));
-    api.defaults.headers.common.Authorization = `Bearer ${payload.accessToken}`;
     return payload;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -216,9 +229,8 @@ export async function exchangeHemisOAuthCode(code: string): Promise<AuthResponse
     throw new Error(response.data.message || "HEMIS orqali kirish yakunlanmadi");
   }
 
-  storeAuthData(payload);
+  storeTokenData(payload);
   localStorage.setItem("user", JSON.stringify(payload.user));
-  api.defaults.headers.common.Authorization = `Bearer ${payload.accessToken}`;
   return payload;
 }
 
@@ -227,35 +239,25 @@ export async function refreshToken(): Promise<RefreshTokenResponse> {
     return refreshTokenPromise;
   }
 
-  const currentRefreshToken = getRefreshToken();
-  if (!currentRefreshToken) {
+  if (!hasSessionHint()) {
     clearAuthData();
     throw new Error("Sessiya tugagan. Tizimga qayta kiring.");
   }
 
-  const refreshConfig: AxiosRequestConfig & AuthRequestFlags = {
-    headers: { Authorization: `Bearer ${currentRefreshToken}` },
-    __isRefresh: true,
-  };
-
-  refreshTokenPromise = api
-    .post<CommonApiResponse<RefreshTokenResponse>>("/auth/refresh-token", {}, refreshConfig)
-    .then((response) => {
-      if (!response.data.success || !response.data.data) {
-        throw new Error(response.data.message || "Sessiyani yangilab bo'lmadi");
+  refreshTokenPromise = withRefreshLock(async () => {
+    try {
+      return await requestNewAccessToken();
+    } catch (error) {
+      // Refresh token bir martalik. Boshqa oyna (tab) aynan shu paytda yangilagan bo'lsa, bizning so'rov eski
+      // cookie bilan ketib rad etiladi; brauzerda esa allaqachon yangi cookie bor — bir marta qayta urinamiz.
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        await new Promise((resolve) => setTimeout(resolve, REFRESH_RETRY_DELAY_MS));
+        return await requestNewAccessToken();
       }
-
-      storeTokenData(response.data.data);
-      return response.data.data;
-    })
+      throw error;
+    }
+  })
     .catch((error) => {
-      // Refresh token bir martalik: boshqa oynada (tab) allaqachon yangilangan bo'lsa, bu oynadagi eski
-      // token rad etiladi. Bunday holda saqlangan yangi tokenlar bilan davom etamiz, chiqarib yubormaymiz.
-      const storedAccess = getToken();
-      const storedRefresh = getRefreshToken();
-      if (storedAccess && storedRefresh && storedRefresh !== currentRefreshToken) {
-        return { accessToken: storedAccess, refreshToken: storedRefresh } as RefreshTokenResponse;
-      }
       clearAuthData();
       throw error;
     })
@@ -264,6 +266,30 @@ export async function refreshToken(): Promise<RefreshTokenResponse> {
     });
 
   return refreshTokenPromise;
+}
+
+const REFRESH_RETRY_DELAY_MS = 300;
+
+async function requestNewAccessToken(): Promise<RefreshTokenResponse> {
+  // Eski versiyadan qolgan token bo'lsa, shu bir marta sarlavhada yuboriladi: server cookie o'rnatadi
+  // va keyingi safar cookie ishlatiladi. Muvaffaqiyatdan so'ng eski kalitlar o'chiriladi.
+  const legacyRefreshToken = localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY);
+  const config: AxiosRequestConfig & AuthRequestFlags = {
+    __isRefresh: true,
+    ...(legacyRefreshToken ? { headers: { Authorization: `Bearer ${legacyRefreshToken}` } } : {}),
+  };
+  const response = await api.post<CommonApiResponse<RefreshTokenResponse>>("/auth/refresh-token", {}, config);
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.message || "Sessiyani yangilab bo'lmadi");
+  }
+  storeTokenData(response.data.data);
+  return response.data.data;
+}
+
+/** Bir nechta oyna bir vaqtda yangilamasligi uchun (brauzer qo'llasa) umumiy qulf ostida bajaradi. */
+function withRefreshLock<T>(task: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  return locks ? (locks.request("lms-auth-refresh", task) as Promise<T>) : task();
 }
 
 export const refreshAccessToken = refreshToken;
@@ -277,14 +303,13 @@ export async function getCurrentUser(): Promise<User> {
   return response.data.data;
 }
 
+/**
+ * Sessiya bormi? Sahifa yangi ochilganda access token xotirada bo'lmaydi: cookie'dagi refresh token bilan
+ * yangisi olinadi. Tizimga hech qachon kirilmagan bo'lsa (belgi yo'q) serverga so'rov yuborilmaydi.
+ */
 export async function isAuthenticated(): Promise<boolean> {
-  const token = getToken();
-  if (!token) return false;
-
-  const expiresAt = localStorage.getItem(TOKEN_EXPIRES_AT_KEY);
-  const isExpired = expiresAt ? Number(expiresAt) <= Date.now() : false;
-
-  if (!isExpired) return true;
+  if (accessToken && Date.now() < accessTokenExpiresAt) return true;
+  if (!hasSessionHint()) return false;
 
   try {
     await refreshToken();
@@ -303,53 +328,37 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
 }
 
 export async function logout(): Promise<void> {
-  const currentRefreshToken = getRefreshToken();
-
+  if (!hasSessionHint()) {
+    clearAuthData();
+    return;
+  }
+  // Server cookie'dagi refresh tokenni bekor qiladi va cookie'ni o'chiradi (eski token bo'lsa uni ham)
+  const legacyRefreshToken = localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY);
   try {
-    if (currentRefreshToken) {
-      await api.post("/auth/logout", { refreshToken: currentRefreshToken });
-    }
+    await api.post("/auth/logout", legacyRefreshToken ? { refreshToken: legacyRefreshToken } : {});
   } finally {
     clearAuthData();
   }
 }
 
-export const setToken = (token: string): void => {
-  localStorage.setItem(TOKEN_KEY, token);
-};
-
-export const getToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY);
-};
-
-export const clearToken = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
-};
-
-export const getRefreshToken = (): string | null => {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-};
+/** Joriy access token (faqat xotirada). Sahifa yangilanganda bo'sh bo'ladi va cookie orqali qayta olinadi. */
+export const getToken = (): string | null => accessToken;
 
 export function clearAuthData(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);
+  accessToken = null;
+  accessTokenExpiresAt = 0;
+  localStorage.removeItem(SESSION_FLAG_KEY);
   localStorage.removeItem("user");
-  delete api.defaults.headers.common.Authorization;
+  LEGACY_TOKEN_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 
-function storeAuthData(authData: { accessToken: string; refreshToken: string; expiresIn: number }): void {
-  storeTokenData(authData);
-}
-
-function storeTokenData(authData: { accessToken: string; refreshToken: string; expiresIn?: number }): void {
-  localStorage.setItem(TOKEN_KEY, authData.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, authData.refreshToken);
-
-  if (authData.expiresIn) {
-    const expiresAt = Date.now() + authData.expiresIn * 1000;
-    localStorage.setItem(TOKEN_EXPIRES_AT_KEY, expiresAt.toString());
-  }
+/** Server refresh tokenni javob tanasida bermaydi (cookie'da); eski server bergan taqdirda ham saqlanmaydi. */
+function storeTokenData(authData: { accessToken: string; expiresIn?: number }): void {
+  accessToken = authData.accessToken;
+  // Muddat noma'lum bo'lsa ham token ishlatilaveradi: tugagan bo'lsa server 401 qaytaradi va u yangilanadi
+  accessTokenExpiresAt = authData.expiresIn ? Date.now() + authData.expiresIn * 1000 : Number.MAX_SAFE_INTEGER;
+  localStorage.setItem(SESSION_FLAG_KEY, "1");
+  LEGACY_TOKEN_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 
 export default api;

@@ -19,6 +19,7 @@ import uz.scorm.lms.app.v1.quiz.model.ProctoringEventType
 import uz.scorm.lms.app.v1.quiz.model.ProctoringSession
 import uz.scorm.lms.app.v1.quiz.model.ProctoringSessionStatus
 import uz.scorm.lms.app.v1.quiz.model.QuizAttempt
+import uz.scorm.lms.app.v1.quiz.model.QuizAttemptStatus
 import uz.scorm.lms.app.v1.quiz.model.QuizStatus
 import uz.scorm.lms.app.v1.quiz.repository.CourseQuizRepository
 import uz.scorm.lms.app.v1.quiz.repository.ProctoringEventRepository
@@ -213,8 +214,54 @@ class ProctoringService(
                 )
             )
         }
+        flagMonitoringGap(session, attempt)
         session.status = ProctoringSessionStatus.COMPLETED
         sessionRepository.save(session)
+    }
+
+    /**
+     * Brauzer har 30 soniyada kuzatuv signali yuboradi. Signal yubormaslikni (skriptni o'chirish, so'rovni bloklash)
+     * talaba o'zi tanlay oladi, shuning uchun uzilishni server aniqlaydi: urinish davomida [MONITORING_GAP_THRESHOLD]
+     * dan uzoq signal kelmagan bo'lsa, proktor ko'rib chiqishi uchun `MONITORING_GAP` hodisasi yoziladi.
+     * Signalsiz urinish ilgari hech qanday xavf hodisasisiz, ya'ni "toza" ko'rinardi.
+     */
+    private fun flagMonitoringGap(session: ProctoringSession, attempt: QuizAttempt) {
+        val attemptId = requireNotNull(attempt.id)
+        if (eventRepository.existsByAttemptIdAndTypeAndDeletedFalse(attemptId, ProctoringEventType.MONITORING_GAP)) return
+
+        val start = attempt.startedAt
+        val end = minOf(attempt.submittedAt ?: Instant.now(), attempt.expiresAt)
+        if (Duration.between(start, end) <= MONITORING_GAP_THRESHOLD) return
+
+        val signals = eventRepository.findEventTimes(attemptId, ProctoringEventSource.CLIENT)
+            .filter { !it.isBefore(start) && !it.isAfter(end) }
+        var previous = start
+        var gapStart: Instant? = null
+        var gapReachesEnd = false
+        for (moment in signals + end) {
+            if (Duration.between(previous, moment) > MONITORING_GAP_THRESHOLD) {
+                gapStart = previous
+                gapReachesEnd = moment === end
+                break
+            }
+            previous = moment
+        }
+        val gapStartedAt = gapStart ?: return
+
+        // Vaqt tugashi bilan yopilgan urinishning oxiridagi uzilish odatda sahifani tashlab ketish demak (o'rtacha);
+        // topshirilgan urinishda yoki urinish o'rtasida signal yo'qolishi esa jiddiyroq.
+        val abandoned = gapReachesEnd && attempt.status == QuizAttemptStatus.TIMED_OUT
+        eventRepository.save(
+            ProctoringEvent(
+                session = session,
+                attempt = attempt,
+                type = ProctoringEventType.MONITORING_GAP,
+                severity = if (abandoned) ProctoringEventSeverity.MEDIUM else ProctoringEventSeverity.HIGH,
+                source = ProctoringEventSource.SERVER,
+                eventKey = "server:gap:$attemptId",
+                occurredAt = gapStartedAt,
+            )
+        )
     }
 
     private fun lockedEnrollment(quiz: CourseQuiz, userId: Long): CourseEnrollment =
@@ -243,6 +290,8 @@ class ProctoringService(
 
     companion object {
         private val CHALLENGE_TTL: Duration = Duration.ofMinutes(2)
+        /** Brauzer signali har 30 soniyada keladi: to'rtta ketma-ket signal yo'qolsa uzilish hisoblanadi. */
+        private val MONITORING_GAP_THRESHOLD: Duration = Duration.ofMinutes(2)
         private const val MIN_FRAME_BYTES = 1_024
         private const val MAX_FRAME_BYTES = 5 * 1024 * 1024
         private const val CENTER_MIN = 0.30

@@ -28,6 +28,7 @@ const TYPE_LABEL: Record<string, string> = {
   multiple_faces: 'Bir nechta yuz signali (proktor tekshiruvi kerak)',
   head_turned: 'Bosh burilishi signali (proktor tekshiruvi kerak)',
   visual_analysis_unavailable: 'Yuz tahlili ishlamayapti',
+  monitoring_gap: 'Kuzatuv signali 2 daqiqadan ortiq kelmagan (proktor tekshiruvi kerak)',
   session_started: 'Sessiya boshlandi',
   session_ended: 'Sessiya yakunlandi',
   camera_started: 'Kamera ishga tushdi',

@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import { clearAuthData as clearSession } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { ApiError } from '@/types/api.types';
 
@@ -24,10 +25,8 @@ export interface ErrorHandlerOptions {
  * Clears all authentication data from localStorage and redirects to login
  */
 export const clearAuthData = (): void => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('tokenExpiresAt');
-  localStorage.removeItem('user');
+  // Yagona manba: xotiradagi access token, sessiya belgisi va eski kalitlar ham shu yerda tozalanadi
+  clearSession();
 };
 
 /**

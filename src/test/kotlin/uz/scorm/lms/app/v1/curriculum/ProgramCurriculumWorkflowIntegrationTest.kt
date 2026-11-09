@@ -259,8 +259,10 @@ class ProgramCurriculumWorkflowIntegrationTest {
         assertTrue(duplicate.message.orEmpty().contains("allaqachon bor"))
         assertThrows<IllegalArgumentException> { service.moveSubject(plan.id, first.id, MoveCurriculumSubjectRequest(5), requireNotNull(author.id)) }
 
+        // Tasdiqlangan reja ham to'g'ridan-to'g'ri tahrirlanadi (faqat arxivlangani yopiq): ko'chirish ishlaydi
         service.approve(plan.id, approval(), requireNotNull(user("move-approver").id))
-        assertThrows<IllegalArgumentException> { service.moveSubject(plan.id, first.id, MoveCurriculumSubjectRequest(1), requireNotNull(author.id)) }
+        val movedAfterApproval = service.moveSubject(plan.id, first.id, MoveCurriculumSubjectRequest(1), requireNotNull(author.id))
+        assertEquals(1, movedAfterApproval.subjects.single { it.id == first.id }.semester)
     }
 
     @Test

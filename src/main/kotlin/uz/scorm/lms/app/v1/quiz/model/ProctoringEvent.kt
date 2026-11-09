@@ -75,6 +75,9 @@ enum class ProctoringEventType {
     MULTIPLE_FACES,
     HEAD_TURNED,
     VISUAL_ANALYSIS_UNAVAILABLE,
+
+    /** Server aniqlaydi: brauzerdan kuzatuv signali (heartbeat) uzoq vaqt kelmagan. */
+    MONITORING_GAP,
 }
 
 enum class ProctoringEventSeverity { INFO, LOW, MEDIUM, HIGH, CRITICAL }

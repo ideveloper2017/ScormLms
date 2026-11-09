@@ -8,9 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { listGroups } from "@/lib/academic-api";
 import { curriculumApi, type CurriculumVersion } from "@/services/api/curriculum-api";
+import { formatDate } from "@/lib/format-date";
 import { downloadCsv } from "@/utils/csv-export";
-
-const formatDate = (value?: string | null) => (value ? value.split("-").reverse().join(".") : "—");
 
 /**
  * Barcha o'quv rejalar bo'yicha biriktirilgan talabalar (Everest "O'quv rejaga biriktirilgan talabalar" jadvali):

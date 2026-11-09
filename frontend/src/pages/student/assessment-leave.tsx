@@ -1,15 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { format, isValid, parseISO } from "date-fns";
 import { BadgeCheck, CalendarDays, Clock3, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { QueryState } from "@/components/query-state";
 import { assessmentLeaveApi, type AssessmentLeavePurpose } from "@/services/api/assessment-leave-api";
 import { statusLabel } from "@/lib/status-labels";
+import { formatDate } from "@/lib/format-date";
 
 const purposeLabel: Record<AssessmentLeavePurpose, string> = { SEMESTER_FINAL_ASSESSMENT: "Semestr yakuniy baholashi", STATE_ATTESTATION: "Davlat attestatsiyasi", BACHELOR_THESIS_DEFENSE: "Bitiruv malakaviy ishi himoyasi", MASTER_THESIS_DEFENSE: "Magistrlik ishi himoyasi" };
-// 2026-11-09 -> 09.11.2026
-const formatDate = (value?: string | null) => { if (!value) return "—"; const date = parseISO(value); return isValid(date) ? format(date, "dd.MM.yyyy") : value; };
 
 export function StudentAssessmentLeave() {
   const records = useQuery({ queryKey: ["assessment-leaves", "mine"], queryFn: assessmentLeaveApi.mine });

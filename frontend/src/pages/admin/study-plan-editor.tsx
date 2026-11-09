@@ -64,6 +64,7 @@ import {
   listPrograms,
   listSubjects,
 } from "@/lib/academic-api";
+import { apiErrorMessage } from "@/lib/api-error";
 import { hasAuthority } from "@/lib/rbac-api";
 import { academicPeriodApi } from "@/services/api/academic-period-api";
 import { listRatingSystems } from "@/services/api/academic-results-api";
@@ -91,8 +92,7 @@ const EMPTY = "__empty__";
 // Fan oqimlari tizimdan olib tashlangan (V99)
 const VALID_TABS = ["details", "subjects", "students", "approval"] as const;
 
-const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
+const errorMessage = (error: unknown) => apiErrorMessage(error, "Amalni bajarib bo'lmadi");
 
 // Amal qilish davri va standart semestr sanalari (kuzgi 15.09–31.01, bahorgi 02.02–06.06); foydalanuvchi o'zgartiradi
 const yearDates = (academicYear: string) => {

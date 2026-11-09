@@ -1,4 +1,6 @@
+import { useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Search, X } from "lucide-react";
 import {
   BarChart3, Home, Users, Settings, BookOpen, GraduationCap,
   FileText, Library, Monitor, MessageCircle, UserCheck,
@@ -12,8 +14,9 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
   SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton,
-  SidebarMenuSubItem, SidebarRail, useSidebar,
+  SidebarInput, SidebarMenuSubItem, SidebarRail, useSidebar,
 } from "@/components/ui/sidebar";
+import { countNavLinks, searchNav } from "@/components/layout/nav-search";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -285,6 +288,9 @@ export function buildNav(role: string): NavGroup[] {
   return groups[r] ?? [{ label: "Asosiy", items: [ITEMS.home, ITEMS.courses, ITEMS.comms, ITEMS.support] }];
 }
 
+/** Shundan kam havolali menyuda (masalan proktor) qidiruv ortiqcha */
+const MENU_SEARCH_MIN_LINKS = 15;
+
 const ROLE_LABEL: Record<string, string> = {
   SUPER_ADMIN: "Super Admin", ADMIN: "Admin", METODIST: "Metodist",
   TEACHER: "O'qituvchi", STUDENT: "Talaba", PROCTOR: "Proktor",
@@ -300,7 +306,17 @@ export function AppSidebar() {
 
   const rawRole  = user?.role?.name || user?.roles?.[0]?.name || "";
   const normRole = rawRole.replace(/^ROLE_/i, "").toUpperCase();
-  const navGroups = buildNav(rawRole);
+  const navGroups = useMemo(() => buildNav(rawRole), [rawRole]);
+
+  // Menyu katta bo'lsa (admin: 80+ havola) kerakli sahifani nomi bo'yicha topish uchun qidiruv.
+  // Tuzilma o'zgarmaydi: qidiruv bo'sh bo'lsa odatdagi bo'limlar ko'rinadi.
+  const [menuQuery, setMenuQuery] = useState("");
+  const showMenuSearch = countNavLinks(navGroups) >= MENU_SEARCH_MIN_LINKS;
+  const searchResults = useMemo(
+    () => (showMenuSearch ? searchNav(navGroups, menuQuery) : null),
+    [navGroups, menuQuery, showMenuSearch],
+  );
+  const visibleGroups = searchResults ? [] : navGroups;
 
   const displayName = user?.fullName?.trim() || user?.username || "Foydalanuvchi";
   const displaySub  = user?.email || user?.phone || ROLE_LABEL[normRole] || "";
@@ -309,6 +325,7 @@ export function AppSidebar() {
 
   const go = (href: string) => {
     navigate(href);
+    setMenuQuery("");
     if (isMobile) setOpenMobile(false);
   };
 
@@ -333,6 +350,8 @@ export function AppSidebar() {
             <SidebarMenuButton
               size="lg"
               onClick={() => go("/")}
+              tooltip="Bosh sahifa"
+              aria-label="Bosh sahifa"
               className="data-[state=open]:bg-sidebar-accent"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 text-white">
@@ -349,7 +368,64 @@ export function AppSidebar() {
 
       {/* ── Navigation ────────────────────────────────────────── */}
       <SidebarContent>
-        {navGroups.map((group) => {
+        {showMenuSearch && (
+          <div className="relative px-2 pt-1 group-data-[collapsible=icon]:hidden">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/4 text-muted-foreground" aria-hidden="true" />
+            <SidebarInput
+              value={menuQuery}
+              onChange={(event) => setMenuQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setMenuQuery("");
+                if (event.key === "Enter" && searchResults?.length) go(searchResults[0].href);
+              }}
+              placeholder="Menyudan qidirish..."
+              aria-label="Menyudan sahifa qidirish"
+              className="pl-8 pr-8"
+            />
+            {menuQuery && (
+              <button
+                type="button"
+                onClick={() => setMenuQuery("")}
+                aria-label="Qidiruvni tozalash"
+                className="absolute right-4 top-1/2 -translate-y-1/4 rounded-sm text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {searchResults && (
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              {searchResults.length ? `Topildi: ${searchResults.length} ta sahifa` : "Hech narsa topilmadi"}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {searchResults.map((result) => {
+                  const ResultIcon = result.icon;
+                  return (
+                    <SidebarMenuItem key={`${result.href}|${result.name}`}>
+                      <SidebarMenuButton
+                        isActive={isActive(result.href)}
+                        onClick={() => go(result.href)}
+                        className="h-auto py-1.5"
+                      >
+                        {ResultIcon && <ResultIcon />}
+                        <span className="grid leading-tight">
+                          <span className="truncate">{result.name}</span>
+                          {result.group && <span className="truncate text-xs text-muted-foreground">{result.group}</span>}
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleGroups.map((group) => {
           const GroupIcon = group.icon;
 
           if (group.href && GroupIcon) {

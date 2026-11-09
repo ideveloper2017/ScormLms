@@ -1,14 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { format, isValid, parseISO } from "date-fns";
 import { BriefcaseBusiness, Building2, CheckCircle2, Clock3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { QueryState } from "@/components/query-state";
 import { practiceApi } from "@/services/api/practice-api";
 import { statusLabel } from "@/lib/status-labels";
-
-// 2026-11-09 -> 09.11.2026
-const formatDate = (value?: string | null) => { if (!value) return "—"; const date = parseISO(value); return isValid(date) ? format(date, "dd.MM.yyyy") : value; };
+import { formatDate } from "@/lib/format-date";
 
 export function StudentPractice() {
   const practices = useQuery({ queryKey: ["practices", "mine"], queryFn: practiceApi.mine });

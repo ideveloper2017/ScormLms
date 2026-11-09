@@ -1,7 +1,6 @@
 import { TodayTasks } from "@/components/workspace-panels";
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
 import {
   BookOpen, Users, ClipboardList, FileQuestion, MessageCircle,
   CalendarDays, TrendingUp, CheckCircle2, ArrowRight, Star,
@@ -17,12 +16,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { QueryState } from "@/components/query-state";
+import { formatDateTime } from "@/lib/format-date";
 import { qk } from "@/lib/query-keys";
 import { statusLabel } from "@/lib/status-labels";
 import { teacherPortalApi } from "@/services/api/teacher-portal-api";
-
-// 2026-11-09T10:00:00Z -> 09.11.2026 15:00
-const formatDateTime = (value: string) => { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : format(date, "dd.MM.yyyy HH:mm"); };
 
 function DashSkeleton() {
   return (

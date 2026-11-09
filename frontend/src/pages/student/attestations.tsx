@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { format, isValid, parseISO } from 'date-fns';
 import { Award, CalendarDays, MapPin, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,9 +6,9 @@ import { QueryState } from '@/components/query-state';
 import { qk } from '@/lib/query-keys';
 import { attestationApi } from '@/services/api/attestation-api';
 import { statusLabel } from "@/lib/status-labels";
+import { formatDate } from '@/lib/format-date';
 
 // 2026-11-09 -> 09.11.2026; vaqt bo'lsa 09:00:00 -> 09:00
-const formatDate = (value?: string | null) => { if (!value) return '—'; const date = parseISO(value); return isValid(date) ? format(date, 'dd.MM.yyyy') : value; };
 const formatDateTime = (date?: string | null, time?: string | null) => time ? `${formatDate(date)}, ${time.slice(0, 5)}` : formatDate(date);
 
 export function StudentAttestations() {

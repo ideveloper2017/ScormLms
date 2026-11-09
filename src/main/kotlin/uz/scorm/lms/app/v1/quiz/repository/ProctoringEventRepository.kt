@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param
 import org.springframework.data.domain.Pageable
 import uz.scorm.lms.app.v1.quiz.model.ProctoringEvent
 import uz.scorm.lms.app.v1.quiz.model.ProctoringEventSeverity
+import uz.scorm.lms.app.v1.quiz.model.ProctoringEventSource
 import uz.scorm.lms.app.v1.quiz.model.ProctoringEventType
 import java.time.Instant
 
@@ -16,6 +17,19 @@ interface ProctoringEventRepository : JpaRepository<ProctoringEvent, Long> {
     fun countByAttemptIdAndDeletedFalse(attemptId: Long): Long
 
     fun existsByAttemptIdAndTypeAndDeletedFalse(attemptId: Long, type: ProctoringEventType): Boolean
+
+    /** Urinish davomida berilgan manbadan (brauzer/server) kelgan hodisalar vaqti, o'sish tartibida. */
+    @Query(
+        """
+        select e.occurredAt from ProctoringEvent e
+         where e.attempt.id = :attemptId and e.source = :source and e.deleted = false
+         order by e.occurredAt asc
+        """
+    )
+    fun findEventTimes(
+        @Param("attemptId") attemptId: Long,
+        @Param("source") source: ProctoringEventSource,
+    ): List<Instant>
 
     @EntityGraph(attributePaths = ["session", "attempt", "attempt.quiz", "attempt.enrollment", "attempt.enrollment.student", "attempt.enrollment.student.user"])
     fun findAllByAttemptIdAndDeletedFalseOrderByOccurredAtAsc(attemptId: Long): List<ProctoringEvent>

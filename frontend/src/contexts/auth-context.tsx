@@ -10,6 +10,7 @@ import {
   login as apiLogin,
   logout as apiLogout,
   SESSION_EXPIRED_EVENT,
+  SESSION_FLAG_KEY,
 } from "@/lib/api";
 
 interface AuthContextType {
@@ -46,7 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       navigate("/login", { replace: true });
     };
     const onStorage = (event: StorageEvent) => {
-      if (event.key === "token" && event.newValue === null) onSessionExpired();
+      if (event.key === SESSION_FLAG_KEY && event.newValue === null) onSessionExpired();
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
     window.addEventListener("storage", onStorage);
