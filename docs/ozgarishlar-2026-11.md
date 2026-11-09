@@ -23,7 +23,7 @@ aks ettiradi; quyidagilar u yerda yo'q.
   o'tkazib yuboradi, yuz modellari bo'lmasa faqat ogohlantiradi. Lokal `bootRun` o'zgarmagan (`postgresql` profili).
 - Spring profillari: `postgresql` (lokal/dev), `postgresql-prod` (server), ixtiyoriy `hemis-oauth`,
   `hemis-employee-oauth`. Serverda env fayl: `/etc/scorm-lms/scorm-lms.env` (Tomcat systemd `EnvironmentFile`),
-  `SPRING_PROFILES_ACTIVE=postgresql-prod` — aynan shu nom (`postgres` emas), qator oxirida `\r` bo'lmasin.
+  `SPRING_PROFILES_ACTIVE=postgresql-prod` — qisqa `postgres` ham taxallus sifatida qabul qilinadi, qator oxirida `\r` bo'lmasin.
 - Baza bilan ishlash standart Spring Boot: Flyway jadvallarni yaratadi (V1→V105), Hibernate `validate` qiladi.
   Profil/baza nomini tekshiradigan qo'shimcha qo'riqchi klasslar (`ActiveProfileGuard`, `ProductionDatabaseGuard`,
   taxallus va avtomatik baza yaratish) olib tashlandi — baza (`scorm_lms`) oldindan yaratilgan bo'lishi kerak:

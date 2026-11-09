@@ -94,6 +94,20 @@ class ProductionProfileDefaultsTest {
     }
 
     @Test
+    fun `short postgres profile name is an alias that loads production settings`() {
+        SpringApplicationBuilder(NoBeans::class.java)
+            .web(WebApplicationType.NONE)
+            .run("--spring.profiles.active=postgres", "--LOG_FILE=build/test-logs/production-defaults.log")
+            .use { context ->
+                val env = context.environment
+                assertTrue("postgresql-prod" in env.activeProfiles, env.activeProfiles.joinToString())
+                assertTrue(env.required("app.jwt.secret").toByteArray().size >= MIN_HMAC_SECRET_BYTES)
+                assertTrue(env.required("spring.datasource.url").endsWith("/scorm_lms"))
+                assertTrue(env.required("app.data-dir").endsWith("scorm-lms-data"))
+            }
+    }
+
+    @Test
     fun `explicit environment values still override the defaults`() {
         val jwt = "k".repeat(80)
         withProdEnvironment(

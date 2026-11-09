@@ -58,8 +58,8 @@ ensure_application_database() {
   active_profiles="$(read_app_env SPRING_PROFILES_ACTIVE || true)"
   if [[ -n "$active_profiles" ]]; then
     case ",$active_profiles," in
-      *,postgresql-prod,*) ;;
-      *) fail "SPRING_PROFILES_ACTIVE must include postgresql-prod (got: '$active_profiles'; e.g. 'postgres' is not a profile — application-postgresql-prod.yml would not load). Fix it or remove the line from $APP_ENV_FILE" ;;
+      *,postgresql-prod,*|*,postgres,*) ;;
+      *) fail "SPRING_PROFILES_ACTIVE must include postgresql-prod (got: '$active_profiles'). Fix it or remove the line from $APP_ENV_FILE" ;;
     esac
   fi
 
