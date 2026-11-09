@@ -12,6 +12,7 @@ import jakarta.persistence.Table
 import uz.scorm.lms.app.common.BaseEntity
 import uz.scorm.lms.app.v1.subject.model.Subject
 import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabus
+import uz.scorm.lms.app.v1.teacher.model.Teacher
 
 @Entity
 @Table(
@@ -80,6 +81,11 @@ class ProgramCurriculumSubject(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "syllabus_id")
     var syllabus: SubjectSyllabus? = null
+
+    /** Shu semestrda fanni o'qitadigan (mas'ul) o'qituvchi */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "teacher_id")
+    var teacher: Teacher? = null
 }
 
 enum class CurriculumPlanItemType {

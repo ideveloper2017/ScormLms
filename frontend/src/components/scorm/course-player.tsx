@@ -26,6 +26,7 @@ export function CoursePlayer() {
   const valuesRef = useRef<Record<string, string>>({});
   const dirtyRef = useRef<Record<string, string>>({});
   const attemptIdRef = useRef<number | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const persist = useCallback(async (finish = false) => {
     const attemptId = attemptIdRef.current;
@@ -74,6 +75,7 @@ export function CoursePlayer() {
     if (!launch) return;
     const contentOrigin = new URL(scormContentUrl(launch.launchUrl)).origin;
     const receive = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
       if (event.origin !== contentOrigin || event.data?.source !== "SCORM_LMS_BRIDGE" || event.data?.attemptId !== launch.attemptId) return;
       const values = event.data.values as Record<string, string> | undefined;
       if (values) {
@@ -113,7 +115,7 @@ export function CoursePlayer() {
         <div><h1 className="text-2xl font-bold">{launch.title}</h1><p className="text-sm text-muted-foreground flex items-center gap-1"><BookOpen className="h-4 w-4" /> Kurs #{launch.courseId}</p></div>
         <div className="flex gap-2"><Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" />{launch.version === "SCORM_2004" ? "SCORM 2004" : "SCORM 1.2"}</Badge><Badge>{STATUS_LABEL[attempt?.status ?? launch.status]}</Badge></div>
       </div>
-      <Card><CardContent className="p-0 overflow-hidden rounded-lg"><iframe title={launch.title} src={scormContentUrl(launch.launchUrl)} className="w-full min-h-[72vh] border-0" allow="fullscreen; autoplay" /></CardContent></Card>
+      <Card><CardContent className="p-0 overflow-hidden rounded-lg"><iframe ref={iframeRef} title={launch.title} src={scormContentUrl(launch.launchUrl)} className="w-full min-h-[72vh] border-0" allow="fullscreen; autoplay" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads" /></CardContent></Card>
       <Card><CardHeader><CardTitle className="text-base">O'zlashtirish natijasi</CardTitle></CardHeader><CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <div><p className="text-muted-foreground">Holat</p><p className="font-medium">{STATUS_LABEL[attempt?.status ?? launch.status]}</p></div>
         <div><p className="text-muted-foreground">Ball</p><p className="font-medium">{String(score)}</p></div>

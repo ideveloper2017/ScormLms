@@ -1,4 +1,5 @@
 import api, { type ApiResponse } from "@/lib/api";
+import { unwrap } from "./unwrap";
 
 export const DECISION_559_SOURCE_SHA256 = "A1E6CF0E05640B962550A7B9B95851404F7B50DF590BBA943846E1CEA5FCC2D3";
 export const DECISION_559_REQUIRED_BANDS = [3, ...Array.from({ length: 26 }, (_, index) => index + 8)];
@@ -137,11 +138,6 @@ export interface UatProtocolInput {
   file: File;
 }
 export interface DownloadedUatFile { blob: Blob; originalName: string; sha256?: string }
-
-function unwrap<T>(response: ApiResponse<T>, fallback: string): T {
-  if (!response.success || response.data == null) throw new Error(response.message ?? fallback);
-  return response.data;
-}
 
 function responseFileName(disposition: unknown, fallback: string): string {
   const value = typeof disposition === "string" ? disposition : "";

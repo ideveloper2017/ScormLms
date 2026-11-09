@@ -376,7 +376,9 @@ describe('error-handler utility', () => {
       expect(removeItemMock).toHaveBeenCalledWith('refreshToken');
       expect(removeItemMock).toHaveBeenCalledWith('tokenExpiresAt');
       expect(removeItemMock).toHaveBeenCalledWith('user');
-      expect(removeItemMock).toHaveBeenCalledTimes(4);
+      // Sessiya belgisi ham o'chiriladi (tokenlarning o'zi endi localStorage'da saqlanmaydi)
+      expect(removeItemMock).toHaveBeenCalledWith('auth:session');
+      expect(removeItemMock).toHaveBeenCalledTimes(5);
     });
   });
 });

@@ -125,6 +125,9 @@ data class CurriculumSubjectDto(
     val syllabusTopicCount: Int = 0,
     /** Rejada soati bor har bir mashg'ulot turiga (har bir semestr qismida) mavzu kiritilganmi; dastur yo'q bo'lsa null */
     val syllabusComplete: Boolean? = null,
+    /** Mas'ul o'qituvchi (shu semestr qatori uchun) */
+    val teacherId: Long? = null,
+    val teacherName: String? = null,
 )
 
 /** Reja fani uchun yangi o'quv dasturi (fan nomi bilan) — yaratiladi va biriktiriladi */

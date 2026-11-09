@@ -27,7 +27,7 @@ export const foreignTeacherEngagementInputError = (input: SaveForeignTeacherEnga
   const country = input.citizenshipCountryCode.trim().toUpperCase();
   if (!input.teacherId) return "Faol pedagog majburiy";
   if (!match || Number(match[2]) !== Number(match[1]) + 1) return "O'quv yili YYYY-YYYY ketma-ket formatida bo'lishi kerak";
-  if (!/^[A-Z]{2}$/.test(country) || country === "UZ") return "UZdan boshqa ISO alpha-2 davlat kodi kerak";
+  if (!/^[A-Z]{2}$/.test(country) || country === "UZ") return "Xorijiy davlatni ro'yxatdan tanlang (O'zbekistondan boshqa)";
   if (!input.citizenshipEvidenceReference.trim() || !input.qualificationReference.trim()) return "Fuqarolik va malaka dalillari majburiy";
   if (!input.contractNumber.trim() || !input.contractDate || !input.engagementOrderNumber.trim() || !input.engagementOrderDate) return "Shartnoma va jalb qilish buyrug'i rekvizitlari majburiy";
   if (!input.engagementStartDate || !input.engagementEndDate || input.engagementEndDate < input.engagementStartDate) return "To'g'ri engagement davri majburiy";

@@ -15,9 +15,10 @@ import uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusTopic
 @Entity
 @Table(name = "subject_materials")
 class SubjectMaterial(
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "subject_id", nullable = false)
-    var subject: Subject,
+    /** Fan — o'quv reja taxtasida dastur biriktirilganda yoziladi (yangi dastur fansiz yaratiladi) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    var subject: Subject?,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asset_id")
@@ -60,6 +61,10 @@ class SubjectMaterial(
     @Column(nullable = false)
     var active: Boolean = true,
 ) : BaseEntity() {
+    /** Video davomiyligi (soniya) */
+    @Column(name = "duration_seconds")
+    var durationSeconds: Int? = null
+
     /** O'quv dasturi darsining kontenti (null — faqat fan bankidagi material) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "syllabus_topic_id")

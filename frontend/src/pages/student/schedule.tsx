@@ -198,14 +198,14 @@ export function StudentSchedule() {
           <p className="text-xs sm:text-sm text-muted-foreground">Haftalik darslar va mashg'ulotlar</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setWeekOffset((w) => w - 1)}>
-            <ChevronLeft className="h-4 w-4" />
+          <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" aria-label="Oldingi hafta" onClick={() => setWeekOffset((w) => w - 1)}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </Button>
           <span className="text-xs sm:text-sm font-medium min-w-[120px] sm:min-w-[160px] text-center">
             {weekRange.label}
           </span>
-          <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => setWeekOffset((w) => w + 1)}>
-            <ChevronRight className="h-4 w-4" />
+          <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" aria-label="Keyingi hafta" onClick={() => setWeekOffset((w) => w + 1)}>
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -257,7 +257,7 @@ export function StudentSchedule() {
                 {nextClass.isOnline && (
                   <Badge variant="outline" className="gap-1">
                     <Video className="h-3 w-3" />
-                    Online
+                    Onlayn
                   </Badge>
                 )}
               </div>
@@ -344,7 +344,7 @@ export function StudentSchedule() {
                           {lesson.isOnline && (
                             <Badge variant="outline" className="text-xs gap-1">
                               <Video className="h-3 w-3" />
-                              Online
+                              Onlayn
                             </Badge>
                           )}
                         </div>

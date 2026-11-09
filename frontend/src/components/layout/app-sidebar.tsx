@@ -1,4 +1,6 @@
+import { useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Search, X } from "lucide-react";
 import {
   BarChart3, Home, Users, Settings, BookOpen, GraduationCap,
   FileText, Library, Monitor, MessageCircle, UserCheck,
@@ -12,8 +14,9 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
   SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton,
-  SidebarMenuSubItem, SidebarRail, useSidebar,
+  SidebarInput, SidebarMenuSubItem, SidebarRail, useSidebar,
 } from "@/components/ui/sidebar";
+import { countNavLinks, searchNav } from "@/components/layout/nav-search";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -44,10 +47,7 @@ const ITEMS = {
   resources:  { name: "Axborot resurslari",    href: "/resources",           icon: Library       },
   exams:      { name: "Imtihonlar",            href: "/exams",               icon: GraduationCap },
   comms:      { name: "Aloqa",        href: "/communication",       icon: MessageCircle },
-  contingent: { name: "Kontingent",            href: "/contingent",          icon: ClipboardList },
-  attendance: { name: "Davomat",               href: "/attendance",          icon: Activity      },
-  teaching:   { name: "O'qitishni boshqarish", href: "/teaching",            icon: Database      },
-  stats:      { name: "Statistika",            href: "/statistics",          icon: BarChart3     },
+  stats:      { name: "Statistika",            href: "/statistics-dashbord", icon: BarChart3     },
   support:    { name: "Texnik yordam",         href: "/support",             icon: LifeBuoy      },
 
   // ── O'qituvchi navigatsiyasi (/teacher/*) ──────────────────────────────
@@ -87,7 +87,6 @@ const ITEMS = {
   sAttendance:    { name: "Davomat",             href: "/student/attendance",    icon: UserCheck       },
   sMessages:      { name: "Xabarlar",            href: "/student/messages",      icon: MessageCircle   },
   sNotifications: { name: "Bildirishnomalar",    href: "/student/notifications", icon: Bell            },
-  sCalendar:      { name: "Akademik kalendar",   href: "/student/calendar",      icon: Calendar        },
   sProfile:       { name: "Profil",              href: "/student/profile",       icon: CircleUser      },
   sSurveys:       { name: "Anonim so'rovlar",    href: "/student/surveys",       icon: ClipboardCheck  },
 
@@ -110,7 +109,6 @@ const ITEMS = {
   aAdmissionPolicies: { name: "Qabul va kontrakt", href: "/admin/admission-policies", icon: Landmark },
   aNonStateLicenses: { name: "Nodavlat litsenziyalari", href: "/admin/non-state-licenses", icon: BadgeCheck },
   aSchedule:     { name: "Dars jadvali",        href: "/admin/schedule",     icon: CalendarDays    },
-  aCalendar:     { name: "Akademik kalendar",   href: "/admin/calendar",     icon: Calendar        },
   aOrientations: { name: "Tizim bilan tanishuv",  href: "/admin/orientations", icon: Presentation    },
   aPractices:    { name: "Talaba amaliyoti",    href: "/admin/practices",    icon: BriefcaseBusiness },
   aAssessmentLeaves: { name: "Yakuniy nazorat ta'tili", href: "/admin/assessment-leaves", icon: CalendarDays },
@@ -128,7 +126,6 @@ const ITEMS = {
   aSurveys:       { name: "Anonim so'rovlar",     href: "/admin/surveys",          icon: ClipboardCheck  },
   aQualityStudies:{ name: "Sifat monitoringi",    href: "/admin/quality-monitoring", icon: FileSearch     },
   aContentReviews:{ name: "Kontent tekshiruvi",  href: "/admin/content-reviews",  icon: FileCheck2       },
-  aSettings:      { name: "Sozlamalar",          href: "/admin/settings",         icon: Settings        },
   aNotifications: { name: "Bildirishnomalar",    href: "/admin/notifications",     icon: Bell            },
   tNotifications: { name: "Bildirishnomalar",    href: "/teacher/notifications",   icon: Bell            },
 } satisfies Record<string, NavItem>;
@@ -259,11 +256,11 @@ export function buildNav(role: string): NavGroup[] {
     ADMIN:       ADMIN_NAV,
     METODIST: [
       { label: "Asosiy",             items: [ITEMS.aDashboard, ITEMS.aNotifications] },
-      { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers, ITEMS.contingent] },
+      { label: "Talabalar",          items: [ITEMS.aStudents, ITEMS.aGroups, ITEMS.aReinstatementSubjects, ITEMS.aTeachers] },
       { label: "Ta'lim jarayoni",    items: [ITEMS.aAcademicPeriods, ITEMS.aPrograms, ITEMS.aSubjectCategories, ITEMS.aSubjects, ITEMS.aStudyPlans, ITEMS.aSyllabi, ITEMS.aSchedule, ITEMS.exams] },
       { label: "Nazorat va hisobot", items: [ITEMS.aContentReviews, ITEMS.aReports, ITEMS.aQualityStudies, ITEMS.aSurveys, ITEMS.stats] },
       { label: "Sozlamalar",         items: [ITEMS.aStudentClassifiers] },
-      { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.teaching, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },
+      { label: "Kengaytirilgan", collapsible: true, items: [ITEMS.aFaculties, ITEMS.aDepartments, ITEMS.aForeignTeachers, ITEMS.aRestrictions, ITEMS.aAdmissionPolicies, ITEMS.aNonStateLicenses, ITEMS.aContentStandard, ITEMS.aOrientations, ITEMS.aPractices, ITEMS.aAssessmentLeaves, ITEMS.aAccountability, ITEMS.aReadiness, ITEMS.aPublications, ITEMS.resources, ITEMS.comms, ITEMS.aIntegrations, ITEMS.support] },
     ],
     TEACHER: [
       { label: "Asosiy",         items: [ITEMS.tDashboard] },
@@ -278,7 +275,7 @@ export function buildNav(role: string): NavGroup[] {
       { label: "Ta'lim",    items: [ITEMS.sOrientation, ITEMS.sPractice, ITEMS.sAssessmentLeave, ITEMS.sStudyPlan, ITEMS.sCourses, ITEMS.sResources, ITEMS.sSchedule, ITEMS.sAssignments, ITEMS.sTests, ITEMS.sExams, ITEMS.sAttestations] },
       { label: "Natijalar", items: [ITEMS.sGrades, ITEMS.sTranscript, ITEMS.sReports, ITEMS.sAttendance] },
       { label: "Aloqa",     items: [ITEMS.sMessages, ITEMS.sNotifications] },
-      { label: "Boshqa",    items: [ITEMS.sSurveys, ITEMS.sCalendar, ITEMS.support, ITEMS.sProfile] },
+      { label: "Boshqa",    items: [ITEMS.sSurveys, ITEMS.support, ITEMS.sProfile] },
     ],
     PROCTOR: [
       { label: "Asosiy", items: [ITEMS.home, ITEMS.exams, ITEMS.comms, ITEMS.support] },
@@ -290,6 +287,9 @@ export function buildNav(role: string): NavGroup[] {
   };
   return groups[r] ?? [{ label: "Asosiy", items: [ITEMS.home, ITEMS.courses, ITEMS.comms, ITEMS.support] }];
 }
+
+/** Shundan kam havolali menyuda (masalan proktor) qidiruv ortiqcha */
+const MENU_SEARCH_MIN_LINKS = 15;
 
 const ROLE_LABEL: Record<string, string> = {
   SUPER_ADMIN: "Super Admin", ADMIN: "Admin", METODIST: "Metodist",
@@ -306,7 +306,17 @@ export function AppSidebar() {
 
   const rawRole  = user?.role?.name || user?.roles?.[0]?.name || "";
   const normRole = rawRole.replace(/^ROLE_/i, "").toUpperCase();
-  const navGroups = buildNav(rawRole);
+  const navGroups = useMemo(() => buildNav(rawRole), [rawRole]);
+
+  // Menyu katta bo'lsa (admin: 80+ havola) kerakli sahifani nomi bo'yicha topish uchun qidiruv.
+  // Tuzilma o'zgarmaydi: qidiruv bo'sh bo'lsa odatdagi bo'limlar ko'rinadi.
+  const [menuQuery, setMenuQuery] = useState("");
+  const showMenuSearch = countNavLinks(navGroups) >= MENU_SEARCH_MIN_LINKS;
+  const searchResults = useMemo(
+    () => (showMenuSearch ? searchNav(navGroups, menuQuery) : null),
+    [navGroups, menuQuery, showMenuSearch],
+  );
+  const visibleGroups = searchResults ? [] : navGroups;
 
   const displayName = user?.fullName?.trim() || user?.username || "Foydalanuvchi";
   const displaySub  = user?.email || user?.phone || ROLE_LABEL[normRole] || "";
@@ -315,6 +325,7 @@ export function AppSidebar() {
 
   const go = (href: string) => {
     navigate(href);
+    setMenuQuery("");
     if (isMobile) setOpenMobile(false);
   };
 
@@ -339,6 +350,8 @@ export function AppSidebar() {
             <SidebarMenuButton
               size="lg"
               onClick={() => go("/")}
+              tooltip="Bosh sahifa"
+              aria-label="Bosh sahifa"
               className="data-[state=open]:bg-sidebar-accent"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 text-white">
@@ -355,7 +368,64 @@ export function AppSidebar() {
 
       {/* ── Navigation ────────────────────────────────────────── */}
       <SidebarContent>
-        {navGroups.map((group) => {
+        {showMenuSearch && (
+          <div className="relative px-2 pt-1 group-data-[collapsible=icon]:hidden">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/4 text-muted-foreground" aria-hidden="true" />
+            <SidebarInput
+              value={menuQuery}
+              onChange={(event) => setMenuQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setMenuQuery("");
+                if (event.key === "Enter" && searchResults?.length) go(searchResults[0].href);
+              }}
+              placeholder="Menyudan qidirish..."
+              aria-label="Menyudan sahifa qidirish"
+              className="pl-8 pr-8"
+            />
+            {menuQuery && (
+              <button
+                type="button"
+                onClick={() => setMenuQuery("")}
+                aria-label="Qidiruvni tozalash"
+                className="absolute right-4 top-1/2 -translate-y-1/4 rounded-sm text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {searchResults && (
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              {searchResults.length ? `Topildi: ${searchResults.length} ta sahifa` : "Hech narsa topilmadi"}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {searchResults.map((result) => {
+                  const ResultIcon = result.icon;
+                  return (
+                    <SidebarMenuItem key={`${result.href}|${result.name}`}>
+                      <SidebarMenuButton
+                        isActive={isActive(result.href)}
+                        onClick={() => go(result.href)}
+                        className="h-auto py-1.5"
+                      >
+                        {ResultIcon && <ResultIcon />}
+                        <span className="grid leading-tight">
+                          <span className="truncate">{result.name}</span>
+                          {result.group && <span className="truncate text-xs text-muted-foreground">{result.group}</span>}
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleGroups.map((group) => {
           const GroupIcon = group.icon;
 
           if (group.href && GroupIcon) {
@@ -509,7 +579,7 @@ export function AppSidebar() {
                   </DropdownMenuItem>
                 )}
                 {showSettings && (
-                  <DropdownMenuItem onClick={() => go("/settings")}>
+                  <DropdownMenuItem onClick={() => go("/settings/configs")}>
                     <Settings className="mr-2 size-4" /> Sozlamalar
                   </DropdownMenuItem>
                 )}

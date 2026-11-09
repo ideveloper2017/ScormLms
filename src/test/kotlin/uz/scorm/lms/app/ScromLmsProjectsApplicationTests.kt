@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.test.context.ActiveProfiles
 import javax.sql.DataSource
 
@@ -22,7 +23,12 @@ class ScromLmsProjectsApplicationTests {
 
     @Test
     fun contextLoads() {
-        assertEquals("71", flyway.info().current()?.version?.toString())
+        // Qat'iy raqam emas: har yangi migratsiyada test eskirib qolmasligi uchun eng oxirgi fayl versiyasi olinadi
+        val latestMigration = PathMatchingResourcePatternResolver()
+            .getResources("classpath:db/migration/V*__*.sql")
+            .mapNotNull { Regex("^V([0-9]+)__").find(it.filename.orEmpty())?.groupValues?.get(1)?.toInt() }
+            .max()
+        assertEquals(latestMigration.toString(), flyway.info().current()?.version?.toString())
         flyway.validate()
 
         dataSource.connection.use { connection ->

@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useConfirm } from '@/components/confirm-dialog';
+import { QueryState } from '@/components/query-state';
 import { useToast } from '@/hooks/use-toast';
 import { qk } from '@/lib/query-keys';
 import { teacherPortalApi } from '@/services/api/teacher-portal-api';
@@ -33,6 +35,7 @@ function AppealReview({ appeal, onReview }: { appeal: ExamAppeal; onReview: (sta
 export function TeacherExams() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { confirm, confirmDialog } = useConfirm();
   const [selectedId, setSelectedId] = useState('');
   const [courseId, setCourseId] = useState('');
   const [title, setTitle] = useState('');
@@ -58,6 +61,9 @@ export function TeacherExams() {
   ]); };
   const notifyError = (error: Error) => toast({ variant: 'destructive', title: 'Amal bajarilmadi', description: error.message });
   const action = useMutation({ mutationFn: async ({ id, kind }: { id: string; kind: 'publish' | 'start' | 'complete' | 'remove' }) => { if (kind === 'remove') await teacherExamApi.remove(id); else await teacherExamApi[kind](id); }, onSuccess: refresh, onError: notifyError });
+  const removeSession = async (id: string, sessionTitle: string) => {
+    if (await confirm({ title: "Sessiya o'chirilsinmi?", description: `"${sessionTitle}" qoralamasi o'chiriladi. Bu amalni qaytarib bo'lmaydi.`, confirmLabel: "Ha, o'chirish" })) action.mutate({ id, kind: 'remove' });
+  };
   const create = useMutation({
     mutationFn: () => teacherExamApi.create({ courseId: Number(courseId), title: title.trim(), description: description.trim() || undefined, examDate, examTime, location: location.trim(), examType, durationMinutes: Number(duration), controlType }),
     onSuccess: async () => { setTitle(''); setDescription(''); setLocation(''); await refresh(); toast({ title: `${controlTypeLabels[controlType]} sessiyasi yaratildi` }); }, onError: notifyError,
@@ -80,16 +86,18 @@ export function TeacherExams() {
       <Textarea className="md:col-span-2" value={description} onChange={e => setDescription(e.target.value)} placeholder="Ko'rsatmalar" />
       <Button disabled={!courseId || !title.trim() || !location.trim() || !examDate || !examTime || create.isPending} onClick={() => create.mutate()}><Plus className="h-4 w-4 mr-2" />Yaratish</Button>
     </CardContent></Card>
-    <div className="grid lg:grid-cols-2 gap-4">{(sessions.data ?? []).map(session => <Card key={session.id} className={selectedId === session.id ? 'border-primary' : ''}><CardContent className="p-4 space-y-3">
+    <QueryState isLoading={sessions.isLoading} isEmpty={!sessions.data?.length} emptyText="Hozircha nazorat sessiyasi yaratilmagan."><div className="grid lg:grid-cols-2 gap-4">{(sessions.data ?? []).map(session => <Card key={session.id} className={selectedId === session.id ? 'border-primary' : ''}><CardContent className="p-4 space-y-3">
       <div className="flex justify-between gap-3"><div><div className="font-semibold">{session.title}</div><div className="text-sm text-muted-foreground">{session.courseTitle} · {session.examDate} {session.examTime} · {session.location}</div>{!session.curriculumLinked && <div className="flex items-center gap-1 text-xs text-amber-600 mt-1"><AlertTriangle className="h-3 w-3" />Kurs o'quv dasturiga bog'lanmagan</div>}</div><div className="flex shrink-0 flex-col items-end gap-1"><Badge>{statusLabel(session.status)}</Badge><Badge variant="outline" title={controlTypeLabels[session.controlType ?? 'FINAL']}>{session.controlType === 'MIDTERM' ? 'ON' : 'YN'}</Badge></div></div>
       <div className="flex gap-3 text-sm"><span><Users className="inline h-4 w-4" /> {session.registeredCount}</span><span className="text-green-600">Kelgan: {session.presentCount}</span><span className="text-red-600">Kelmagan: {session.absentCount}</span></div>
-      <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedId(session.id)}><ClipboardCheck className="h-4 w-4 mr-1" />Ro'yxat</Button>{session.status === 'DRAFT' && <><Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'publish' })}><CalendarCheck className="h-4 w-4 mr-1" />E'lon qilish</Button><Button size="icon" variant="ghost" className="text-destructive" onClick={() => action.mutate({ id: session.id, kind: 'remove' })}><Trash2 className="h-4 w-4" /></Button></>}{session.status === 'PUBLISHED' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'start' })}><Play className="h-4 w-4 mr-1" />Boshlash</Button>}{session.status === 'ONGOING' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'complete' })}><CheckCircle2 className="h-4 w-4 mr-1" />Yakunlash</Button>}</div>
-    </CardContent></Card>)}</div>
-    {selected && <Card><CardHeader><CardTitle>{selected.title}: auditoriya qaydnomasi</CardTitle><CardDescription>Kelganlikni vakolatli xodim tasdiqlaydi; xorijiy fuqaro uchun 21-banddagi shaxsan qatnashish talabi qo'llanmaydi.</CardDescription></CardHeader><CardContent className="space-y-3">{(attendance.data?.attendanceRecords ?? []).map(record => {
+      <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedId(session.id)}><ClipboardCheck className="h-4 w-4 mr-1" />Ro'yxat</Button>{session.status === 'DRAFT' && <><Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'publish' })}><CalendarCheck className="h-4 w-4 mr-1" />E'lon qilish</Button><Button size="icon" variant="ghost" className="text-destructive" aria-label={`${session.title}: sessiyani o'chirish`} onClick={() => { void removeSession(session.id, session.title); }}><Trash2 className="h-4 w-4" aria-hidden="true" /></Button></>}{session.status === 'PUBLISHED' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'start' })}><Play className="h-4 w-4 mr-1" />Boshlash</Button>}{session.status === 'ONGOING' && <Button size="sm" onClick={() => action.mutate({ id: session.id, kind: 'complete' })}><CheckCircle2 className="h-4 w-4 mr-1" />Yakunlash</Button>}</div>
+    </CardContent></Card>)}</div></QueryState>
+    {selected && <Card><CardHeader><CardTitle>{selected.title}: auditoriya qaydnomasi</CardTitle><CardDescription>Kelganlikni vakolatli xodim tasdiqlaydi; xorijiy fuqaro uchun 21-banddagi shaxsan qatnashish talabi qo'llanmaydi.</CardDescription></CardHeader><CardContent className="space-y-3"><QueryState isLoading={attendance.isLoading} isError={attendance.isError} error={attendance.error} onRetry={() => { void attendance.refetch(); }} isEmpty={!attendance.data?.attendanceRecords.length} emptyText="Ro'yxat sessiya e'lon qilinganda yaratiladi.">{(attendance.data?.attendanceRecords ?? []).map(record => {
       const saved = resultByEnrollment.get(record.enrollmentId);
       const mayGrade = !record.onsiteAttendanceRequired || ['PRESENT', 'LATE'].includes(record.status);
       return <div key={record.id} className="border rounded-lg p-3 grid md:grid-cols-[1fr_180px_120px_120px] gap-2 items-center"><div><div className="font-medium">{record.studentName} {!record.onsiteAttendanceRequired && <Badge variant="outline" className="ml-2">Xorijiy fuqaro — istisno</Badge>}</div><div className="text-xs text-muted-foreground">{record.studentEmail} · {record.onsiteAttendanceRequired ? (record.verificationTime ? `Tasdiqlagan: ${record.verifiedBy}` : 'Tasdiqlanmagan') : 'Shaxsan davomat majburiy emas'}</div></div><Select value={attendanceDraft[record.enrollmentId] ?? record.status} onValueChange={value => setAttendanceDraft(old => ({ ...old, [record.enrollmentId]: value as ExamAttendanceStatus }))} disabled={selected.status !== 'ONGOING'}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="PRESENT">Qatnashdi</SelectItem><SelectItem value="LATE">Kechikdi</SelectItem><SelectItem value="ABSENT">Qatnashmadi</SelectItem><SelectItem value="EXCUSED">Sababli</SelectItem></SelectContent></Select><Button size="sm" variant="outline" disabled={selected.status !== 'ONGOING'} onClick={() => mark.mutate({ enrollmentId: record.enrollmentId, status: attendanceDraft[record.enrollmentId] ?? record.status })}>Tasdiqlash</Button><div className="flex gap-1"><Input type="number" min="0" max="100" value={scoreDraft[record.enrollmentId] ?? saved?.score ?? ''} onChange={e => setScoreDraft(old => ({ ...old, [record.enrollmentId]: e.target.value }))} placeholder="Ball" disabled={selected.status !== 'ONGOING' || !mayGrade} /><Button size="sm" disabled={selected.status !== 'ONGOING' || !mayGrade || !scoreDraft[record.enrollmentId]} onClick={() => grade.mutate({ enrollmentId: record.enrollmentId, score: Number(scoreDraft[record.enrollmentId]) })}>{saved?.grade ?? 'Saqlash'}</Button></div></div>;
-    })}{attendance.data?.attendanceRecords.length === 0 && <p className="text-center text-muted-foreground py-5">Ro'yxat sessiya e'lon qilinganda yaratiladi.</p>}</CardContent></Card>}
+    })}</QueryState></CardContent></Card>}
+    {selected && appeals.isError && <Card><CardHeader><CardTitle>Apellyatsiyalar</CardTitle></CardHeader><CardContent><QueryState isError error={appeals.error} onRetry={() => { void appeals.refetch(); }} className="py-4" /></CardContent></Card>}
     {selected && (appeals.data ?? []).length > 0 && <Card><CardHeader><CardTitle>Apellyatsiyalar</CardTitle></CardHeader><CardContent className="space-y-3">{appeals.data?.map(appeal => <AppealReview key={appeal.id} appeal={appeal} onReview={(status, decision, score) => review.mutate({ appealId: appeal.id, status, decision, score })} />)}</CardContent></Card>}
+    {confirmDialog}
   </div>;
 }

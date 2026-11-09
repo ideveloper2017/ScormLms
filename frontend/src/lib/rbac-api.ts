@@ -1,5 +1,6 @@
 import axios from "axios";
 import api from "@/lib/api";
+import { responseErrorMessage } from "@/lib/api-error";
 import { Permissions, Role, User, UserStatus } from "@/types/auth.types";
 
 // --- UserRecord: backend UserDto shape ---
@@ -59,6 +60,8 @@ export interface AuditLogEntry {
 // Backend RBAC controllerlari (UserController, RoleController, PermissionController)
 // javobni CommonApiResponse wrapper'siz, toza payload sifatida qaytaradi.
 
+// academic-api dagi extractApiError dan farqi: aloqa uzilishi, 401 va 403 uchun server matni o'rniga
+// tayyor xabar beriladi; server xabari bo'lmasa asl xato obyekti qaytadi. Xabarni o'qish — lib/api-error.ts da.
 export function extractApiError(error: unknown, fallback: string): Error {
   if (axios.isAxiosError(error)) {
     if (error.code === "ECONNABORTED" || !error.response) {
@@ -70,9 +73,8 @@ export function extractApiError(error: unknown, fallback: string): Error {
     if (error.response.status === 403) {
       return new Error("Sizda bu amal uchun huquq yo'q.");
     }
-    const data = error.response.data as { message?: string; error?: string } | undefined;
-    if (data?.message) return new Error(data.message);
-    if (data?.error) return new Error(data.error);
+    const fromServer = responseErrorMessage(error);
+    if (fromServer) return new Error(fromServer);
   }
   return error instanceof Error ? error : new Error(fallback);
 }

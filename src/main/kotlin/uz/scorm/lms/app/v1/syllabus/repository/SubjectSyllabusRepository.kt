@@ -17,6 +17,9 @@ interface SubjectSyllabusRepository : JpaRepository<SubjectSyllabus, Long> {
     fun lockById(id: Long): SubjectSyllabus?
     fun findAllByDeletedFalseOrderByNameAsc(): List<SubjectSyllabus>
     fun findAllBySubjectIdAndDeletedFalseOrderByNameAsc(subjectId: Long): List<SubjectSyllabus>
+    fun findAllBySubjectIsNullAndDeletedFalseOrderByNameAsc(): List<SubjectSyllabus>
+    fun existsBySubjectIsNullAndLanguageAndNameIgnoreCaseAndDeletedFalse(language: uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage, name: String): Boolean
+    fun existsBySubjectIsNullAndLanguageAndNameIgnoreCaseAndDeletedFalseAndIdNot(language: uz.scorm.lms.app.v1.syllabus.model.SyllabusLanguage, name: String, id: Long): Boolean
     fun findByIdAndDeletedFalse(id: Long): SubjectSyllabus?
     fun findAllByModelProgramIdAndDeletedFalseOrderByNameAsc(modelProgramId: Long): List<SubjectSyllabus>
     fun countByModelProgramIdAndDeletedFalse(modelProgramId: Long): Long

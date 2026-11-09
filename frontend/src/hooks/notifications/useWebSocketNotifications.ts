@@ -38,6 +38,12 @@ export function useWebSocketNotifications() {
       // Uzilgandan so'ng 5 sekund kutib qayta ulanadi
       reconnectDelay: 5_000,
 
+      // Har bir (qayta) ulanishdan oldin: token shu orada yangilangan bo'lishi mumkin
+      beforeConnect: () => {
+        const current = getToken();
+        if (current) client.connectHeaders = { Authorization: `Bearer ${current}` };
+      },
+
       onConnect: () => {
         // Foydalanuvchiga shaxsiy kanal — /user/queue/notifications
         client.subscribe("/user/queue/notifications", () => {

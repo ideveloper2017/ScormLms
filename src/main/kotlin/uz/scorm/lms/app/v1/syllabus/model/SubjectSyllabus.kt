@@ -17,9 +17,10 @@ import uz.scorm.lms.app.v1.subject.model.Subject
 @Entity
 @Table(name = "subject_syllabi")
 class SubjectSyllabus(
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "subject_id", nullable = false)
-    var subject: Subject,
+    /** Fan — o'quv reja taxtasida dastur biriktirilganda yoziladi (yangi dastur fansiz yaratiladi) */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "subject_id")
+    var subject: Subject?,
 
     @Column(nullable = false, length = 500)
     var name: String,
@@ -66,6 +67,25 @@ class SubjectSyllabus(
     @OrderBy("sortOrder ASC")
     @org.hibernate.annotations.BatchSize(size = 50)
     var modules: MutableList<SubjectSyllabusModule> = mutableListOf()
+
+    /** Fanni o'rganib talaba nimalarga erishadi — har biri yangi qatordan */
+    @Column(name = "learning_outcomes", columnDefinition = "TEXT")
+    var learningOutcomes: String? = null
+
+    /** Muqova rasmi (saqlash kaliti; fayl — syllabus-media/{id}/) */
+    @Column(name = "cover_image", length = 64)
+    var coverImage: String? = null
+
+    /** Tanishtiruv videosi fayli (saqlash kaliti) va asl nomi */
+    @Column(name = "intro_video", length = 64)
+    var introVideo: String? = null
+
+    @Column(name = "intro_video_name", length = 500)
+    var introVideoName: String? = null
+
+    /** Yoki tanishtiruv videosi havolasi (YouTube, Vimeo, MP4) */
+    @Column(name = "intro_video_url", length = 1000)
+    var introVideoUrl: String? = null
 
     /**
      * Darslar o'qitish tartibida: dastur modullari tartibi, modul ichida dars tartibi; modulga biriktirilmagan (eski)

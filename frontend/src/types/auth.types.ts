@@ -46,7 +46,8 @@ export interface LoginCredentials {
 export interface AuthPayload {
     user: User;
     accessToken: string;
-    refreshToken: string;
+    /** Server bermaydi: refresh token HttpOnly cookie'da saqlanadi */
+    refreshToken?: string;
     expiresIn: number;
 }
 
@@ -59,7 +60,8 @@ export interface AuthResponse {
 
 export interface RefreshTokenResponse {
   accessToken: string;
-  refreshToken: string;
+  /** Brauzer uchun berilmaydi: refresh token HttpOnly cookie'da */
+  refreshToken?: string;
   expiresIn: number;
 }
 

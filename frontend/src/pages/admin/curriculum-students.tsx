@@ -9,12 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
+import { apiErrorMessage } from "@/lib/api-error";
 import { hasAuthority } from "@/lib/rbac-api";
 import { curriculumApi, curriculumStatusLabels } from "@/services/api/curriculum-api";
 import { listGroups } from "@/lib/academic-api";
 import { AttachedStudentsRegistry } from "@/components/admin/attached-students-registry";
+import { useConfirm } from "@/components/confirm-dialog";
 
-const message = (error: unknown) => error instanceof Error ? error.message : "Amalni bajarib bo'lmadi";
+const message = (error: unknown) => apiErrorMessage(error, "Amalni bajarib bo'lmadi");
 
 interface AdminCurriculumStudentsProps {
   /** When set, locks the page to this curriculum (embedded as a tab inside the plan editor) and hides the plan picker. */
@@ -29,6 +31,7 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
   const canWrite = hasAuthority(user, "ACADEMIC_WRITE");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
   const [curriculumId, setCurriculumId] = useState(() => {
     if (embedded) return lockedCurriculumId as number;
     const value = Number(searchParams.get("curriculumId"));
@@ -112,7 +115,7 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
   const blocked = !selected ? 'Avval o‘quv rejani tanlang.' : selected.status !== 'APPROVED' ? 'Reja tasdiqlangan bo‘lishi kerak.' : !selected.active ? 'O‘quv reja faol emas.' : !period?.active ? 'Avval tanlangan semestrning faol muddatini saqlang.' : null;
 
   return <div className={embedded ? "space-y-6" : "space-y-6 p-3 sm:p-6"}>
-    {!embedded && <div><h1 className="text-2xl font-bold">O'quv rejaga biriktirilgan talabalar</h1><p className="text-sm text-muted-foreground">ELMS zanjiri: tasdiqlangan o'quv reja → semestr muddati → mos talabalarni biriktirish.</p></div>}
+    {!embedded && <div><h1 className="text-2xl font-bold">O'quv rejaga biriktirilgan talabalar</h1><p className="text-sm text-muted-foreground">Tartib: tasdiqlangan o'quv reja → semestr muddati → mos talabalarni biriktirish.</p></div>}
     {!embedded && curricula.isSuccess && curricula.data.length === 0 && <Card><CardContent className="space-y-3 py-10 text-center"><p className="text-muted-foreground">Talaba biriktirish uchun avval o'quv reja yarating va kamida bitta fan bilan tasdiqlang.</p><Button onClick={() => navigate("/edu-process/curriculum")}>O'quv rejaga o'tish</Button></CardContent></Card>}
     {!embedded && curricula.isSuccess && curricula.data.length > 0 && <AttachedStudentsRegistry curricula={curricula.data} canWrite={canWrite} />}
     {curricula.isPending && <p role="status">O'quv rejalar yuklanmoqda...</p>}
@@ -146,9 +149,10 @@ export function AdminCurriculumStudents({ lockedCurriculumId }: AdminCurriculumS
         <Button disabled={!canWrite || !!blocked || failed || selectedIds.length === 0 || candidates.isFetching || busy} onClick={() => assign.mutate()}><UserPlus className="mr-2 h-4 w-4" />Tanlanganlarni biriktirish ({selectedIds.length})</Button>
       </CardContent></Card>
       <Card><CardHeader><CardTitle>Biriktirilgan talabalar</CardTitle><CardDescription>{semester}-semestr bo'yicha amaldagi ro'yxat.</CardDescription></CardHeader><CardContent className="space-y-3">
-        {(assignments.data ?? []).filter((item) => item.semesterNumber === semester).map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-md border p-3"><div><p className="font-medium">{item.fullName}</p><p className="text-xs text-muted-foreground">{item.studentNumber} · {item.groupName ?? "Guruhsiz"} · {item.startsOn} — {item.endsOn}</p></div>{canWrite && <Button size="icon" variant="ghost" disabled={busy} onClick={() => remove.mutate(item.id)} aria-label="Biriktirishni olib tashlash"><Trash2 className="h-4 w-4" /></Button>}</div>)}
+        {(assignments.data ?? []).filter((item) => item.semesterNumber === semester).map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-md border p-3"><div><p className="font-medium">{item.fullName}</p><p className="text-xs text-muted-foreground">{item.studentNumber} · {item.groupName ?? "Guruhsiz"} · {item.startsOn} — {item.endsOn}</p></div>{canWrite && <Button size="icon" variant="ghost" disabled={busy} onClick={async () => { if (!(await confirm({ title: `${item.fullName} o'quv rejadan olib tashlansinmi?`, description: `Talabaning ${semester}-semestrga biriktirilishi bekor qilinadi. Keyin qayta biriktirishingiz mumkin.`, confirmLabel: "Olib tashlash" }))) return; remove.mutate(item.id); }} aria-label="Biriktirishni olib tashlash"><Trash2 className="h-4 w-4" /></Button>}</div>)}
         {assignments.isSuccess && !(assignments.data ?? []).some((item) => item.semesterNumber === semester) && <p className="py-8 text-center text-muted-foreground">Hali talaba biriktirilmagan.</p>}
       </CardContent></Card>
     </div>
+    {confirmDialog}
   </div>;
 }

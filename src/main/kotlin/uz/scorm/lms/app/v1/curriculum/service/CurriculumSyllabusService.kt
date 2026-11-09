@@ -28,12 +28,15 @@ class CurriculumSyllabusService(
     private val syllabusService: SubjectSyllabusService,
     private val auditService: AuditService,
     private val curriculumService: ProgramCurriculumService,
+    private val materials: uz.scorm.lms.app.v1.courses.repository.SubjectMaterialRepository,
 ) {
     @Transactional
     fun attach(id: Long, itemId: Long, syllabusId: Long, actorId: Long): CurriculumVersionDto {
         val rows = subjectRows(id, itemId)
         val syllabus = syllabi.findByIdAndDeletedFalse(syllabusId) ?: throw NoSuchElementException("O'quv dasturi topilmadi: $syllabusId")
-        require(syllabus.subject.id == rows.first().subject?.id) { "O'quv dasturi boshqa fanga tegishli" }
+        val subject = requireNotNull(rows.first().subject)
+        if (syllabus.subject == null) bind(syllabus, subject)
+        require(syllabus.subject?.id == subject.id) { "O'quv dasturi boshqa fanga tegishli" }
         link(rows, syllabus)
         auditService.logAction("CURRICULUM_SYLLABUS_ATTACHED", actorId, "curriculum=$id; item=$itemId; syllabus=$syllabusId")
         return curriculumService.get(id)
@@ -61,6 +64,15 @@ class CurriculumSyllabusService(
         link(rows, syllabus)
         auditService.logAction("CURRICULUM_SYLLABUS_CREATED", actorId, "curriculum=$id; item=$itemId; syllabus=${syllabus.id}")
         return curriculumService.get(id)
+    }
+
+    /** Fansiz yaratilgan dastur birinchi biriktirilganda shu fanga bog'lanadi (dars materiallari ham) */
+    private fun bind(syllabus: SubjectSyllabus, subject: uz.scorm.lms.app.v1.subject.model.Subject) {
+        syllabus.subject = subject
+        syllabi.save(syllabus)
+        val topicIds = syllabus.topics.mapNotNull { it.id }
+        if (topicIds.isNotEmpty()) materials.findAllBySyllabusTopicIdInAndDeletedFalseOrderByTopicPositionAscIdAsc(topicIds)
+            .filter { it.subject == null }.forEach { it.subject = subject; materials.save(it) }
     }
 
     private fun link(rows: List<ProgramCurriculumSubject>, syllabus: SubjectSyllabus?) {

@@ -13,8 +13,11 @@ vi.mock("@/services/api/curriculum-api", async (importOriginal) => ({
 }));
 vi.mock("@/services/api/syllabus-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
-  syllabusApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), updateModulesWithCourses: vi.fn(), linkedCourses: vi.fn(async () => []) },
+  syllabusApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), updateModulesWithCourses: vi.fn(), linkedCourses: vi.fn(async () => []),
+    uploadMedia: vi.fn(), removeMedia: vi.fn(), mediaFile: vi.fn() },
 }));
+vi.mock("@/components/editor/lazy-rich-text-editor", () => ({ LazyRichTextEditor: ({ value, onChange }: { value: string; onChange: (value: string) => void }) =>
+  <textarea aria-label="To'liq ta'rif *" value={value} onChange={(event) => onChange(event.target.value)} /> }));
 vi.mock("@/lib/academic-api", async (importOriginal) => ({
   ...await importOriginal<object>(),
   listGroups: vi.fn().mockResolvedValue([{ id: 4, name: "KI-26", active: true }]),
@@ -64,31 +67,47 @@ describe("SyllabusCatalog", () => {
 
     const approved = (await screen.findByText("Fizika dasturi 2")).closest("tr") as HTMLElement;
     expect(within(approved).getByText("Tasdiqlangan")).toBeInTheDocument();
-    // Tasdiqlangan dastur drawer'da faqat ko'rish uchun ochiladi
+    // Tasdiqlangan dastur faqat ko'rish uchun ochiladi, ⋮ menyuda o'chirish yopiq
     expect(within(approved).getByRole("button", { name: /dasturni ochish/ })).toBeEnabled();
-    expect(within(approved).getByRole("button", { name: /o'chirish/ })).toBeDisabled();
+    expect(within(approved).getByRole("button", { name: "Fizika dasturi 2 — ko'rish" })).toHaveTextContent("0 bo'lim · 0 dars");
+    fireEvent.keyDown(within(approved).getByRole("button", { name: "Fizika dasturi 2 — amallar" }), { key: "Enter" });
+    expect(await screen.findByRole("menuitem", { name: "O'chirish" })).toHaveAttribute("data-disabled");
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(screen.getByText("Umumiy soni: 2")).toBeInTheDocument();
+    expect(screen.getByText("2 tadan 1–2 ko'rsatilmoqda")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Fizika dasturi 1 — o'chirish" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Fizika dasturi 1 — amallar" }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "O'chirish" }));
     fireEvent.click(await screen.findByRole("button", { name: "O'chirish" }));
     await waitFor(() => expect(syllabusApi.delete).toHaveBeenCalledWith(1));
   });
 
-  it("yangi dastur (to'liq sahifa): qisqa ta'rif, talablar va to'liq ta'rif alohida yuboriladi, keyin Dasturlar ochiladi", async () => {
+  it("yangi dastur (to'liq sahifa): fan tanlanmaydi (o'quv rejada biriktiriladi), nom va ta'riflar yuboriladi, keyin O'quv dasturi ochiladi", async () => {
     vi.mocked(syllabusApi.list).mockResolvedValue([]);
     vi.mocked(syllabusApi.create).mockResolvedValue(item(3, "DRAFT"));
+    vi.mocked(syllabusApi.uploadMedia).mockResolvedValue({ ...item(3, "DRAFT"), coverImageAvailable: true });
     wrap(<SyllabusCatalog canWrite />);
 
     fireEvent.click(await screen.findByRole("button", { name: /Yangi dastur/ }));
-    await screen.findByRole("option", { name: "Fizika (FIZ1)" });
-    fireEvent.change(screen.getByLabelText("Fan *"), { target: { value: "9" } });
+    expect(await screen.findByLabelText("Nomi *")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Fan *")).not.toBeInTheDocument();
+    expect(screen.getByText(/Fan o'quv reja taxtasida/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Nomi *"), { target: { value: "Mexanika" } });
     fireEvent.change(screen.getByLabelText("Qisqa ta'rif *"), { target: { value: "Mexanika asoslari" } });
     fireEvent.change(screen.getByLabelText("Talablar"), { target: { value: "Matematika" } });
     fireEvent.change(screen.getByLabelText("To'liq ta'rif *"), { target: { value: "Kinematika va dinamika" } });
+    // Mentor kabi chap menyu: Asosiy → Media (holat saqlanadi, hammasi bitta "Saqlash" bilan)
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Media" }));
+    const cover = new File([new Uint8Array([1, 2])], "muqova.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Muqova rasmi fayli"), { target: { files: [cover] } });
+    expect(await screen.findByRole("img", { name: "Muqova rasmi" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Yoki video havolasi"), { target: { value: "https://youtu.be/abc" } });
     fireEvent.click(screen.getByRole("button", { name: "Saqlash va davom etish" }));
     await waitFor(() => expect(syllabusApi.create).toHaveBeenCalledWith(expect.objectContaining({
-      subjectId: 9, language: "UZ", shortDescription: "Mexanika asoslari", requirements: "Matematika", fullDescription: "Kinematika va dinamika",
+      subjectId: null, name: "Mexanika", language: "UZ", shortDescription: "Mexanika asoslari", requirements: "Matematika", fullDescription: "Kinematika va dinamika",
+      introVideoUrl: "https://youtu.be/abc",
     })));
-    expect(await screen.findByRole("tab", { name: "Dasturlar", selected: true })).toBeInTheDocument();
+    await waitFor(() => expect(syllabusApi.uploadMedia).toHaveBeenCalledWith(3, "cover", cover));
+    expect(await screen.findByRole("tab", { name: "O'quv dasturi", selected: true })).toBeInTheDocument();
   });
 });

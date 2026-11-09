@@ -1,4 +1,5 @@
 import api, { type ApiResponse } from "@/lib/api";
+import { unwrap } from "./unwrap";
 
 export type SurveyAudience = "STUDENT" | "TEACHER" | "BOTH";
 export type SurveyStatus = "DRAFT" | "PUBLISHED" | "CLOSED";
@@ -42,11 +43,6 @@ export interface SurveySubmission { surveyId: number; submittedAt: string; accep
 export interface SurveyOptionAggregate { option: string; count: number; percentage: number }
 export interface SurveyQuestionAggregate { questionId: number; prompt: string; questionType: SurveyQuestionType; answerCount: number; averageRating?: number | null; ratingDistribution: Record<string, number>; options: SurveyOptionAggregate[] }
 export interface SurveyResults { surveyId: number; title: string; responseCount: number; minAggregateSize: number; suppressed: boolean; questions: SurveyQuestionAggregate[] }
-
-function unwrap<T>(response: ApiResponse<T>, fallback: string): T {
-  if (!response.success || response.data == null) throw new Error(response.message ?? fallback);
-  return response.data;
-}
 
 export async function listAvailableSurveys(): Promise<Survey[]> {
   const response = await api.get<ApiResponse<Survey[]>>("/surveys");

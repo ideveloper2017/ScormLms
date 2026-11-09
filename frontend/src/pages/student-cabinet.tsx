@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDashboardStats, useRecentActivity } from '@/hooks/dashboard/useDashboard';
 import { useToast } from '@/hooks/use-toast';
+import { apiErrorMessage } from '@/lib/api-error';
 import { listDistricts, listRegions } from '@/lib/classifier-api';
 import { qk } from '@/lib/query-keys';
 import { changeMyPassword, getMyProfile, updateMyProfile } from '@/lib/student-portal-api';
@@ -38,11 +39,6 @@ function loadPreferences(): Preferences {
   } catch {
     return defaultPreferences;
   }
-}
-
-function errorMessage(error: unknown, fallback: string) {
-  const responseMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-  return responseMessage || (error instanceof Error ? error.message : fallback);
 }
 
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
@@ -75,7 +71,7 @@ export function StudentCabinet() {
       setIsEditing(false);
       toast({ title: 'Profil yangilandi' });
     },
-    onError: error => toast({ title: 'Profilni saqlab bo‘lmadi', description: errorMessage(error, 'Noma’lum xatolik'), variant: 'destructive' }),
+    onError: error => toast({ title: 'Profilni saqlab bo‘lmadi', description: apiErrorMessage(error,'Noma’lum xatolik'), variant: 'destructive' }),
   });
   const passwordMutation = useMutation({
     mutationFn: () => changeMyPassword(passwords.current, passwords.next),
@@ -83,7 +79,7 @@ export function StudentCabinet() {
       setPasswords({ current: '', next: '', confirm: '' });
       toast({ title: 'Parol yangilandi', description: 'Keyingi kirishda yangi paroldan foydalaning.' });
     },
-    onError: error => toast({ title: 'Parolni yangilab bo‘lmadi', description: errorMessage(error, 'Noma’lum xatolik'), variant: 'destructive' }),
+    onError: error => toast({ title: 'Parolni yangilab bo‘lmadi', description: apiErrorMessage(error,'Noma’lum xatolik'), variant: 'destructive' }),
   });
 
   const profile = profileQuery.data;

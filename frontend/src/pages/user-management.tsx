@@ -44,6 +44,7 @@ import {
   getUserAuditLogs, hasAuthority, importUsers, listAuditLogs,
   listRoles, listUsers, resetUserPassword, updateUser,
 } from '@/lib/rbac-api';
+import { formatDate, formatDateTime } from '@/lib/format-date';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -123,15 +124,6 @@ function RoleBadge({ role }: { role: Role | null }) {
   const cls = key ? ROLE_META[key] : undefined;
   const label = key ? (ROLE_DISPLAY[key] ?? role.name) : role.name;
   return <Badge className={cls} variant={cls ? undefined : 'secondary'}>{label}</Badge>;
-}
-
-function fmtDate(s: string | null) {
-  if (!s) return '—';
-  return new Date(s).toLocaleDateString('uz-Latn', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function fmtDateTime(s: string) {
-  return new Date(s).toLocaleString('uz-Latn', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 // ─── CSV/JSON import parser ───────────────────────────────────────────────────
@@ -455,7 +447,7 @@ export function UserManagement() {
     {
       accessorKey: 'createdAt',
       header: "Qo'shilgan",
-      cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{fmtDate(getValue<string | null>())}</span>,
+      cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{formatDate(getValue<string | null>())}</span>,
     },
     {
       id: 'actions',
@@ -564,7 +556,7 @@ export function UserManagement() {
       accessorKey: 'timestamp',
       header: 'Vaqt',
       cell: ({ getValue }) => (
-        <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtDateTime(getValue<string>())}</span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(getValue<string>())}</span>
       ),
     },
   ], []);
@@ -996,7 +988,7 @@ export function UserManagement() {
                         )}
                       </TableCell>
                       <TableCell className="text-xs font-mono">{log.ip ?? '—'}</TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">{fmtDateTime(log.timestamp)}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{formatDateTime(log.timestamp)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

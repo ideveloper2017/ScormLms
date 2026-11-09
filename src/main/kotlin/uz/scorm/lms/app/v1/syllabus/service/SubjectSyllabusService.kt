@@ -39,7 +39,8 @@ class SubjectSyllabusService(
     @Transactional(readOnly = true)
     fun list(subjectId: Long?, modelProgramId: Long? = null): List<SubjectSyllabusDto> = when {
         modelProgramId != null -> syllabi.findAllByModelProgramIdAndDeletedFalseOrderByNameAsc(modelProgramId)
-        subjectId != null -> syllabi.findAllBySubjectIdAndDeletedFalseOrderByNameAsc(subjectId)
+        subjectId != null -> syllabi.findAllBySubjectIdAndDeletedFalseOrderByNameAsc(subjectId) +
+            syllabi.findAllBySubjectIsNullAndDeletedFalseOrderByNameAsc()
         else -> syllabi.findAllByDeletedFalseOrderByNameAsc()
     }.map(::dto)
 
@@ -76,17 +77,18 @@ class SubjectSyllabusService(
 
     @Transactional
     fun create(request: SubjectSyllabusRequest): SubjectSyllabusDto {
-        val subject = subjects.getEntity(request.subjectId)
+        val subject = request.subjectId?.let(subjects::getEntity)
         val normalized = normalize(request)
-        val name = syllabusName(request, subject.name)
-        require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(request.subjectId, request.language, name)) {
+        val name = syllabusName(request, subject?.name)
+        require(if (subject != null) !syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalse(requireNotNull(subject.id), request.language, name)
+            else !syllabi.existsBySubjectIsNullAndLanguageAndNameIgnoreCaseAndDeletedFalse(request.language, name)) {
             DUPLICATE_MESSAGE
         }
         val value = SubjectSyllabus(
             subject = subject, name = name, language = request.language,
             shortDescription = normalized.shortDescription, requirements = normalized.requirements,
             fullDescription = normalized.fullDescription, active = request.active,
-        )
+        ).apply { learningOutcomes = normalized.learningOutcomes; introVideoUrl = normalized.introVideoUrl }
         request.topics?.let { replaceTopics(value, it) }
         return dto(syllabi.save(value))
     }
@@ -110,15 +112,17 @@ class SubjectSyllabusService(
     fun update(id: Long, request: SubjectSyllabusRequest): SubjectSyllabusDto {
         val value = lock(id)
         require(value.status == "DRAFT") { "Faqat qoralama tahrirlanadi. Avval yangi versiya oching." }
-        require(value.revisionNumber == 1 || (value.subject.id == request.subjectId && value.language == request.language)) {
+        // Fan yuborilmasa — mavjudi saqlanadi (fan o'quv reja taxtasida biriktiriladi)
+        val subject = request.subjectId?.let(subjects::getEntity) ?: value.subject
+        require(value.revisionNumber == 1 || (value.subject?.id == subject?.id && value.language == request.language)) {
             "Yangi versiyada fan va til o'zgartirilmaydi; boshqa fan uchun alohida dastur yarating"
         }
-        val subject = subjects.getEntity(request.subjectId)
         val normalized = normalize(request)
         // Nom yuborilmasa va fan o'zgarmasa — mavjud nom saqlanadi (eski dasturlar nomi buzilmaydi)
-        val name = if (request.name.isNullOrBlank() && value.subject.id == subject.id) value.name
-            else syllabusName(request, subject.name)
-        require(!syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalseAndIdNot(request.subjectId, request.language, name, id)) {
+        val name = if (request.name.isNullOrBlank() && value.subject?.id == subject?.id) value.name
+            else syllabusName(request, subject?.name)
+        require(if (subject != null) !syllabi.existsBySubjectIdAndLanguageAndNameIgnoreCaseAndDeletedFalseAndIdNot(requireNotNull(subject.id), request.language, name, id)
+            else !syllabi.existsBySubjectIsNullAndLanguageAndNameIgnoreCaseAndDeletedFalseAndIdNot(request.language, name, id)) {
             DUPLICATE_MESSAGE
         }
         value.subject = subject
@@ -126,6 +130,8 @@ class SubjectSyllabusService(
         value.language = request.language
         value.shortDescription = normalized.shortDescription
         value.requirements = normalized.requirements
+        value.learningOutcomes = normalized.learningOutcomes
+        value.introVideoUrl = normalized.introVideoUrl
         value.fullDescription = normalized.fullDescription
         value.active = request.active
         request.topics?.let { replaceTopics(value, it) }
@@ -175,7 +181,7 @@ class SubjectSyllabusService(
         when (action) {
             "SUBMIT" -> {
                 require(value.status == "DRAFT") { "Faqat qoralama tekshiruvga yuboriladi" }
-                require(value.subject.active && !value.subject.deleted && value.active) { "Fan va dastur faol bo'lishi kerak" }
+                require(subjectUsable(value) && value.active) { "Fan va dastur faol bo'lishi kerak" }
                 value.status = "IN_REVIEW"
             }
             "RETURN" -> {
@@ -184,7 +190,7 @@ class SubjectSyllabusService(
             }
             "APPROVE" -> {
                 require(value.status == "IN_REVIEW") { "Avval tekshiruvga yuboring" }
-                require(value.subject.active && !value.subject.deleted && value.active) { "Fan va dastur faol bo'lishi kerak" }
+                require(subjectUsable(value) && value.active) { "Fan va dastur faol bo'lishi kerak" }
                 value.status = "APPROVED"
                 revisions.save(uz.scorm.lms.app.v1.syllabus.model.SubjectSyllabusRevision(id, value.revisionNumber,
                     mapper.writeValueAsString(dto(value)), actor.fullName ?: actor.username, java.time.Instant.now()))
@@ -274,16 +280,28 @@ class SubjectSyllabusService(
     private fun requireEntity(id: Long) = syllabi.findByIdAndDeletedFalse(id)
         ?: throw NoSuchElementException("O'quv dasturi topilmadi: $id")
 
-    /** Nom berilmasa (yangi forma) — fan nomi; shu sababli bir fan va til uchun bitta dastur bo'ladi. */
-    private fun syllabusName(request: SubjectSyllabusRequest, subjectName: String): String =
-        (request.name?.trim()?.ifBlank { null } ?: subjectName.trim()).take(500)
-            .also { require(it.isNotBlank()) { "O'quv dasturi nomi aniqlanmadi" } }
+    /** Fansiz dastur ham tasdiqlanadi; fan bo'lsa u faol bo'lishi kerak */
+    private fun subjectUsable(value: SubjectSyllabus) = value.subject?.let { it.active && !it.deleted } ?: true
+
+    /** Nom berilmasa — fan nomi; fansiz dasturda nom majburiy. */
+    private fun syllabusName(request: SubjectSyllabusRequest, subjectName: String?): String =
+        (request.name?.trim()?.ifBlank { null } ?: subjectName?.trim().orEmpty()).take(500)
+            .also { require(it.isNotBlank()) { "O'quv dasturi nomini kiriting" } }
 
     private fun normalize(value: SubjectSyllabusRequest) = value.copy(
         shortDescription = value.shortDescription.trim().also { require(it.length in 3..2000) { "Qisqa ta'rif 3-2000 belgi bo'lishi kerak" } },
         requirements = value.requirements?.trim()?.takeIf(String::isNotEmpty),
-        fullDescription = value.fullDescription.trim().also { require(it.length >= 3) { "To'liq ta'rif majburiy" } },
+        learningOutcomes = value.learningOutcomes?.trim()?.takeIf(String::isNotEmpty),
+        fullDescription = value.fullDescription.trim().also { require(hasText(it)) { "To'liq ta'rif majburiy" } },
+        introVideoUrl = value.introVideoUrl?.trim()?.takeIf(String::isNotEmpty)?.also {
+            require(it.length <= 1000 && Regex("^https?://\\S+$", RegexOption.IGNORE_CASE).matches(it)) { "Video havolasi http(s):// bilan boshlanishi kerak" }
+        },
     )
+
+    /** To'liq ta'rif muharrirdan HTML bo'lib keladi: teglarsiz kamida 3 belgi yoki rasm/formula */
+    private fun hasText(html: String): Boolean =
+        html.contains("<img", ignoreCase = true) || html.contains("math-tex") ||
+            html.replace(Regex("<[^>]*>"), " ").replace("&nbsp;", " ").trim().length >= 3
 
     private fun dto(value: SubjectSyllabus): SubjectSyllabusDto {
         val topicIds = value.topics.mapNotNull { it.id }
@@ -302,9 +320,13 @@ class SubjectSyllabusService(
             )
         }
         return SubjectSyllabusDto(
-            id = requireNotNull(value.id), subjectId = requireNotNull(value.subject.id), subjectCode = value.subject.code,
-            subjectName = value.subject.name, name = value.name, language = value.language,
+            id = requireNotNull(value.id), subjectId = value.subject?.id, subjectCode = value.subject?.code,
+            subjectName = value.subject?.name, name = value.name, language = value.language,
             shortDescription = value.shortDescription, requirements = value.requirements,
+            learningOutcomes = value.learningOutcomes,
+            coverImageAvailable = value.coverImage != null,
+            introVideoName = value.introVideo?.let { value.introVideoName ?: "video" },
+            introVideoUrl = value.introVideoUrl,
             fullDescription = value.fullDescription, active = value.active,
             createdAt = value.createdAt, updatedAt = value.updatedAt,
             status = value.status, revisionNumber = value.revisionNumber,

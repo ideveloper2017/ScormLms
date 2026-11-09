@@ -101,7 +101,7 @@ export function CrudSection<T, FormT>(props: CrudSectionProps<T, FormT>) {
           {canWrite && (canEditItem(row.original) || (allowDelete && canDeleteItem(row.original))) ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Amallar">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

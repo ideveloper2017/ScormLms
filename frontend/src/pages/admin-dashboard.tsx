@@ -135,7 +135,7 @@ export function AdminDashboard() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {isSuperAdmin && (
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate('/admin/settings')}>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm h-8 sm:h-9" onClick={() => navigate('/settings/configs')}>
               <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Sozlamalar
             </Button>
           )}

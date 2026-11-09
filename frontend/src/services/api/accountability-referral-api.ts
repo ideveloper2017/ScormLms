@@ -1,4 +1,5 @@
 import api, { type ApiResponse } from "@/lib/api";
+import { unwrap } from "./unwrap";
 
 export type AccountabilityReferralStatus = "DRAFT" | "REFERRED" | "DECIDED";
 export type AccountabilityDecisionOutcome = "RESPONSIBILITY_ESTABLISHED" | "NO_RESPONSIBILITY_FOUND" | "PROCEEDING_TERMINATED";
@@ -24,11 +25,6 @@ export interface AccountabilityDecisionInput {
   outcome: AccountabilityDecisionOutcome; decisionAuthority: string; decisionNumber: string;
   decisionDate: string; decisionEvidenceReference: string; decisionSummary: string;
 }
-
-const unwrap = <T>(response: ApiResponse<T>, fallback: string): T => {
-  if (!response.success || response.data == null) throw new Error(response.message ?? fallback);
-  return response.data;
-};
 
 export const accountabilityReferralInputError = (input: SaveAccountabilityReferralInput, today: string): string | null => {
   if (!input.complianceIssueId) return "Muvofiqlik vazifasini tanlang";

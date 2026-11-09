@@ -10,22 +10,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { integrationApi, type IntegrationEvent, type IntegrationEventStatus } from '@/services/api/integration-api';
 import { HemisSyncPanel } from '@/components/admin/hemis-sync-panel';
+import { statusLabel } from '@/lib/status-labels';
 
 const statuses: Array<{ value: IntegrationEventStatus | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'Barcha holatlar' },
   { value: 'PENDING', label: 'Navbatda' },
   { value: 'PROCESSING', label: 'Bajarilmoqda' },
-  { value: 'FAILED', label: 'Retry kutilmoqda' },
+  { value: 'FAILED', label: 'Qayta urinish kutilmoqda' },
   { value: 'SUCCEEDED', label: 'Muvaffaqiyatli' },
-  { value: 'DEAD_LETTER', label: 'Dead-letter' },
+  { value: 'DEAD_LETTER', label: 'Yuborilmadi' },
 ];
 
 const statusMeta: Record<IntegrationEventStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   PENDING: { label: 'Navbatda', variant: 'secondary' },
   PROCESSING: { label: 'Bajarilmoqda', variant: 'outline' },
-  FAILED: { label: 'Retry kutilmoqda', variant: 'destructive' },
+  FAILED: { label: 'Qayta urinish kutilmoqda', variant: 'destructive' },
   SUCCEEDED: { label: 'Muvaffaqiyatli', variant: 'default' },
-  DEAD_LETTER: { label: 'Dead-letter', variant: 'destructive' },
+  DEAD_LETTER: { label: 'Yuborilmadi', variant: 'destructive' },
 };
 
 export function AdminIntegrations() {
@@ -55,14 +56,14 @@ export function AdminIntegrations() {
     mutationFn: () => integrationApi.processDue(100),
     onSuccess: async result => {
       await refresh();
-      toast({ title: `${result.selected} ta event ko'rib chiqildi`, description: `${result.succeeded} muvaffaqiyatli, ${result.retryScheduled} retry, ${result.deadLetter} dead-letter.` });
+      toast({ title: `${result.selected} ta xabar ko'rib chiqildi`, description: `${result.succeeded} tasi yuborildi, ${result.retryScheduled} tasi keyinroq qayta uriniladi, ${result.deadLetter} tasi yuborilmadi.` });
     },
     onError: (error: Error) => toast({ title: "Navbatni ishlab bo'lmadi", description: error.message, variant: 'destructive' }),
   });
   const retry = useMutation({
     mutationFn: integrationApi.retry,
-    onSuccess: async () => { await refresh(); toast({ title: "Event qayta navbatga qo'yildi" }); },
-    onError: (error: Error) => toast({ title: "Retry bajarilmadi", description: error.message, variant: 'destructive' }),
+    onSuccess: async () => { await refresh(); toast({ title: "Xabar qayta navbatga qo'yildi" }); },
+    onError: (error: Error) => toast({ title: "Qayta yuborib bo'lmadi", description: error.message, variant: 'destructive' }),
   });
 
   const data = metrics.data;
@@ -70,13 +71,13 @@ export function AdminIntegrations() {
     <div className="space-y-5 p-3 sm:p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Integratsiya outbox nazorati</h1>
-          <p className="text-muted-foreground">Idempotent yuborish, avtomatik retry, dead-letter va urinishlar auditi.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Tashqi tizimlarga yuborish nazorati</h1>
+          <p className="text-muted-foreground">Tashqi tizimlarga yuboriladigan xabarlar shu yerda kuzatiladi. Xato bo'lsa tizim o'zi qayta urinadi; bir necha urinishdan keyin ham ketmagan xabar “Yuborilmadi” holatida qoladi.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="gap-2" onClick={() => refresh()}><RefreshCw className="h-4 w-4" />Yangilash</Button>
           {data?.canManage && <Button className="gap-2" disabled={process.isPending} onClick={() => process.mutate()}>
-            {process.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}Muddatli eventlarni ishlash
+            {process.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}Navbatdagi xabarlarni yuborish
           </Button>}
         </div>
       </div>
@@ -84,15 +85,15 @@ export function AdminIntegrations() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <Metric label="Jami" value={data?.total} icon={Plug} />
         <Metric label="Navbatda" value={data?.pending} icon={Clock3} />
-        <Metric label="Retry" value={data?.failed} icon={RefreshCw} />
+        <Metric label="Qayta urinishda" value={data?.failed} icon={RefreshCw} />
         <Metric label="Muvaffaqiyatli" value={data?.succeeded} icon={CheckCircle2} />
-        <Metric label="Dead-letter" value={data?.deadLetter} icon={AlertCircle} danger />
-        <Metric label="Success rate" value={data ? `${data.successRate.toFixed(1)}%` : undefined} icon={ShieldCheck} />
+        <Metric label="Yuborilmadi" value={data?.deadLetter} icon={AlertCircle} danger />
+        <Metric label="Muvaffaqiyat ulushi" value={data ? `${data.successRate.toFixed(1)}%` : undefined} icon={ShieldCheck} />
       </div>
 
       <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
         <CardContent className="pt-5 text-sm">
-          <strong>Chegara aniq saqlanadi:</strong> V24 outbox va e’lon email/push adapterlari ishlaydi. Vazirlik hamda ta’lim sifati tizimi adapterlari rasmiy API va credential berilmaguncha ulanmagan; bu ekran ularni faol deb ko‘rsatmaydi.
+          <strong>Eslatma:</strong> hozircha faqat e'lonlarni elektron pochta va telefonga bildirishnoma orqali yuborish ishlaydi. Vazirlik va ta'lim sifati tizimlari bilan aloqa rasmiy ulanish ma'lumotlari berilgandan keyin yoqiladi.
         </CardContent>
       </Card>
 
@@ -100,7 +101,7 @@ export function AdminIntegrations() {
 
       <Card>
         <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div><CardTitle>Eventlar</CardTitle><CardDescription>Payload ko‘rsatilmaydi; PII o‘rniga aggregate va maskalangan provayder natijasi beriladi.</CardDescription></div>
+          <div><CardTitle>Xabarlar</CardTitle><CardDescription>Xabar matni va shaxsiy ma'lumotlar bu yerda ko'rsatilmaydi — faqat xabar turi, holati va yuborish natijasi.</CardDescription></div>
           <Select value={status} onValueChange={value => setStatus(value as IntegrationEventStatus | 'ALL')}>
             <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
             <SelectContent>{statuses.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
@@ -109,7 +110,7 @@ export function AdminIntegrations() {
         <CardContent>
           {(metrics.isLoading || events.isLoading) && <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Yuklanmoqda...</div>}
           {(metrics.error || events.error) && <div className="rounded border border-destructive/30 p-4 text-sm text-destructive">{(metrics.error ?? events.error)?.message}</div>}
-          {!events.isLoading && events.data?.length === 0 && <div className="py-10 text-center text-sm text-muted-foreground">Tanlangan holatda event yo‘q.</div>}
+          {!events.isLoading && events.data?.length === 0 && <div className="py-10 text-center text-sm text-muted-foreground">Tanlangan holatda xabar yo'q.</div>}
           <div className="space-y-2">
             {events.data?.map(event => <EventRow key={event.id} event={event} onOpen={() => setSelectedId(event.id)} onRetry={() => retry.mutate(event.id)} retrying={retry.isPending} />)}
           </div>
@@ -118,19 +119,19 @@ export function AdminIntegrations() {
 
       <Dialog open={selectedId !== null} onOpenChange={open => { if (!open) setSelectedId(null); }}>
         <DialogContent className="max-w-3xl">
-          <DialogHeader><DialogTitle>Integratsiya urinishlari</DialogTitle><DialogDescription>Event holati va o‘zgarmas attempt ketma-ketligi.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Yuborish urinishlari</DialogTitle><DialogDescription>Xabarning holati va har bir yuborish urinishi.</DialogDescription></DialogHeader>
           {detail.isLoading && <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>}
           {detail.error && <p className="text-sm text-destructive">{detail.error.message}</p>}
           {detail.data && <>
             <div className="grid gap-2 rounded border p-3 text-sm sm:grid-cols-2">
               <span><strong>Kalit:</strong> {detail.data.event.eventKey}</span>
-              <span><strong>Connector:</strong> {detail.data.event.connector}</span>
-              <span><strong>Aggregate:</strong> {detail.data.event.aggregateType} #{detail.data.event.aggregateId}</span>
+              <span><strong>Tashqi tizim:</strong> {detail.data.event.connector}</span>
+              <span><strong>Obyekt:</strong> {detail.data.event.aggregateType} #{detail.data.event.aggregateId}</span>
               <span><strong>Urinish:</strong> {detail.data.event.attemptCount}/{detail.data.event.maxAttempts}</span>
             </div>
             <ScrollArea className="h-80 rounded border">
               <div className="divide-y">{detail.data.attempts.map(attempt => <div key={attempt.id} className="grid gap-1 p-3 text-sm sm:grid-cols-[80px_150px_1fr]">
-                <strong>#{attempt.sequence}</strong><Badge variant={attempt.outcome === 'SUCCESS' ? 'default' : 'destructive'} className="w-fit">{attempt.outcome}</Badge>
+                <strong>#{attempt.sequence}</strong><Badge variant={attempt.outcome === 'SUCCESS' ? 'default' : 'destructive'} className="w-fit">{statusLabel(attempt.outcome)}</Badge>
                 <span className="text-xs text-muted-foreground">{formatDate(attempt.completedAt)} · {attempt.durationMs} ms{attempt.errorMessage && <><br /><span className="text-destructive">{attempt.errorMessage}</span></>}</span>
               </div>)}</div>
             </ScrollArea>
@@ -152,7 +153,7 @@ function EventRow({ event, onOpen, onRetry, retrying }: { event: IntegrationEven
     <div className="text-xs text-muted-foreground">{event.aggregateType} #{event.aggregateId}<br />{formatDate(event.createdAt)}</div>
     <Badge variant={meta.variant} className="w-fit">{meta.label}</Badge>
     <span className="text-xs">Urinish {event.attemptCount}/{event.maxAttempts}{event.lastErrorCode && <><br /><span className="text-destructive">{event.lastErrorCode}</span></>}</span>
-    <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={onOpen}><Eye className="h-4 w-4" /></Button>{event.canRetry && <Button size="icon" variant="outline" disabled={retrying} onClick={onRetry}><RotateCcw className="h-4 w-4" /></Button>}</div>
+    <div className="flex gap-1"><Button size="icon" variant="ghost" aria-label="Yuborish urinishlarini ko'rish" onClick={onOpen}><Eye className="h-4 w-4" /></Button>{event.canRetry && <Button size="icon" variant="outline" aria-label="Qayta yuborish" disabled={retrying} onClick={onRetry}><RotateCcw className="h-4 w-4" /></Button>}</div>
   </div>;
 }
 

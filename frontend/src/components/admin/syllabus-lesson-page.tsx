@@ -17,6 +17,7 @@ import {
   type SyllabusLinkedCourse, type SyllabusTopicType,
 } from "@/services/api/syllabus-api";
 import type { SubjectMaterial } from "@/services/api/teacher-portal-api";
+import { safeHref } from "@/lib/safe-url";
 
 const select = "h-10 rounded-md border bg-background px-3 text-sm";
 
@@ -106,13 +107,13 @@ export function LessonContentPage({ syllabusId, lesson, editable, onChanged }: {
               <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{index + 1}. {material.title}</p>
-                {material.description && <p className="text-xs text-muted-foreground">{material.description}</p>}
+                {material.description && <p className="line-clamp-2 text-xs text-muted-foreground">{richTextToPlainText(material.description)}</p>}
                 {material.asset && <p className="truncate text-xs text-muted-foreground">{material.asset.originalFileName}</p>}
                 {material.contentBody && <p className="mt-1 line-clamp-2 text-sm">{richTextToPlainText(material.contentBody)}</p>}
               </div>
               <Badge variant="outline">{meta.label}</Badge>
               {material.contentUrl && <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                <a href={material.contentUrl} target="_blank" rel="noreferrer" aria-label="Havolani ochish"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}
+                <a href={safeHref(material.contentUrl)} target="_blank" rel="noreferrer" aria-label="Havolani ochish"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}
               {editable && <>
                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Materialni yuqoriga" disabled={index === 0 || reorder.isPending} onClick={() => move(index, index - 1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Materialni pastga" disabled={index === list.length - 1 || reorder.isPending} onClick={() => move(index, index + 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>

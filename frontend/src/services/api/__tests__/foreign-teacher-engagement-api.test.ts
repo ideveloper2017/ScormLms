@@ -11,7 +11,7 @@ const valid = (): SaveForeignTeacherEngagementInput => ({
 
 describe("foreign teacher engagement validation", () => {
   it("accepts a complete foreign remote engagement", () => expect(foreignTeacherEngagementInputError(valid(), "2026-08-06")).toBeNull());
-  it("rejects Uzbekistan as foreign citizenship", () => expect(foreignTeacherEngagementInputError({ ...valid(), citizenshipCountryCode: "UZ" }, "2026-08-06")).toContain("UZdan boshqa"));
+  it("rejects Uzbekistan as foreign citizenship", () => expect(foreignTeacherEngagementInputError({ ...valid(), citizenshipCountryCode: "UZ" }, "2026-08-06")).toContain("O'zbekistondan boshqa"));
   it("rejects an engagement without distance course", () => expect(foreignTeacherEngagementInputError({ ...valid(), courseIds: [] }, "2026-08-06")).toContain("masofaviy kurs"));
   it("rejects a future order", () => expect(foreignTeacherEngagementInputError({ ...valid(), engagementOrderDate: "2026-08-07" }, "2026-08-06")).toContain("kelajakda"));
 });

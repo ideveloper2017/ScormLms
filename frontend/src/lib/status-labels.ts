@@ -73,6 +73,47 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLIANT: "Talabga mos",
   NON_COMPLIANT: "Talabga mos emas",
   WARNING: "Ogohlantirish",
+  INVITED: "Taklif qilingan",
+  EXCUSED: "Sababli kelmagan",
+  BLOCKED: "Bloklangan",
+  // Himoya holati va komissiya qarori
+  DEFENDED: "Himoya qilingan",
+  RESCHEDULED: "Boshqa kunga ko'chirilgan",
+  PASS: "O'tdi",
+  FAIL: "O'tmadi",
+  RETAKE: "Qayta himoya",
+  // Mashg'ulot turlari
+  LECTURE: "Ma'ruza",
+  LAB: "Laboratoriya",
+  SEMINAR: "Seminar",
+  TUTORIAL: "Amaliyot",
+  // Talabaning o'quv faolligi
+  CONTENT_VIEWED: "Material ko'rildi",
+  CONTENT_COMPLETED: "Material tugatildi",
+  SCORM_LAUNCHED: "Interaktiv dars ochildi",
+  SCORM_COMMITTED: "Interaktiv dars natijasi saqlandi",
+  SCORM_FINISHED: "Interaktiv dars tugatildi",
+  QUIZ_STARTED: "Test boshlandi",
+  QUIZ_SUBMITTED: "Test topshirildi",
+  LIVE_SESSION_JOINED: "Jonli darsga qo'shildi",
+  SESSION_RECORDING_OPENED: "Dars yozuvi ochildi",
+  SESSION_RESOURCE_OPENED: "Dars materiali ochildi",
+  // Muhimlik darajasi
+  LOW: "Past",
+  NORMAL: "Oddiy",
+  HIGH: "Muhim",
+  URGENT: "Shoshilinch",
+  // Xabar yetkazish yo'llari
+  IN_APP: "Tizim ichida",
+  EMAIL: "Elektron pochta",
+  PUSH: "Telefonga bildirishnoma",
+  RETRY_SCHEDULED: "Qayta uriniladi",
+  // Guruh chatidagi o'rni
+  OWNER: "Guruh egasi",
+  MEMBER: "A'zo",
+  // Ta'lim darajasi
+  BACHELOR: "Bakalavriat",
+  MASTER: "Magistratura",
 };
 
 export function statusLabel(status?: string | null): string {

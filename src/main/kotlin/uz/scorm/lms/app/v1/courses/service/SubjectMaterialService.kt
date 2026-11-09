@@ -69,13 +69,14 @@ class SubjectMaterialService(
 
     @Transactional
     fun create(request: SubjectMaterialRequest, userId: Long, mayManageAll: Boolean): SubjectMaterialDto {
-        val subject = subject(request.subjectId)
-        requireSubjectAccess(request.subjectId, userId, mayManageAll)
+        val subjectId = requireNotNull(request.subjectId) { "Fan tanlanmagan" }
+        val subject = subject(subjectId)
+        requireSubjectAccess(subjectId, userId, mayManageAll)
         return toDto(materials.save(build(subject, request, userId)))
     }
 
     /** Tekshirilgan, hali saqlanmagan material — fan banki va o'quv dasturi darsi uchun umumiy */
-    fun build(subject: Subject, request: SubjectMaterialRequest, userId: Long): SubjectMaterial {
+    fun build(subject: Subject?, request: SubjectMaterialRequest, userId: Long): SubjectMaterial {
         val user = users.findById(userId).orElseThrow { NoSuchElementException("Foydalanuvchi topilmadi") }
         val url = request.contentUrl.clean()
         val body = request.contentBody.clean()
@@ -93,9 +94,9 @@ class SubjectMaterialService(
             languageCode = request.languageCode.trim().ifBlank { "uz" },
             authorName = user.fullName?.trim()?.takeIf { it.isNotBlank() } ?: user.username,
             contentVersion = request.contentVersion.trim().ifBlank { "1.0" },
-            sourceName = request.sourceName.clean() ?: subject.name,
+            sourceName = request.sourceName.clean() ?: subject?.name ?: "O'quv dasturi",
             sourceUrl = request.sourceUrl.clean(),
-        )
+        ).apply { durationSeconds = request.durationSeconds?.takeIf { it > 0 } }
     }
 
     /** Material mazmunini almashtiradi va versiyasini oshiradi (kursdagi nusxalar sinxronlashda yangilanadi) */
@@ -110,11 +111,16 @@ class SubjectMaterialService(
         material.contentUrl = url
         material.contentBody = body
         material.asset = asset
+        material.durationSeconds = request.durationSeconds?.takeIf { it > 0 }
         material.contentVersion = "${(material.contentVersion.substringBefore('.').toIntOrNull() ?: 1) + 1}.0"
     }
 
-    private fun resolveAsset(request: SubjectMaterialRequest) =
-        request.assetId?.let { assets.findByIdAndSubjectIdAndDeletedFalse(it, request.subjectId) }
+    /** Fan fayli yoki fansiz dastur fayli (kursga tegishli bo'lmagan) */
+    private fun resolveAsset(request: SubjectMaterialRequest) = request.assetId?.let { id ->
+        assets.findById(id).orElse(null)?.takeIf { asset ->
+            !asset.deleted && asset.course == null && (asset.subject == null || asset.subject?.id == request.subjectId)
+        }
+    }
 
     @Transactional
     fun delete(id: Long, userId: Long, mayManageAll: Boolean) {
@@ -172,8 +178,8 @@ class SubjectMaterialService(
 
     fun toDto(material: SubjectMaterial) = SubjectMaterialDto(
         id = requireNotNull(material.id),
-        subjectId = requireNotNull(material.subject.id),
-        subjectName = material.subject.name,
+        subjectId = material.subject?.id,
+        subjectName = material.subject?.name,
         title = material.title,
         description = material.description,
         contentType = material.contentType.name.lowercase(),
@@ -187,6 +193,7 @@ class SubjectMaterialService(
         sourceUrl = material.sourceUrl,
         createdAt = material.createdAt,
         updatedAt = material.updatedAt,
+        durationSeconds = material.durationSeconds,
     )
 
     private fun validateUrl(value: String?, label: String) {

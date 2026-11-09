@@ -1,11 +1,7 @@
 // API response wrapper type definitions
 
-export interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  error?: string;
-}
+// Yagona manba: lib/api.ts dagi CommonApiResponse ({ success, message?, data?, error? }).
+export type { ApiResponse } from "@/lib/api";
 
 export interface PaginatedResponse<T> {
   items: T[];
