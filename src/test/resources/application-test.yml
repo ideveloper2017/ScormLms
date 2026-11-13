@@ -35,6 +35,8 @@ app:
     anonymization-secret: test-only-survey-secret-do-not-use-outside-tests-0123456789abcdefghijklmnop
   seed:
     admin-password: ""
+    # Testlar o'z foydalanuvchilarini yaratadi; standart akkauntlar (admin, student ...) nomlar bilan to'qnashmasin
+    default-accounts: false
   integration:
     retry-base-seconds: 1
     retry-max-seconds: 4

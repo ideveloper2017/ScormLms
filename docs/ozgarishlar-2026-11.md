@@ -37,6 +37,9 @@ aks ettiradi; quyidagilar u yerda yo'q.
 - Nginx namunasi (`ops/deploy/nginx-scorm-lms.conf.example`) endi HTTPS (Let's Encrypt) bilan.
 
 ## Kirish va sessiya
+- **Boshlang'ich akkauntlar:** yangi bazada rollar bilan birga `superadmin`, `admin`, `metodist`, `teacher`,
+  `student`, `proctor`, `monitoring` yaratiladi (parol `Lms#2026!Kirish`, `APP_SEED_DEFAULT_PASSWORD` bilan
+  almashtiriladi; `APP_SEED_DEFAULT_ACCOUNTS=false` o'chiradi). Mavjud akkauntlarga tegilmaydi.
 - **Tokenlar brauzer xotirasida saqlanmaydi.** Refresh token HttpOnly cookie'da (`LMS_REFRESH`, faqat `/api/v1/auth`),
   access token faqat sahifa xotirasida. Sahifa yangilanganda sessiya cookie orqali tiklanadi. Login javobida
   `refreshToken` maydoni yo'q; `Authorization` sarlavhasi bilan yangilaydigan eski mijozlar ishlashda davom etadi
