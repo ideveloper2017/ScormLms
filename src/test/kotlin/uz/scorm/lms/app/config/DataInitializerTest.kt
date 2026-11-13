@@ -26,7 +26,7 @@ class DataInitializerTest {
         seedAccounts: Boolean = true,
         defaultPassword: String = DEFAULT_ACCOUNT_PASSWORD,
         adminPassword: String = "",
-    ) = DataInitializer(userService, roleService, userRepository, roleRepository, passwordEncoder, seedAccounts, defaultPassword, adminPassword)
+    ) = DataInitializer(userService, roleService, userRepository, roleRepository, passwordEncoder, PasswordPolicy(), seedAccounts, defaultPassword, adminPassword)
 
     private fun run(initializer: DataInitializer) {
         every { userRepository.save(any<User>()) } answers { firstArg() }
@@ -74,12 +74,47 @@ class DataInitializerTest {
             User(username = firstArg(), password = "x")
         }
 
-        run(initializer(defaultPassword = "Umumiy#Parol2026", adminPassword = "Admin-Maxsus#2026"))
+        run(initializer(defaultPassword = "Umumiy#Parol2026", adminPassword = "Boshqaruv#Maxsus2026"))
 
-        assertEquals("Admin-Maxsus#2026", used["superadmin"])
-        assertEquals("Admin-Maxsus#2026", used["admin"])
+        assertEquals("Boshqaruv#Maxsus2026", used["superadmin"])
+        assertEquals("Boshqaruv#Maxsus2026", used["admin"])
         assertEquals("Umumiy#Parol2026", used["metodist"])
         assertEquals("Umumiy#Parol2026", used["student"])
+    }
+
+    @Test
+    fun `qisqa yoki yaroqsiz boshlang'ich parol ilovani to'xtatmaydi - standart parol ishlatiladi`() {
+        every { roleRepository.existsByName(any()) } returns true
+        every { userRepository.existsByUsername(any()) } returns false
+        val used = mutableMapOf<String, String>()
+        every { userService.register(any(), any(), any()) } answers {
+            used[firstArg()] = secondArg()
+            User(username = firstArg(), password = "x")
+        }
+
+        // APP_SEED_ADMIN_PASSWORD=admin123 (qisqa), APP_SEED_DEFAULT_PASSWORD login nomini o'z ichiga oladi
+        run(initializer(defaultPassword = "student-parol-2026", adminPassword = "admin123"))
+
+        assertEquals(DEFAULT_ACCOUNT_PASSWORD, used["superadmin"])
+        assertEquals(DEFAULT_ACCOUNT_PASSWORD, used["admin"])
+        assertEquals(DEFAULT_ACCOUNT_PASSWORD, used["student"])   // "student" nomini o'z ichiga olgani uchun
+        assertEquals("student-parol-2026", used["metodist"])      // boshqalar uchun yaroqli
+        assertEquals(DEFAULT_ACCOUNTS.size, used.size)
+    }
+
+    @Test
+    fun `bitta akkaunt yaratilmasa ham qolganlari yaratiladi`() {
+        every { roleRepository.existsByName(any()) } returns true
+        every { userRepository.existsByUsername(any()) } returns false
+        every { userService.register(any(), any(), any()) } answers {
+            if (firstArg<String>() == "metodist") throw IllegalStateException("baza xatosi")
+            User(username = firstArg(), password = "x")
+        }
+
+        run(initializer())
+
+        verify(exactly = DEFAULT_ACCOUNTS.size) { userService.register(any(), any(), any()) }
+        verify(exactly = DEFAULT_ACCOUNTS.size - 1) { userRepository.save(any<User>()) }
     }
 
     @Test

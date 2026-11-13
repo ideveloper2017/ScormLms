@@ -88,6 +88,13 @@ class DemoDataInitializer(
 
     @Transactional
     override fun run(args: ApplicationArguments) {
+        // Demo ma'lumot yaratilmasa ham (masalan parol qoidaga mos kelmasa) ilova ishga tushaveradi
+        runCatching { seedDemo() }.onFailure { error ->
+            demoLogger.error(error) { "Demo ma'lumotlar yaratilmadi: ${error.message}" }
+        }
+    }
+
+    private fun seedDemo() {
         val teacherUser = demoUser("demo_teacher", teacherPassword, "teacher")
         val studentUser = demoUser("demo_student", studentPassword, "student")
         demoUser("demo_admin", demoStaffPassword, "admin")

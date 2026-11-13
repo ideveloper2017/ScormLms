@@ -7,6 +7,7 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.core.annotation.Order
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Component
+import uz.scorm.lms.app.security.PasswordPolicy
 import uz.scorm.lms.app.v1.role.repository.RoleRepository
 import uz.scorm.lms.app.v1.role.service.RoleService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
@@ -46,6 +47,7 @@ class DataInitializer(
     private val userRepository: UserRepository,
     private val roleRepository: RoleRepository,
     private val passwordEncoder: PasswordEncoder,
+    private val passwordPolicy: PasswordPolicy,
     /** false bo'lsa faqat rollar yaratiladi, akkauntlar emas */
     @param:Value("\${app.seed.default-accounts:true}") private val seedDefaultAccounts: Boolean,
     /** Barcha standart akkauntlar uchun boshlang'ich parol */
@@ -69,6 +71,20 @@ class DataInitializer(
         warnAboutUnchangedDefaultPasswords()
     }
 
+    /**
+     * Env'dagi boshlang'ich parol qoidaga (12-128 belgi, login nomisiz) mos kelmasa, ilova to'xtamaydi:
+     * ogohlantirish yoziladi va standart parol ishlatiladi. Ilgari bu "Parol 12 dan 128 tagacha..." xatosi bilan
+     * butun ilovani ishga tushirmasdi.
+     */
+    private fun usablePassword(candidate: String, source: String, username: String): String {
+        if (candidate.isBlank()) return DEFAULT_ACCOUNT_PASSWORD
+        val problem = runCatching { passwordPolicy.validate(candidate, username) }.exceptionOrNull() ?: return candidate
+        if (candidate != DEFAULT_ACCOUNT_PASSWORD) {
+            logger.warn { "$source qiymati '$username' uchun yaroqsiz (${problem.message}); standart parol ishlatiladi." }
+        }
+        return DEFAULT_ACCOUNT_PASSWORD
+    }
+
     private fun seedRole(name: String) {
         if (!roleRepository.existsByName(name)) {
             roleService.create(name)
@@ -79,13 +95,23 @@ class DataInitializer(
     private fun seedAccount(account: DefaultAccount): Boolean {
         if (userRepository.existsByUsername(account.username)) return false
 
-        val password = if (account.role in ADMIN_ROLES && adminPassword.isNotBlank()) adminPassword else defaultPassword
-        val user = userService.register(account.username, password, account.role)
-        user.fullName = account.fullName
-        user.email = "${account.username}@example.com"
-        user.credentialsInitialized = true
-        userRepository.save(user)
-        return true
+        val password = if (account.role in ADMIN_ROLES && adminPassword.isNotBlank()) {
+            usablePassword(adminPassword, "APP_SEED_ADMIN_PASSWORD", account.username)
+        } else {
+            usablePassword(defaultPassword, "APP_SEED_DEFAULT_PASSWORD", account.username)
+        }
+        return runCatching {
+            val user = userService.register(account.username, password, account.role)
+            user.fullName = account.fullName
+            user.email = "${account.username}@example.com"
+            user.credentialsInitialized = true
+            userRepository.save(user)
+            true
+        }.getOrElse { error ->
+            // Bitta akkaunt yaratilmasa ham ilova ishga tushaveradi
+            logger.error(error) { "Standart akkaunt '${account.username}' yaratilmadi: ${error.message}" }
+            false
+        }
     }
 
     /** Standart parol bilan qolgan akkauntlar — ayniqsa serverda — xavf: har ishga tushganda eslatiladi. */
