@@ -44,12 +44,12 @@ sudo -u postgres createdb --owner scorm_lms scorm_lms
 | CORS | `http://localhost`; nginx namunasida frontend va `/api` bitta domen, CORS ishlamaydi | `CORS_ALLOWED_ORIGINS` |
 | Fayllar | Tomcat katalogidagi `scorm-lms-data/` | `APP_DATA_DIR` yoki alohida `*_DIR` |
 | Log | Tomcat `logs/scorm-lms.log` | `LOG_FILE` |
-| Birinchi administrator | login `admin`, parol tasodifiy: logda `BIRINCHI ADMINISTRATOR` qatori | `APP_SEED_ADMIN_PASSWORD` |
+| Boshlang'ich akkauntlar | `superadmin`, `admin`, `metodist`, `teacher`, `student`, `proctor`, `monitoring`; parol `Lms#2026!Kirish` | `APP_SEED_DEFAULT_PASSWORD`, `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_DEFAULT_ACCOUNTS=false` |
 
-Standart baza paroli repozitoriyda ochiq. Uni faqat serverning o'zidagi (localhost) baza uchun qoldiring; xohlasangiz `ALTER ROLE scorm_lms PASSWORD '...'` qilib, shu parolni `DB_PASSWORD` sifatida bering. Birinchi administrator parolini logdan oling va kirgach almashtiring:
+Standart baza paroli repozitoriyda ochiq. Uni faqat serverning o'zidagi (localhost) baza uchun qoldiring; xohlasangiz `ALTER ROLE scorm_lms PASSWORD '...'` qilib, shu parolni `DB_PASSWORD` sifatida bering. Boshlang'ich akkauntlarning paroli ham hammaga ma'lum: serverda kirgach darhol almashtiring. Standart parol bilan qolgan akkauntlarni ilova har ishga tushganda logda eslatadi:
 
 ```bash
-sudo grep -h "BIRINCHI ADMINISTRATOR" /var/lib/tomcat11/logs/scorm-lms.log
+sudo grep -h "standart parol" /var/lib/tomcat11/logs/scorm-lms.log
 ```
 
 Standartlarni almashtirish kerak bo'lsa (ixtiyoriy), `/etc/scorm-lms/deploy.conf` ichida Tomcat service nomi va `webapps` manzilini real serverga moslang, qolgan qiymatlarni esa repodan tashqaridagi `/etc/scorm-lms/scorm-lms.env` faylidan bering:

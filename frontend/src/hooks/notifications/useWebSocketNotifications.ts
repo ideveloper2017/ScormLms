@@ -4,7 +4,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/query-keys";
 import { getToken } from "@/lib/api";
 
-const WS_URL = (import.meta.env.VITE_WS_URL as string | undefined) ?? "ws://localhost:8080/ws";
+/**
+ * WebSocket manzili. Nisbiy qiymat (`/ws`, dev proxy yoki nginx) joriy sahifa manzilidan yasaladi:
+ * http → ws, https → wss. Absolyut `ws://host/ws` ham qabul qilinadi.
+ */
+export function resolveWsUrl(configured: string | undefined, location: { protocol: string; host: string }): string {
+  const value = configured?.trim() || "/ws";
+  if (/^wss?:\/\//i.test(value)) return value;
+  const scheme = location.protocol === "https:" ? "wss" : "ws";
+  return `${scheme}://${location.host}${value.startsWith("/") ? value : `/${value}`}`;
+}
+
+const WS_URL = resolveWsUrl(import.meta.env.VITE_WS_URL, window.location);
 
 /**
  * WebSocket orqali real-time bildirishnomalarni qabul qiladi.

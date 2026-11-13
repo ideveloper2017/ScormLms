@@ -68,6 +68,6 @@ export const scormApi = {
 
 export function scormContentUrl(relativeUrl: string): string {
   const configuredOrigin = import.meta.env.VITE_SCORM_CONTENT_ORIGIN as string | undefined;
-  const apiOrigin = new URL(import.meta.env.VITE_API_BASE_URL ?? "https://api.lms.nstu.uz/api/v1", window.location.origin).origin;
+  const apiOrigin = new URL(import.meta.env.VITE_API_BASE_URL?.trim() || "/api/v1", window.location.origin).origin;
   return new URL(relativeUrl, configuredOrigin || apiOrigin).toString();
 }

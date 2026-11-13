@@ -16,7 +16,8 @@ export interface CommonApiResponse<T> {
 
 export type ApiResponse<T> = CommonApiResponse<T>;
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1";
+// Standart nisbiy manzil: dev'da vite proxy, production'da nginx `/api` ni backend'ga uzatadi (bitta origin, CORS'siz)
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() || "/api/v1";
 
 // ── Tokenlar qayerda turadi ─────────────────────────────────────────────────────────────
 // Access token: faqat shu sahifa xotirasida (pastdagi o'zgaruvchi). Sahifa yopilsa yo'qoladi.

@@ -104,8 +104,23 @@ Standartni almashtirish kerak bo'lsa quyidagi qiymatlar env orqali beriladi (ham
 `postgresql-prod` profilida schema `db/migration` ichidagi Flyway
 migratsiyalari orqali yaratiladi va versiyalanadi; Hibernate esa entity-schema
 mosligini `ddl-auto=validate` bilan tekshiradi. `DataInitializer` standart
-rollarni idempotent seed qiladi; boshlang'ich administrator kerak bo'lsa
-birinchi ishga tushirishda `APP_SEED_ADMIN_PASSWORD` beriladi. Database
+rollarni va har rol uchun boshlang'ich akkauntni yaratadi (mavjudlariga tegmaydi):
+
+| Login | Rol | Parol |
+| --- | --- | --- |
+| `superadmin` | super_admin | `Lms#2026!Kirish` |
+| `admin` | admin | `Lms#2026!Kirish` |
+| `metodist` | metodist | `Lms#2026!Kirish` |
+| `teacher` | teacher | `Lms#2026!Kirish` |
+| `student` | student | `Lms#2026!Kirish` |
+| `proctor` | proctor | `Lms#2026!Kirish` |
+| `monitoring` | monitoring | `Lms#2026!Kirish` |
+
+Parolni `APP_SEED_DEFAULT_PASSWORD` (superadmin/admin uchun `APP_SEED_ADMIN_PASSWORD`) bilan o'zgartirish,
+`APP_SEED_DEFAULT_ACCOUNTS=false` bilan yaratmaslik mumkin. Serverda kirgach parollarni almashtiring: standart
+parol bilan qolgan akkauntlar har ishga tushganda logda eslatiladi. `teacher` va `student` akkauntlari faqat
+kirishni tekshirish uchun: ularda o'qituvchi/talaba profili yo'q, haqiqiy profil tegishli sahifada yaratiladi
+(yoki `APP_DEMO_DATA_ENABLED=true` bilan demo zanjir). Database
 serveridagi database obyektining o'zi deploy preflight orqali yaratiladi.
 VPS uchun Flyway database ulanishini 10 marta, migration lock'ini 120 soniyagacha
 qayta kutadi. Flyway history'siz eski Hibernate schema bo'lsa birinchi deployda

@@ -4,11 +4,9 @@ import mu.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
-import org.springframework.core.env.Environment
-import org.springframework.core.env.Profiles
 import org.springframework.core.annotation.Order
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Component
-import java.security.SecureRandom
 import uz.scorm.lms.app.v1.role.repository.RoleRepository
 import uz.scorm.lms.app.v1.role.service.RoleService
 import uz.scorm.lms.app.v1.user.repository.UserRepository
@@ -16,6 +14,30 @@ import uz.scorm.lms.app.v1.user.service.UserService
 
 private val logger = KotlinLogging.logger {}
 
+/** Tizimning asosiy rollari va ularga bog'langan standart akkauntlar (login = rol nomi). */
+data class DefaultAccount(val username: String, val role: String, val fullName: String)
+
+val DEFAULT_ACCOUNTS: List<DefaultAccount> = listOf(
+    DefaultAccount("superadmin", "super_admin", "Super administrator"),
+    DefaultAccount("admin", "admin", "Administrator"),
+    DefaultAccount("metodist", "metodist", "Metodist"),
+    DefaultAccount("teacher", "teacher", "O'qituvchi"),
+    DefaultAccount("student", "student", "Talaba"),
+    DefaultAccount("proctor", "proctor", "Proktor"),
+    DefaultAccount("monitoring", "monitoring", "Monitoring xodimi"),
+)
+
+/**
+ * Parol qoidasiga mos (12+ belgi, login nomini o'z ichiga olmaydi, umumiy ro'yxatda yo'q).
+ * `APP_SEED_DEFAULT_PASSWORD` bilan almashtiriladi.
+ */
+const val DEFAULT_ACCOUNT_PASSWORD = "Lms#2026!Kirish"
+
+/**
+ * Har ishga tushishda: rollar va standart akkauntlar bo'lmasa yaratiladi (bor bo'lsa tegilmaydi), shunda yangi
+ * baza migratsiya qilingan zahoti tizimga kirish mumkin. Standart parol hali o'zgartirilmagan akkauntlar logda
+ * ogohlantiriladi.
+ */
 @Component
 @Order(0)
 class DataInitializer(
@@ -23,31 +45,29 @@ class DataInitializer(
     private val roleService: RoleService,
     private val userRepository: UserRepository,
     private val roleRepository: RoleRepository,
-    private val environment: Environment,
+    private val passwordEncoder: PasswordEncoder,
+    /** false bo'lsa faqat rollar yaratiladi, akkauntlar emas */
+    @param:Value("\${app.seed.default-accounts:true}") private val seedDefaultAccounts: Boolean,
+    /** Barcha standart akkauntlar uchun boshlang'ich parol */
+    @param:Value("\${app.seed.default-password:$DEFAULT_ACCOUNT_PASSWORD}") private val defaultPassword: String,
+    /** superadmin va admin uchun alohida boshlang'ich parol (berilsa standart parol o'rniga) */
     @param:Value("\${app.seed.admin-password:}") private val adminPassword: String,
-    @param:Value("\${app.seed.teacher-password:}") private val teacherPassword: String,
-    @param:Value("\${app.seed.student-password:}") private val studentPassword: String
 ) : ApplicationRunner {
 
     override fun run(args: ApplicationArguments) {
-        seedRole("super_admin")
-        seedRole("admin")
-        seedRole("metodist")
-        seedRole("teacher")
-        seedRole("student")
-        seedRole("proctor")
-        seedRole("monitoring")
+        DEFAULT_ACCOUNTS.map { it.role }.distinct().forEach(::seedRole)
+        if (!seedDefaultAccounts) return
 
-        seedAdminUser()
-
-        if (isDevProfile()) {
-            seedDemoUserIfConfigured("teacher", teacherPassword, "teacher")
-            seedDemoUserIfConfigured("student", studentPassword, "student")
+        val created = DEFAULT_ACCOUNTS.filter(::seedAccount).map { it.username }
+        if (created.isNotEmpty()) {
+            logger.warn {
+                "Standart akkauntlar yaratildi: ${created.joinToString()}. Parol: " +
+                    (if (defaultPassword == DEFAULT_ACCOUNT_PASSWORD) "standart ($DEFAULT_ACCOUNT_PASSWORD)" else "APP_SEED_DEFAULT_PASSWORD dagi qiymat") +
+                    ". Kirgach parollarni almashtiring."
+            }
         }
+        warnAboutUnchangedDefaultPasswords()
     }
-
-    private fun isDevProfile(): Boolean =
-        environment.acceptsProfiles(Profiles.of("postgresql-dev"))
 
     private fun seedRole(name: String) {
         if (!roleRepository.existsByName(name)) {
@@ -55,52 +75,32 @@ class DataInitializer(
         }
     }
 
-    private fun seedAdminUser() {
-        if (userRepository.existsByUsername("admin")) return
+    /** Akkaunt bo'lmasa yaratadi; mavjud akkauntga (paroli, roli) tegilmaydi. Yaratilgan bo'lsa true. */
+    private fun seedAccount(account: DefaultAccount): Boolean {
+        if (userRepository.existsByUsername(account.username)) return false
 
-        var password = adminPassword
-        var generated = false
-        if (password.isBlank()) {
-            if (!environment.acceptsProfiles(Profiles.of("postgresql-prod"))) {
-                logger.warn { "Default admin yaratilmadi: APP_SEED_ADMIN_PASSWORD env variable berilmagan." }
-                return
-            }
-            // Env faylsiz ishga tushirishda ham tizimga kirish mumkin bo'lishi uchun bir martalik tasodifiy parol.
-            password = generateAdminPassword()
-            generated = true
+        val password = if (account.role in ADMIN_ROLES && adminPassword.isNotBlank()) adminPassword else defaultPassword
+        val user = userService.register(account.username, password, account.role)
+        user.fullName = account.fullName
+        user.email = "${account.username}@example.com"
+        user.credentialsInitialized = true
+        userRepository.save(user)
+        return true
+    }
+
+    /** Standart parol bilan qolgan akkauntlar — ayniqsa serverda — xavf: har ishga tushganda eslatiladi. */
+    private fun warnAboutUnchangedDefaultPasswords() {
+        val unchanged = DEFAULT_ACCOUNTS.mapNotNull { account ->
+            userRepository.findByUsername(account.username)
+                ?.takeIf { passwordEncoder.matches(DEFAULT_ACCOUNT_PASSWORD, it.password) }
+                ?.username
         }
-
-        val u = userService.register("admin", password, "super_admin")
-        u.fullName = "Super Admin"
-        u.email = "admin@example.com"
-        u.phone = "+998901234567"
-        userRepository.save(u)
-        logger.info { "Super Admin user yaratildi" }
-        if (generated) {
-            logger.warn {
-                "BIRINCHI ADMINISTRATOR yaratildi. Login: admin, parol: $password . " +
-                    "Bu parol faqat shu safar ko'rsatiladi: kirgach darhol o'zgartiring."
-            }
+        if (unchanged.isNotEmpty()) {
+            logger.warn { "DIQQAT: standart parol hali o'zgartirilmagan: ${unchanged.joinToString()}. Foydalanuvchi sahifasida yangi parol qo'ying." }
         }
     }
 
-    private fun seedDemoUserIfConfigured(username: String, password: String, roleName: String) {
-        if (password.isBlank()) return
-        if (userRepository.existsByUsername(username)) return
-        userService.register(username, password, roleName)
-        logger.info { "Demo user yaratildi: $username" }
-    }
-}
-
-private const val ADMIN_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
-private const val ADMIN_PASSWORD_LENGTH = 20
-
-/** Chalkash belgilarsiz (0/O, 1/l/I) 20 belgili tasodifiy parol; PasswordPolicy talablariga mos (login nomini o'z ichiga olmaydi). */
-internal fun generateAdminPassword(random: SecureRandom = SecureRandom()): String {
-    while (true) {
-        val password = buildString(ADMIN_PASSWORD_LENGTH) {
-            repeat(ADMIN_PASSWORD_LENGTH) { append(ADMIN_PASSWORD_ALPHABET[random.nextInt(ADMIN_PASSWORD_ALPHABET.length)]) }
-        }
-        if (!password.contains("admin", ignoreCase = true)) return password
+    companion object {
+        private val ADMIN_ROLES = setOf("super_admin", "admin")
     }
 }
