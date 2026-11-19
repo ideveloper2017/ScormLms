@@ -1,4 +1,10 @@
 /gradlew text eol=lf
+# Docker fayllari Windows'da ham LF qoladi (CRLF qiymatlarga va "\" davomiga yopishib qoladi)
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+docker-compose.yml text eol=lf
+docker/** text eol=lf
+*.sh text eol=lf
 *.bat text eol=crlf
 *.jar binary
 # Hash bilan tekshiriladigan klassifikator datasetlari har qanday OS da bir xil baytlarda bo'lishi kerak
