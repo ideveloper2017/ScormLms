@@ -64,58 +64,43 @@ function vendorChunk(id: string): string | undefined {
 export default defineConfig(({ mode }) => {
   // VITE_ bilan boshlanmagan o'zgaruvchilar brauzerga tushmaydi, lekin shu yerda o'qiladi
   const env = loadEnv(mode, process.cwd(), '');
-  const backend = (env.VITE_PROXY_TARGET || 'http://localhost:8080').replace(/\/+$/, '');
+  const backend = (env.VITE_PROXY_TARGET || 'http://10.200.2.25:8080').replace(/\/+$/, '');
   const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')) as { version?: string };
   const proxy = buildProxy(backend);
 
   return {
-    plugins: [tailwindcss(), react()],
+    "plugins": [tailwindcss(), react()],
 
-    resolve: {
-      alias: { '@': path.resolve(__dirname, './src') },
+    "resolve": {
+      "alias": { '@': path.resolve(__dirname, './src') },
       // Bir xil kutubxona ikki nusxada yuklanib qolmasin (hook xatolari)
-      dedupe: ['react', 'react-dom'],
+      "dedupe": ['react', 'react-dom'],
     },
 
     // Kodda ishlatish: __APP_VERSION__, __BUILD_TIME__ (src/vite-env.d.ts da e'lon qilingan)
-    define: {
-      __APP_VERSION__: JSON.stringify(pkg.version ?? '0.0.0'),
-      __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    "define": {
+      "__APP_VERSION__": JSON.stringify(pkg.version ?? '0.0.0'),
+      "__BUILD_TIME__": JSON.stringify(new Date().toISOString()),
     },
 
-    server: {
-      port: Number(env.VITE_PORT) || 5173,
-      strictPort: false,          // band bo'lsa keyingi portni oladi
-      host: env.VITE_HOST === 'true', // true: tarmoqdagi boshqa qurilmalardan (telefon) ochish mumkin
-      open: env.VITE_OPEN === 'true',
+    "server": {
+      "port": Number(env.VITE_PORT) || 5173,
+      "strictPort": false,          // band bo'lsa keyingi portni oladi
+      "host": env.VITE_HOST === 'true', // true: tarmoqdagi boshqa qurilmalardan (telefon) ochish mumkin
+      "open": env.VITE_OPEN === 'true',
       proxy,
     },
 
     // `vite preview` (build natijasini ko'rish) ham backend bilan ishlaydi
-    preview: {
-      port: Number(env.VITE_PREVIEW_PORT) || 4173,
-      host: env.VITE_HOST === 'true',
+    "preview": {
+      "port": Number(env.VITE_PREVIEW_PORT) || 4173,
+      "host": env.VITE_HOST === 'true',
       proxy,
     },
 
-    css: {
-      devSourcemap: true,
+    "css": {
+      "devSourcemap": true,
     },
+  },
 
-    build: {
-      target: 'es2020',
-      sourcemap: env.VITE_SOURCEMAP === 'true',
-      chunkSizeWarningLimit: 1200,
-      reportCompressedSize: false, // build tezroq; hajmni kerak bo'lganda alohida o'lchaymiz
-      rollupOptions: {
-        output: {
-          manualChunks: vendorChunk,
-        },
-      },
-    },
-
-    optimizeDeps: {
-      exclude: ['lucide-react'],
-    },
-  };
 });
