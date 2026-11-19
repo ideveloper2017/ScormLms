@@ -1,0 +1,42 @@
+# ScormLms: faqat BACKEND Docker'da. Frontend (nginx) va PostgreSQL hostda, Docker'ga kirmaydi.
+#
+#   docker compose up -d --build       yig'ish va ishga tushirish
+#   docker compose logs -f backend     loglar
+#   docker compose ps                  holat (healthy / unhealthy)
+#   docker compose down                to'xtatish (ma'lumotlar volume'da qoladi)
+#
+# Tarmoq: network_mode: host. Konteyner hostning tarmog'ida ishlaydi, shuning uchun:
+#   - hostdagi PostgreSQL'ga localhost:5432 orqali ulanadi (postgresql.conf, pg_hba.conf o'zgarmaydi);
+#   - backend hostda 8080 portni oladi, nginx avvalgidek 127.0.0.1:8080 ga proxy qiladi.
+#   Tomcat ham 8080 da bo'lsa, avval Tomcat'ni to'xtating yoki docker/backend.env da SERVER_PORT=8081 bering.
+#
+# Sozlamalar ixtiyoriy: docker/backend.env (namuna: docker/backend.env.example). Fayl bo'lmasa standartlar ishlaydi:
+#   baza localhost:5432/scorm_lms (rol scorm_lms), profil postgresql-prod.
+services:
+  backend:
+    build:
+      context: .
+      args:
+        FACE_MODELS: "true"
+    image: scorm-lms-backend:latest
+    container_name: scorm-lms-backend
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - path: docker/backend.env
+        required: false
+    volumes:
+      - scorm-lms-data:/data
+      # Serverdagi mavjud papkani ishlatish uchun (masalan Tomcat'dagi scorm-lms-data) yuqoridagi qator o'rniga:
+      #   - /opt/tomcat/scorm-lms-data:/data
+      # va bir marta: sudo chown -R 10001:10001 /opt/tomcat/scorm-lms-data
+    # Ilova so'rovlarni 30 soniyagacha tugatib to'xtaydi (graceful shutdown)
+    stop_grace_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  scorm-lms-data:

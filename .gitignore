@@ -32,6 +32,7 @@ out/
 # Local environment secrets
 .env
 !.env.example
+/docker/backend.env
 .backups/
 private-uploads/
 # Yuz tanish ONNX modellari (~39 MB) — ops/face-models/install-face-models.* o'rnatadi

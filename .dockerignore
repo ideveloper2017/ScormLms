@@ -1,0 +1,11 @@
+# Docker build kontekstiga faqat backend uchun kerakli fayllar kiradi.
+# frontend/, node_modules, build/, release/, .git va boshqalar yuborilmaydi (build tez, image toza).
+*
+!gradlew
+!gradle
+!build.gradle
+!settings.gradle
+!gradle.properties
+!src/main
+!docs/uat/decision-559-uat-evidence.json
+!ops/face-models/install-face-models.sh
